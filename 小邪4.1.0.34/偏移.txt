@@ -1,0 +1,9 @@
+InitWeChatSocket=B080
+InjectWeChat=CC10
+InijectWeChatPid=B750
+GetUserWeChatVersion=CB80
+SendWeChatData=AF90
+DestroyWeChat=C540
+UseUtf8=C680
+InjectWeChat2=CC30
+InjectWeChatMultiOpen=C780

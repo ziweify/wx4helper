@@ -1,0 +1,499 @@
+#include<thread>
+#include <emmintrin.h>
+
+#include "features.h"
+
+#include "base64.h"
+#include "3rd/include/json/json.h"
+
+//static concurrency::concurrent_queue<string>  test_queue = concurrency::concurrent_queue<string>();
+
+void WeixinX::CurrentUserInfo::read(WeixinX::Core* core) {
+
+
+	std::thread t([&]() {
+
+
+		std::lock_guard<std::mutex> l(currentUserInfoMutex);
+
+
+
+		while (true) {
+
+			uintptr_t base = *(uint64_t*)(util::getWeixinDllBase() + weixin_dll::v41021::offset::current_user_info);
+			uintptr_t  currentUserInfo = base + 0x68;
+
+			util::logging::print("currentUserInfo = {:#0X} ", *(__int64*)currentUserInfo);
+
+
+			if (!online.load()) {
+				break;
+			}
+			if (currentUserInfo != 0 && currentUserInfo < util::getWeixinDllBase()) {
+
+
+				weixin_dll::v41021::weixin_struct::WeixinString str;
+				memcpy(&str, (void*)(*(__int64*)currentUserInfo + CurrentUserInfo::offset_wxid), 32);
+				wxid = str.str();
+				util::logging::print("wxid: {}", wxid.c_str());
+
+				memcpy(&str, (void*)(*(__int64*)currentUserInfo + CurrentUserInfo::offset_alias), 32);
+				alias = str.str();
+				util::logging::print("Alias: {}", alias.c_str());
+
+				memcpy(&str, (void*)(*(__int64*)currentUserInfo + CurrentUserInfo::offset_nick), 32);
+				nick = str.str();
+				util::logging::wPrint(L"Nick: {}", util::utf8ToUtf16(nick.c_str()).c_str());
+
+				
+				break;
+			}
+
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+		}
+
+
+		});
+
+	t.detach();
+
+
+}
+
+
+void WeixinX::CurrentUserInfo::clear() {
+
+	std::lock_guard<std::mutex> l(currentUserInfoMutex);
+
+
+	wxid.clear();
+	alias.clear();
+	nick.clear();
+}
+
+
+
+void WeixinX::Core::Run() {
+	OutputDebugStringA("Core::Run");
+	Hook();
+
+	static unsigned long long  ticks = 0;
+	while (1)
+	{
+
+
+		this_thread::sleep_for(chrono::milliseconds(50));
+		bool online = *reinterpret_cast<bool*>(util::getWeixinDllBase() + weixin_dll::v41021::offset::is_online);
+
+		if (online != currentUserInfo.online.load()) {
+
+			if (online) {
+
+				OnLogin();
+
+			}
+			else {
+				OnLogout();
+			}
+
+			currentUserInfo.online.store(online);
+		}
+
+		WeixinX::MsgReceived msg;
+		while (WeixinX::MsgReceived::msgReceived_queue.try_pop(msg)) {
+
+			if (currentUserInfo.wxid.length() < 1) {
+				continue;
+			}
+
+			Json::Value j;
+			j["source"] = "wechat";
+			j["robot"] = currentUserInfo.wxid;
+
+			string b64;
+			string content = msg.content;
+			if (content.starts_with("")) {
+
+			}
+
+			base64::encode(content.c_str(), content.length(), &b64);
+			j["content"] = b64;
+
+			b64.clear();
+			string chatroom = GetNameByWxid(msg.receiver1);
+			base64::encode(chatroom.c_str(), chatroom.length(), &b64);
+
+			j["group"] = msg.receiver1;
+			j["group_name"] = b64;
+
+			b64.clear();
+			string nick = GetNameByWxid(msg.sender);
+			base64::encode(nick.c_str(), nick.length(), &b64);
+			j["sender"] = msg.sender;
+			j["sender_name"] = b64;
+
+
+			Json::StreamWriterBuilder builder;
+			const std::string payload = Json::writeString(builder, j);
+
+
+
+			util::logging::wPrint(L"MsgReceived:  {:d}\nreceiver1 = {} \nreceiver2 = {} \nsender = {} \ncontent:\n{} \nrefermsg:\n{} \n----------------",
+				msg.ts,
+				util::utf8ToUtf16(msg.receiver1.c_str()),
+				util::utf8ToUtf16(msg.receiver2.c_str()),
+				util::utf8ToUtf16(msg.sender.c_str()),
+				util::utf8ToUtf16(msg.content.c_str()),
+				util::utf8ToUtf16(msg.refermsg.c_str())
+			);
+		}
+
+
+
+
+		ticks++;
+
+
+
+
+
+	}
+
+}
+
+bool WeixinX::Core::Hook() {
+
+	if (MH_Initialize() != MH_OK)
+		throw std::runtime_error("failed initialize minhook");
+
+
+	util::logging::print("Hooking OpenDatabase");
+	if (!Detour::OpenDatabase.Create((void*)(util::getWeixinDllBase() + weixin_dll::v41021::offset::db::open_database), &Detour::hkOpenDatabase))
+		return false;
+
+
+	util::logging::print("Hooking AddMsgListToDb");
+	if (!Detour::AddMsgListToDb.Create((void*)(util::getWeixinDllBase() + weixin_dll::v41021::offset::db::add_msg_list_to_db), &Detour::hkAddMsgListToDb))
+		return false;
+
+	return true;
+
+}
+
+void WeixinX::Core::OnLogin() {
+
+	util::logging::print("current user logged in");
+
+	currentUserInfo.read(this);
+
+	//std::thread t([&]() {
+
+
+	//	while (true) {
+	//		string filePath;
+	//		if (test_queue.try_pop(filePath) && currentUserInfo.online.load()) {
+
+	//			util::logging::print(filePath);
+	//			SendText("filehelper", filePath);
+
+
+	//		}
+	//	}
+
+	//	//SEH_START
+
+	//	this_thread::sleep_for(chrono::milliseconds(1000));
+	//	//SEH_END
+	//	});
+	//t.detach();
+
+}
+
+
+void WeixinX::Core::OnLogout() {
+
+
+
+	util::logging::print("current user logged out");
+	currentUserInfo.clear();
+	WeixinX::Features::DBHandles.clear();
+
+
+}
+
+
+
+
+
+typedef __int64(*WeixinCall)(...);
+
+void buildTextMessage(uint64_t* ptr, const std::string& what, const std::string& who) {
+
+	uint64_t base = WeixinX::util::getWeixinDllBase();
+
+	ptr[1] = 0x100000004LL;
+	*ptr = base + WeixinX::weixin_dll::v41021::offset::message::txt_message_vtable;
+
+	WeixinCall Ctr = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::txt_message_ctr);
+	WeixinX::weixin_dll::v41021::weixin_struct::TextMessage* msgToSend = reinterpret_cast<WeixinX::weixin_dll::v41021::weixin_struct::TextMessage*>(ptr + 2);
+	Ctr(reinterpret_cast<uint64_t>(msgToSend));
+
+	msgToSend->receiver = who;
+	msgToSend->content = what;
+	msgToSend->msg_len = what.length();
+	msgToSend->type = 1;
+
+}
+
+
+void buildSendMessageArg2(uint64_t* a1) {
+
+
+
+	uint64_t base = WeixinX::util::getWeixinDllBase();
+
+	WeixinCall createParam = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::create_param2);
+	uint64_t a2 = base + WeixinX::weixin_dll::v41021::offset::message::param2_1;
+	uint64_t a3 = base + WeixinX::weixin_dll::v41021::offset::message::param2_2;
+	uint64_t a4 = base + WeixinX::weixin_dll::v41021::offset::message::param2_3;
+	uint64_t arg2 = base + WeixinX::weixin_dll::v41021::offset::message::param2;
+
+	uint64_t* buf = WeixinX::util::heapAlloc<uint64_t>(16);
+	WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock* p2 = (WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock*)WeixinX::util::heapAlloc<uint64_t>(64);
+	WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock* p3 = (WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock*)WeixinX::util::heapAlloc<uint64_t>(64);
+	WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock* p4 = (WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock*)WeixinX::util::heapAlloc<uint64_t>(64);
+
+	memset(p2, 0, sizeof(WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock));
+	memset(p3, 0, sizeof(WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock));
+	memset(p4, 0, sizeof(WeixinX::weixin_dll::v41021::weixin_struct::UnknownBlock));
+
+	p2->vtable = a2;
+	p2->self = (uint64_t)p2;
+	p3->vtable = a3;
+	p3->self = (uint64_t)p3;
+	p4->vtable = a4;
+	p4->self = (uint64_t)p4;
+
+	createParam(reinterpret_cast<uint64_t>(a1), reinterpret_cast<uint64_t>(p2), reinterpret_cast<uint64_t>(p3), reinterpret_cast<uint64_t>(p4), reinterpret_cast<uint64_t>(buf), *(uint64_t*)arg2);
+
+}
+
+void WeixinX::Core::SendText(string who, string what) {
+
+
+	uint64_t base = WeixinX::util::getWeixinDllBase();
+
+	uint64_t* txtMessage = WeixinX::util::heapAlloc<uint64_t>(0x530);
+	buildTextMessage(txtMessage, what, who);
+
+	uint64_t* data = WeixinX::util::heapAlloc<uint64_t>(0x20);
+	data[0] = reinterpret_cast<uint64_t>(txtMessage + 2);
+	data[1] = reinterpret_cast<uint64_t>(txtMessage);
+	data[2] = 0;
+	uint64_t* arg1 = WeixinX::util::heapAlloc<uint64_t>(0x28);
+	arg1[0] = base + WeixinX::weixin_dll::v41021::offset::message::param1_vtable;
+	arg1[1] = reinterpret_cast<uint64_t>(data);
+	arg1[2] = reinterpret_cast<uint64_t>(data) + 0x10;
+	arg1[3] = reinterpret_cast<uint64_t>(data) + 0x10;
+	arg1[4] = 1;
+
+	uint64_t* arg2 = WeixinX::util::heapAlloc<uint64_t>(0xE8);
+	buildSendMessageArg2(arg2);
+
+	WeixinCall send = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::send_message);
+	send(reinterpret_cast<uint64_t>(arg1), reinterpret_cast<uint64_t>(arg2));
+
+}
+
+void buildImageMessage(uint64_t* ptr, const std::string& which, const std::string& who) {
+
+
+
+	uint64_t base = WeixinX::util::getWeixinDllBase();
+
+	ptr[1] = 0x100000005LL;
+	*ptr = base + WeixinX::weixin_dll::v41021::offset::message::img_message_vtable;
+	WeixinCall Ctr = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::img_message_ctr);
+
+	WeixinX::weixin_dll::v41021::weixin_struct::ImageMessage* msgToSend = reinterpret_cast<WeixinX::weixin_dll::v41021::weixin_struct::ImageMessage*>(ptr + 2);
+	Ctr(reinterpret_cast<uint64_t>(msgToSend));
+
+
+	__m128i path;
+	path.m128i_i64[0] = (uint64_t)which.c_str();
+	path.m128i_i64[1] = which.length();
+	WeixinX::weixin_dll::v41021::weixin_struct::WeixinWideString wPath;
+	WeixinCall Utf8ToWString = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::utf8_to_wstring);
+	Utf8ToWString(&wPath, path);
+
+	msgToSend->receiver = who;
+	memcpy((void*)&msgToSend->path, (void*)&wPath, 0x20);
+	msgToSend->type = 3;
+	msgToSend->unknown1 = 1;
+	auto size = WeixinX::util::tool::FileSize(which);
+	msgToSend->size = size;
+
+
+}
+
+void WeixinX::Core::SendImage(string who, string which) {
+
+	uint64_t base = WeixinX::util::getWeixinDllBase();
+
+	uint64_t* imageMessage = WeixinX::util::heapAlloc<uint64_t>(0x580);
+	buildImageMessage(imageMessage, which, who);
+
+	uint64_t* data = WeixinX::util::heapAlloc<uint64_t>(0x20);
+	data[0] = reinterpret_cast<uint64_t>(imageMessage + 2);
+	data[1] = reinterpret_cast<uint64_t>(imageMessage);
+	data[2] = 0;
+	uint64_t* arg1 = WeixinX::util::heapAlloc<uint64_t>(0x28);
+	arg1[0] = base + WeixinX::weixin_dll::v41021::offset::message::param1_vtable;
+	arg1[1] = reinterpret_cast<uint64_t>(data);
+	arg1[2] = reinterpret_cast<uint64_t>(data) + 0x10;
+	arg1[3] = reinterpret_cast<uint64_t>(data) + 0x10;
+	arg1[4] = 1;
+
+	uint64_t* arg2 = WeixinX::util::heapAlloc<uint64_t>(0xE8);
+	buildSendMessageArg2(arg2);
+
+	WeixinCall send = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::send_message);
+	send(reinterpret_cast<uint64_t>(arg1), reinterpret_cast<uint64_t>(arg2));
+
+}
+
+
+string WeixinX::Core::GetNameByWxid(string wxid)
+{
+
+	if (WeixinX::Features::DBHandles.find("contact.db") == WeixinX::Features::DBHandles.end())
+	{
+		util::logging::print("GetNameByWxid: no handle to contact.db.db");
+		return std::string();
+	}
+
+	std::string name{ "" };
+
+
+	uintptr_t base = util::getWeixinDllBase();
+	char* err;
+	char** result;
+	int row = 0, col = 0;
+	int rc;
+	std::string sql = std::format("select contact.nick_name from contact where username = '{}'", wxid);
+	rc = util::invokeCdecl<int>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::get_table),
+		WeixinX::Features::DBHandles["contact.db"],
+		sql.c_str(), &result, &row, &col, &err
+		);
+
+	if (rc == 0)
+	{
+		if (row > 0)
+		{
+
+			int idx = col;
+
+			for (int x = 0; x < row; x++)
+			{
+				for (int y = 0; y < col; y++)
+				{
+					name = result[idx++];
+
+				}
+
+			}
+		}
+
+
+	}
+	else
+	{
+		util::logging::print("GetNameByWxid: {}", err);
+	}
+
+	util::invokeCdecl<void>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::free_table), result);
+
+	return name;
+
+}
+
+concurrency::concurrent_queue<WeixinX::MsgReceived> WeixinX::MsgReceived::msgReceived_queue = concurrency::concurrent_queue<WeixinX::MsgReceived>();
+void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::MsgReceived* msg) {
+
+
+
+	size_t pos = msg->content.str().find("\n");
+	if (pos == std::string::npos) {
+		return;
+	}
+
+	std::string rawContent = util::trim(msg->content.str().substr(pos + 1).c_str());
+
+
+	util::logging::wPrint(L"rawContent:\n{}", util::utf8ToUtf16(rawContent.c_str()));
+	MsgReceived msgReceived;
+	msgReceived.receiver1 = msg->receiver1.str();
+	msgReceived.receiver2 = msg->receiver2.str();
+	msgReceived.sender = msg->sender.str();
+	msgReceived.ts = msg->ts;
+	msgReceived.fromChatroom = msg->receiver1.str().find("@chatroom") != std::string::npos;
+
+	msgReceived.content = rawContent;
+
+	//test_queue.push(rawContent);
+	//util::logging::print("ts = {:d} msg.ts = {:d} ts - msg.ts = {:d}", util::Timestamp(), msgReceived.ts, util::Timestamp() - msgReceived.ts);
+	//大哥说要删除这段
+	//if (msgReceived.fromChatroom && util::Timestamp() - msgReceived.ts < 5000 && (msgReceived.content.starts_with("/") || msgReceived.content.starts_with("╱"))) {
+	//	if (msgReceived.content.starts_with("╱")) {
+
+	//		string content = msgReceived.content.substr(msgReceived.content.find_first_not_of("╱"));
+	//		string slash = "/";
+	//		msgReceived.content = slash.append(content);
+	//	}
+	//	WeixinX::MsgReceived::msgReceived_queue.push(msgReceived);
+	//}
+	//删除后要增加
+	WeixinX::MsgReceived::msgReceived_queue.push(msgReceived);
+}
+
+
+#define SQLITE_OK (0)
+int _fastcall WeixinX::Detour::hkOpenDatabase(const char* dbName, uintptr_t** ppHandle, unsigned int flags, const char* zVfs) {
+
+	int retval = 0;
+	static auto oOpenDatabae = Detour::OpenDatabase.GetOriginal<decltype(&Detour::hkOpenDatabase)>();
+
+	retval = oOpenDatabae(dbName, ppHandle, flags, zVfs);
+
+
+	if (retval == SQLITE_OK) {
+		std::string name = util::split(dbName, "\\").back();
+		Features::DBHandles[name] = (uintptr_t)(*ppHandle);
+		util::logging::print("openDatabase {:#08X} {}", Features::DBHandles[name], name);
+	}
+
+
+	return retval;
+}
+
+
+__int64 _fastcall WeixinX::Detour::hkAddMsgListToDb(__int64 rcx, __int64 rdx, uintptr_t r8)
+{
+
+	weixin_dll::v41021::weixin_struct::MsgReceived* head = ((weixin_dll::v41021::weixin_struct::MsgReceived**)r8)[0];
+	weixin_dll::v41021::weixin_struct::MsgReceived* tail = ((weixin_dll::v41021::weixin_struct::MsgReceived**)r8)[1];
+
+	while (head != tail)
+	{
+		if (head->type == 1) {// || head->type == 0x31) {
+			MsgReceived::Received(head);
+		}
+
+		head += 1;
+	}
+
+	static auto oAddMsgListToDb = Detour::AddMsgListToDb.GetOriginal<decltype(&Detour::hkAddMsgListToDb)>();
+	return oAddMsgListToDb(rcx, rdx, r8);
+}
