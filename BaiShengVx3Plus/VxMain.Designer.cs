@@ -44,7 +44,7 @@
             pnlLeft = new Sunny.UI.UIPanel();
             dgvContacts = new Sunny.UI.UIDataGridView();
             pnlLeftTop = new Sunny.UI.UIPanel();
-            btnRefreshContacts = new Sunny.UI.UIButton();
+            btnBindingContacts = new Sunny.UI.UIButton();
             lblContactList = new Sunny.UI.UILabel();
             pnlRight = new Sunny.UI.UIPanel();
             splitContainerRight = new Sunny.UI.UISplitContainer();
@@ -63,6 +63,7 @@
             btnSettings = new Sunny.UI.UIButton();
             statusStrip = new StatusStrip();
             lblStatus = new ToolStripStatusLabel();
+            btnGetContactList = new Sunny.UI.UIButton();
             (splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -144,7 +145,7 @@
             dgvContacts.EnableHeadersVisualStyles = false;
             dgvContacts.Font = new Font("微软雅黑", 12F);
             dgvContacts.GridColor = Color.FromArgb(80, 160, 255);
-            dgvContacts.Location = new Point(0, 40);
+            dgvContacts.Location = new Point(0, 80);
             dgvContacts.MultiSelect = false;
             dgvContacts.Name = "dgvContacts";
             dgvContacts.ReadOnly = true;
@@ -171,7 +172,7 @@
             // 
             // pnlLeftTop
             // 
-            pnlLeftTop.Controls.Add(btnRefreshContacts);
+            pnlLeftTop.Controls.Add(btnBindingContacts);
             pnlLeftTop.Controls.Add(lblContactList);
             pnlLeftTop.Dock = DockStyle.Top;
             pnlLeftTop.Font = new Font("微软雅黑", 12F);
@@ -184,19 +185,19 @@
             pnlLeftTop.Text = null;
             pnlLeftTop.TextAlignment = ContentAlignment.MiddleCenter;
             // 
-            // btnRefreshContacts
+            // btnBindingContacts
             // 
-            btnRefreshContacts.Cursor = Cursors.Hand;
-            btnRefreshContacts.Dock = DockStyle.Right;
-            btnRefreshContacts.Font = new Font("微软雅黑", 9F);
-            btnRefreshContacts.Location = new Point(189, 0);
-            btnRefreshContacts.MinimumSize = new Size(1, 1);
-            btnRefreshContacts.Name = "btnRefreshContacts";
-            btnRefreshContacts.Size = new Size(55, 40);
-            btnRefreshContacts.TabIndex = 1;
-            btnRefreshContacts.Text = "刷新";
-            btnRefreshContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            btnRefreshContacts.Click += btnRefreshContacts_Click;
+            btnBindingContacts.Cursor = Cursors.Hand;
+            btnBindingContacts.Dock = DockStyle.Right;
+            btnBindingContacts.Font = new Font("微软雅黑", 9F);
+            btnBindingContacts.Location = new Point(189, 0);
+            btnBindingContacts.MinimumSize = new Size(1, 1);
+            btnBindingContacts.Name = "btnBindingContacts";
+            btnBindingContacts.Size = new Size(55, 40);
+            btnBindingContacts.TabIndex = 1;
+            btnBindingContacts.Text = "绑定";
+            btnBindingContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnBindingContacts.Click += btnRefreshContacts_Click;
             // 
             // lblContactList
             // 
@@ -428,6 +429,7 @@
             // 
             pnlTopButtons.Controls.Add(btnClearData);
             pnlTopButtons.Controls.Add(btnOpenLotteryResult);
+            pnlTopButtons.Controls.Add(btnGetContactList);
             pnlTopButtons.Controls.Add(btnLog);
             pnlTopButtons.Controls.Add(btnSettings);
             pnlTopButtons.Dock = DockStyle.Top;
@@ -446,7 +448,7 @@
             // 
             btnClearData.Cursor = Cursors.Hand;
             btnClearData.Font = new Font("微软雅黑", 10F);
-            btnClearData.Location = new Point(215, 10);
+            btnClearData.Location = new Point(323, 12);
             btnClearData.MinimumSize = new Size(1, 1);
             btnClearData.Name = "btnClearData";
             btnClearData.Size = new Size(100, 40);
@@ -459,7 +461,7 @@
             // 
             btnOpenLotteryResult.Cursor = Cursors.Hand;
             btnOpenLotteryResult.Font = new Font("微软雅黑", 10F);
-            btnOpenLotteryResult.Location = new Point(110, 10);
+            btnOpenLotteryResult.Location = new Point(218, 12);
             btnOpenLotteryResult.MinimumSize = new Size(1, 1);
             btnOpenLotteryResult.Name = "btnOpenLotteryResult";
             btnOpenLotteryResult.Size = new Size(100, 40);
@@ -472,7 +474,7 @@
             // 
             btnLog.Cursor = Cursors.Hand;
             btnLog.Font = new Font("微软雅黑", 10F);
-            btnLog.Location = new Point(5, 10);
+            btnLog.Location = new Point(113, 12);
             btnLog.MinimumSize = new Size(1, 1);
             btnLog.Name = "btnLog";
             btnLog.Size = new Size(100, 40);
@@ -511,6 +513,19 @@
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(37, 20);
             lblStatus.Text = "就绪";
+            // 
+            // btnGetContactList
+            // 
+            btnGetContactList.Cursor = Cursors.Hand;
+            btnGetContactList.Font = new Font("微软雅黑", 10F);
+            btnGetContactList.Location = new Point(8, 12);
+            btnGetContactList.MinimumSize = new Size(1, 1);
+            btnGetContactList.Name = "btnGetContactList";
+            btnGetContactList.Size = new Size(100, 40);
+            btnGetContactList.TabIndex = 1;
+            btnGetContactList.Text = "采集";
+            btnGetContactList.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnGetContactList.Click += btnLog_Click;
             // 
             // VxMain
             // 
@@ -554,7 +569,7 @@
         private Sunny.UI.UIPanel pnlLeft;
         private Sunny.UI.UIDataGridView dgvContacts;
         private Sunny.UI.UIPanel pnlLeftTop;
-        private Sunny.UI.UIButton btnRefreshContacts;
+        private Sunny.UI.UIButton btnBindingContacts;
         private Sunny.UI.UILabel lblContactList;
         private Sunny.UI.UIPanel pnlRight;
         private Sunny.UI.UISplitContainer splitContainerRight;
@@ -573,5 +588,6 @@
         private Sunny.UI.UIButton btnClearData;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel lblStatus;
+        private Sunny.UI.UIButton btnGetContactList;
     }
 }

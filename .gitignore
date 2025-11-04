@@ -27,3 +27,5 @@
 /LxLib/obj/Debug
 /libs/LinkTo.Toolkit.dll
 /libs/wxmon.dll
+/Loader/build.bat
+/Loader/x64/Release

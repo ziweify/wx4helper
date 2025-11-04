@@ -8,14 +8,21 @@ namespace BaiShengVx3Plus
     public partial class VxMain : UIForm
     {
         private readonly VxMainViewModel _viewModel;
+        private readonly Services.IContactBindingService _contactBindingService;
+        private readonly Services.IWeChatLoaderService _loaderService;
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
 
-        public VxMain(VxMainViewModel viewModel)
+        public VxMain(
+            VxMainViewModel viewModel,
+            Services.IContactBindingService contactBindingService,
+            Services.IWeChatLoaderService loaderService)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _contactBindingService = contactBindingService;
+            _loaderService = loaderService;
 
             // 初始化数据绑定列表
             _contactsBindingList = new BindingList<WxContact>();
@@ -142,7 +149,7 @@ namespace BaiShengVx3Plus
 
         private void UpdateStatistics()
         {
-            lblContactList.Text = $"联系人列表({_contactsBindingList.Count})";
+            //lblContactList.Text = $"联系人列表({_contactsBindingList.Count})";
             lblMemberInfo.Text = $"会员列表 (共{_membersBindingList.Count}人)";
             lblOrderInfo.Text = $"订单列表 (共{_ordersBindingList.Count}单)";
         }
@@ -302,10 +309,90 @@ namespace BaiShengVx3Plus
             // 这里可以创建一个过滤后的BindingList
         }
 
+        private void btnBindingContacts_Click(object sender, EventArgs e)
+        {
+            if (dgvContacts.CurrentRow?.DataBoundItem is WxContact contact)
+            {
+                _contactBindingService.BindContact(contact);
+                if (this.Controls.Find("txtCurrentContact", true).FirstOrDefault() is Sunny.UI.UITextBox txt)
+                {
+                    txt.Text = contact.Wxid;
+                }
+                lblStatus.Text = $"已绑定联系人: {contact.Nickname} ({contact.Wxid})";
+                UIMessageBox.ShowSuccess($"成功绑定联系人: {contact.Nickname}");
+            }
+            else
+            {
+                UIMessageBox.ShowWarning("请先选择一个联系人");
+            }
+        }
+
+        private void btnGetContactList_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                var dllPath = Path.Combine(currentDir, "WeixinX.dll");
+
+                if (!File.Exists(dllPath))
+                {
+                    UIMessageBox.ShowError($"找不到 WeixinX.dll\n路径: {dllPath}");
+                    return;
+                }
+
+                lblStatus.Text = "正在检查微信进程...";
+                Application.DoEvents();
+
+                // 获取现有微信进程
+                var processes = _loaderService.GetWeChatProcesses();
+
+                if (processes.Count > 0)
+                {
+                    lblStatus.Text = $"发现 {processes.Count} 个微信进程，正在注入...";
+                    Application.DoEvents();
+
+                    // 注入到第一个进程
+                    if (_loaderService.InjectToProcess(processes[0], dllPath, out string error))
+                    {
+                        lblStatus.Text = "成功注入到微信进程";
+                        UIMessageBox.ShowSuccess($"成功注入到微信进程 (PID: {processes[0]})");
+                    }
+                    else
+                    {
+                        lblStatus.Text = "注入失败";
+                        UIMessageBox.ShowError($"注入失败:\n{error}");
+                    }
+                }
+                else
+                {
+                    lblStatus.Text = "未发现微信进程，正在启动...";
+                    Application.DoEvents();
+
+                    // 启动新微信并注入
+                    if (_loaderService.LaunchWeChat("127.0.0.1", "5672", dllPath, out string error))
+                    {
+                        lblStatus.Text = "成功启动微信并注入";
+                        UIMessageBox.ShowSuccess("成功启动微信并注入 WeixinX.dll");
+                    }
+                    else
+                    {
+                        lblStatus.Text = "启动失败";
+                        UIMessageBox.ShowError($"启动失败:\n{error}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "发生错误";
+                UIMessageBox.ShowError($"发生错误:\n{ex.Message}\n\n{ex.StackTrace}");
+            }
+        }
+
         private void btnRefreshContacts_Click(object sender, EventArgs e)
         {
             lblStatus.Text = "刷新联系人列表...";
-            // TODO: 实现刷新逻辑
+            // TODO: 从微信获取联系人列表
+            UIMessageBox.ShowInfo("刷新功能待实现");
         }
 
         private void btnLog_Click(object sender, EventArgs e)

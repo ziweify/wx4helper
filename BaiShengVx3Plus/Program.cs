@@ -27,6 +27,8 @@ namespace BaiShengVx3Plus
                     // 注册服务
                     services.AddSingleton<IAuthService, AuthService>();
                     services.AddSingleton<IInsUserService, InsUserService>();
+                    services.AddSingleton<IContactBindingService, ContactBindingService>();
+                    services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
 
                     // 注册ViewModels
                     services.AddTransient<LoginViewModel>();
