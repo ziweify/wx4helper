@@ -539,16 +539,29 @@ void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::
 
 	std::string rawContent = util::trim(msg->content.str().substr(pos + 1).c_str());
 
-
-	util::logging::wPrint(L"rawContent:\n{}", util::utf8ToUtf16(rawContent.c_str()));
 	MsgReceived msgReceived;
 	msgReceived.receiver1 = msg->receiver1.str();
 	msgReceived.receiver2 = msg->receiver2.str();
 	msgReceived.sender = msg->sender.str();
 	msgReceived.ts = msg->ts;
 	msgReceived.fromChatroom = msg->receiver1.str().find("@chatroom") != std::string::npos;
-
 	msgReceived.content = rawContent;
+
+	// 将 msgReceived 转换为 JSON 并打印（不转义中文字符）
+	Json::Value j;
+	j["receiver1"] = msgReceived.receiver1;
+	j["receiver2"] = msgReceived.receiver2;
+	j["sender"] = msgReceived.sender;
+	j["ts"] = (Json::Int64)msgReceived.ts;
+	j["fromChatroom"] = msgReceived.fromChatroom;
+	j["content"] = msgReceived.content;
+	
+	Json::StreamWriterBuilder builder;
+	builder["indentation"] = "  ";
+	builder["emitUTF8"] = true;  // 启用 UTF-8 输出，不转义中文
+	const std::string jsonString = Json::writeString(builder, j);
+	
+	util::logging::wPrint(L"MsgReceived JSON:\n{}", util::utf8ToUtf16(jsonString.c_str()));
 
 	//test_queue.push(rawContent);
 	//util::logging::print("ts = {:d} msg.ts = {:d} ts - msg.ts = {:d}", util::Timestamp(), msgReceived.ts, util::Timestamp() - msgReceived.ts);

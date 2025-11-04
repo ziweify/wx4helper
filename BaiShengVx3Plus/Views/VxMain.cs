@@ -370,7 +370,7 @@ namespace BaiShengVx3Plus
                     {
                         lblStatus.Text = "成功注入到微信进程";
                         _logService.Info("VxMain", $"成功注入到微信进程 (PID: {processes[0]})");
-                        UIMessageBox.ShowSuccess($"成功注入到微信进程 (PID: {processes[0]})");
+                       // UIMessageBox.ShowSuccess($"成功注入到微信进程 (PID: {processes[0]})");
                     }
                     else
                     {
@@ -389,7 +389,7 @@ namespace BaiShengVx3Plus
                     {
                         lblStatus.Text = "成功启动微信并注入";
                         _logService.Info("VxMain", "成功启动微信并注入 WeixinX.dll");
-                        UIMessageBox.ShowSuccess("成功启动微信并注入 WeixinX.dll");
+                        //UIMessageBox.ShowSuccess("成功启动微信并注入 WeixinX.dll");
                     }
                     else
                     {
