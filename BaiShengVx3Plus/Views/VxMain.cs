@@ -2,6 +2,7 @@ using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Models;
 using System.ComponentModel;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BaiShengVx3Plus
@@ -16,6 +17,9 @@ namespace BaiShengVx3Plus
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
+        
+        // 设置窗口单实例
+        private Views.SettingsForm? _settingsForm;
 
         public VxMain(
             VxMainViewModel viewModel,
@@ -496,8 +500,52 @@ namespace BaiShengVx3Plus
 
         private void btnSettings_Click(object sender, EventArgs e)
         {
-            lblStatus.Text = "打开设置窗口...";
-            // TODO: 实现设置窗口
+            try
+            {
+                // 检查设置窗口是否已打开
+                if (_settingsForm != null && !_settingsForm.IsDisposed)
+                {
+                    // 窗口已打开，激活并显示到前台
+                    _logService.Info("VxMain", "设置窗口已打开，激活到前台");
+                    
+                    // 如果窗口最小化，先恢复
+                    if (_settingsForm.WindowState == FormWindowState.Minimized)
+                    {
+                        _settingsForm.WindowState = FormWindowState.Normal;
+                    }
+                    
+                    // 激活窗口并显示到最前面
+                    _settingsForm.Activate();
+                    _settingsForm.BringToFront();
+                    _settingsForm.Focus();
+                    
+                    lblStatus.Text = "设置窗口已激活";
+                    return;
+                }
+                
+                lblStatus.Text = "打开设置窗口...";
+                _logService.Info("VxMain", "创建新的设置窗口");
+                
+                // 创建新的设置窗口（非模态）
+                _settingsForm = new Views.SettingsForm(_socketClient, _logService);
+                
+                // 订阅关闭事件，清理引用
+                _settingsForm.FormClosed += (s, args) =>
+                {
+                    _logService.Info("VxMain", "设置窗口已关闭");
+                    _settingsForm = null;
+                    lblStatus.Text = "设置窗口已关闭";
+                };
+                
+                // 显示为非模态窗口
+                _settingsForm.Show(this);
+                lblStatus.Text = "设置窗口已打开";
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开设置窗口失败", ex);
+                UIMessageBox.ShowError($"打开设置窗口失败:\n{ex.Message}");
+            }
         }
 
         #endregion
@@ -547,12 +595,17 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "测试获取用户信息...");
                 
-                // 这里需要定义一个返回类型，暂时使用 dynamic
-                var result = await _socketClient.SendAsync<dynamic>("GetUserInfo");
+                // 使用 JsonDocument 替代 dynamic
+                var result = await _socketClient.SendAsync<JsonDocument>("GetUserInfo");
                 
                 if (result != null)
                 {
-                    _logService.Info("VxMain", $"用户信息: {result}");
+                    string jsonResult = JsonSerializer.Serialize(result.RootElement, new JsonSerializerOptions 
+                    { 
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    });
+                    _logService.Info("VxMain", $"用户信息: {jsonResult}");
                 }
                 else
                 {
@@ -616,7 +669,7 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 窗口关闭时断开 Socket 连接
+        /// 窗口关闭时断开 Socket 连接并关闭子窗口
         /// </summary>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
@@ -624,10 +677,18 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "窗口正在关闭，断开 Socket 连接");
                 _socketClient?.Disconnect();
+                
+                // 关闭设置窗口（如果打开）
+                if (_settingsForm != null && !_settingsForm.IsDisposed)
+                {
+                    _logService.Info("VxMain", "关闭设置窗口");
+                    _settingsForm.Close();
+                    _settingsForm = null;
+                }
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", "关闭 Socket 连接失败", ex);
+                _logService.Error("VxMain", "关闭窗口失败", ex);
             }
             
             base.OnFormClosing(e);

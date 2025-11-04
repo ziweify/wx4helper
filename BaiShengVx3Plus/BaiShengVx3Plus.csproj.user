@@ -7,6 +7,9 @@
     <Compile Update="Views\LogViewerForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\SettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\VxMain.cs">
       <SubType>Form</SubType>
     </Compile>

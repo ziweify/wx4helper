@@ -81,6 +81,7 @@ public:
 
     // 移除客户端连接
     void RemoveClient(ClientConnection* client);
+    void RemoveClientBySocket(SOCKET socket);
 
 private:
     void AcceptThread();

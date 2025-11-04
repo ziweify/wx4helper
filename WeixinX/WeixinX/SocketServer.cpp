@@ -29,9 +29,26 @@ void ClientConnection::Start()
 void ClientConnection::Stop()
 {
     if (m_connected.exchange(false)) {
-        closesocket(m_socket);
+        util::logging::print("Stopping client connection");
+        
+        // 先关闭 socket，触发 recv() 返回
+        if (m_socket != INVALID_SOCKET) {
+            shutdown(m_socket, SD_BOTH);  // 优雅关闭
+            closesocket(m_socket);
+            m_socket = INVALID_SOCKET;
+        }
+        
+        // 等待接收线程结束
         if (m_receiveThread.joinable()) {
-            m_receiveThread.join();
+            try {
+                // 尝试 join，最多等待 3 秒
+                util::logging::print("Waiting for receive thread to finish");
+                m_receiveThread.join();
+                util::logging::print("Receive thread joined successfully");
+            }
+            catch (const std::exception& e) {
+                util::logging::print("Exception while joining receive thread: {}", e.what());
+            }
         }
     }
 }
@@ -49,23 +66,25 @@ bool ClientConnection::Send(const std::string& message)
         
         int sent = send(m_socket, reinterpret_cast<const char*>(&networkLength), sizeof(networkLength), 0);
         if (sent != sizeof(networkLength)) {
-            util::logging::print("Failed to send message length");
-            Stop();
+            util::logging::print("Failed to send message length, error: {}", WSAGetLastError());
+            // 只标记断开，不调用 Stop()，避免潜在的死锁
+            m_connected = false;
             return false;
         }
 
         // 发送消息体
         sent = send(m_socket, message.c_str(), static_cast<int>(message.length()), 0);
         if (sent != static_cast<int>(message.length())) {
-            util::logging::print("Failed to send message body");
-            Stop();
+            util::logging::print("Failed to send message body, error: {}", WSAGetLastError());
+            m_connected = false;
             return false;
         }
 
         return true;
     }
-    catch (...) {
-        Stop();
+    catch (const std::exception& e) {
+        util::logging::print("Exception in Send: {}", e.what());
+        m_connected = false;
         return false;
     }
 }
@@ -86,6 +105,9 @@ bool ClientConnection::ReceiveExact(char* buffer, int length)
 void ClientConnection::ReceiveThread()
 {
     util::logging::print("Client connected from socket {}", m_socket);
+    
+    // 保存 socket 用于清理（避免在 closesocket 后使用）
+    SOCKET socketForCleanup = m_socket;
 
     while (m_connected) {
         try {
@@ -119,8 +141,18 @@ void ClientConnection::ReceiveThread()
         }
     }
 
-    Stop();
-    m_server->RemoveClient(this);
+    util::logging::print("Receive thread exiting for socket {}", socketForCleanup);
+    
+    // 不在接收线程中调用 Stop()，避免自我 join 死锁
+    // 只设置断开标志并关闭 socket
+    if (m_connected.exchange(false)) {
+        closesocket(m_socket);
+        m_socket = INVALID_SOCKET;
+        util::logging::print("Client disconnected, notifying server to remove");
+    }
+    
+    // 通知服务器移除此客户端（使用保存的 SOCKET 作为标识）
+    m_server->RemoveClientBySocket(socketForCleanup);
 }
 
 void ClientConnection::ProcessMessage(const std::string& message)
@@ -144,16 +176,23 @@ void ClientConnection::ProcessMessage(const std::string& message)
         std::string method = request.get("method", "").asString();
         Json::Value params = request.get("params", Json::Value(Json::arrayValue));
 
+        util::logging::print("Processing command: {} (id={})", method, id);
+
         // 处理命令
         Json::Value result = m_server->HandleCommand(method, params);
+        
+        util::logging::print("Command {} executed, preparing response", method);
 
         // 构建响应
         Json::Value response;
         response["id"] = id;
-        if (result.isMember("error")) {
+        
+        // 只有当 result 是对象且包含 "error" 字段时，才认为是错误响应
+        if (result.isObject() && result.isMember("error")) {
             response["error"] = result["error"];
             response["result"] = Json::Value::null;
         } else {
+            // 正常响应（可能是对象、数组或其他类型）
             response["result"] = result;
             response["error"] = Json::Value::null;
         }
@@ -164,7 +203,10 @@ void ClientConnection::ProcessMessage(const std::string& message)
         writerBuilder["emitUTF8"] = true;
         std::string responseStr = Json::writeString(writerBuilder, response);
         
-        Send(responseStr);
+        util::logging::wPrint(L"Sending response: {}", util::utf8ToUtf16(responseStr.c_str()));
+        
+        bool sendResult = Send(responseStr);
+        util::logging::print("Response sent: {}", sendResult ? "success" : "failed");
     }
     catch (const std::exception& e) {
         util::logging::print("Exception in ProcessMessage: {}", e.what());
@@ -312,16 +354,30 @@ Json::Value SocketServer::HandleCommand(const std::string& method, const Json::V
 {
     std::lock_guard<std::mutex> lock(m_handlersMutex);
     
+    util::logging::print("HandleCommand called for method: {}", method);
+    util::logging::print("Registered handlers count: {}", m_handlers.size());
+    
     auto it = m_handlers.find(method);
     if (it == m_handlers.end()) {
         Json::Value error;
         error["error"] = std::format("Unknown method: {}", method);
         util::logging::print("Unknown method: {}", method);
+        
+        // 打印所有已注册的方法
+        util::logging::print("Available methods:");
+        for (const auto& pair : m_handlers) {
+            util::logging::print("  - {}", pair.first);
+        }
+        
         return error;
     }
 
+    util::logging::print("Found handler for method: {}", method);
+    
     try {
-        return it->second(params);
+        Json::Value result = it->second(params);
+        util::logging::print("Handler executed successfully for: {}", method);
+        return result;
     }
     catch (const std::exception& e) {
         Json::Value error;
@@ -354,15 +410,36 @@ void SocketServer::Broadcast(const std::string& method, const Json::Value& param
 
 void SocketServer::RemoveClient(ClientConnection* client)
 {
-    std::lock_guard<std::mutex> lock(m_clientsMutex);
-    m_clients.erase(
-        std::remove_if(m_clients.begin(), m_clients.end(),
-            [client](const std::unique_ptr<ClientConnection>& c) {
-                return c.get() == client;
-            }),
-        m_clients.end()
-    );
-    util::logging::print("Client removed, remaining clients: {}", m_clients.size());
+    if (!client) return;
+    
+    SOCKET socket = client->GetSocket();
+    RemoveClientBySocket(socket);
+}
+
+void SocketServer::RemoveClientBySocket(SOCKET socket)
+{
+    util::logging::print("Removing client by socket {} asynchronously", socket);
+    
+    // 异步删除客户端，避免在接收线程中析构导致死锁
+    // 使用 SOCKET 而不是指针，避免 use-after-free
+    std::thread([this, socket]() {
+        // 给接收线程一点时间完全退出
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        
+        std::lock_guard<std::mutex> lock(m_clientsMutex);
+        auto it = std::remove_if(m_clients.begin(), m_clients.end(),
+            [socket](const std::unique_ptr<ClientConnection>& c) {
+                return c->GetSocket() == socket;
+            });
+        
+        if (it != m_clients.end()) {
+            util::logging::print("Removing client with socket {}", socket);
+            m_clients.erase(it, m_clients.end());
+            util::logging::print("Client removed, remaining clients: {}", m_clients.size());
+        } else {
+            util::logging::print("Client with socket {} already removed", socket);
+        }
+    }).detach();
 }
 
 } // namespace Socket
