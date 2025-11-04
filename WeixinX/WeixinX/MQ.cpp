@@ -1,10 +1,10 @@
-//#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+// 必须先包含 util.h（里面有正确的 WinSock2 顺序）
+#include "util.h"
+
 #include <exception>
 #include <thread>
 #include <chrono>
 
-#include "util.h"
 #include "3rd/include/uuid.h"
 #include "3rd/include/rmqcxx/rmqcxx.hpp"
 

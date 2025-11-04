@@ -24,15 +24,16 @@ namespace BaiShengVx3Plus
             var host = Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>
                 {
-                    // 核心服务
-                    services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
-                    services.AddSingleton<IDatabaseService, DatabaseService>(); // 数据库服务（business.db）
-                    
-                    // 业务服务
-                    services.AddSingleton<IAuthService, AuthService>();
-                    services.AddSingleton<IInsUserService, InsUserService>();
-                    services.AddSingleton<IContactBindingService, ContactBindingService>();
-                    services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
+                        // 核心服务
+                        services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
+                        services.AddSingleton<IDatabaseService, DatabaseService>(); // 数据库服务（business.db）
+                        
+                        // 业务服务
+                        services.AddSingleton<IAuthService, AuthService>();
+                        services.AddSingleton<IInsUserService, InsUserService>();
+                        services.AddSingleton<IContactBindingService, ContactBindingService>();
+                        services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
+                        services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
 
                     // 注册ViewModels
                     services.AddTransient<LoginViewModel>();

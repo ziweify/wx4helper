@@ -1,5 +1,11 @@
+// 修复 C++20 std::byte 和 Windows COM byte 冲突
+// 必须在 util.h 之前定义（uuid.h 依赖 std::byte，所以不能全局禁用）
+#define _HAS_STD_BYTE 0
 
-#include <windows.h>
+// util.h 中有正确的 WinSock2 包含顺序
+// 项目级别已定义：WIN32_LEAN_AND_MEAN, NOMINMAX
+#include "util.h"
+
 #include <shlobj.h>   
 #include <iostream>
 #include <fstream>

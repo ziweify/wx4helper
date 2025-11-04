@@ -1,5 +1,14 @@
 #pragma once
 
+// 必须在 windows.h 之前定义，防止包含 winsock.h
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+// 必须在 Windows.h 之前包含 WinSock2
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+
 #include <Windows.h>
 #include <winnt.h>
 #include <chrono>

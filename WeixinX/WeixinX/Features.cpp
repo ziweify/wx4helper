@@ -6,8 +6,13 @@
 #include "ii3image.h"
 #include "base64.h"
 #include "3rd/include/json/json.h"
+#include "SocketServer.h"
+#include "SocketCommands.h"
 
 //static concurrency::concurrent_queue<string>  test_queue = concurrency::concurrent_queue<string>();
+
+// 静态成员定义
+WeixinX::CurrentUserInfo WeixinX::Core::currentUserInfo;
 
 void WeixinX::CurrentUserInfo::read(WeixinX::Core* core) {
 
@@ -617,4 +622,22 @@ __int64 _fastcall WeixinX::Detour::hkAddMsgListToDb(__int64 rcx, __int64 rdx, ui
 
 	static auto oAddMsgListToDb = Detour::AddMsgListToDb.GetOriginal<decltype(&Detour::hkAddMsgListToDb)>();
 	return oAddMsgListToDb(rcx, rdx, r8);
+}
+
+// 初始化 Socket 服务器
+void WeixinX::Core::InitializeSocketServer()
+{
+	util::logging::print("Initializing Socket Server...");
+	
+	m_socketServer = std::make_unique<Socket::SocketServer>(6328);
+	
+	// 注册所有命令处理器
+	Socket::SocketCommands::RegisterAll(m_socketServer.get());
+	
+	// 启动服务器
+	if (m_socketServer->Start()) {
+		util::logging::print("Socket Server started successfully on port 6328");
+	} else {
+		util::logging::print("Failed to start Socket Server");
+	}
 }
