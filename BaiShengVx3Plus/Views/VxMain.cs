@@ -12,6 +12,7 @@ namespace BaiShengVx3Plus
         private readonly Services.IContactBindingService _contactBindingService;
         private readonly Services.IWeChatLoaderService _loaderService;
         private readonly Services.ILogService _logService;
+        private readonly Services.IWeixinSocketClient _socketClient; // Socket 客户端
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
@@ -20,13 +21,21 @@ namespace BaiShengVx3Plus
             VxMainViewModel viewModel,
             Services.IContactBindingService contactBindingService,
             Services.IWeChatLoaderService loaderService,
-            Services.ILogService logService)
+            Services.ILogService logService,
+            Services.IWeixinSocketClient socketClient) // 注入 Socket 客户端
         {
             InitializeComponent();
             _viewModel = viewModel;
             _contactBindingService = contactBindingService;
             _loaderService = loaderService;
             _logService = logService;
+            _socketClient = socketClient;
+            
+            // 订阅服务器推送事件
+            _socketClient.OnServerPush += SocketClient_OnServerPush;
+            
+            // 启用自动重连
+            _socketClient.AutoReconnect = true;
             
             // 记录主窗口打开
             _logService.Info("VxMain", "主窗口已打开");
@@ -161,9 +170,9 @@ namespace BaiShengVx3Plus
             lblOrderInfo.Text = $"订单列表 (共{_ordersBindingList.Count}单)";
         }
 
-        private void VxMain_Load(object sender, EventArgs e)
+        private async void VxMain_Load(object sender, EventArgs e)
         {
-            lblStatus.Text = "系统就绪";
+            lblStatus.Text = "正在初始化...";
             
             // 隐藏不需要显示的列
             if (dgvContacts.Columns.Count > 0)
@@ -179,6 +188,27 @@ namespace BaiShengVx3Plus
             if (dgvOrders.Columns.Count > 0)
             {
                 HideOrderColumns();
+            }
+            
+            // 🔵 方案1：程序启动时尝试连接（检测已运行的微信）
+            _logService.Info("VxMain", "程序启动，尝试连接到 Socket 服务器...");
+            lblStatus.Text = "尝试连接到微信...";
+            
+            bool connected = await _socketClient.ConnectAsync("127.0.0.1", 6328, 2000);
+            
+            if (connected)
+            {
+                _logService.Info("VxMain", "连接成功！微信已在运行");
+                lblStatus.Text = "已连接到微信 ✓";
+            }
+            else
+            {
+                _logService.Info("VxMain", "连接失败，微信可能未启动或未注入 WeixinX.dll");
+                lblStatus.Text = "未连接（等待微信启动）";
+                
+                // 🔵 方案3：启动自动重连（后台持续尝试）
+                _logService.Info("VxMain", "启动自动重连（每5秒尝试一次）");
+                _socketClient.StartAutoReconnect(5000);
             }
         }
 
@@ -336,7 +366,7 @@ namespace BaiShengVx3Plus
             }
         }
 
-        private void btnGetContactList_Click(object sender, EventArgs e)
+        private async void btnGetContactList_Click(object sender, EventArgs e)
         {
             try
             {
@@ -368,9 +398,14 @@ namespace BaiShengVx3Plus
                     // 注入到第一个进程
                     if (_loaderService.InjectToProcess(processes[0], dllPath, out string error))
                     {
-                        lblStatus.Text = "成功注入到微信进程";
+                        lblStatus.Text = "成功注入到微信进程，正在连接 Socket...";
                         _logService.Info("VxMain", $"成功注入到微信进程 (PID: {processes[0]})");
-                       // UIMessageBox.ShowSuccess($"成功注入到微信进程 (PID: {processes[0]})");
+                        
+                        // 等待 Socket 服务器启动（延迟 1 秒）
+                        await Task.Delay(1000);
+                        
+                        // 连接到 Socket 服务器
+                        await ConnectToSocketServerAsync();
                     }
                     else
                     {
@@ -387,9 +422,14 @@ namespace BaiShengVx3Plus
                     // 启动新微信并注入
                     if (_loaderService.LaunchWeChat("127.0.0.1", "5672", dllPath, out string error))
                     {
-                        lblStatus.Text = "成功启动微信并注入";
+                        lblStatus.Text = "成功启动微信并注入，正在连接 Socket...";
                         _logService.Info("VxMain", "成功启动微信并注入 WeixinX.dll");
-                        //UIMessageBox.ShowSuccess("成功启动微信并注入 WeixinX.dll");
+                        
+                        // 等待微信启动和 Socket 服务器启动（延迟 2 秒）
+                        await Task.Delay(2000);
+                        
+                        // 连接到 Socket 服务器
+                        await ConnectToSocketServerAsync();
                     }
                     else
                     {
@@ -458,6 +498,139 @@ namespace BaiShengVx3Plus
         {
             lblStatus.Text = "打开设置窗口...";
             // TODO: 实现设置窗口
+        }
+
+        #endregion
+
+        #region Socket 通信
+
+        /// <summary>
+        /// 连接到 Socket 服务器
+        /// </summary>
+        private async Task ConnectToSocketServerAsync()
+        {
+            try
+            {
+                _logService.Info("VxMain", "正在连接到 Socket 服务器...");
+                lblStatus.Text = "正在连接到 Socket 服务器...";
+                
+                bool connected = await _socketClient.ConnectAsync("127.0.0.1", 6328, 5000);
+                
+                if (connected)
+                {
+                    _logService.Info("VxMain", "Socket 连接成功");
+                    lblStatus.Text = "已连接到微信 ✓";
+                    
+                    // 测试：获取用户信息
+                    await TestGetUserInfoAsync();
+                }
+                else
+                {
+                    _logService.Error("VxMain", "Socket 连接失败");
+                    lblStatus.Text = "连接失败（将自动重试）";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "连接 Socket 服务器时发生错误", ex);
+                lblStatus.Text = "连接失败";
+                UIMessageBox.ShowError($"连接失败:\n{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 测试：获取用户信息
+        /// </summary>
+        private async Task TestGetUserInfoAsync()
+        {
+            try
+            {
+                _logService.Info("VxMain", "测试获取用户信息...");
+                
+                // 这里需要定义一个返回类型，暂时使用 dynamic
+                var result = await _socketClient.SendAsync<dynamic>("GetUserInfo");
+                
+                if (result != null)
+                {
+                    _logService.Info("VxMain", $"用户信息: {result}");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "未能获取用户信息");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "测试获取用户信息失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 处理服务器主动推送的消息
+        /// </summary>
+        private void SocketClient_OnServerPush(object? sender, Services.ServerPushEventArgs e)
+        {
+            try
+            {
+                _logService.Info("VxMain", $"收到服务器推送: {e.Method}");
+                
+                // 使用 Invoke 确保在 UI 线程上更新
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => HandleServerPush(e)));
+                }
+                else
+                {
+                    HandleServerPush(e);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "处理服务器推送失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 实际处理服务器推送（在 UI 线程）
+        /// </summary>
+        private void HandleServerPush(Services.ServerPushEventArgs e)
+        {
+            switch (e.Method)
+            {
+                case "MessageReceived":
+                    _logService.Info("VxMain", $"收到新消息: {e.Data}");
+                    lblStatus.Text = $"收到新消息";
+                    // TODO: 更新 UI 显示新消息
+                    break;
+
+                case "ContactListUpdated":
+                    _logService.Info("VxMain", "联系人列表已更新");
+                    lblStatus.Text = "联系人列表已更新";
+                    // TODO: 刷新联系人列表
+                    break;
+
+                default:
+                    _logService.Info("VxMain", $"未知推送类型: {e.Method}");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 窗口关闭时断开 Socket 连接
+        /// </summary>
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            try
+            {
+                _logService.Info("VxMain", "窗口正在关闭，断开 Socket 连接");
+                _socketClient?.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "关闭 Socket 连接失败", ex);
+            }
+            
+            base.OnFormClosing(e);
         }
 
         #endregion

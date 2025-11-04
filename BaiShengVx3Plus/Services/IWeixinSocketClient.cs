@@ -14,6 +14,11 @@ namespace BaiShengVx3Plus.Services
         bool IsConnected { get; }
 
         /// <summary>
+        /// 是否启用自动重连
+        /// </summary>
+        bool AutoReconnect { get; set; }
+
+        /// <summary>
         /// 连接到服务器
         /// </summary>
         Task<bool> ConnectAsync(string host = "127.0.0.1", int port = 6328, int timeoutMs = 5000);
@@ -22,6 +27,16 @@ namespace BaiShengVx3Plus.Services
         /// 断开连接
         /// </summary>
         void Disconnect();
+
+        /// <summary>
+        /// 启动自动重连
+        /// </summary>
+        void StartAutoReconnect(int intervalMs = 5000);
+
+        /// <summary>
+        /// 停止自动重连
+        /// </summary>
+        void StopAutoReconnect();
 
         /// <summary>
         /// 发送请求并等待响应

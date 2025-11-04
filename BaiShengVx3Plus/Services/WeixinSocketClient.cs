@@ -22,7 +22,31 @@ namespace BaiShengVx3Plus.Services
         private int _requestId = 0;
         private readonly ConcurrentDictionary<int, TaskCompletionSource<string>> _pendingRequests = new();
 
+        // 自动重连相关
+        private bool _autoReconnect = false;
+        private int _reconnectInterval = 5000;
+        private CancellationTokenSource? _reconnectCts;
+        private Task? _reconnectTask;
+        private string _lastHost = "127.0.0.1";
+        private int _lastPort = 6328;
+
         public bool IsConnected => _client?.Connected ?? false;
+        public bool AutoReconnect 
+        { 
+            get => _autoReconnect; 
+            set
+            {
+                _autoReconnect = value;
+                if (_autoReconnect && !IsConnected)
+                {
+                    StartAutoReconnect(_reconnectInterval);
+                }
+                else if (!_autoReconnect)
+                {
+                    StopAutoReconnect();
+                }
+            }
+        }
 
         public event EventHandler<ServerPushEventArgs>? OnServerPush;
 
@@ -43,6 +67,10 @@ namespace BaiShengVx3Plus.Services
 
                 _logService.Info("WeixinSocketClient", $"Connecting to {host}:{port}...");
 
+                // 保存连接参数（用于自动重连）
+                _lastHost = host;
+                _lastPort = port;
+
                 _client = new TcpClient();
                 
                 using var cts = new CancellationTokenSource(timeoutMs);
@@ -53,6 +81,10 @@ namespace BaiShengVx3Plus.Services
                 _receiveTask = Task.Run(() => ReceiveLoop(_cts.Token), _cts.Token);
 
                 _logService.Info("WeixinSocketClient", "Connected successfully");
+                
+                // 连接成功后停止自动重连（如果正在进行）
+                StopAutoReconnect();
+                
                 return true;
             }
             catch (Exception ex)
@@ -230,6 +262,13 @@ namespace BaiShengVx3Plus.Services
             {
                 _logService.Info("WeixinSocketClient", "Receive loop stopped");
                 Disconnect();
+                
+                // 如果启用了自动重连，开始重连
+                if (_autoReconnect)
+                {
+                    _logService.Info("WeixinSocketClient", "Connection lost, auto-reconnect enabled, starting reconnect...");
+                    StartAutoReconnect(_reconnectInterval);
+                }
             }
         }
 
@@ -285,12 +324,87 @@ namespace BaiShengVx3Plus.Services
             }
         }
 
+        public void StartAutoReconnect(int intervalMs = 5000)
+        {
+            if (_reconnectTask != null && !_reconnectTask.IsCompleted)
+            {
+                _logService.Warning("WeixinSocketClient", "Auto-reconnect already running");
+                return;
+            }
+
+            _reconnectInterval = intervalMs;
+            _reconnectCts = new CancellationTokenSource();
+            _reconnectTask = Task.Run(() => AutoReconnectLoop(_reconnectCts.Token), _reconnectCts.Token);
+            _logService.Info("WeixinSocketClient", $"Auto-reconnect started (interval: {intervalMs}ms)");
+        }
+
+        public void StopAutoReconnect()
+        {
+            if (_reconnectCts != null && !_reconnectCts.IsCancellationRequested)
+            {
+                _reconnectCts.Cancel();
+                _logService.Info("WeixinSocketClient", "Auto-reconnect stopped");
+            }
+        }
+
+        private async Task AutoReconnectLoop(CancellationToken cancellationToken)
+        {
+            _logService.Info("WeixinSocketClient", "Auto-reconnect loop started");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    if (!IsConnected)
+                    {
+                        _logService.Info("WeixinSocketClient", $"Attempting to reconnect to {_lastHost}:{_lastPort}...");
+                        
+                        bool success = await ConnectAsync(_lastHost, _lastPort, 3000);
+                        
+                        if (success)
+                        {
+                            _logService.Info("WeixinSocketClient", "Reconnected successfully!");
+                            return; // 连接成功，退出重连循环
+                        }
+                        else
+                        {
+                            _logService.Warning("WeixinSocketClient", $"Reconnect failed, will retry in {_reconnectInterval}ms");
+                        }
+                    }
+                    else
+                    {
+                        // 已连接，退出循环
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("WeixinSocketClient", "Error during reconnect attempt", ex);
+                }
+
+                // 等待指定间隔后重试
+                try
+                {
+                    await Task.Delay(_reconnectInterval, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logService.Info("WeixinSocketClient", "Auto-reconnect cancelled");
+                    break;
+                }
+            }
+
+            _logService.Info("WeixinSocketClient", "Auto-reconnect loop stopped");
+        }
+
         public void Dispose()
         {
+            StopAutoReconnect();
             Disconnect();
             _cts?.Dispose();
             _stream?.Dispose();
             _client?.Dispose();
+            _reconnectCts?.Dispose();
         }
     }
 }
