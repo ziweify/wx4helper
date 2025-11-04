@@ -2,7 +2,8 @@
 #include <emmintrin.h>
 
 #include "features.h"
-
+#include "MQ.h"
+#include "ii3image.h"
 #include "base64.h"
 #include "3rd/include/json/json.h"
 
@@ -45,7 +46,7 @@ void WeixinX::CurrentUserInfo::read(WeixinX::Core* core) {
 				nick = str.str();
 				util::logging::wPrint(L"Nick: {}", util::utf8ToUtf16(nick.c_str()).c_str());
 
-				
+				core->Notify("/online");
 				break;
 			}
 
@@ -76,7 +77,7 @@ void WeixinX::CurrentUserInfo::clear() {
 
 
 void WeixinX::Core::Run() {
-	OutputDebugStringA("Core::Run");
+
 	Hook();
 
 	static unsigned long long  ticks = 0;
@@ -138,7 +139,7 @@ void WeixinX::Core::Run() {
 			Json::StreamWriterBuilder builder;
 			const std::string payload = Json::writeString(builder, j);
 
-
+			MQ::out_queue.push(payload);
 
 			util::logging::wPrint(L"MsgReceived:  {:d}\nreceiver1 = {} \nreceiver2 = {} \nsender = {} \ncontent:\n{} \nrefermsg:\n{} \n----------------",
 				msg.ts,
@@ -151,12 +152,56 @@ void WeixinX::Core::Run() {
 		}
 
 
+		string notification;
+		while (MQ::in_queue.try_pop(notification)) {
 
+			Json::Value j;
+			JSONCPP_STRING err;
+			Json::CharReaderBuilder builder;
+			const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+			if (!reader->parse(notification.c_str(), notification.c_str() + notification.length(), &j, &err)) {
+
+				WeixinX::util::logging::print("json parse: [err {}]", err);
+
+			}
+			else {
+
+				if (j["robot"] != NULL) {
+
+					string robot = j["robot"].asString().c_str();
+					string receiver = j["receiver"].asString().c_str();
+					string content;
+					base64::decode(j["text"].asString().c_str(), j["text"].asString().length(), &content);
+					util::logging::wPrint(L"robot = {}\n receiver = {}\n content:\n{}", util::utf8ToUtf16(robot.c_str()), util::utf8ToUtf16(receiver.c_str()), util::utf8ToUtf16(content.c_str()));
+					if (robot == currentUserInfo.wxid) {
+
+						SendNotification(j);
+
+					}
+
+				}
+
+
+			}
+
+
+		}
 
 		ticks++;
 
+		if (ticks % 6000 == 0) {
 
+			ii3images::remove_stale_files();
+		}
 
+		if (ticks % 1200 == 0) {
+
+			if (currentUserInfo.online.load()) {
+
+				Notify("/heartbeat");
+
+			}
+		}
 
 
 	}
@@ -214,7 +259,7 @@ void WeixinX::Core::OnLogin() {
 
 void WeixinX::Core::OnLogout() {
 
-
+	Notify("/offline");
 
 	util::logging::print("current user logged out");
 	currentUserInfo.clear();
@@ -223,9 +268,60 @@ void WeixinX::Core::OnLogout() {
 
 }
 
+void WeixinX::Core::Notify(string notification) {
 
+	Json::Value j;
+	j["source"] = "wechat";
+	j["robot"] = currentUserInfo.wxid;
 
+	string b64;
+	string nick = currentUserInfo.nick;
+	base64::encode(nick.c_str(), nick.length(), &b64);
+	j["sender_name"] = b64;
 
+	b64.clear();
+	string hb = notification;
+	base64::encode(hb.c_str(), hb.length(), &b64);
+	j["content"] = b64;
+
+	Json::StreamWriterBuilder builder;
+	const std::string payload = Json::writeString(builder, j);
+	MQ::out_queue.push(payload);
+
+}
+
+void WeixinX::Core::SendNotification(auto j)
+{
+
+	string wxid = j["receiver"].asString();
+	string plainText;
+	base64::decode(j["text"].asString().c_str(), j["text"].asString().length(), &plainText);
+	string msg = plainText;
+	if (j["type"] == "text") {
+
+		SendText(wxid, msg);
+
+	}
+
+	if (j["type"] == "image") {
+
+		std::string extra = j["extra"].asString();
+		if (extra.length() > 0) {
+
+			string decoded;
+			base64::decode(extra.c_str(), extra.length(), &decoded);
+
+			ii3images::ensure_image_directory_exists();
+			wstring ii3 = ii3images::save_ii3_image(decoded.c_str(), decoded.length());
+			string img = util::utf16ToUtf8(ii3.c_str());
+			SendText(wxid, msg);
+			SendImage(wxid, img);
+			 
+		}
+
+	}
+
+}
 
 typedef __int64(*WeixinCall)(...);
 
@@ -370,7 +466,7 @@ string WeixinX::Core::GetNameByWxid(string wxid)
 
 	if (WeixinX::Features::DBHandles.find("contact.db") == WeixinX::Features::DBHandles.end())
 	{
-		util::logging::print("GetNameByWxid: no handle to contact.db.db");
+		util::logging::print("GetNameByWxid: no handle to contact.db");
 		return std::string();
 	}
 
@@ -444,18 +540,16 @@ void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::
 
 	//test_queue.push(rawContent);
 	//util::logging::print("ts = {:d} msg.ts = {:d} ts - msg.ts = {:d}", util::Timestamp(), msgReceived.ts, util::Timestamp() - msgReceived.ts);
-	//大哥说要删除这段
-	//if (msgReceived.fromChatroom && util::Timestamp() - msgReceived.ts < 5000 && (msgReceived.content.starts_with("/") || msgReceived.content.starts_with("╱"))) {
-	//	if (msgReceived.content.starts_with("╱")) {
+	if (msgReceived.fromChatroom && util::Timestamp() - msgReceived.ts < 5000 && (msgReceived.content.starts_with("/") || msgReceived.content.starts_with("╱"))) {
+		if (msgReceived.content.starts_with("╱")) {
 
-	//		string content = msgReceived.content.substr(msgReceived.content.find_first_not_of("╱"));
-	//		string slash = "/";
-	//		msgReceived.content = slash.append(content);
-	//	}
-	//	WeixinX::MsgReceived::msgReceived_queue.push(msgReceived);
-	//}
-	//删除后要增加
-	WeixinX::MsgReceived::msgReceived_queue.push(msgReceived);
+			string content = msgReceived.content.substr(msgReceived.content.find_first_not_of("╱"));
+			string slash = "/";
+			msgReceived.content = slash.append(content);
+		}
+		WeixinX::MsgReceived::msgReceived_queue.push(msgReceived);
+	}
+
 }
 
 
@@ -487,6 +581,7 @@ __int64 _fastcall WeixinX::Detour::hkAddMsgListToDb(__int64 rcx, __int64 rdx, ui
 
 	while (head != tail)
 	{
+
 		if (head->type == 1) {// || head->type == 0x31) {
 			MsgReceived::Received(head);
 		}

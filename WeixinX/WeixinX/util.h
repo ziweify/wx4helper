@@ -285,7 +285,7 @@ namespace WeixinX {
 
 		namespace tool {
 
-#pragma pack(push, 1) 
+#pragma pack(push,1)
 			struct _UNICODE_STRING
 			{
 				USHORT Length;                                                          //0x0

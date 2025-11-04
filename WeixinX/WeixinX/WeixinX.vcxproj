@@ -167,10 +167,14 @@
     <ClCompile Include="base64.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Features.cpp" />
+    <ClCompile Include="ii3image.cpp" />
+    <ClCompile Include="MQ.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base64.h" />
     <ClInclude Include="features.h" />
+    <ClInclude Include="ii3image.h" />
+    <ClInclude Include="MQ.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="weixin_dll.h" />
   </ItemGroup>

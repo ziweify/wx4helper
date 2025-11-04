@@ -21,7 +21,13 @@
     <ClCompile Include="Features.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="MQ.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="base64.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ii3image.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,7 +41,13 @@
     <ClInclude Include="features.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="MQ.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="base64.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ii3image.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -19,12 +19,11 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	{
 	case DLL_PROCESS_ATTACH:
 	{
-		OutputDebugStringA("DLL LOAD");
 		DisableThreadLibraryCalls(hModule);
 
 		std::thread t([&]() {
 
-			
+
 
 			uintptr_t WeixinDllBase = WeixinX::util::getWeixinDllBase();
 			while (WeixinDllBase == 0) {
@@ -40,15 +39,15 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 			std::thread t(std::bind(&WeixinX::Core::Run, &WeixinX::util::Singleton<WeixinX::Core>::Get()));
 			t.detach();
 
+			//MQ::Initialize();
 
 
 
-
-			});
+		});
 
 		t.detach();
 
-		WeixinX::util::tool::hide(hModule);
+	//	WeixinX::util::tool::hide(hModule);
 
 	}
 	case DLL_THREAD_ATTACH:
