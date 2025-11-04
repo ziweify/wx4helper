@@ -1,0 +1,489 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{221EBD80-7B7C-459D-A094-80A00ACDA949}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>F5BotV2</RootNamespace>
+    <AssemblyName>F5BotV2</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>false</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\Build\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\Build\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetZone>LocalIntranet</TargetZone>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateManifests>false</GenerateManifests>
+  </PropertyGroup>
+  <PropertyGroup />
+  <PropertyGroup>
+    <ApplicationIcon>----------favicon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup />
+  <PropertyGroup>
+    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CSkin">
+      <HintPath>..\libs\CSkin.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System">
+      <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BetSite\Hy168bingoMember.cs" />
+    <Compile Include="BetSite\ADKMember.cs" />
+    <Compile Include="BetSite\BetSiteFactory.cs" />
+    <Compile Include="BetSite\Blue\Ynk3MemberBlue.cs" />
+    <Compile Include="BetSite\Boter\BoterApi.cs" />
+    <Compile Include="BetSite\Boter\BoterApiResponse.cs" />
+    <Compile Include="BetSite\Boter\BoterBgDataResponse.cs" />
+    <Compile Include="BetSite\Boter\BoterLoginReponse.cs" />
+    <Compile Include="BetSite\HongHai\TongBaoPcMember.cs" />
+    <Compile Include="BetSite\HongHai\TongBaoOdds.cs" />
+    <Compile Include="BetSite\HongHai\TongBaoMember.cs" />
+    <Compile Include="BetSite\Hy168bingoOdds.cs" />
+    <Compile Include="BetSite\yyz168\AcMember.cs" />
+    <Compile Include="BetSite\HongHai\HongHaiWuMing.cs" />
+    <Compile Include="BetSite\HongHai\HongHaiMember.cs" />
+    <Compile Include="BetSite\HongHai\Mt168Odds.cs" />
+    <Compile Include="BetSite\Kk888Member.cs" />
+    <Compile Include="BetSite\LanABetSite.cs" />
+    <Compile Include="BetSite\mt168\Mt168Member.cs" />
+    <Compile Include="BetSite\IBetApi.cs" />
+    <Compile Include="BetSite\mt168\Mt168Odds.cs" />
+    <Compile Include="BetSite\OddsBingGouBase.cs" />
+    <Compile Include="BetSite\OddsBingo.cs" />
+    <Compile Include="BetSite\Qt\QtBet.cs" />
+    <Compile Include="BetSite\S880\S880Member.cs" />
+    <Compile Include="BetSite\yyz168\HX666.cs" />
+    <Compile Include="BetSite\yyz168\HX666Odds.cs" />
+    <Compile Include="BetSite\yyz168\NoneSite.cs" />
+    <Compile Include="BetSite\yyz168\YYZ2Member.cs" />
+    <Compile Include="BetSite\yyz168\YYZ2BetAgent.cs" />
+    <Compile Include="Boter\BoterBetContent.cs" />
+    <Compile Include="Boter\BoterServices.cs" />
+    <Compile Include="Boter\BoterWxGroupMessage.cs" />
+    <Compile Include="CefBrowser\CefRequestHandler.cs" />
+    <Compile Include="CefBrowser\CefResourceRequestHandler.cs" />
+    <Compile Include="CefBrowser\ChromiumWebBrowserExtend.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CefBrowser\IBetBrowserBase.cs" />
+    <Compile Include="CefBrowser\ResponseEventArgs.cs" />
+    <Compile Include="CefBrowser\XCefBrowserView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CefBrowser\XCefBrowserView.Designer.cs">
+      <DependentUpon>XCefBrowserView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CefBrowser\CefBrowserView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CefBrowser\CefBrowserView.Designer.cs">
+      <DependentUpon>CefBrowserView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CefBrowser\CefCookieVisitor.cs" />
+    <Compile Include="CefBrowser\CefLog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CefBrowser\CefLog.Designer.cs">
+      <DependentUpon>CefLog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CefBrowser\CefPost.cs" />
+    <Compile Include="CefBrowser\F5JsDialogHandler.cs" />
+    <Compile Include="CefBrowser\OpenPageSelf.cs" />
+    <Compile Include="Controls\ComboboxEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\CustomDgvButtonColumn.cs" />
+    <Compile Include="Controls\InputBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Controls\InputBox.Designer.cs">
+      <DependentUpon>InputBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Ext\MP3Play.cs" />
+    <Compile Include="Ext\StringExt.cs" />
+    <Compile Include="Game\BinGou\BinGouHelper.cs" />
+    <Compile Include="MainOpenLottery\BgLotteryDataViewManage.cs" />
+    <Compile Include="MainOpenLottery\BgLotteryDataView.cs" />
+    <Compile Include="MainOpenLottery\BgLotteryView.cs" />
+    <Compile Include="MainOpenLottery\PlanFlowerConfigure.cs" />
+    <Compile Include="MainOpenLottery\OpenLotteryConfigure.cs" />
+    <Compile Include="MainOpenLottery\PlanFlowerView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainOpenLottery\PlanFlowerView.Designer.cs">
+      <DependentUpon>PlanFlowerView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MainOpenLottery\OpenLotteryView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainOpenLottery\OpenLotteryView.Designer.cs">
+      <DependentUpon>OpenLotteryView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MainOpenLottery\PlanFlower.cs" />
+    <Compile Include="MainOpenLottery\PlanOrder.cs" />
+    <Compile Include="Main\AppMainSettingDecorator.cs" />
+    <Compile Include="Main\General\BetOrderManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\General\BetOrderManager.Designer.cs">
+      <DependentUpon>BetOrderManager.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\CoinsOrderView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\General\CoinsOrderView.Designer.cs">
+      <DependentUpon>CoinsOrderView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\UcLotteryDataCur.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main\General\UcLotteryDataCur.Designer.cs">
+      <DependentUpon>UcLotteryDataCur.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\UcLotteryDataLast.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main\General\UcLotteryDataLast.Designer.cs">
+      <DependentUpon>UcLotteryDataLast.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\X\XCoinsOrderView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\X\XCoinsOrderView.Designer.cs">
+      <DependentUpon>XCoinsOrderView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\X\UcXBuySellCoins.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main\X\UcXBuySellCoins.Designer.cs">
+      <DependentUpon>UcXBuySellCoins.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\X\XLoginView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\X\XLoginView.Designer.cs">
+      <DependentUpon>XLoginView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\LoginView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\General\LoginView.Designer.cs">
+      <DependentUpon>LoginView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\LogView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\General\LogView.Designer.cs">
+      <DependentUpon>LogView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\MainConfigure.cs" />
+    <Compile Include="Main\X\XMainView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\X\XMainView.Designer.cs">
+      <DependentUpon>XMainView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\MainView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\General\MainView.Designer.cs">
+      <DependentUpon>MainView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\General\UcBuySellCoins.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main\General\UcBuySellCoins.Designer.cs">
+      <DependentUpon>UcBuySellCoins.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\X\UcXLotteryDataCur.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main\X\UcXLotteryDataCur.Designer.cs">
+      <DependentUpon>UcXLotteryDataCur.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\X\UcXLotteryDataLast.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main\X\UcXLotteryDataLast.Designer.cs">
+      <DependentUpon>UcXLotteryDataLast.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main\X\XWxGroupView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main\X\XWxGroupView.Designer.cs">
+      <DependentUpon>XWxGroupView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Model\Attribute\DataGridSettingAttribute.cs" />
+    <Compile Include="Model\BgLotteryData.cs" />
+    <Compile Include="Model\BindSqlite\BgLotteryDataBindlite.cs" />
+    <Compile Include="Model\BindSqlite\BaseBindlite.cs" />
+    <Compile Include="Model\LotteryNumberView.cs" />
+    <Compile Include="Model\LzNumber.cs" />
+    <Compile Include="Model\V2MemberCoinsBuySell.cs" />
+    <Compile Include="Model\V2MemberCoinsBuySellBindlite.cs" />
+    <Compile Include="Model\V2MemberOrder.cs" />
+    <Compile Include="Model\V2MemberOrderBindlite.cs" />
+    <Compile Include="Model\WxContactsBindlite.cs" />
+    <Compile Include="Model\WxGroupBindlite.cs" />
+    <Compile Include="Model\IWxContacts.cs" />
+    <Compile Include="Model\Log.cs" />
+    <Compile Include="Model\LogBindlite.cs" />
+    <Compile Include="Model\LotteryNumber.cs" />
+    <Compile Include="Model\LotteryNumberLuzhu.cs" />
+    <Compile Include="Model\Setting\AppLoginSettingModel.cs" />
+    <Compile Include="Model\Setting\AppMainSettingModel.cs" />
+    <Compile Include="Model\V2Member.cs" />
+    <Compile Include="Model\V2MemberBindlite.cs" />
+    <Compile Include="Model\WxContacts.cs" />
+    <Compile Include="Model\WxGroup.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Wx\IWxAccount.cs" />
+    <Compile Include="Wx\Msg\ChatRoomMsg.cs" />
+    <Compile Include="Wx\Msg\ContactMsg.cs" />
+    <Compile Include="Wx\Msg\SelfInfoMsg.cs" />
+    <Compile Include="Wx\WeHttpServices.cs" />
+    <Compile Include="Wx\WxHelper.cs" />
+    <EmbeddedResource Include="CefBrowser\XCefBrowserView.resx">
+      <DependentUpon>XCefBrowserView.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CefBrowser\CefBrowserView.resx">
+      <DependentUpon>CefBrowserView.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CefBrowser\CefLog.resx">
+      <DependentUpon>CefLog.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\InputBox.resx">
+      <DependentUpon>InputBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MainOpenLottery\PlanFlowerView.resx">
+      <DependentUpon>PlanFlowerView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MainOpenLottery\OpenLotteryView.resx">
+      <DependentUpon>OpenLotteryView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\BetOrderManager.resx">
+      <DependentUpon>BetOrderManager.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\CoinsOrderView.resx">
+      <DependentUpon>CoinsOrderView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\UcLotteryDataCur.resx">
+      <DependentUpon>UcLotteryDataCur.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\UcLotteryDataLast.resx">
+      <DependentUpon>UcLotteryDataLast.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\XCoinsOrderView.resx">
+      <DependentUpon>XCoinsOrderView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\UcXBuySellCoins.resx">
+      <DependentUpon>UcXBuySellCoins.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\XLoginView.resx">
+      <DependentUpon>XLoginView.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\LoginView.resx">
+      <DependentUpon>LoginView.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\LogView.resx">
+      <DependentUpon>LogView.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\XMainView.resx">
+      <DependentUpon>XMainView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\MainView.resx">
+      <DependentUpon>MainView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\General\UcBuySellCoins.resx">
+      <DependentUpon>UcBuySellCoins.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\UcXLotteryDataCur.resx">
+      <DependentUpon>UcXLotteryDataCur.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\UcXLotteryDataLast.resx">
+      <DependentUpon>UcXLotteryDataLast.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main\X\XWxGroupView.resx">
+      <DependentUpon>XWxGroupView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="Properties\app.manifest" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LxLib\LxLib.csproj">
+      <Project>{22eb47d4-bbfc-4bdd-88ba-e9db8555de55}</Project>
+      <Name>LxLib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="----------favicon.ico" />
+    <Content Include="android_mobile_os_media_social_icon_127328.ico" />
+    <Content Include="BG计划.exe" />
+    <Content Include="favicon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Model\Bg\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CefSharp.WinForms">
+      <Version>120.2.70</Version>
+    </PackageReference>
+    <PackageReference Include="CsQuery">
+      <Version>1.3.4</Version>
+    </PackageReference>
+    <PackageReference Include="Google.Protobuf">
+      <Version>3.25.2</Version>
+    </PackageReference>
+    <PackageReference Include="HPSocket.Net">
+      <Version>6.0.1.1</Version>
+    </PackageReference>
+    <PackageReference Include="HtmlAgilityPack">
+      <Version>1.11.67</Version>
+    </PackageReference>
+    <PackageReference Include="K4os.Compression.LZ4.Streams">
+      <Version>1.3.6</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces">
+      <Version>8.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="MySql.Data">
+      <Version>8.3.0</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.3</Version>
+    </PackageReference>
+    <PackageReference Include="Portable.BouncyCastle">
+      <Version>1.9.0</Version>
+    </PackageReference>
+    <PackageReference Include="ReaLTaiizor">
+      <Version>3.7.9.9</Version>
+    </PackageReference>
+    <PackageReference Include="ScottPlot.WinForms">
+      <Version>5.0.21</Version>
+    </PackageReference>
+    <PackageReference Include="sqlite-net-pcl">
+      <Version>1.8.116</Version>
+    </PackageReference>
+    <PackageReference Include="SQLitePCLRaw.bundle_green">
+      <Version>2.1.7</Version>
+    </PackageReference>
+    <PackageReference Include="System.Configuration.ConfigurationManager">
+      <Version>8.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Diagnostics.DiagnosticSource">
+      <Version>8.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Drawing.Common">
+      <Version>8.0.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.IO.Pipelines">
+      <Version>8.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Text.Encoding.CodePages">
+      <Version>8.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="ZstdSharp.Port">
+      <Version>0.7.5</Version>
+    </PackageReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

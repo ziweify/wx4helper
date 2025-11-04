@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<AutoUpdateConfig>
+  <!--自动升级模式：当前仅支持HTTP-->
+  <AutoUpdateMode>HTTP</AutoUpdateMode>
+  <!--HTTP自动升级模式时的URL地址-->
+  <AutoUpdateHttpUrl>http://119.23.241.186/</AutoUpdateHttpUrl>
+</AutoUpdateConfig>
