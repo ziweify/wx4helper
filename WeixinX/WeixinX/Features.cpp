@@ -375,7 +375,7 @@ void buildSendMessageArg2(uint64_t* a1) {
 	createParam(reinterpret_cast<uint64_t>(a1), reinterpret_cast<uint64_t>(p2), reinterpret_cast<uint64_t>(p3), reinterpret_cast<uint64_t>(p4), reinterpret_cast<uint64_t>(buf), *(uint64_t*)arg2);
 
 }
-
+//这是发送文本消息， 接收者同发送图片消息，what是内容，就是字符串而已
 void WeixinX::Core::SendText(string who, string what) {
 
 
@@ -433,7 +433,7 @@ void buildImageMessage(uint64_t* ptr, const std::string& which, const std::strin
 
 
 }
-
+//这是发送图片消息，who是 发送给谁，群用群id，个人用wxid， which是图片路径
 void WeixinX::Core::SendImage(string who, string which) {
 
 	uint64_t base = WeixinX::util::getWeixinDllBase();
@@ -460,7 +460,10 @@ void WeixinX::Core::SendImage(string who, string which) {
 
 }
 
+//这就是一个使用数据库句柄进行查询的例子，根据wxid查询用户昵称。联系人信息都保存在contant.db这个sqlite库里，所以需要contact.db这个库的句柄。这些句柄都保存在DBHandles这个字典里
+// 用sql语句都能查询了，看代码，这是一个标准的用get_table进行查询的模板，查询完成后一定要用free_table释放资源，不然会内存泄露
 
+// 使用这个方法，可以查询所有的数据库，前提是必须知道微信的数据库表结构，不过这些网上都有，不是个问题。
 string WeixinX::Core::GetNameByWxid(string wxid)
 {
 
@@ -478,6 +481,7 @@ string WeixinX::Core::GetNameByWxid(string wxid)
 	char** result;
 	int row = 0, col = 0;
 	int rc;
+	//调用get_table查询
 	std::string sql = std::format("select contact.nick_name from contact where username = '{}'", wxid);
 	rc = util::invokeCdecl<int>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::get_table),
 		WeixinX::Features::DBHandles["contact.db"],
@@ -508,7 +512,7 @@ string WeixinX::Core::GetNameByWxid(string wxid)
 	{
 		util::logging::print("GetNameByWxid: {}", err);
 	}
-
+	//释放资源
 	util::invokeCdecl<void>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::free_table), result);
 
 	return name;
@@ -554,6 +558,7 @@ void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::
 
 
 #define SQLITE_OK (0)
+//这个是hook微信打开所有数据库的函数，并保存数据库的句柄，以备后续使用sql语句查询数据库时使用
 int _fastcall WeixinX::Detour::hkOpenDatabase(const char* dbName, uintptr_t** ppHandle, unsigned int flags, const char* zVfs) {
 
 	int retval = 0;
@@ -572,7 +577,7 @@ int _fastcall WeixinX::Detour::hkOpenDatabase(const char* dbName, uintptr_t** pp
 	return retval;
 }
 
-
+//这是hook微信添加历史消息到sqlite的函数，历史消息是一个链表
 __int64 _fastcall WeixinX::Detour::hkAddMsgListToDb(__int64 rcx, __int64 rdx, uintptr_t r8)
 {
 
