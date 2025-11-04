@@ -17,6 +17,7 @@ private:
     static Json::Value HandleGetContacts(const Json::Value& params);
     static Json::Value HandleGetGroupContacts(const Json::Value& params);
     static Json::Value HandleSendMessage(const Json::Value& params);
+    static Json::Value HandleSendImage(const Json::Value& params);
     static Json::Value HandleGetUserInfo(const Json::Value& params);
 };
 

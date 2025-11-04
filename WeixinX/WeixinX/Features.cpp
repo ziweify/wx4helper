@@ -532,6 +532,135 @@ string WeixinX::Core::GetNameByWxid(string wxid)
 
 }
 
+string WeixinX::Core::GetContacts()
+{
+	util::logging::print("GetContacts: Starting to query contact database");
+	
+	// 1. 检查数据库句柄是否存在
+	if (WeixinX::Features::DBHandles.find("contact.db") == WeixinX::Features::DBHandles.end())
+	{
+		util::logging::print("GetContacts: no handle to contact.db");
+		Json::Value error;
+		error["error"] = "contact.db handle not found";
+		Json::StreamWriterBuilder builder;
+		builder["indentation"] = "";
+		builder["emitUTF8"] = true;
+		return Json::writeString(builder, error);
+	}
+
+	// 2. 准备查询变量
+	uintptr_t base = util::getWeixinDllBase();
+	char* err = nullptr;
+	char** result = nullptr;
+	int row = 0, col = 0;
+	int rc;
+	
+	// 3. 构建 SQL 查询语句
+	// 查询主要字段，排除 BLOB 字段和一些不重要的字段
+	std::string sql = 
+		"SELECT "
+		"username, "           // wxid
+		"nick_name, "          // 昵称
+		"alias, "              // 微信号
+		"remark, "             // 备注
+		"small_head_url, "     // 头像
+		"description, "        // 个性签名
+		"verify_flag, "        // 认证标志
+		"chat_room_type "      // 群聊类型（0=普通好友，1=群聊）
+		"FROM contact "
+		"WHERE delete_flag = 0 " // 排除已删除的联系人
+		"ORDER BY username";
+	
+	util::logging::print("GetContacts: Executing SQL");
+	
+	// 4. 调用 get_table 查询
+	rc = util::invokeCdecl<int>(
+		(void*)(base + WeixinX::weixin_dll::v41021::offset::db::get_table),
+		WeixinX::Features::DBHandles["contact.db"],
+		sql.c_str(), 
+		&result, 
+		&row, 
+		&col, 
+		&err
+	);
+	
+	// 5. 构建 JSON 结果
+	Json::Value contacts(Json::arrayValue);
+	
+	if (rc == 0)
+	{
+		util::logging::print("GetContacts: Query successful, rows={}, cols={}", row, col);
+		
+		if (row > 0 && col > 0)
+		{
+			// idx 从 col 开始，跳过列名行
+			int idx = col;
+			
+			// 遍历每一行数据
+			for (int x = 0; x < row; x++)
+			{
+				Json::Value contact;
+				
+				// 遍历每一列
+				for (int y = 0; y < col; y++)
+				{
+					// 获取列名（从 result 的前 col 个元素）
+					const char* columnName = result[y];
+					// 获取数据（可能为 NULL）
+					const char* value = result[idx++];
+					
+					// 将数据添加到 JSON 对象
+					if (value != nullptr && strlen(value) > 0)
+					{
+						contact[columnName] = value;
+					}
+					else
+					{
+						contact[columnName] = "";
+					}
+				}
+				
+				// 将联系人添加到数组
+				contacts.append(contact);
+			}
+			
+			util::logging::print("GetContacts: Parsed {} contacts", contacts.size());
+		}
+		else
+		{
+			util::logging::print("GetContacts: No contacts found");
+		}
+	}
+	else
+	{
+		// 查询失败
+		util::logging::print("GetContacts: Query failed, error={}", err ? err : "unknown");
+		Json::Value error;
+		error["error"] = err ? err : "unknown database error";
+		contacts = error;
+	}
+	
+	// 6. 释放资源（重要！）
+	if (result != nullptr)
+	{
+		util::invokeCdecl<void>(
+			(void*)(base + WeixinX::weixin_dll::v41021::offset::db::free_table), 
+			result
+		);
+		util::logging::print("GetContacts: Resources freed");
+	}
+	
+	// 7. 转换 JSON 为字符串并返回
+	Json::StreamWriterBuilder builder;
+	builder["indentation"] = "  ";
+	builder["emitUTF8"] = true;
+	std::string jsonString = Json::writeString(builder, contacts);
+	
+	util::logging::print("GetContacts: Returning {} bytes of JSON", jsonString.length());
+	return jsonString;
+}
+
+
 concurrency::concurrent_queue<WeixinX::MsgReceived> WeixinX::MsgReceived::msgReceived_queue = concurrency::concurrent_queue<WeixinX::MsgReceived>();
 void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::MsgReceived* msg) {
 

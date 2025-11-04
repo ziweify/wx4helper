@@ -10,6 +10,7 @@ void SocketCommands::RegisterAll(SocketServer* server)
     server->RegisterHandler("GetContacts", HandleGetContacts);
     server->RegisterHandler("GetGroupContacts", HandleGetGroupContacts);
     server->RegisterHandler("SendMessage", HandleSendMessage);
+    server->RegisterHandler("SendImage", HandleSendImage);
     server->RegisterHandler("GetUserInfo", HandleGetUserInfo);
     
     util::logging::print("All socket commands registered");
@@ -17,21 +18,41 @@ void SocketCommands::RegisterAll(SocketServer* server)
 
 Json::Value SocketCommands::HandleGetContacts(const Json::Value& params)
 {
-    util::logging::print("Handling GetContacts");
+    util::logging::print("Handling GetContacts - querying real database");
     
-    Json::Value result(Json::arrayValue);
-    
-    // TODO: 从微信获取联系人列表
-    // 这里返回示例数据
-    Json::Value contact;
-    contact["wxid"] = "wxid_example123";
-    contact["nickname"] = "示例联系人";
-    contact["remark"] = "备注名";
-    contact["avatar"] = "http://example.com/avatar.jpg";
-    
-    result.append(contact);
-    
-    return result;
+    try {
+        // 获取 Core 单例实例
+        auto& core = util::Singleton<Core>::Get();
+        
+        // 调用 GetContacts 查询数据库，返回 JSON 字符串
+        std::string jsonString = core.GetContacts();
+        
+        // 解析 JSON 字符串为 Json::Value
+        Json::Value result;
+        JSONCPP_STRING err;
+        Json::CharReaderBuilder builder;
+        const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+        
+        if (reader->parse(jsonString.c_str(), jsonString.c_str() + jsonString.length(), &result, &err))
+        {
+            util::logging::print("GetContacts: Successfully parsed {} contacts", 
+                result.isArray() ? result.size() : 0);
+            return result;
+        }
+        else
+        {
+            util::logging::print("GetContacts: Failed to parse JSON: {}", err);
+            Json::Value error;
+            error["error"] = std::format("Failed to parse contacts JSON: {}", err);
+            return error;
+        }
+    }
+    catch (const std::exception& e) {
+        util::logging::print("GetContacts: Exception: {}", e.what());
+        Json::Value error;
+        error["error"] = std::format("Failed to get contacts: {}", e.what());
+        return error;
+    }
 }
 
 Json::Value SocketCommands::HandleGetGroupContacts(const Json::Value& params)
@@ -75,13 +96,60 @@ Json::Value SocketCommands::HandleSendMessage(const Json::Value& params)
         util::utf8ToUtf16(wxid.c_str()),
         util::utf8ToUtf16(message.c_str()));
     
-    // TODO: 实现发送消息功能
-    
-    Json::Value result;
-    result["success"] = true;
-    result["messageId"] = "msg_" + std::to_string(util::Timestamp());
-    
-    return result;
+    // 获取 Core 单例实例并发送消息
+    try {
+        auto& core = util::Singleton<Core>::Get();
+        core.SendText(wxid, message);
+        
+        Json::Value result;
+        result["success"] = true;
+        result["messageId"] = "msg_" + std::to_string(util::Timestamp());
+        
+        util::logging::print("Message sent successfully");
+        return result;
+    }
+    catch (const std::exception& e) {
+        Json::Value error;
+        error["error"] = std::format("Failed to send message: {}", e.what());
+        util::logging::print("Failed to send message: {}", e.what());
+        return error;
+    }
+}
+
+
+Json::Value SocketCommands::HandleSendImage(const Json::Value& params)
+{
+    if (params.size() < 2 || !params[0].isString() || !params[1].isString()) {
+        Json::Value error;
+        error["error"] = "Invalid parameters. Expected: (wxid: string, imagepath: string)";
+        return error;
+    }
+
+    std::string wxid = params[0].asString();
+    std::string message = params[1].asString();
+
+    util::logging::wPrint(L"Handling SendMessage to {}: {}",
+        util::utf8ToUtf16(wxid.c_str()),
+        util::utf8ToUtf16(message.c_str()));
+
+    // 获取 Core 单例实例并发送消息
+    try {
+        auto& core = util::Singleton<Core>::Get();
+        core.SendImage(wxid, message);
+
+        Json::Value result;
+        result["success"] = true;
+        result["messageId"] = "msg_" + std::to_string(util::Timestamp());
+
+        util::logging::print("Message sent successfully");
+        return result;
+    }
+    catch (const std::exception& e) {
+        Json::Value error;
+        error["error"] = std::format("Failed to send message: {}", e.what());
+        util::logging::print("Failed to send message: {}", e.what());
+        return error;
+    }
 }
 
 Json::Value SocketCommands::HandleGetUserInfo(const Json::Value& params)

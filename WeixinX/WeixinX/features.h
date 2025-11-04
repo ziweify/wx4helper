@@ -88,6 +88,7 @@ namespace WeixinX {
 		void SendImage(string who, string which);
 
 		string GetNameByWxid(string wxid);
+		string GetContacts();
 		void Notify(string notification);
 		void SendNotification(auto j);
 
