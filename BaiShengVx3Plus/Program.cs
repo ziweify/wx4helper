@@ -24,7 +24,11 @@ namespace BaiShengVx3Plus
             var host = Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>
                 {
-                    // 注册服务
+                    // 核心服务
+                    services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
+                    services.AddSingleton<IDatabaseService, DatabaseService>(); // 数据库服务（business.db）
+                    
+                    // 业务服务
                     services.AddSingleton<IAuthService, AuthService>();
                     services.AddSingleton<IInsUserService, InsUserService>();
                     services.AddSingleton<IContactBindingService, ContactBindingService>();
@@ -36,7 +40,8 @@ namespace BaiShengVx3Plus
 
                     // 注册Views
                     services.AddTransient<LoginForm>();
-                    services.AddTransient<VxMain>();
+                    services.AddTransient<LogViewerForm>();  // 日志查看器
+                    services.AddTransient<VxMain>();         // 主窗口
                 })
                 .Build();
 
@@ -44,13 +49,23 @@ namespace BaiShengVx3Plus
 
             ApplicationConfiguration.Initialize();
 
+            // 初始化日志服务
+            var logService = ServiceProvider.GetRequiredService<ILogService>();
+            logService.Info("Program", "应用程序启动");
+
             // 显示登录窗口
             var loginForm = ServiceProvider.GetRequiredService<LoginForm>();
             if (loginForm.ShowDialog() == DialogResult.OK)
             {
+                logService.Info("Program", "用户登录成功");
+                
                 // 登录成功，显示主窗口
                 var mainForm = ServiceProvider.GetRequiredService<VxMain>();
                 Application.Run(mainForm);
+            }
+            else
+            {
+                logService.Info("Program", "用户取消登录");
             }
         }
     }

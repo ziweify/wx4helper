@@ -2,6 +2,7 @@ using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Models;
 using System.ComponentModel;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BaiShengVx3Plus
 {
@@ -10,6 +11,7 @@ namespace BaiShengVx3Plus
         private readonly VxMainViewModel _viewModel;
         private readonly Services.IContactBindingService _contactBindingService;
         private readonly Services.IWeChatLoaderService _loaderService;
+        private readonly Services.ILogService _logService;
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
@@ -17,12 +19,17 @@ namespace BaiShengVx3Plus
         public VxMain(
             VxMainViewModel viewModel,
             Services.IContactBindingService contactBindingService,
-            Services.IWeChatLoaderService loaderService)
+            Services.IWeChatLoaderService loaderService,
+            Services.ILogService logService)
         {
             InitializeComponent();
             _viewModel = viewModel;
             _contactBindingService = contactBindingService;
             _loaderService = loaderService;
+            _logService = logService;
+            
+            // 记录主窗口打开
+            _logService.Info("VxMain", "主窗口已打开");
 
             // 初始化数据绑定列表
             _contactsBindingList = new BindingList<WxContact>();
@@ -319,10 +326,12 @@ namespace BaiShengVx3Plus
                     txt.Text = contact.Wxid;
                 }
                 lblStatus.Text = $"已绑定联系人: {contact.Nickname} ({contact.Wxid})";
+                _logService.Info("VxMain", $"绑定联系人: {contact.Nickname} ({contact.Wxid})");
                 UIMessageBox.ShowSuccess($"成功绑定联系人: {contact.Nickname}");
             }
             else
             {
+                _logService.Warning("VxMain", "绑定联系人失败: 未选择联系人");
                 UIMessageBox.ShowWarning("请先选择一个联系人");
             }
         }
@@ -331,12 +340,15 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                _logService.Info("VxMain", "开始采集联系人列表");
+                
                 //var currentDir = AppDomain.CurrentDomain.BaseDirectory;
                 var currentDir = "D:\\gitcode\\wx4helper\\BaiShengVx3Plus\\bin\\Release\\net8.0-windows\\";
                 var dllPath = Path.Combine(currentDir, "WeixinX.dll");
 
                 if (!File.Exists(dllPath))
                 {
+                    _logService.Error("VxMain", $"找不到 WeixinX.dll: {dllPath}");
                     UIMessageBox.ShowError($"找不到 WeixinX.dll\n路径: {dllPath}");
                     return;
                 }
@@ -346,6 +358,7 @@ namespace BaiShengVx3Plus
 
                 // 获取现有微信进程
                 var processes = _loaderService.GetWeChatProcesses();
+                _logService.Info("VxMain", $"检测到 {processes.Count} 个微信进程");
 
                 if (processes.Count > 0)
                 {
@@ -356,11 +369,13 @@ namespace BaiShengVx3Plus
                     if (_loaderService.InjectToProcess(processes[0], dllPath, out string error))
                     {
                         lblStatus.Text = "成功注入到微信进程";
+                        _logService.Info("VxMain", $"成功注入到微信进程 (PID: {processes[0]})");
                         UIMessageBox.ShowSuccess($"成功注入到微信进程 (PID: {processes[0]})");
                     }
                     else
                     {
                         lblStatus.Text = "注入失败";
+                        _logService.Error("VxMain", $"注入失败 (PID: {processes[0]}): {error}");
                         UIMessageBox.ShowError($"注入失败:\n{error}");
                     }
                 }
@@ -373,11 +388,13 @@ namespace BaiShengVx3Plus
                     if (_loaderService.LaunchWeChat("127.0.0.1", "5672", dllPath, out string error))
                     {
                         lblStatus.Text = "成功启动微信并注入";
+                        _logService.Info("VxMain", "成功启动微信并注入 WeixinX.dll");
                         UIMessageBox.ShowSuccess("成功启动微信并注入 WeixinX.dll");
                     }
                     else
                     {
                         lblStatus.Text = "启动失败";
+                        _logService.Error("VxMain", $"启动微信失败: {error}");
                         UIMessageBox.ShowError($"启动失败:\n{error}");
                     }
                 }
@@ -385,6 +402,7 @@ namespace BaiShengVx3Plus
             catch (Exception ex)
             {
                 lblStatus.Text = "发生错误";
+                _logService.Error("VxMain", "采集联系人列表失败", ex);
                 UIMessageBox.ShowError($"发生错误:\n{ex.Message}\n\n{ex.StackTrace}");
             }
         }
@@ -398,8 +416,24 @@ namespace BaiShengVx3Plus
 
         private void btnLog_Click(object sender, EventArgs e)
         {
-            lblStatus.Text = "打开日志窗口...";
-            // TODO: 实现日志窗口
+            try
+            {
+                _logService.Info("VxMain", "打开日志查看窗口");
+                lblStatus.Text = "打开日志窗口...";
+                
+                // 从 DI 容器获取日志窗口
+                var logViewer = Program.ServiceProvider?.GetRequiredService<Views.LogViewerForm>();
+                if (logViewer != null)
+                {
+                    logViewer.Show();  // 非模态窗口，可以同时查看日志和操作主窗口
+                    lblStatus.Text = "日志窗口已打开";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开日志窗口失败", ex);
+                UIMessageBox.ShowError($"打开日志窗口失败: {ex.Message}");
+            }
         }
 
         private void btnOpenLotteryResult_Click(object sender, EventArgs e)
