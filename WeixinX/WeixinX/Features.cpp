@@ -214,13 +214,21 @@ bool WeixinX::Core::Hook() {
 		throw std::runtime_error("failed initialize minhook");
 
 
-	util::logging::print("Hooking OpenDatabase");
-	if (!Detour::OpenDatabase.Create((void*)(util::getWeixinDllBase() + weixin_dll::v41021::offset::db::open_database), &Detour::hkOpenDatabase))
+	uintptr_t openDatabaseAddr = util::getWeixinDllBase() + weixin_dll::v41021::offset::db::open_database;
+	util::logging::print("Hooking OpenDatabase at address: 0x{:X} (Base: 0x{:X} + Offset: 0x{:X})", 
+		openDatabaseAddr, 
+		util::getWeixinDllBase(), 
+		weixin_dll::v41021::offset::db::open_database);
+	if (!Detour::OpenDatabase.Create((void*)openDatabaseAddr, &Detour::hkOpenDatabase))
 		return false;
 
 
-	util::logging::print("Hooking AddMsgListToDb");
-	if (!Detour::AddMsgListToDb.Create((void*)(util::getWeixinDllBase() + weixin_dll::v41021::offset::db::add_msg_list_to_db), &Detour::hkAddMsgListToDb))
+	uintptr_t addMsgListToDbAddr = util::getWeixinDllBase() + weixin_dll::v41021::offset::db::add_msg_list_to_db;
+	util::logging::print("Hooking AddMsgListToDb at address: 0x{:X} (Base: 0x{:X} + Offset: 0x{:X})", 
+		addMsgListToDbAddr, 
+		util::getWeixinDllBase(), 
+		weixin_dll::v41021::offset::db::add_msg_list_to_db);
+	if (!Detour::AddMsgListToDb.Create((void*)addMsgListToDbAddr, &Detour::hkAddMsgListToDb))
 		return false;
 
 	return true;
