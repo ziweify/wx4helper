@@ -197,7 +197,7 @@
             btnBindingContacts.TabIndex = 1;
             btnBindingContacts.Text = "绑定";
             btnBindingContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            btnBindingContacts.Click += btnRefreshContacts_Click;
+            btnBindingContacts.Click += btnBindingContacts_Click;
             // 
             // lblContactList
             // 
@@ -525,7 +525,7 @@
             btnGetContactList.TabIndex = 1;
             btnGetContactList.Text = "采集";
             btnGetContactList.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            btnGetContactList.Click += btnLog_Click;
+            btnGetContactList.Click += btnGetContactList_Click;
             // 
             // VxMain
             // 

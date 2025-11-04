@@ -331,7 +331,8 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                var currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                //var currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                var currentDir = "D:\\gitcode\\wx4helper\\BaiShengVx3Plus\\bin\\Release\\net8.0-windows\\";
                 var dllPath = Path.Combine(currentDir, "WeixinX.dll");
 
                 if (!File.Exists(dllPath))
