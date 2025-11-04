@@ -25,6 +25,11 @@ namespace BaiShengVx3Plus.Views
             // 绑定记住密码
             chkRememberPassword.CheckedChanged += (s, e) => _viewModel.RememberPassword = chkRememberPassword.Checked;
 
+            // 同步初始值到 ViewModel（设计器中设置的 Text 属性不会触发 TextChanged 事件）
+            _viewModel.Username = txtUsername.Text;
+            _viewModel.Password = txtPassword.Text;
+            _viewModel.RememberPassword = chkRememberPassword.Checked;
+
             // 登录按钮
             btnLogin.Click += async (s, e) =>
             {

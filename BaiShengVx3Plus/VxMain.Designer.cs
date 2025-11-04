@@ -164,7 +164,7 @@
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvContacts.Size = new Size(244, 286);
+            dgvContacts.Size = new Size(244, 272);
             dgvContacts.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;

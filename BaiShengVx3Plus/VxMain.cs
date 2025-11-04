@@ -8,6 +8,7 @@ namespace BaiShengVx3Plus
     public partial class VxMain : UIForm
     {
         private readonly VxMainViewModel _viewModel;
+        private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
 
@@ -17,10 +18,15 @@ namespace BaiShengVx3Plus
             _viewModel = viewModel;
 
             // 初始化数据绑定列表
+            _contactsBindingList = new BindingList<WxContact>();
             _membersBindingList = new BindingList<V2Member>();
             _ordersBindingList = new BindingList<V2MemberOrder>();
 
             // 启用数据绑定自动通知
+            _contactsBindingList.AllowEdit = true;
+            _contactsBindingList.AllowNew = false;
+            _contactsBindingList.AllowRemove = false;
+
             _membersBindingList.AllowEdit = true;
             _membersBindingList.AllowNew = false;
             _membersBindingList.AllowRemove = false;
@@ -34,6 +40,11 @@ namespace BaiShengVx3Plus
 
         private void InitializeDataBindings()
         {
+            // 绑定联系人列表
+            dgvContacts.DataSource = _contactsBindingList;
+            dgvContacts.AutoGenerateColumns = true;
+            dgvContacts.ReadOnly = true;
+
             // 绑定会员列表
             dgvMembers.DataSource = _membersBindingList;
             dgvMembers.AutoGenerateColumns = true;
@@ -56,6 +67,24 @@ namespace BaiShengVx3Plus
 
         private void LoadTestData()
         {
+            // 添加测试联系人数据
+            for (int i = 1; i <= 15; i++)
+            {
+                var contact = new WxContact
+                {
+                    Wxid = $"wxid_{i:D3}",
+                    Account = i % 3 == 0 ? $"wx{i:D5}" : "",
+                    Nickname = $"联系人{i}",
+                    Remark = i % 5 == 0 ? $"备注{i}" : "",
+                    Sex = i % 2,
+                    Province = "广东",
+                    City = "深圳",
+                    Country = "中国",
+                    IsGroup = i % 4 == 0
+                };
+                _contactsBindingList.Add(contact);
+            }
+
             // 添加测试会员数据
             for (int i = 1; i <= 10; i++)
             {
@@ -113,6 +142,7 @@ namespace BaiShengVx3Plus
 
         private void UpdateStatistics()
         {
+            lblContactList.Text = $"联系人列表({_contactsBindingList.Count})";
             lblMemberInfo.Text = $"会员列表 (共{_membersBindingList.Count}人)";
             lblOrderInfo.Text = $"订单列表 (共{_ordersBindingList.Count}单)";
         }
@@ -122,6 +152,11 @@ namespace BaiShengVx3Plus
             lblStatus.Text = "系统就绪";
             
             // 隐藏不需要显示的列
+            if (dgvContacts.Columns.Count > 0)
+            {
+                HideContactColumns();
+            }
+
             if (dgvMembers.Columns.Count > 0)
             {
                 HideMemberColumns();
@@ -130,6 +165,47 @@ namespace BaiShengVx3Plus
             if (dgvOrders.Columns.Count > 0)
             {
                 HideOrderColumns();
+            }
+        }
+
+        private void HideContactColumns()
+        {
+            // 只显示 Wxid 和 Nickname 两列，其他全部隐藏
+            if (dgvContacts.Columns["Account"] != null)
+                dgvContacts.Columns["Account"].Visible = false;
+
+            if (dgvContacts.Columns["Remark"] != null)
+                dgvContacts.Columns["Remark"].Visible = false;
+
+            if (dgvContacts.Columns["Avatar"] != null)
+                dgvContacts.Columns["Avatar"].Visible = false;
+
+            if (dgvContacts.Columns["Sex"] != null)
+                dgvContacts.Columns["Sex"].Visible = false;
+
+            if (dgvContacts.Columns["Province"] != null)
+                dgvContacts.Columns["Province"].Visible = false;
+
+            if (dgvContacts.Columns["City"] != null)
+                dgvContacts.Columns["City"].Visible = false;
+
+            if (dgvContacts.Columns["Country"] != null)
+                dgvContacts.Columns["Country"].Visible = false;
+
+            if (dgvContacts.Columns["IsGroup"] != null)
+                dgvContacts.Columns["IsGroup"].Visible = false;
+
+            // 修改 Wxid 列的表头显示为 "ID"
+            if (dgvContacts.Columns["Wxid"] != null)
+            {
+                dgvContacts.Columns["Wxid"].HeaderText = "ID";
+                dgvContacts.Columns["Wxid"].Width = 100;
+            }
+
+            // 调整昵称列宽度为自动填充
+            if (dgvContacts.Columns["Nickname"] != null)
+            {
+                dgvContacts.Columns["Nickname"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             }
         }
 
@@ -204,7 +280,11 @@ namespace BaiShengVx3Plus
 
         private void dgvContacts_SelectionChanged(object sender, EventArgs e)
         {
-            // TODO: 处理联系人选择变更
+            if (dgvContacts.CurrentRow != null && dgvContacts.CurrentRow.DataBoundItem is WxContact contact)
+            {
+                lblStatus.Text = $"选中联系人: {contact.Nickname} ({contact.Wxid})";
+                // TODO: 根据选中的联系人，加载对应的会员和订单数据
+            }
         }
 
         private void dgvMembers_SelectionChanged(object sender, EventArgs e)
@@ -244,6 +324,7 @@ namespace BaiShengVx3Plus
         {
             if (UIMessageBox.ShowAsk("确定要清空所有数据吗？"))
             {
+                _contactsBindingList.Clear();
                 _membersBindingList.Clear();
                 _ordersBindingList.Clear();
                 UpdateStatistics();
