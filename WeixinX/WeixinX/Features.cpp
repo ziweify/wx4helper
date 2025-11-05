@@ -449,6 +449,40 @@ void buildImageMessage(uint64_t* ptr, const std::string& which, const std::strin
 //这是发送图片消息，who是 发送给谁，群用群id，个人用wxid， which是图片路径
 void WeixinX::Core::SendImage(string who, string which) {
 
+	// 检查图片文件是否存在
+	DWORD fileAttr = GetFileAttributesA(which.c_str());
+	if (fileAttr == INVALID_FILE_ATTRIBUTES)
+	{
+		util::logging::print("SendImage: File not found: {}", which);
+		throw std::runtime_error(std::format("Image file not found: {}", which));
+	}
+	
+	// 检查是否是目录
+	if (fileAttr & FILE_ATTRIBUTE_DIRECTORY)
+	{
+		util::logging::print("SendImage: Path is a directory, not a file: {}", which);
+		throw std::runtime_error(std::format("Path is a directory, not a file: {}", which));
+	}
+	
+	// 检查文件扩展名（可选，确保是图片格式）
+	std::string lowerPath = which;
+	std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::tolower);
+	
+	bool isValidImageExt = 
+		lowerPath.ends_with(".jpg") || 
+		lowerPath.ends_with(".jpeg") || 
+		lowerPath.ends_with(".png") || 
+		lowerPath.ends_with(".gif") || 
+		lowerPath.ends_with(".bmp");
+	
+	if (!isValidImageExt)
+	{
+		util::logging::print("SendImage: Invalid image format: {}", which);
+		throw std::runtime_error(std::format("Invalid image format (must be jpg/jpeg/png/gif/bmp): {}", which));
+	}
+	
+	util::logging::print("SendImage: File validated successfully: {}", which);
+
 	uint64_t base = WeixinX::util::getWeixinDllBase();
 
 	uint64_t* imageMessage = WeixinX::util::heapAlloc<uint64_t>(0x580);
@@ -470,6 +504,8 @@ void WeixinX::Core::SendImage(string who, string which) {
 
 	WeixinCall send = (WeixinCall)(base + WeixinX::weixin_dll::v41021::offset::message::send_message);
 	send(reinterpret_cast<uint64_t>(arg1), reinterpret_cast<uint64_t>(arg2));
+	
+	util::logging::print("SendImage: Image sent successfully to {}", who);
 
 }
 
