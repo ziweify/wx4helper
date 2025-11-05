@@ -473,12 +473,13 @@ void WeixinX::Core::SendImage(string who, string which) {
 		lowerPath.ends_with(".jpeg") || 
 		lowerPath.ends_with(".png") || 
 		lowerPath.ends_with(".gif") || 
-		lowerPath.ends_with(".bmp");
+		lowerPath.ends_with(".bmp") ||
+		lowerPath.ends_with(".webp");  // 添加 webp 支持
 	
 	if (!isValidImageExt)
 	{
 		util::logging::print("SendImage: Invalid image format: {}", which);
-		throw std::runtime_error(std::format("Invalid image format (must be jpg/jpeg/png/gif/bmp): {}", which));
+		throw std::runtime_error(std::format("Invalid image format (must be jpg/jpeg/png/gif/bmp/webp): {}", which));
 	}
 	
 	util::logging::print("SendImage: File validated successfully: {}", which);
