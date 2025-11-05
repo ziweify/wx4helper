@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using System.IO;
 
 namespace BaiShengVx3Plus.Native
 {
@@ -9,6 +10,42 @@ namespace BaiShengVx3Plus.Native
     public static class LoaderNative
     {
         private const string DLL_NAME = "Loader.dll";
+
+        // 🔥 静态构造函数：在使用前加载 DLL
+        static LoaderNative()
+        {
+            // 获取固定路径：bin\release\net8.0-windows\Loader.dll
+            var basePath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
+            basePath = Path.GetDirectoryName(basePath); // 回到 bin 目录
+            
+            if (string.IsNullOrEmpty(basePath))
+            {
+                throw new InvalidOperationException("无法获取应用程序基础路径");
+            }
+            
+            var dllPath = Path.Combine(basePath, "release", "net8.0-windows", "Loader.dll");
+            
+            Console.WriteLine($"[LoaderNative] 加载 Loader.dll: {dllPath}");
+            
+            if (!File.Exists(dllPath))
+            {
+                throw new FileNotFoundException($"找不到 Loader.dll: {dllPath}");
+            }
+
+            // 使用 LoadLibrary 预加载 DLL
+            var handle = LoadLibrary(dllPath);
+            if (handle == IntPtr.Zero)
+            {
+                var error = Marshal.GetLastWin32Error();
+                throw new DllNotFoundException($"无法加载 Loader.dll: {dllPath}, Error: {error}");
+            }
+            
+            Console.WriteLine($"[LoaderNative] ✓ Loader.dll 加载成功");
+        }
+
+        // Windows API: LoadLibrary
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr LoadLibrary(string lpFileName);
 
         /// <summary>
         /// 启动微信并注入 WeixinX.dll

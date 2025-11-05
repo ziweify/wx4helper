@@ -145,38 +145,68 @@ namespace BaiShengVx3Plus.Services.WeChat
 
             // 获取运行中的微信进程
             var processes = GetWeChatProcesses();
+            Console.WriteLine($"[WeChatLoaderService] 检测到 {processes.Count} 个微信进程");
 
             if (processes.Count > 0)
             {
+                Console.WriteLine($"[WeChatLoaderService] 尝试注入到现有进程...");
+                
                 // 微信已运行，尝试注入到现有进程
                 foreach (var processId in processes)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-
+                    
+                    Console.WriteLine($"[WeChatLoaderService] 正在注入进程 {processId}...");
                     if (InjectToProcess(processId, dllPath, out string error))
                     {
                         // 注入成功，等待生效
+                        Console.WriteLine($"[WeChatLoaderService] ✓ 成功注入到进程 {processId}");
                         await Task.Delay(500, cancellationToken);
                         return (true, $"成功注入到进程 {processId}");
                     }
+                    else
+                    {
+                        Console.WriteLine($"[WeChatLoaderService] ✗ 注入进程 {processId} 失败: {error}");
+                    }
                 }
 
-                // 所有进程注入失败
-                return (false, "所有微信进程注入失败");
+                // 🔥 所有进程注入失败，强制结束所有微信进程
+                Console.WriteLine($"[WeChatLoaderService] 所有进程注入失败，强制结束 {processes.Count} 个进程...");
+                foreach (var processId in processes)
+                {
+                    try
+                    {
+                        var process = System.Diagnostics.Process.GetProcessById((int)processId);
+                        Console.WriteLine($"[WeChatLoaderService] 正在结束进程 {processId}...");
+                        process.Kill();
+                        process.WaitForExit(3000); // 等待最多3秒
+                        Console.WriteLine($"[WeChatLoaderService] ✓ 进程 {processId} 已结束");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[WeChatLoaderService] 结束进程 {processId} 失败: {ex.Message}");
+                    }
+                }
+
+                // 等待进程完全退出
+                Console.WriteLine($"[WeChatLoaderService] 等待进程完全退出...");
+                await Task.Delay(1000, cancellationToken);
+                Console.WriteLine($"[WeChatLoaderService] 准备重新启动微信...");
+            }
+
+            // 微信未运行（或已强制结束），启动微信并注入
+            Console.WriteLine($"[WeChatLoaderService] 正在启动微信并注入 DLL...");
+            if (LaunchWeChat(_config.RabbitMqIp, _config.RabbitMqPort, dllPath, out string launchError))
+            {
+                // 启动并注入成功，等待生效
+                Console.WriteLine($"[WeChatLoaderService] ✓ 微信启动并注入成功");
+                await Task.Delay(500, cancellationToken);
+                return (true, "成功启动微信并注入");
             }
             else
             {
-                // 微信未运行，启动微信并注入
-                if (LaunchWeChat(_config.RabbitMqIp, _config.RabbitMqPort, dllPath, out string error))
-                {
-                    // 启动并注入成功，等待生效
-                    await Task.Delay(500, cancellationToken);
-                    return (true, "成功启动微信并注入");
-                }
-                else
-                {
-                    return (false, $"启动微信失败: {error}");
-                }
+                Console.WriteLine($"[WeChatLoaderService] ✗ 启动微信失败: {launchError}");
+                return (false, $"启动微信失败: {launchError}");
             }
         }
 

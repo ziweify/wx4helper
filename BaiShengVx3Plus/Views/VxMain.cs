@@ -662,10 +662,18 @@ namespace BaiShengVx3Plus
             // 这里可以创建一个过滤后的BindingList
         }
 
-        private void btnBindingContacts_Click(object sender, EventArgs e)
+        private async void btnBindingContacts_Click(object sender, EventArgs e)
         {
             if (dgvContacts.CurrentRow?.DataBoundItem is WxContact contact)
             {
+                // 🔥 业务流程1：判断是否为群（wxid 包含 '@' 符号）
+                if (!contact.Wxid.Contains("@"))
+                {
+                    _logService.Warning("VxMain", $"绑定失败: 选中的不是群组 - {contact.Nickname} ({contact.Wxid})");
+                    UIMessageBox.ShowWarning("请选择正确的群组！\n\n只有群组（包含 @ 符号的ID）才能进行绑定。");
+                    return;
+                }
+                
                 // 保存当前绑定的联系人对象
                 _currentBoundContact = contact;
                 
@@ -680,10 +688,34 @@ namespace BaiShengVx3Plus
                 // 🔥 刷新 DataGridView，更新行颜色
                 dgvContacts.Refresh();
                 
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid})";
-                _logService.Info("VxMain", $"绑定联系人: {contact.Nickname} ({contact.Wxid}), IsGroup: {contact.IsGroup}");
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 正在获取群成员...";
+                _logService.Info("VxMain", $"绑定群组: {contact.Nickname} ({contact.Wxid})");
                 
-                // 不显示成功提示框，避免打断操作流程
+                // 🔥 业务流程2：调用 GetGroupContacts 获取群成员
+                try
+                {
+                    _logService.Info("VxMain", $"开始获取群成员列表: {contact.Wxid}");
+                    
+                    var result = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
+                    
+                    if (result == null || result.RootElement.ValueKind != JsonValueKind.Array)
+                    {
+                        _logService.Error("VxMain", "获取群成员失败: 返回数据为空或格式错误");
+                        UIMessageBox.ShowError("获取群成员失败！");
+                        return;
+                    }
+                    
+                    // 🔥 业务流程3：解析数据并填充到 dgvMembers
+                    await LoadGroupMembersToDataGridAsync(result.RootElement, contact.Wxid);
+                    
+                    lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 群成员加载完成";
+                    _logService.Info("VxMain", $"群成员加载完成: {contact.Wxid}");
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"获取群成员异常: {ex.Message}");
+                    UIMessageBox.ShowError($"获取群成员失败！\n\n{ex.Message}");
+                }
             }
             else
             {
@@ -1155,6 +1187,98 @@ namespace BaiShengVx3Plus
         private async void btnRefreshContacts_Click(object sender, EventArgs e)
         {
             await RefreshContactsAsync();
+        }
+
+        /// <summary>
+        /// 加载群成员数据到 dgvMembers
+        /// </summary>
+        /// <param name="groupMembersJson">GetGroupContacts 返回的 JSON 数据</param>
+        /// <param name="groupWxid">群微信 ID</param>
+        private Task LoadGroupMembersToDataGridAsync(JsonElement groupMembersJson, string groupWxid)
+        {
+            try
+            {
+                _logService.Info("VxMain", $"开始解析群成员数据，群ID: {groupWxid}");
+
+                // 清空当前 dgvMembers 数据
+                _membersBindingList.Clear();
+
+                int count = 0;
+                foreach (var memberElement in groupMembersJson.EnumerateArray())
+                {
+                    try
+                    {
+                        // 解析群成员数据
+                        string memberWxid = memberElement.TryGetProperty("member_wxid", out var mwxid) 
+                            ? mwxid.GetString() ?? "" : "";
+                        string memberNickname = memberElement.TryGetProperty("member_nickname", out var mnick) 
+                            ? mnick.GetString() ?? "" : "";
+                        string memberAlias = memberElement.TryGetProperty("member_alias", out var malias) 
+                            ? malias.GetString() ?? "" : "";
+                        string memberRemark = memberElement.TryGetProperty("member_remark", out var mremark) 
+                            ? mremark.GetString() ?? "" : "";
+
+                        // 跳过无效数据
+                        if (string.IsNullOrEmpty(memberWxid))
+                        {
+                            _logService.Warning("VxMain", "跳过无效的群成员数据：member_wxid 为空");
+                            continue;
+                        }
+
+                        // 创建 V2Member 对象
+                        var member = new V2Member
+                        {
+                            Wxid = memberWxid,
+                            Nickname = memberNickname,
+                            Account = memberAlias,
+                            DisplayName = string.IsNullOrEmpty(memberRemark) ? memberNickname : memberRemark,
+                            
+                            // 初始化业务字段为默认值
+                            Balance = 0,
+                            State = MemberState.会员,
+                            BetCur = 0,
+                            BetWait = 0,
+                            IncomeToday = 0,
+                            CreditToday = 0,
+                            BetToday = 0,
+                            WithdrawToday = 0,
+                            BetTotal = 0,
+                            CreditTotal = 0,
+                            WithdrawTotal = 0,
+                            IncomeTotal = 0
+                        };
+
+                        // 添加到 BindingList
+                        _membersBindingList.Add(member);
+                        count++;
+
+                        _logService.Debug("VxMain", $"添加群成员: {memberNickname} ({memberWxid})");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", $"解析单个群成员失败: {ex.Message}");
+                    }
+                }
+
+                _logService.Info("VxMain", $"✓ 群成员加载完成，共 {count} 个成员");
+
+                // 刷新 UI
+                if (dgvMembers.InvokeRequired)
+                {
+                    dgvMembers.Invoke(new Action(() => dgvMembers.Refresh()));
+                }
+                else
+                {
+                    dgvMembers.Refresh();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"加载群成员到 DataGrid 失败: {ex.Message}");
+                throw;
+            }
+            
+            return Task.CompletedTask;
         }
 
         /// <summary>

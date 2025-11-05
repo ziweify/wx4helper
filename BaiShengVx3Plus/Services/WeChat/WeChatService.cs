@@ -284,7 +284,20 @@ namespace BaiShengVx3Plus.Services.WeChat
         {
             UpdateState(ConnectionState.LaunchingWeChat, "正在启动微信...");
 
-            var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WeixinX.dll");
+            // 🔥 使用固定路径：bin\release\net8.0-windows\WeixinX.dll
+            var basePath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
+            basePath = Path.GetDirectoryName(basePath); // 回到 bin 目录
+            
+            if (string.IsNullOrEmpty(basePath))
+            {
+                _logService.Error("WeChatService", "无法获取应用程序基础路径");
+                return false;
+            }
+            
+            var dllPath = Path.Combine(basePath, "release", "net8.0-windows", "WeixinX.dll");
+            
+            _logService.Info("WeChatService", $"DLL 路径: {dllPath}");
+            
             if (!File.Exists(dllPath))
             {
                 _logService.Error("WeChatService", $"找不到 WeixinX.dll: {dllPath}");

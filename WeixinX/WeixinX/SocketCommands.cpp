@@ -59,27 +59,50 @@ Json::Value SocketCommands::HandleGetContacts(const Json::Value& params)
 
 Json::Value SocketCommands::HandleGetGroupContacts(const Json::Value& params)
 {
-    if (params.empty() || !params[0].isString()) {
-        Json::Value error;
-        error["error"] = "Missing or invalid parameter: groupId (string)";
-        return error;
+    // 参数可选：如果提供了 groupId，将来可用于过滤
+    // 暂时不使用过滤，获取所有群成员数据
+    std::string groupId = "";
+    if (!params.empty() && params[0].isString()) {
+        groupId = params[0].asString();
+        util::logging::wPrint(L"Handling GetGroupContacts for group: {}", 
+            util::utf8ToUtf16(groupId.c_str()));
+    } else {
+        util::logging::print("Handling GetGroupContacts - querying all chatroom members");
     }
     
-    std::string groupId = params[0].asString();
-    util::logging::wPrint(L"Handling GetGroupContacts for group: {}", 
-        util::utf8ToUtf16(groupId.c_str()));
-    
-    Json::Value result(Json::arrayValue);
-    
-    // 从微信获取群成员列表
-    Json::Value member;
-    member["wxid"] = "wxid_member123";
-    member["nickname"] = "群成员";
-    member["displayName"] = "群昵称";
-    
-    result.append(member);
-    
-    return result;
+    try {
+        // 获取 Core 单例实例
+        auto& core = util::Singleton<Core>::Get();
+        
+        // 调用 GetGroupContacts 查询数据库，返回 JSON 字符串
+        std::string jsonString = core.GetGroupContacts(groupId);
+        
+        // 解析 JSON 字符串为 Json::Value
+        Json::Value result;
+        JSONCPP_STRING err;
+        Json::CharReaderBuilder builder;
+        const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+        
+        if (reader->parse(jsonString.c_str(), jsonString.c_str() + jsonString.length(), &result, &err))
+        {
+            util::logging::print("GetGroupContacts: Successfully parsed {} members", 
+                result.isArray() ? result.size() : 0);
+            return result;
+        }
+        else
+        {
+            util::logging::print("GetGroupContacts: Failed to parse JSON: {}", err);
+            Json::Value error;
+            error["error"] = std::format("Failed to parse group contacts JSON: {}", err);
+            return error;
+        }
+    }
+    catch (const std::exception& e) {
+        util::logging::print("GetGroupContacts: Exception: {}", e.what());
+        Json::Value error;
+        error["error"] = std::format("Failed to get group contacts: {}", e.what());
+        return error;
+    }
 }
 
 Json::Value SocketCommands::HandleSendMessage(const Json::Value& params)

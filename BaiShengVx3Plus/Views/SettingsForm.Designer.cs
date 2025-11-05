@@ -46,6 +46,7 @@ namespace BaiShengVx3Plus.Views
             uiLabel1 = new Sunny.UI.UILabel();
             tabPageTest = new TabPage();
             uiGroupBox4 = new Sunny.UI.UIGroupBox();
+            btnQuickSendImage = new Sunny.UI.UIButton();
             btnQuickSendMessage = new Sunny.UI.UIButton();
             btnQuickGetContacts = new Sunny.UI.UIButton();
             btnQuickGetUserInfo = new Sunny.UI.UIButton();
@@ -58,7 +59,7 @@ namespace BaiShengVx3Plus.Views
             uiLabel3 = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
-            btnQuickSendImage = new Sunny.UI.UIButton();
+            btnQuickGetGroupContacts = new Sunny.UI.UIButton();
             uiTabControl1.SuspendLayout();
             tabPageConnection.SuspendLayout();
             uiGroupBox2.SuspendLayout();
@@ -310,6 +311,7 @@ namespace BaiShengVx3Plus.Views
             // 
             uiGroupBox4.Controls.Add(btnQuickSendImage);
             uiGroupBox4.Controls.Add(btnQuickSendMessage);
+            uiGroupBox4.Controls.Add(btnQuickGetGroupContacts);
             uiGroupBox4.Controls.Add(btnQuickGetContacts);
             uiGroupBox4.Controls.Add(btnQuickGetUserInfo);
             uiGroupBox4.Font = new Font("微软雅黑", 12F);
@@ -323,11 +325,25 @@ namespace BaiShengVx3Plus.Views
             uiGroupBox4.Text = "快捷命令";
             uiGroupBox4.TextAlignment = ContentAlignment.MiddleLeft;
             // 
+            // btnQuickSendImage
+            // 
+            btnQuickSendImage.Cursor = Cursors.Hand;
+            btnQuickSendImage.Font = new Font("微软雅黑", 12F);
+            btnQuickSendImage.Location = new Point(100, 68);
+            btnQuickSendImage.MinimumSize = new Size(1, 1);
+            btnQuickSendImage.Name = "btnQuickSendImage";
+            btnQuickSendImage.Size = new Size(80, 29);
+            btnQuickSendImage.TabIndex = 2;
+            btnQuickSendImage.Tag = "SendImage(\"wxid\", \"d:/1.png\")";
+            btnQuickSendImage.Text = "发送图片";
+            btnQuickSendImage.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnQuickSendImage.Click += btnQuickCommand_Click;
+            // 
             // btnQuickSendMessage
             // 
             btnQuickSendMessage.Cursor = Cursors.Hand;
             btnQuickSendMessage.Font = new Font("微软雅黑", 12F);
-            btnQuickSendMessage.Location = new Point(280, 35);
+            btnQuickSendMessage.Location = new Point(14, 68);
             btnQuickSendMessage.MinimumSize = new Size(1, 1);
             btnQuickSendMessage.Name = "btnQuickSendMessage";
             btnQuickSendMessage.Size = new Size(80, 29);
@@ -485,19 +501,19 @@ namespace BaiShengVx3Plus.Views
             btnCancel.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnCancel.Click += btnCancel_Click;
             // 
-            // btnQuickSendImage
+            // btnQuickGetGroupContacts
             // 
-            btnQuickSendImage.Cursor = Cursors.Hand;
-            btnQuickSendImage.Font = new Font("微软雅黑", 12F);
-            btnQuickSendImage.Location = new Point(366, 35);
-            btnQuickSendImage.MinimumSize = new Size(1, 1);
-            btnQuickSendImage.Name = "btnQuickSendImage";
-            btnQuickSendImage.Size = new Size(80, 29);
-            btnQuickSendImage.TabIndex = 2;
-            btnQuickSendImage.Tag = "SendImage(\"wxid\", \"d:/1.png\")";
-            btnQuickSendImage.Text = "发送图片";
-            btnQuickSendImage.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            btnQuickSendImage.Click += btnQuickCommand_Click;
+            btnQuickGetGroupContacts.Cursor = Cursors.Hand;
+            btnQuickGetGroupContacts.Font = new Font("微软雅黑", 12F);
+            btnQuickGetGroupContacts.Location = new Point(280, 35);
+            btnQuickGetGroupContacts.MinimumSize = new Size(1, 1);
+            btnQuickGetGroupContacts.Name = "btnQuickGetGroupContacts";
+            btnQuickGetGroupContacts.Size = new Size(131, 29);
+            btnQuickGetGroupContacts.TabIndex = 1;
+            btnQuickGetGroupContacts.Tag = "GetGroupContacts()";
+            btnQuickGetGroupContacts.Text = "获取群成员列表";
+            btnQuickGetGroupContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnQuickGetGroupContacts.Click += btnQuickCommand_Click;
             // 
             // SettingsForm
             // 
@@ -554,6 +570,7 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UIButton btnSave;
         private Sunny.UI.UIButton btnCancel;
         private Sunny.UI.UIButton btnQuickSendImage;
+        private Sunny.UI.UIButton btnQuickGetGroupContacts;
     }
 }
 

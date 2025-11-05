@@ -736,7 +736,156 @@ string WeixinX::Core::GetContacts()
 
 string WeixinX::Core::GetGroupContacts(string wxid)
 {
+	util::logging::print("GetGroupContacts: Starting to query chatroom_member database with details");
+	
+	// 1. 检查数据库句柄是否存在
+	if (WeixinX::Features::DBHandles.find("contact.db") == WeixinX::Features::DBHandles.end())
+	{
+		util::logging::print("GetGroupContacts: no handle to contact.db (not found in map)");
+		Json::Value error;
+		error["error"] = "contact.db handle not found";
+		Json::StreamWriterBuilder builder;
+		builder["indentation"] = "";
+		builder["emitUTF8"] = true;
+		return Json::writeString(builder, error);
+	}
+	
+	// 2. 检查数据库句柄值是否为空（0）
+	uintptr_t dbHandle = WeixinX::Features::DBHandles["contact.db"];
+	if (dbHandle == 0)
+	{
+		util::logging::print("GetGroupContacts: contact.db handle is null (0), WeChat may not be logged in");
+		Json::Value error;
+		error["error"] = "contact.db handle is null, WeChat may not be logged in";
+		Json::StreamWriterBuilder builder;
+		builder["indentation"] = "";
+		builder["emitUTF8"] = true;
+		return Json::writeString(builder, error);
+	}
 
+	// 3. 准备查询变量
+	uintptr_t base = util::getWeixinDllBase();
+	char* err = nullptr;
+	char** result = nullptr;
+	int row = 0, col = 0;
+	int rc;
+	
+	// 4. 构建 SQL 查询语句 - 使用多表 JOIN
+	// chatroom_member 存储的是数字 ID，需要通过 chat_room 和 contact 表映射到微信 ID
+	std::string sql = 
+		"SELECT "
+		// 群成员关系（原始数字 ID）
+		"cm.room_id, "
+		"cm.member_id, "
+		// 群微信 ID（从 chat_room 表映射）
+		"cr.username AS room_wxid, "
+		// 成员微信 ID（从 contact 表通过 id 映射）
+		"c_member.username AS member_wxid, "
+		// 成员详细信息（从 contact 表）
+		"c_member.nick_name AS member_nickname, "
+		"c_member.alias AS member_alias, "
+		"c_member.remark AS member_remark, "
+		"c_member.small_head_url AS member_avatar, "
+		// 群详细信息（从 contact 表）
+		"c_room.nick_name AS room_nickname, "
+		"c_room.small_head_url AS room_avatar, "
+		"c_room.remark AS room_remark "
+		"FROM chatroom_member cm "
+		// LEFT JOIN chat_room 表：room_id (数字) -> username (微信ID)
+		"LEFT JOIN chat_room cr ON cm.room_id = cr.id "
+		// LEFT JOIN contact 表（成员）：member_id (数字) -> id -> username
+		"LEFT JOIN contact c_member ON cm.member_id = c_member.id "
+		// LEFT JOIN contact 表（群）：room_wxid (微信ID) -> username
+		"LEFT JOIN contact c_room ON cr.username = c_room.username "
+		"ORDER BY cm.room_id, cm.member_id";
+	
+	util::logging::print("GetGroupContacts: Executing JOIN SQL");
+	
+	// 5. 调用 get_table 查询
+	rc = util::invokeCdecl<int>(
+		(void*)(base + WeixinX::weixin_dll::v41021::offset::db::get_table),
+		dbHandle,
+		sql.c_str(), 
+		&result, 
+		&row, 
+		&col, 
+		&err
+	);
+	
+	// 6. 构建 JSON 结果
+	Json::Value members(Json::arrayValue);
+	
+	if (rc == 0)
+	{
+		util::logging::print("GetGroupContacts: Query successful, rows={}, cols={}", row, col);
+		
+		if (row > 0 && col > 0)
+		{
+			// idx 从 col 开始，跳过列名行
+			int idx = col;
+			
+			// 遍历每一行数据
+			for (int x = 0; x < row; x++)
+			{
+				Json::Value member;
+				
+				// 遍历每一列
+				for (int y = 0; y < col; y++)
+				{
+					// 获取列名（从 result 的前 col 个元素）
+					const char* columnName = result[y];
+					// 获取数据（可能为 NULL）
+					const char* value = result[idx++];
+					
+					// 将数据添加到 JSON 对象
+					if (value != nullptr && strlen(value) > 0)
+					{
+						member[columnName] = value;
+					}
+					else
+					{
+						member[columnName] = "";
+					}
+				}
+				
+				// 将成员添加到数组
+				members.append(member);
+			}
+			
+			util::logging::print("GetGroupContacts: Parsed {} members with details", members.size());
+		}
+		else
+		{
+			util::logging::print("GetGroupContacts: No members found");
+		}
+	}
+	else
+	{
+		// 查询失败
+		util::logging::print("GetGroupContacts: Query failed, error={}", err ? err : "unknown");
+		Json::Value error;
+		error["error"] = err ? err : "unknown database error";
+		members = error;
+	}
+	
+	// 7. 释放资源（重要！）
+	if (result != nullptr)
+	{
+		util::invokeCdecl<void>(
+			(void*)(base + WeixinX::weixin_dll::v41021::offset::db::free_table), 
+			result
+		);
+		util::logging::print("GetGroupContacts: Resources freed");
+	}
+	
+	// 8. 转换 JSON 为字符串并返回
+	Json::StreamWriterBuilder builder;
+	builder["indentation"] = "  ";
+	builder["emitUTF8"] = true;
+	std::string jsonString = Json::writeString(builder, members);
+	
+	util::logging::print("GetGroupContacts: Returning {} bytes of JSON", jsonString.length());
+	return jsonString;
 }
 
 
