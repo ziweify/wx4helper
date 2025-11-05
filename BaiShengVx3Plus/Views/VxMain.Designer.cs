@@ -46,7 +46,7 @@
             pnlLeftTop = new Sunny.UI.UIPanel();
             btnRefreshContacts = new Sunny.UI.UIButton();
             btnBindingContacts = new Sunny.UI.UIButton();
-            lblContactList = new Sunny.UI.UILabel();
+            txtCurrentContact = new Sunny.UI.UITextBox();
             pnlRight = new Sunny.UI.UIPanel();
             splitContainerRight = new Sunny.UI.UISplitContainer();
             pnlMembers = new Sunny.UI.UIPanel();
@@ -175,7 +175,7 @@
             // 
             pnlLeftTop.Controls.Add(btnRefreshContacts);
             pnlLeftTop.Controls.Add(btnBindingContacts);
-            pnlLeftTop.Controls.Add(lblContactList);
+            pnlLeftTop.Controls.Add(txtCurrentContact);
             pnlLeftTop.Dock = DockStyle.Top;
             pnlLeftTop.Font = new Font("微软雅黑", 12F);
             pnlLeftTop.Location = new Point(0, 0);
@@ -215,17 +215,25 @@
             btnBindingContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnBindingContacts.Click += btnBindingContacts_Click;
             // 
-            // lblContactList
+            // txtCurrentContact
             // 
-            lblContactList.Dock = DockStyle.Fill;
-            lblContactList.Font = new Font("微软雅黑", 11F, FontStyle.Bold);
-            lblContactList.ForeColor = Color.FromArgb(48, 48, 48);
-            lblContactList.Location = new Point(0, 0);
-            lblContactList.Name = "lblContactList";
-            lblContactList.Size = new Size(244, 40);
-            lblContactList.TabIndex = 0;
-            lblContactList.Text = "联系人列表";
-            lblContactList.TextAlign = ContentAlignment.MiddleLeft;
+            txtCurrentContact.Cursor = Cursors.IBeam;
+            txtCurrentContact.Dock = DockStyle.Fill;
+            txtCurrentContact.Font = new Font("微软雅黑", 10F);
+            txtCurrentContact.Location = new Point(0, 0);
+            txtCurrentContact.Margin = new Padding(4, 5, 4, 5);
+            txtCurrentContact.MinimumSize = new Size(1, 16);
+            txtCurrentContact.Name = "txtCurrentContact";
+            txtCurrentContact.Padding = new Padding(5);
+            txtCurrentContact.ReadOnly = true;
+            txtCurrentContact.ShowText = false;
+            txtCurrentContact.Size = new Size(244, 40);
+            txtCurrentContact.TabIndex = 0;
+            txtCurrentContact.Text = "未绑定联系人";
+            txtCurrentContact.TextAlignment = ContentAlignment.MiddleLeft;
+            txtCurrentContact.Watermark = "点击绑定按钮选择联系人";
+            txtCurrentContact.FillColor = Color.FromArgb(243, 249, 255);
+            txtCurrentContact.RectColor = Color.FromArgb(80, 160, 255);
             // 
             // pnlRight
             // 
@@ -580,7 +588,7 @@
         private Sunny.UI.UIPanel pnlLeftTop;
         private Sunny.UI.UIButton btnRefreshContacts;
         private Sunny.UI.UIButton btnBindingContacts;
-        private Sunny.UI.UILabel lblContactList;
+        private Sunny.UI.UITextBox txtCurrentContact;
         private Sunny.UI.UIPanel pnlRight;
         private Sunny.UI.UISplitContainer splitContainerRight;
         private Sunny.UI.UIPanel pnlMembers;

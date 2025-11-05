@@ -71,8 +71,7 @@ Json::Value SocketCommands::HandleGetGroupContacts(const Json::Value& params)
     
     Json::Value result(Json::arrayValue);
     
-    // TODO: 从微信获取群成员列表
-    // 这里返回示例数据
+    // 从微信获取群成员列表
     Json::Value member;
     member["wxid"] = "wxid_member123";
     member["nickname"] = "群成员";

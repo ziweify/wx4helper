@@ -734,6 +734,12 @@ string WeixinX::Core::GetContacts()
 }
 
 
+string WeixinX::Core::GetGroupContacts(string wxid)
+{
+
+}
+
+
 concurrency::concurrent_queue<WeixinX::MsgReceived> WeixinX::MsgReceived::msgReceived_queue = concurrency::concurrent_queue<WeixinX::MsgReceived>();
 void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::MsgReceived* msg) {
 

@@ -103,6 +103,9 @@ namespace BaiShengVx3Plus
             dgvContacts.DataSource = _contactsBindingList;
             dgvContacts.AutoGenerateColumns = true;
             dgvContacts.ReadOnly = true;
+            
+            // 🔥 美化联系人列表样式
+            CustomizeContactsGridStyle();
 
             // 绑定会员列表
             dgvMembers.DataSource = _membersBindingList;
@@ -112,6 +115,9 @@ namespace BaiShengVx3Plus
             // 设置会员表字段可见性和顺序
             dgvMembers.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             
+            // 🔥 美化会员列表样式
+            CustomizeMembersGridStyle();
+            
             // 绑定订单列表
             dgvOrders.DataSource = _ordersBindingList;
             dgvOrders.AutoGenerateColumns = true;
@@ -119,6 +125,9 @@ namespace BaiShengVx3Plus
 
             // 设置订单表字段可见性和顺序
             dgvOrders.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            
+            // 🔥 美化订单列表样式
+            CustomizeOrdersGridStyle();
 
             // 添加测试数据
             LoadTestData();
@@ -126,59 +135,10 @@ namespace BaiShengVx3Plus
 
         private void LoadTestData()
         {
-            // ✅ 联系人数据已删除，改为从服务器获取
-
-            // 添加测试会员数据
-            for (int i = 1; i <= 10; i++)
-            {
-                var member = new V2Member
-                {
-                    Id = i,
-                    Wxid = $"wxid_{i:D3}",
-                    Account = $"13800138{i:D3}",
-                    Nickname = $"会员{i}",
-                    DisplayName = $"群昵称{i}",
-                    Balance = 1000 + i * 100,
-                    State = i % 3 == 0 ? MemberState.管理 : (i % 2 == 0 ? MemberState.托 : MemberState.会员),
-                    BetCur = i * 50,
-                    BetWait = i * 20,
-                    IncomeToday = i * 10 - 50,
-                    CreditToday = i * 100,
-                    BetToday = i * 80,
-                    WithdrawToday = i * 30,
-                    BetTotal = i * 1000,
-                    CreditTotal = i * 2000,
-                    WithdrawTotal = i * 500,
-                    IncomeTotal = i * 200 - 100
-                };
-                _membersBindingList.Add(member);
-            }
-
-            // 添加测试订单数据
-            for (int i = 1; i <= 20; i++)
-            {
-                var order = new V2MemberOrder
-                {
-                    Id = i,
-                    Wxid = $"wxid_{(i % 10) + 1:D3}",
-                    Account = $"13800138{(i % 10) + 1:D3}",
-                    Nickname = $"会员{(i % 10) + 1}",
-                    IssueId = 241104001 + i,
-                    BetContentOriginal = $"1,2,3,4,5*10",
-                    BetContentStandar = $"1,大,10;2,小,10;3,单,10",
-                    Nums = 3,
-                    AmountTotal = 30,
-                    Profit = i % 2 == 0 ? 59.1f : 0,
-                    NetProfit = i % 2 == 0 ? 29.1f : -30,
-                    Odds = 1.97f,
-                    OrderStatus = i % 3 == 0 ? OrderStatus.已完成 : (i % 2 == 0 ? OrderStatus.待结算 : OrderStatus.待处理),
-                    OrderType = i % 2 == 0 ? OrderType.盘内 : OrderType.待定,
-                    TimeStampBet = (long)DateTimeOffset.Now.AddMinutes(-i).ToUnixTimeSeconds(),
-                    TimeString = DateTime.Now.AddMinutes(-i).ToString("yyyy-MM-dd HH:mm:ss"),
-                    Notes = i % 5 == 0 ? "重要订单" : ""
-                };
-                _ordersBindingList.Add(order);
-            }
+            // ✅ 所有测试数据已清空
+            // 联系人数据：从服务器获取
+            // 会员数据：从数据库加载（自动追踪）
+            // 订单数据：从数据库加载（自动追踪）
 
             UpdateStatistics();
         }
@@ -234,6 +194,353 @@ namespace BaiShengVx3Plus
                 lblStatus.Text = "初始化失败";
             }
         }
+
+        // 🔥 鼠标悬停的行索引
+        private int _hoverRowIndex_Contacts = -1;
+        private int _hoverRowIndex_Members = -1;
+        private int _hoverRowIndex_Orders = -1;
+
+        #region 美化样式设置
+
+        /// <summary>
+        /// 美化联系人列表样式
+        /// </summary>
+        private void CustomizeContactsGridStyle()
+        {
+            // 🔥 1. 绑定行格式化事件（绿色显示已绑定的行）
+            dgvContacts.CellFormatting += dgvContacts_CellFormatting;
+            
+            // 🔥 2. 自定义选中样式（透明蒙板 + 高亮边框）
+            dgvContacts.DefaultCellStyle.SelectionBackColor = Color.Transparent;
+            dgvContacts.DefaultCellStyle.SelectionForeColor = Color.Black;
+            
+            // 🔥 3. 绑定 CellPainting 事件（绘制自定义选中效果 + Hover 效果）
+            dgvContacts.CellPainting += dgvContacts_CellPainting;
+            
+            // 🔥 4. 绑定鼠标事件（Hover 效果）
+            dgvContacts.CellMouseEnter += dgvContacts_CellMouseEnter;
+            dgvContacts.CellMouseLeave += dgvContacts_CellMouseLeave;
+        }
+
+        /// <summary>
+        /// 美化会员列表样式
+        /// </summary>
+        private void CustomizeMembersGridStyle()
+        {
+            // 🔥 1. 自定义选中样式（透明蒙板 + 高亮边框）
+            dgvMembers.DefaultCellStyle.SelectionBackColor = Color.Transparent;
+            dgvMembers.DefaultCellStyle.SelectionForeColor = Color.Black;
+            
+            // 🔥 2. 绑定 CellPainting 事件（绘制自定义选中效果 + Hover 效果）
+            dgvMembers.CellPainting += dgvMembers_CellPainting;
+            
+            // 🔥 3. 绑定鼠标事件（Hover 效果）
+            dgvMembers.CellMouseEnter += dgvMembers_CellMouseEnter;
+            dgvMembers.CellMouseLeave += dgvMembers_CellMouseLeave;
+        }
+
+        /// <summary>
+        /// 美化订单列表样式
+        /// </summary>
+        private void CustomizeOrdersGridStyle()
+        {
+            // 🔥 1. 自定义选中样式（透明蒙板 + 高亮边框）
+            dgvOrders.DefaultCellStyle.SelectionBackColor = Color.Transparent;
+            dgvOrders.DefaultCellStyle.SelectionForeColor = Color.Black;
+            
+            // 🔥 2. 绑定 CellPainting 事件（绘制自定义选中效果 + Hover 效果）
+            dgvOrders.CellPainting += dgvOrders_CellPainting;
+            
+            // 🔥 3. 绑定鼠标事件（Hover 效果）
+            dgvOrders.CellMouseEnter += dgvOrders_CellMouseEnter;
+            dgvOrders.CellMouseLeave += dgvOrders_CellMouseLeave;
+        }
+
+        #endregion
+
+        #region 联系人列表 - 鼠标事件
+
+        /// <summary>
+        /// 鼠标进入单元格（Hover 效果）
+        /// </summary>
+        private void dgvContacts_CellMouseEnter(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                _hoverRowIndex_Contacts = e.RowIndex;
+                dgvContacts.InvalidateRow(e.RowIndex); // 重绘该行
+            }
+        }
+
+        /// <summary>
+        /// 鼠标离开单元格
+        /// </summary>
+        private void dgvContacts_CellMouseLeave(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (_hoverRowIndex_Contacts >= 0)
+            {
+                int oldHoverRow = _hoverRowIndex_Contacts;
+                _hoverRowIndex_Contacts = -1;
+                dgvContacts.InvalidateRow(oldHoverRow); // 重绘之前的行
+            }
+        }
+
+        #endregion
+
+        #region 会员列表 - 鼠标事件
+
+        private void dgvMembers_CellMouseEnter(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                _hoverRowIndex_Members = e.RowIndex;
+                dgvMembers.InvalidateRow(e.RowIndex);
+            }
+        }
+
+        private void dgvMembers_CellMouseLeave(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (_hoverRowIndex_Members >= 0)
+            {
+                int oldHoverRow = _hoverRowIndex_Members;
+                _hoverRowIndex_Members = -1;
+                dgvMembers.InvalidateRow(oldHoverRow);
+            }
+        }
+
+        #endregion
+
+        #region 订单列表 - 鼠标事件
+
+        private void dgvOrders_CellMouseEnter(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                _hoverRowIndex_Orders = e.RowIndex;
+                dgvOrders.InvalidateRow(e.RowIndex);
+            }
+        }
+
+        private void dgvOrders_CellMouseLeave(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (_hoverRowIndex_Orders >= 0)
+            {
+                int oldHoverRow = _hoverRowIndex_Orders;
+                _hoverRowIndex_Orders = -1;
+                dgvOrders.InvalidateRow(oldHoverRow);
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 单元格格式化：绿色显示已绑定的行
+        /// </summary>
+        private void dgvContacts_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            
+            if (dgvContacts.Rows[e.RowIndex].DataBoundItem is WxContact contact)
+            {
+                // 🔥 如果是当前绑定的联系人，用绿色背景
+                if (_currentBoundContact != null && contact.Wxid == _currentBoundContact.Wxid)
+                {
+                    dgvContacts.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(240, 255, 240); // 浅绿色
+                    dgvContacts.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.FromArgb(82, 196, 26);   // 深绿色文字
+                }
+                else
+                {
+                    // 恢复默认颜色
+                    dgvContacts.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.White;
+                    dgvContacts.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
+                }
+            }
+        }
+
+        #region 联系人列表 - CellPainting
+
+        /// <summary>
+        /// 单元格绘制：自定义效果（Hover + 选中 + 绑定）
+        /// </summary>
+        private void dgvContacts_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Graphics == null) return;
+            
+            bool isSelected = dgvContacts.Rows[e.RowIndex].Selected;
+            bool isHover = (e.RowIndex == _hoverRowIndex_Contacts);
+            bool isBound = false;
+            
+            // 🔥 检查是否是绑定的行
+            if (dgvContacts.Rows[e.RowIndex].DataBoundItem is WxContact contact)
+            {
+                isBound = (_currentBoundContact != null && contact.Wxid == _currentBoundContact.Wxid);
+            }
+            
+            // 🔥 优先级：绑定 > 选中 > Hover
+            if (isSelected || isHover)
+            {
+                // 先绘制原本的背景色
+                e.PaintBackground(e.CellBounds, false);
+                
+                // 🔥 选中效果：蓝色蒙板 (50% 透明度)
+                if (isSelected)
+                {
+                    e.Graphics.FillRectangle(
+                        new SolidBrush(Color.FromArgb(50, 80, 160, 255)), // 50% 透明度的蓝色
+                        e.CellBounds);
+                    
+                    // 绘制蓝色边框（2px）
+                    using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                    {
+                        e.Graphics.DrawRectangle(pen, 
+                            e.CellBounds.X, 
+                            e.CellBounds.Y, 
+                            e.CellBounds.Width - 1, 
+                            e.CellBounds.Height - 1);
+                    }
+                }
+                // 🔥 Hover 效果：淡黄色蒙板 (30% 透明度)
+                else if (isHover && !isSelected)
+                {
+                    e.Graphics.FillRectangle(
+                        new SolidBrush(Color.FromArgb(30, 255, 235, 150)), // 30% 透明度的淡黄色
+                        e.CellBounds);
+                }
+                
+                // 绘制文本
+                if (e.Value != null && e.CellStyle?.Font != null)
+                {
+                    // 🔥 使用原本的文字颜色（绿色行保持绿色文字）
+                    using (SolidBrush brush = new SolidBrush(e.CellStyle.ForeColor))
+                    {
+                        e.Graphics.DrawString(
+                            e.Value.ToString() ?? string.Empty,
+                            e.CellStyle.Font,
+                            brush,
+                            e.CellBounds.X + 5,
+                            e.CellBounds.Y + (e.CellBounds.Height - e.CellStyle.Font.Height) / 2);
+                    }
+                }
+                
+                e.Handled = true;
+            }
+        }
+
+        #endregion
+
+        #region 会员列表 - CellPainting
+
+        /// <summary>
+        /// 会员列表：自定义效果（Hover + 选中）
+        /// </summary>
+        private void dgvMembers_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Graphics == null) return;
+            
+            bool isSelected = dgvMembers.Rows[e.RowIndex].Selected;
+            bool isHover = (e.RowIndex == _hoverRowIndex_Members);
+            
+            if (isSelected || isHover)
+            {
+                e.PaintBackground(e.CellBounds, false);
+                
+                if (isSelected)
+                {
+                    e.Graphics.FillRectangle(
+                        new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
+                        e.CellBounds);
+                    
+                    using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                    {
+                        e.Graphics.DrawRectangle(pen, 
+                            e.CellBounds.X, 
+                            e.CellBounds.Y, 
+                            e.CellBounds.Width - 1, 
+                            e.CellBounds.Height - 1);
+                    }
+                }
+                else if (isHover && !isSelected)
+                {
+                    e.Graphics.FillRectangle(
+                        new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
+                        e.CellBounds);
+                }
+                
+                if (e.Value != null && e.CellStyle?.Font != null)
+                {
+                    using (SolidBrush brush = new SolidBrush(e.CellStyle.ForeColor))
+                    {
+                        e.Graphics.DrawString(
+                            e.Value.ToString() ?? string.Empty,
+                            e.CellStyle.Font,
+                            brush,
+                            e.CellBounds.X + 5,
+                            e.CellBounds.Y + (e.CellBounds.Height - e.CellStyle.Font.Height) / 2);
+                    }
+                }
+                
+                e.Handled = true;
+            }
+        }
+
+        #endregion
+
+        #region 订单列表 - CellPainting
+
+        /// <summary>
+        /// 订单列表：自定义效果（Hover + 选中）
+        /// </summary>
+        private void dgvOrders_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Graphics == null) return;
+            
+            bool isSelected = dgvOrders.Rows[e.RowIndex].Selected;
+            bool isHover = (e.RowIndex == _hoverRowIndex_Orders);
+            
+            if (isSelected || isHover)
+            {
+                e.PaintBackground(e.CellBounds, false);
+                
+                if (isSelected)
+                {
+                    e.Graphics.FillRectangle(
+                        new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
+                        e.CellBounds);
+                    
+                    using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                    {
+                        e.Graphics.DrawRectangle(pen, 
+                            e.CellBounds.X, 
+                            e.CellBounds.Y, 
+                            e.CellBounds.Width - 1, 
+                            e.CellBounds.Height - 1);
+                    }
+                }
+                else if (isHover && !isSelected)
+                {
+                    e.Graphics.FillRectangle(
+                        new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
+                        e.CellBounds);
+                }
+                
+                if (e.Value != null && e.CellStyle?.Font != null)
+                {
+                    using (SolidBrush brush = new SolidBrush(e.CellStyle.ForeColor))
+                    {
+                        e.Graphics.DrawString(
+                            e.Value.ToString() ?? string.Empty,
+                            e.CellStyle.Font,
+                            brush,
+                            e.CellBounds.X + 5,
+                            e.CellBounds.Y + (e.CellBounds.Height - e.CellStyle.Font.Height) / 2);
+                    }
+                }
+                
+                e.Handled = true;
+            }
+        }
+
+        #endregion
 
         private void HideContactColumns()
         {
@@ -365,15 +672,18 @@ namespace BaiShengVx3Plus
                 // 调用服务保存绑定
                 _contactBindingService.BindContact(contact);
                 
-                // 更新联系人列表编辑框显示
-                if (this.Controls.Find("txtCurrentContact", true).FirstOrDefault() is Sunny.UI.UITextBox txt)
-                {
-                    txt.Text = $"{contact.Nickname} ({contact.Wxid})";
-                }
+                // 🔥 更新文本框显示绑定的联系人
+                txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
+                txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
+                txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
                 
-                lblStatus.Text = $"已绑定联系人: {contact.Nickname} ({contact.Wxid})";
+                // 🔥 刷新 DataGridView，更新行颜色
+                dgvContacts.Refresh();
+                
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid})";
                 _logService.Info("VxMain", $"绑定联系人: {contact.Nickname} ({contact.Wxid}), IsGroup: {contact.IsGroup}");
-                UIMessageBox.ShowSuccess($"成功绑定联系人: {contact.Nickname}");
+                
+                // 不显示成功提示框，避免打断操作流程
             }
             else
             {
