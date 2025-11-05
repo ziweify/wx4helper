@@ -332,6 +332,7 @@ void SocketServer::AcceptThread()
 
         // 创建客户端连接
         auto client = std::make_unique<ClientConnection>(clientSocket, this);
+        ClientConnection* clientPtr = client.get(); // 保存裸指针
         client->Start();
 
         {
@@ -340,6 +341,9 @@ void SocketServer::AcceptThread()
         }
 
         util::logging::print("New client connected, total clients: {}", m_clients.size());
+        
+        // 推送 GetUserInfo 数据给新连接的客户端
+        PushUserInfoToClient(clientPtr);
     }
 }
 
@@ -440,6 +444,53 @@ void SocketServer::RemoveClientBySocket(SOCKET socket)
             util::logging::print("Client with socket {} already removed", socket);
         }
     }).detach();
+}
+
+void SocketServer::PushUserInfoToClient(ClientConnection* client)
+{
+    try {
+        util::logging::print("Pushing UserInfo to new client...");
+        
+        // 调用 GetUserInfo 处理器获取用户信息
+        Json::Value emptyParams;
+        Json::Value result = HandleCommand("GetUserInfo", emptyParams);
+        
+        // 检查 wxid 是否为空
+        if (result.isMember("wxid") && result["wxid"].isString())
+        {
+            std::string wxid = result["wxid"].asString();
+            if (wxid.empty())
+            {
+                util::logging::print("UserInfo wxid is empty, skip pushing");
+                return;
+            }
+            
+            util::logging::print("Pushing UserInfo with wxid: {}", wxid);
+            
+            // 构建推送消息
+            Json::Value message;
+            message["method"] = "OnLogin"; // 使用 OnLogin 事件通知客户端
+            message["params"] = result;
+            
+            Json::StreamWriterBuilder writerBuilder;
+            writerBuilder["indentation"] = "";
+            writerBuilder["emitUTF8"] = true;
+            std::string messageStr = Json::writeString(writerBuilder, message);
+            
+            // 发送给客户端
+            if (client->IsConnected()) {
+                bool sendResult = client->Send(messageStr);
+                util::logging::print("UserInfo pushed: {}", sendResult ? "success" : "failed");
+            }
+        }
+        else
+        {
+            util::logging::print("UserInfo result is invalid or wxid is missing");
+        }
+    }
+    catch (const std::exception& e) {
+        util::logging::print("Exception in PushUserInfoToClient: {}", e.what());
+    }
 }
 
 } // namespace Socket

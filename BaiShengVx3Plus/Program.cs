@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using BaiShengVx3Plus.Services;
+using BaiShengVx3Plus.Services.Messages;
+using BaiShengVx3Plus.Services.Messages.Handlers;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Views;
 
@@ -34,6 +36,15 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<IContactBindingService, ContactBindingService>();
                         services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
                         services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
+                        services.AddSingleton<IContactDataService, ContactDataService>(); // 联系人数据服务
+
+                        // 消息处理
+                        services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）
+                        services.AddTransient<IMessageHandler, ChatMessageHandler>();
+                        services.AddTransient<IMessageHandler, LoginEventHandler>();
+                        services.AddTransient<IMessageHandler, LogoutEventHandler>();
+                        services.AddTransient<IMessageHandler, MemberJoinHandler>();
+                        services.AddTransient<IMessageHandler, MemberLeaveHandler>();
 
                     // 注册ViewModels
                     services.AddTransient<LoginViewModel>();
@@ -53,6 +64,15 @@ namespace BaiShengVx3Plus
             // 初始化日志服务
             var logService = ServiceProvider.GetRequiredService<ILogService>();
             logService.Info("Program", "应用程序启动");
+
+            // 初始化消息分发器并注册处理器
+            var dispatcher = ServiceProvider.GetRequiredService<MessageDispatcher>();
+            var handlers = ServiceProvider.GetServices<IMessageHandler>();
+            foreach (var handler in handlers)
+            {
+                dispatcher.RegisterHandler(handler);
+            }
+            logService.Info("Program", "消息处理器注册完成");
 
             // 显示登录窗口
             var loginForm = ServiceProvider.GetRequiredService<LoginForm>();

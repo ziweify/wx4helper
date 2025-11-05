@@ -516,25 +516,33 @@ void WeixinX::Core::SendImage(string who, string which) {
 // 使用这个方法，可以查询所有的数据库，前提是必须知道微信的数据库表结构，不过这些网上都有，不是个问题。
 string WeixinX::Core::GetNameByWxid(string wxid)
 {
-
+	// 1. 检查数据库句柄是否存在
 	if (WeixinX::Features::DBHandles.find("contact.db") == WeixinX::Features::DBHandles.end())
 	{
-		util::logging::print("GetNameByWxid: no handle to contact.db");
+		util::logging::print("GetNameByWxid: no handle to contact.db (not found in map)");
+		return std::string();
+	}
+	
+	// 2. 检查数据库句柄值是否为空（0）
+	uintptr_t dbHandle = WeixinX::Features::DBHandles["contact.db"];
+	if (dbHandle == 0)
+	{
+		util::logging::print("GetNameByWxid: contact.db handle is null (0), WeChat may not be logged in");
 		return std::string();
 	}
 
 	std::string name{ "" };
 
-
 	uintptr_t base = util::getWeixinDllBase();
-	char* err;
-	char** result;
+	char* err = nullptr;
+	char** result = nullptr;
 	int row = 0, col = 0;
 	int rc;
+	
 	//调用get_table查询
 	std::string sql = std::format("select contact.nick_name from contact where username = '{}'", wxid);
 	rc = util::invokeCdecl<int>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::get_table),
-		WeixinX::Features::DBHandles["contact.db"],
+		dbHandle,  // 使用之前检查过的 dbHandle
 		sql.c_str(), &result, &row, &col, &err
 		);
 
@@ -560,10 +568,15 @@ string WeixinX::Core::GetNameByWxid(string wxid)
 	}
 	else
 	{
-		util::logging::print("GetNameByWxid: {}", err);
+		util::logging::print("GetNameByWxid: query failed, error={}", err ? err : "unknown");
 	}
-	//释放资源
-	util::invokeCdecl<void>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::free_table), result);
+	
+	// 释放资源（重要！）
+	if (result != nullptr)
+	{
+		util::invokeCdecl<void>((void*)(base + WeixinX::weixin_dll::v41021::offset::db::free_table), result);
+		util::logging::print("GetNameByWxid: Resources freed");
+	}
 
 	return name;
 
@@ -576,7 +589,7 @@ string WeixinX::Core::GetContacts()
 	// 1. 检查数据库句柄是否存在
 	if (WeixinX::Features::DBHandles.find("contact.db") == WeixinX::Features::DBHandles.end())
 	{
-		util::logging::print("GetContacts: no handle to contact.db");
+		util::logging::print("GetContacts: no handle to contact.db (not found in map)");
 		Json::Value error;
 		error["error"] = "contact.db handle not found";
 		Json::StreamWriterBuilder builder;
@@ -584,15 +597,28 @@ string WeixinX::Core::GetContacts()
 		builder["emitUTF8"] = true;
 		return Json::writeString(builder, error);
 	}
+	
+	// 2. 检查数据库句柄值是否为空（0）
+	uintptr_t dbHandle = WeixinX::Features::DBHandles["contact.db"];
+	if (dbHandle == 0)
+	{
+		util::logging::print("GetContacts: contact.db handle is null (0), WeChat may not be logged in");
+		Json::Value error;
+		error["error"] = "contact.db handle is null, WeChat may not be logged in";
+		Json::StreamWriterBuilder builder;
+		builder["indentation"] = "";
+		builder["emitUTF8"] = true;
+		return Json::writeString(builder, error);
+	}
 
-	// 2. 准备查询变量
+	// 3. 准备查询变量
 	uintptr_t base = util::getWeixinDllBase();
 	char* err = nullptr;
 	char** result = nullptr;
 	int row = 0, col = 0;
 	int rc;
 	
-	// 3. 构建 SQL 查询语句
+	// 4. 构建 SQL 查询语句
 	// 查询主要字段，排除 BLOB 字段和一些不重要的字段
 	std::string sql = 
 		"SELECT "
@@ -610,10 +636,10 @@ string WeixinX::Core::GetContacts()
 	
 	util::logging::print("GetContacts: Executing SQL");
 	
-	// 4. 调用 get_table 查询
+	// 5. 调用 get_table 查询
 	rc = util::invokeCdecl<int>(
 		(void*)(base + WeixinX::weixin_dll::v41021::offset::db::get_table),
-		WeixinX::Features::DBHandles["contact.db"],
+		dbHandle,  // 使用之前检查过的 dbHandle
 		sql.c_str(), 
 		&result, 
 		&row, 
@@ -621,7 +647,7 @@ string WeixinX::Core::GetContacts()
 		&err
 	);
 	
-	// 5. 构建 JSON 结果
+	// 6. 构建 JSON 结果
 	Json::Value contacts(Json::arrayValue);
 	
 	if (rc == 0)
@@ -677,7 +703,7 @@ string WeixinX::Core::GetContacts()
 		contacts = error;
 	}
 	
-	// 6. 释放资源（重要！）
+	// 7. 释放资源（重要！）
 	if (result != nullptr)
 	{
 		util::invokeCdecl<void>(
@@ -687,7 +713,7 @@ string WeixinX::Core::GetContacts()
 		util::logging::print("GetContacts: Resources freed");
 	}
 	
-	// 7. 转换 JSON 为字符串并返回
+	// 8. 转换 JSON 为字符串并返回
 	Json::StreamWriterBuilder builder;
 	builder["indentation"] = "  ";
 	builder["emitUTF8"] = true;

@@ -44,6 +44,7 @@
             pnlLeft = new Sunny.UI.UIPanel();
             dgvContacts = new Sunny.UI.UIDataGridView();
             pnlLeftTop = new Sunny.UI.UIPanel();
+            btnRefreshContacts = new Sunny.UI.UIButton();
             btnBindingContacts = new Sunny.UI.UIButton();
             lblContactList = new Sunny.UI.UILabel();
             pnlRight = new Sunny.UI.UIPanel();
@@ -172,6 +173,7 @@
             // 
             // pnlLeftTop
             // 
+            pnlLeftTop.Controls.Add(btnRefreshContacts);
             pnlLeftTop.Controls.Add(btnBindingContacts);
             pnlLeftTop.Controls.Add(lblContactList);
             pnlLeftTop.Dock = DockStyle.Top;
@@ -184,6 +186,20 @@
             pnlLeftTop.TabIndex = 0;
             pnlLeftTop.Text = null;
             pnlLeftTop.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
+            // btnRefreshContacts
+            // 
+            btnRefreshContacts.Cursor = Cursors.Hand;
+            btnRefreshContacts.Dock = DockStyle.Right;
+            btnRefreshContacts.Font = new Font("微软雅黑", 9F);
+            btnRefreshContacts.Location = new Point(134, 0);
+            btnRefreshContacts.MinimumSize = new Size(1, 1);
+            btnRefreshContacts.Name = "btnRefreshContacts";
+            btnRefreshContacts.Size = new Size(55, 40);
+            btnRefreshContacts.TabIndex = 2;
+            btnRefreshContacts.Text = "刷新";
+            btnRefreshContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnRefreshContacts.Click += btnRefreshContacts_Click;
             // 
             // btnBindingContacts
             // 
@@ -569,6 +585,7 @@
         private Sunny.UI.UIPanel pnlLeft;
         private Sunny.UI.UIDataGridView dgvContacts;
         private Sunny.UI.UIPanel pnlLeftTop;
+        private Sunny.UI.UIButton btnRefreshContacts;
         private Sunny.UI.UIButton btnBindingContacts;
         private Sunny.UI.UILabel lblContactList;
         private Sunny.UI.UIPanel pnlRight;

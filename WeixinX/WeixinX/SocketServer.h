@@ -83,6 +83,9 @@ public:
     void RemoveClient(ClientConnection* client);
     void RemoveClientBySocket(SOCKET socket);
 
+    // 推送用户信息到客户端
+    void PushUserInfoToClient(ClientConnection* client);
+
 private:
     void AcceptThread();
 
