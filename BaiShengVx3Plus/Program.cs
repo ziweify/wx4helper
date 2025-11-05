@@ -8,6 +8,8 @@ using BaiShengVx3Plus.Services.Logging;
 using BaiShengVx3Plus.Services.WeChat;
 using BaiShengVx3Plus.Services.Contact;
 using BaiShengVx3Plus.Services.UserInfo;
+using BaiShengVx3Plus.Services.Member;
+using BaiShengVx3Plus.Services.Order;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Services.Messages.Handlers;
 using BaiShengVx3Plus.ViewModels;
@@ -46,6 +48,11 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<IContactDataService, ContactDataService>(); // 联系人数据服务
                         services.AddSingleton<IUserInfoService, UserInfoService>();       // 用户信息服务
                         services.AddSingleton<IWeChatService, WeChatService>();           // 微信应用服务（编排层）
+
+                        // 🔥 现代化属性追踪服务（自动保存单个字段）
+                        services.AddSingleton<IPropertyChangeTracker, PropertyChangeTracker>(); // 属性变化追踪器
+                        services.AddSingleton<IMemberService, MemberService>();                 // 会员服务
+                        services.AddSingleton<IOrderService, OrderService>();                   // 订单服务
 
                         // 消息处理
                         services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）

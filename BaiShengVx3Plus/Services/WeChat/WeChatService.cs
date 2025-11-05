@@ -61,29 +61,64 @@ namespace BaiShengVx3Plus.Services.WeChat
         }
 
         /// <summary>
-        /// 连接并初始化（完整流程）
+        /// 连接并初始化（完整流程，智能判断是否需要启动/注入微信）
         /// </summary>
-        public async Task<bool> ConnectAndInitializeAsync(CancellationToken cancellationToken = default)
+        /// <param name="forceRestart">是否强制重新启动/注入（默认 false，会先尝试直接连接）</param>
+        public async Task<bool> ConnectAndInitializeAsync(bool forceRestart = false, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logService.Info("WeChatService", "========== 开始连接和初始化流程 ==========");
+                UpdateState(ConnectionState.Connecting, "正在连接...");
 
-                // 1. 启动微信（或注入已运行的微信）
-                if (!await LaunchOrInjectWeChatAsync(cancellationToken))
+                bool needsLaunchOrInject = forceRestart;
+
+                // 🔥 智能判断：先尝试直接连接（最快）
+                if (!forceRestart)
                 {
-                    UpdateState(ConnectionState.Failed, "启动或注入微信失败");
-                    return false;
+                    _logService.Info("WeChatService", "🔍 步骤1: 尝试直接连接（假设微信已运行且已注入）");
+                    
+                    bool quickConnected = await _socketClient.ConnectAsync("127.0.0.1", 6328, 2000);
+                    
+                    if (quickConnected)
+                    {
+                        _logService.Info("WeChatService", "✓ 快速连接成功！微信已就绪");
+                        needsLaunchOrInject = false;
+                    }
+                    else
+                    {
+                        _logService.Info("WeChatService", "✗ 快速连接失败，需要启动或注入微信");
+                        needsLaunchOrInject = true;
+                    }
                 }
 
-                // 2. 连接 Socket
-                if (!await ConnectSocketAsync(cancellationToken))
+                // 🔥 如果需要，启动或注入微信
+                if (needsLaunchOrInject)
                 {
-                    UpdateState(ConnectionState.Failed, "Socket 连接失败");
-                    return false;
+                    _logService.Info("WeChatService", "🚀 步骤2: 启动或注入微信");
+                    UpdateState(ConnectionState.LaunchingWeChat, "正在启动微信...");
+
+                    if (!await LaunchOrInjectWeChatAsync(cancellationToken))
+                    {
+                        UpdateState(ConnectionState.Failed, "启动或注入微信失败");
+                        return false;
+                    }
+
+                    // 启动/注入后，连接 Socket
+                    _logService.Info("WeChatService", "🔌 步骤3: 连接 Socket 服务器");
+                    UpdateState(ConnectionState.Connecting, "正在连接 Socket...");
+
+                    if (!await ConnectSocketAsync(cancellationToken))
+                    {
+                        UpdateState(ConnectionState.Failed, "Socket 连接失败");
+                        return false;
+                    }
                 }
 
                 // 3. 获取用户信息（带重试）
+                _logService.Info("WeChatService", "👤 步骤4: 获取用户信息");
+                UpdateState(ConnectionState.FetchingUserInfo, "正在获取用户信息...");
+
                 var userInfo = await RefreshUserInfoAsync(maxRetries: -1, retryInterval: 2000, cancellationToken);
                 if (userInfo == null || string.IsNullOrEmpty(userInfo.Wxid))
                 {
@@ -92,22 +127,25 @@ namespace BaiShengVx3Plus.Services.WeChat
                 }
 
                 // 4. 初始化数据库
-                _logService.Info("WeChatService", $"初始化数据库，wxid: {userInfo.Wxid}");
+                _logService.Info("WeChatService", $"💾 步骤5: 初始化数据库 (wxid: {userInfo.Wxid})");
+                UpdateState(ConnectionState.InitializingDatabase, "正在初始化数据库...");
+
                 await _databaseService.InitializeBusinessDatabaseAsync(userInfo.Wxid);
                 _contactDataService.SetCurrentWxid(userInfo.Wxid);
 
                 // 5. 获取联系人（带重试，等待数据库句柄初始化）
+                _logService.Info("WeChatService", "📇 步骤6: 获取联系人列表");
                 UpdateState(ConnectionState.FetchingContacts, "正在获取联系人列表...");
                 
                 // 等待一段时间让 C++ 端初始化数据库句柄
-                await Task.Delay(1000, cancellationToken);
+                await Task.Delay(1500, cancellationToken);
                 
                 var contacts = await RefreshContactsAsync(cancellationToken);
                 _logService.Info("WeChatService", $"✓ 联系人获取成功，共 {contacts.Count} 个");
 
                 // 6. 完成
                 UpdateState(ConnectionState.Connected, "连接成功");
-                _logService.Info("WeChatService", "========== 连接和初始化完成 ==========");
+                _logService.Info("WeChatService", "========== ✅ 连接和初始化完成 ==========");
 
                 return true;
             }

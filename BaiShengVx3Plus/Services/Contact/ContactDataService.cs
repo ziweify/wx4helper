@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
 
-namespace BaiShengVx3Plus.Services.Database
+namespace BaiShengVx3Plus.Services.Contact
 {
     /// <summary>
     /// 联系人数据处理服务实现
@@ -167,14 +167,23 @@ namespace BaiShengVx3Plus.Services.Database
                 // 是否群组
                 if (item.TryGetProperty("chat_room_type", out var chatRoomType))
                 {
-                    contact.IsGroup = chatRoomType.GetInt32() > 0;
+                    // 🔥 chat_room_type 可能是字符串或整数
+                    if (chatRoomType.ValueKind == JsonValueKind.String)
+                    {
+                        var typeStr = chatRoomType.GetString() ?? "0";
+                        contact.IsGroup = int.TryParse(typeStr, out var typeInt) && typeInt > 0;
+                    }
+                    else if (chatRoomType.ValueKind == JsonValueKind.Number)
+                    {
+                        contact.IsGroup = chatRoomType.GetInt32() > 0;
+                    }
                 }
 
                 return contact;
             }
             catch (Exception ex)
             {
-                _logService.Error("ContactDataService", "解析单个联系人失败", ex);
+                _logService.Error("ContactDataService", $"解析单个联系人失败: {ex.Message}", ex);
                 return null;
             }
         }

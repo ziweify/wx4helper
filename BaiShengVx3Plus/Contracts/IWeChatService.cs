@@ -23,11 +23,12 @@ namespace BaiShengVx3Plus.Contracts
         ConnectionState CurrentState { get; }
 
         /// <summary>
-        /// 连接并初始化（包含启动微信、注入DLL、连接Socket、获取用户信息、获取联系人）
+        /// 连接并初始化（智能判断是否需要启动/注入微信）
         /// </summary>
+        /// <param name="forceRestart">是否强制重新启动/注入（默认 false，会先尝试直接连接）</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否成功</returns>
-        Task<bool> ConnectAndInitializeAsync(CancellationToken cancellationToken = default);
+        Task<bool> ConnectAndInitializeAsync(bool forceRestart = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 刷新用户信息（带重试机制）
@@ -65,6 +66,11 @@ namespace BaiShengVx3Plus.Contracts
         Disconnected,
 
         /// <summary>
+        /// 正在连接（通用）
+        /// </summary>
+        Connecting,
+
+        /// <summary>
         /// 正在启动微信
         /// </summary>
         LaunchingWeChat,
@@ -83,6 +89,11 @@ namespace BaiShengVx3Plus.Contracts
         /// 正在获取用户信息
         /// </summary>
         FetchingUserInfo,
+
+        /// <summary>
+        /// 正在初始化数据库
+        /// </summary>
+        InitializingDatabase,
 
         /// <summary>
         /// 正在获取联系人

@@ -19,6 +19,8 @@ namespace BaiShengVx3Plus
         private readonly IContactDataService _contactDataService; // 联系人数据服务
         private readonly IUserInfoService _userInfoService; // 用户信息服务
         private readonly IWeChatService _wechatService; // 微信应用服务（Application Service）
+        private readonly IMemberService _memberService; // 🔥 会员服务（自动追踪）
+        private readonly IOrderService _orderService; // 🔥 订单服务（自动追踪）
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
@@ -40,7 +42,9 @@ namespace BaiShengVx3Plus
             MessageDispatcher messageDispatcher,
             IContactDataService contactDataService, // 注入联系人数据服务
             IUserInfoService userInfoService, // 注入用户信息服务
-            IWeChatService wechatService) // 注入微信应用服务
+            IWeChatService wechatService, // 注入微信应用服务
+            IMemberService memberService, // 🔥 注入会员服务（自动追踪）
+            IOrderService orderService) // 🔥 注入订单服务（自动追踪）
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -51,6 +55,8 @@ namespace BaiShengVx3Plus
             _contactDataService = contactDataService;
             _userInfoService = userInfoService;
             _wechatService = wechatService;
+            _memberService = memberService;
+            _orderService = orderService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -76,23 +82,17 @@ namespace BaiShengVx3Plus
             // 记录主窗口打开
             _logService.Info("VxMain", "主窗口已打开");
 
-            // 初始化数据绑定列表
-            _contactsBindingList = new BindingList<WxContact>();
-            _membersBindingList = new BindingList<V2Member>();
-            _ordersBindingList = new BindingList<V2MemberOrder>();
+            // 🔥 初始化数据绑定列表（从服务加载，自动追踪属性变化）
+            _contactsBindingList = new BindingList<WxContact>(); // 联系人稍后异步加载
+            _membersBindingList = _memberService.GetAllMembers();  // 会员立即加载（自动追踪）
+            _ordersBindingList = _orderService.GetAllOrders();     // 订单立即加载（自动追踪）
 
-            // 启用数据绑定自动通知
+            // 联系人列表手动配置（异步加载）
             _contactsBindingList.AllowEdit = true;
             _contactsBindingList.AllowNew = false;
             _contactsBindingList.AllowRemove = false;
 
-            _membersBindingList.AllowEdit = true;
-            _membersBindingList.AllowNew = false;
-            _membersBindingList.AllowRemove = false;
-
-            _ordersBindingList.AllowEdit = true;
-            _ordersBindingList.AllowNew = false;
-            _ordersBindingList.AllowRemove = false;
+            _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单（已自动追踪）");
 
             InitializeDataBindings();
         }
@@ -168,9 +168,9 @@ namespace BaiShengVx3Plus
                     BetContentStandar = $"1,大,10;2,小,10;3,单,10",
                     Nums = 3,
                     AmountTotal = 30,
-                    Profit = i % 2 == 0 ? 59.1m : 0,
-                    NetProfit = i % 2 == 0 ? 29.1m : -30,
-                    Odds = 1.97m,
+                    Profit = i % 2 == 0 ? 59.1f : 0,
+                    NetProfit = i % 2 == 0 ? 29.1f : -30,
+                    Odds = 1.97f,
                     OrderStatus = i % 3 == 0 ? OrderStatus.已完成 : (i % 2 == 0 ? OrderStatus.待结算 : OrderStatus.待处理),
                     OrderType = i % 2 == 0 ? OrderType.盘内 : OrderType.待定,
                     TimeStampBet = (long)DateTimeOffset.Now.AddMinutes(-i).ToUnixTimeSeconds(),
@@ -192,43 +192,46 @@ namespace BaiShengVx3Plus
 
         private async void VxMain_Load(object sender, EventArgs e)
         {
-            lblStatus.Text = "正在初始化...";
-            
-            // 隐藏不需要显示的列
-            if (dgvContacts.Columns.Count > 0)
+            try
             {
-                HideContactColumns();
-            }
-
-            if (dgvMembers.Columns.Count > 0)
-            {
-                HideMemberColumns();
-            }
-
-            if (dgvOrders.Columns.Count > 0)
-            {
-                HideOrderColumns();
-            }
-            
-            // 🔵 方案1：程序启动时尝试连接（检测已运行的微信）
-            _logService.Info("VxMain", "程序启动，尝试连接到 Socket 服务器...");
-            lblStatus.Text = "尝试连接到微信...";
-            
-            bool connected = await _socketClient.ConnectAsync("127.0.0.1", 6328, 2000);
-            
-            if (connected)
-            {
-                _logService.Info("VxMain", "连接成功！微信已在运行");
-                lblStatus.Text = "已连接到微信 ✓";
-            }
-            else
-            {
-                _logService.Info("VxMain", "连接失败，微信可能未启动或未注入 WeixinX.dll");
-                lblStatus.Text = "未连接（等待微信启动）";
+                lblStatus.Text = "正在初始化...";
                 
-                // 🔵 方案3：启动自动重连（后台持续尝试）
-                _logService.Info("VxMain", "启动自动重连（每5秒尝试一次）");
-                _socketClient.StartAutoReconnect(5000);
+                // 隐藏不需要显示的列
+                if (dgvContacts.Columns.Count > 0)
+                {
+                    HideContactColumns();
+                }
+
+                if (dgvMembers.Columns.Count > 0)
+                {
+                    HideMemberColumns();
+                }
+
+                if (dgvOrders.Columns.Count > 0)
+                {
+                    HideOrderColumns();
+                }
+                
+                // 🔥 统一使用 WeChatService 进行连接和初始化
+                // forceRestart = false，会先尝试快速连接，失败才启动/注入
+                _logService.Info("VxMain", "程序启动，开始自动连接和初始化...");
+                
+                var success = await _wechatService.ConnectAndInitializeAsync(forceRestart: false);
+                
+                if (!success)
+                {
+                    _logService.Info("VxMain", "自动连接失败，启动自动重连（每5秒尝试一次）");
+                    _socketClient.StartAutoReconnect(5000);
+                }
+                else
+                {
+                    _logService.Info("VxMain", "✅ 自动连接和初始化成功");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "窗口加载时发生错误", ex);
+                lblStatus.Text = "初始化失败";
             }
         }
 
@@ -296,47 +299,32 @@ namespace BaiShengVx3Plus
                 dgvOrders.Columns["TimeStampBet"].Visible = false;
         }
 
-        #region 修改即保存逻辑
+        #region 🔥 现代化方案：自动保存（PropertyChangeTracker）
 
-        private void dgvMembers_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+        // ========================================
+        // 重要说明：
+        // 1. 不再需要 CellValueChanged 事件
+        // 2. 不再需要手动保存方法
+        // 3. 属性修改后自动保存单个字段
+        // ========================================
 
-            var member = dgvMembers.Rows[e.RowIndex].DataBoundItem as V2Member;
-            if (member != null)
-            {
-                // 立即保存到数据库（这里先打印日志）
-                SaveMemberToDatabase(member);
-                lblStatus.Text = $"会员 {member.Nickname} 已更新";
-            }
-        }
+        // ❌ 旧方案（已删除）：
+        // private void dgvMembers_CellValueChanged(...)
+        // {
+        //     SaveMemberToDatabase(member);  // 手动调用保存
+        // }
 
-        private void dgvOrders_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+        // ✅ 新方案（自动）：
+        // 用户在 DataGridView 中编辑单元格
+        // → 数据绑定自动更新 member.Balance
+        // → SetField 触发 PropertyChanged 事件
+        // → PropertyChangeTracker 自动保存
+        // → UPDATE members SET Balance = @Value WHERE Id = @Id
+        // → 只更新一个字段！
 
-            var order = dgvOrders.Rows[e.RowIndex].DataBoundItem as V2MemberOrder;
-            if (order != null)
-            {
-                // 立即保存到数据库（这里先打印日志）
-                SaveOrderToDatabase(order);
-                lblStatus.Text = $"订单 {order.IssueId} 已更新";
-            }
-        }
-
-        private void SaveMemberToDatabase(V2Member member)
-        {
-            // TODO: 实现数据库保存逻辑
-            // _memberRepository.Update(member);
-            System.Diagnostics.Debug.WriteLine($"保存会员: {member.Nickname}, 余额: {member.Balance}");
-        }
-
-        private void SaveOrderToDatabase(V2MemberOrder order)
-        {
-            // TODO: 实现数据库保存逻辑
-            // _orderRepository.Update(order);
-            System.Diagnostics.Debug.WriteLine($"保存订单: {order.IssueId}, 状态: {order.OrderStatus}");
-        }
+        // 示例：直接修改属性
+        // var member = _membersBindingList[0];
+        // member.Balance = 100;  // ✅ 自动保存！只更新 Balance 字段
 
         #endregion
 
@@ -360,8 +348,9 @@ namespace BaiShengVx3Plus
             }
         }
 
-        private void FilterOrdersByMember(string wxid)
+        private void FilterOrdersByMember(string? wxid)
         {
+            if (string.IsNullOrEmpty(wxid)) return;
             // TODO: 实现订单筛选逻辑
             // 这里可以创建一个过滤后的BindingList
         }
@@ -411,8 +400,9 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "用户点击连接按钮");
 
                 // 调用微信应用服务进行连接和初始化
+                // forceRestart = false，让服务自动判断
                 // 状态更新由 WeChatService_ConnectionStateChanged 事件处理
-                var success = await _wechatService.ConnectAndInitializeAsync(_connectCts.Token);
+                var success = await _wechatService.ConnectAndInitializeAsync(forceRestart: false, _connectCts.Token);
                 
                 _logService.Info("VxMain", $">>> 连接和初始化完成，结果: {success}");
                 
@@ -735,7 +725,7 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 用户信息更新事件处理（仅负责 UI 更新，不再处理连接逻辑）
         /// </summary>
-        private void UserInfoService_UserInfoUpdated(object? sender, UserInfoUpdatedEventArgs e)
+        private async void UserInfoService_UserInfoUpdated(object? sender, UserInfoUpdatedEventArgs e)
         {
             try
             {
@@ -754,6 +744,36 @@ namespace BaiShengVx3Plus
                 {
                     // ✅ 更新用户信息显示
                     ucUserInfo1.UserInfo = e.UserInfo;
+                }
+
+                // 🔥 如果用户已登录（wxid 不为空）且 WeChatService 不在获取流程中，自动获取联系人
+                // 这个主要处理服务器主动推送 OnLogin 的情况（自动重连后）
+                if (!string.IsNullOrEmpty(e.UserInfo.Wxid))
+                {
+                    var currentState = _wechatService.CurrentState;
+                    
+                    // 只有在非活动连接流程中才主动获取（避免与 ConnectAndInitializeAsync 重复）
+                    if (currentState != ConnectionState.Connecting && 
+                        currentState != ConnectionState.FetchingUserInfo && 
+                        currentState != ConnectionState.FetchingContacts &&
+                        currentState != ConnectionState.InitializingDatabase)
+                    {
+                        _logService.Info("VxMain", "检测到用户登录事件（非主动连接流程），准备获取联系人...");
+                        
+                        // 设置当前 wxid
+                        _contactDataService.SetCurrentWxid(e.UserInfo.Wxid);
+
+                        // 等待一段时间让 C++ 端数据库句柄初始化
+                        await Task.Delay(1500);
+
+                        // 自动获取联系人
+                        _logService.Info("VxMain", "开始自动获取联系人...");
+                        await RefreshContactsAsync();
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", $"当前状态: {currentState}，跳过重复获取联系人");
+                    }
                 }
             }
             catch (Exception ex)
