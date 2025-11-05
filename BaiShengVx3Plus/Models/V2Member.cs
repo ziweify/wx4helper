@@ -27,6 +27,7 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         // 🔥 联系人信息字段（从 IWxContacts）
         // ========================================
+        private string _groupWxId = "";
         private string? _wxid;
         private string? _account;
         private string? _nickname;
@@ -51,6 +52,13 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         // 属性（带变化通知）
         // ========================================
+
+        [DisplayName("群ID")]
+        public string GroupWxId
+        {
+            get => _groupWxId;
+            set => SetField(ref _groupWxId, value);
+        }
 
         public long Id
         {
@@ -116,24 +124,28 @@ namespace BaiShengVx3Plus.Models
         // 🔥 联系人信息属性（从 IWxContacts）
         // ========================================
 
+        [DisplayName("WxID")]
         public string? Wxid
         {
             get => _wxid;
             set => SetField(ref _wxid, value);
         }
 
+        [DisplayName("号")]
         public string? Account
         {
             get => _account;
             set => SetField(ref _account, value);
         }
 
+        [DisplayName("昵称")]
         public string? Nickname
         {
             get => _nickname;
             set => SetField(ref _nickname, value);
         }
 
+        [DisplayName("群昵称")]
         public string? DisplayName
         {
             get => _displayName;
@@ -144,72 +156,84 @@ namespace BaiShengVx3Plus.Models
         // 🔥 业务统计属性
         // ========================================
 
+        [DisplayName("余额")]
         public float Balance
         {
             get => _balance;
             set => SetField(ref _balance, value);
         }
 
+        [DisplayName("状态")]
         public MemberState State
         {
             get => _state;
             set => SetField(ref _state, value);
         }
 
+        [DisplayName("本期下注")]
         public float BetCur
         {
             get => _betCur;
             set => SetField(ref _betCur, value);
         }
 
+        [DisplayName("待结算")]
         public float BetWait
         {
             get => _betWait;
             set => SetField(ref _betWait, value);
         }
 
+        [DisplayName("今日盈亏")]
         public float IncomeToday
         {
             get => _incomeToday;
             set => SetField(ref _incomeToday, value);
         }
 
+        [DisplayName("今日上分")]
         public float CreditToday
         {
             get => _creditToday;
             set => SetField(ref _creditToday, value);
         }
 
+        [DisplayName("今日下注")]
         public float BetToday
         {
             get => _betToday;
             set => SetField(ref _betToday, value);
         }
 
+        [DisplayName("今日下分")]
         public float WithdrawToday
         {
             get => _withdrawToday;
             set => SetField(ref _withdrawToday, value);
         }
 
+        [DisplayName("总下注")]
         public float BetTotal
         {
             get => _betTotal;
             set => SetField(ref _betTotal, value);
         }
 
+        [DisplayName("总上分")]
         public float CreditTotal
         {
             get => _creditTotal;
             set => SetField(ref _creditTotal, value);
         }
 
+        [DisplayName("总下分")]
         public float WithdrawTotal
         {
             get => _withdrawTotal;
             set => SetField(ref _withdrawTotal, value);
         }
 
+        [DisplayName("总盈亏")]
         public float IncomeTotal
         {
             get => _incomeTotal;

@@ -16,29 +16,26 @@ namespace BaiShengVx3Plus.Services.Database
     /// </summary>
     public class DatabaseService : IDatabaseService
     {
-        private readonly string _connectionString;
+        private string _connectionString = "";
         private readonly ILogService? _logService;
+        private string? _currentWxid;
 
         public DatabaseService(ILogService? logService = null)
         {
             _logService = logService;
 
-            // 业务数据库路径
-            var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "business.db");
-            var directory = Path.GetDirectoryName(dbPath);
-            if (!string.IsNullOrEmpty(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            _connectionString = $"Data Source={dbPath};Version=3;Pooling=true;Max Pool Size=10;";
-
-            // 初始化数据库
-            InitializeDatabase();
+            // 🔥 不再使用固定的 business.db
+            // 在用户登录后调用 SwitchDatabase(wxid) 切换到用户专属数据库
+            _logService?.Info("DatabaseService", "数据库服务已初始化，等待用户登录后切换数据库");
         }
 
         public SQLiteConnection GetConnection()
         {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                throw new InvalidOperationException("数据库未初始化，请先调用 SwitchDatabase(wxid)");
+            }
+            
             var connection = new SQLiteConnection(_connectionString);
             connection.Open();
 
@@ -335,6 +332,65 @@ namespace BaiShengVx3Plus.Services.Database
             }
 
             return obj;
+        }
+        
+        /// <summary>
+        /// 切换到指定用户的数据库
+        /// </summary>
+        public void SwitchDatabase(string wxid)
+        {
+            if (string.IsNullOrEmpty(wxid))
+            {
+                throw new ArgumentException("wxid 不能为空", nameof(wxid));
+            }
+            
+            _currentWxid = wxid;
+            
+            // 🔥 动态数据库路径：business_{wxid}.db
+            var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", $"business_{wxid}.db");
+            var directory = Path.GetDirectoryName(dbPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
+            _connectionString = $"Data Source={dbPath};Version=3;Pooling=true;Max Pool Size=10;";
+            
+            // 初始化新数据库
+            InitializeDatabase();
+            
+            _logService?.Info("DatabaseService", $"✓ 已切换到用户数据库: business_{wxid}.db");
+        }
+        
+        /// <summary>
+        /// 获取当前数据库路径
+        /// </summary>
+        public string GetCurrentDatabasePath()
+        {
+            if (string.IsNullOrEmpty(_currentWxid))
+            {
+                return "未连接（等待用户登录）";
+            }
+            return $"business_{_currentWxid}.db";
+        }
+        
+        /// <summary>
+        /// 获取当前用户的 wxid
+        /// </summary>
+        public string? GetCurrentWxid()
+        {
+            return _currentWxid;
+        }
+        
+        /// <summary>
+        /// 清空数据库连接（用户登出时调用）
+        /// </summary>
+        public void ClearDatabase()
+        {
+            _currentWxid = null;
+            _connectionString = "";
+            
+            _logService?.Info("DatabaseService", "✓ 数据库连接已清空，等待下次登录");
         }
     }
 }

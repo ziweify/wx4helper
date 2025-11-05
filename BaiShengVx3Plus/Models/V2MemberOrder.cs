@@ -32,6 +32,7 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         // 🔥 联系人信息字段（从 IWxContacts）
         // ========================================
+        private string _groupWxId = "";
         private string? _wxid;
         private string? _account;
         private string? _nickname;
@@ -53,6 +54,13 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         // 属性（带变化通知）
         // ========================================
+
+        [DisplayName("群ID")]
+        public string GroupWxId
+        {
+            get => _groupWxId;
+            set => SetField(ref _groupWxId, value);
+        }
 
         public long Id
         {
@@ -78,12 +86,14 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _orderId, value);
         }
 
+        [DisplayName("状态")]
         public OrderStatus OrderStatus
         {
             get => _orderStatus;
             set => SetField(ref _orderStatus, value);
         }
 
+        [DisplayName("类型")]
         public OrderType OrderType
         {
             get => _orderType;
@@ -148,18 +158,21 @@ namespace BaiShengVx3Plus.Models
         // 🔥 联系人信息属性（从 IWxContacts）
         // ========================================
 
+        [DisplayName("会员ID")]
         public string? Wxid
         {
             get => _wxid;
             set => SetField(ref _wxid, value);
         }
 
+        [DisplayName("会员号码")]
         public string? Account
         {
             get => _account;
             set => SetField(ref _account, value);
         }
 
+        [DisplayName("昵称")]
         public string? Nickname
         {
             get => _nickname;
@@ -170,60 +183,70 @@ namespace BaiShengVx3Plus.Models
         // 🔥 业务订单属性
         // ========================================
 
+        [DisplayName("期号")]
         public int IssueId
         {
             get => _issueId;
             set => SetField(ref _issueId, value);
         }
 
+        [DisplayName("原始内容")]
         public string? BetContentOriginal
         {
             get => _betContentOriginal;
             set => SetField(ref _betContentOriginal, value);
         }
 
+        [DisplayName("标准内容")]
         public string? BetContentStandar
         {
             get => _betContentStandar;
             set => SetField(ref _betContentStandar, value);
         }
 
+        [DisplayName("数量")]
         public int Nums
         {
             get => _nums;
             set => SetField(ref _nums, value);
         }
 
+        [DisplayName("总金额")]
         public float AmountTotal
         {
             get => _amountTotal;
             set => SetField(ref _amountTotal, value);
         }
 
+        [DisplayName("盈利")]
         public float Profit
         {
             get => _profit;
             set => SetField(ref _profit, value);
         }
 
+        [DisplayName("纯利")]
         public float NetProfit
         {
             get => _netProfit;
             set => SetField(ref _netProfit, value);
         }
 
+        [DisplayName("赔率")]
         public float Odds
         {
             get => _odds;
             set => SetField(ref _odds, value);
         }
 
+        [DisplayName("日期时间")]
         public string? TimeString
         {
             get => _timeString;
             set => SetField(ref _timeString, value);
         }
 
+        [DisplayName("备注")]
         public string? Notes
         {
             get => _notes;

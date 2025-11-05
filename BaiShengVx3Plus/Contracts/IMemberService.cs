@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Core;
 
 namespace BaiShengVx3Plus.Contracts
 {
@@ -14,7 +15,7 @@ namespace BaiShengVx3Plus.Contracts
         /// <summary>
         /// 获取所有会员（从数据库，自动追踪属性变化）
         /// </summary>
-        BindingList<V2Member> GetAllMembers();
+        TrackableBindingList<V2Member> GetAllMembers();
 
         /// <summary>
         /// 根据ID获取会员（自动追踪属性变化）

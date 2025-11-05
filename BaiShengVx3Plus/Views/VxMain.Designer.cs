@@ -166,7 +166,7 @@
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvContacts.Size = new Size(244, 272);
+            dgvContacts.Size = new Size(244, 200);
             dgvContacts.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;
@@ -219,6 +219,7 @@
             // 
             txtCurrentContact.Cursor = Cursors.IBeam;
             txtCurrentContact.Dock = DockStyle.Fill;
+            txtCurrentContact.FillColor = Color.FromArgb(243, 249, 255);
             txtCurrentContact.Font = new Font("微软雅黑", 10F);
             txtCurrentContact.Location = new Point(0, 0);
             txtCurrentContact.Margin = new Padding(4, 5, 4, 5);
@@ -232,8 +233,6 @@
             txtCurrentContact.Text = "未绑定联系人";
             txtCurrentContact.TextAlignment = ContentAlignment.MiddleLeft;
             txtCurrentContact.Watermark = "点击绑定按钮选择联系人";
-            txtCurrentContact.FillColor = Color.FromArgb(243, 249, 255);
-            txtCurrentContact.RectColor = Color.FromArgb(80, 160, 255);
             // 
             // pnlRight
             // 

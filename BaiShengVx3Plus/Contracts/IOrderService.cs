@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Core;
 
 namespace BaiShengVx3Plus.Contracts
 {
@@ -13,7 +14,7 @@ namespace BaiShengVx3Plus.Contracts
         /// <summary>
         /// 获取所有订单（从数据库，自动追踪属性变化）
         /// </summary>
-        BindingList<V2MemberOrder> GetAllOrders();
+        TrackableBindingList<V2MemberOrder> GetAllOrders();
 
         /// <summary>
         /// 根据ID获取订单（自动追踪属性变化）

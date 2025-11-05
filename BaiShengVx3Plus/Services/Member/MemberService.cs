@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Data.SQLite;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Core;
 
 namespace BaiShengVx3Plus.Services.Member
 {
@@ -10,7 +11,7 @@ namespace BaiShengVx3Plus.Services.Member
     /// 会员服务实现（简化版，配合 PropertyChangeTracker 使用）
     /// 
     /// 核心机制：
-    /// 1. GetAllMembers() 返回 BindingList，自动追踪所有会员
+    /// 1. GetAllMembers() 返回 TrackableBindingList，自动追踪所有会员
     /// 2. 修改会员属性后，PropertyChangeTracker 自动保存单个字段
     /// 3. 只需要 Add/Delete 方法，Update 由 PropertyChangeTracker 自动处理
     /// </summary>
@@ -35,28 +36,36 @@ namespace BaiShengVx3Plus.Services.Member
         /// <summary>
         /// 获取所有会员（自动追踪属性变化）
         /// </summary>
-        public BindingList<V2Member> GetAllMembers()
+        public TrackableBindingList<V2Member> GetAllMembers()
         {
-            var members = new BindingList<V2Member>();
+            var members = new TrackableBindingList<V2Member>();
 
             try
             {
                 using var conn = _dbService.GetConnection();
                 using var cmd = new SQLiteCommand(@"
                     SELECT 
-                        Id, MemberId, MemberName, MemberAlias, MemberAmount, 
-                        MemberState, TimeStampCreate, TimeStampUpdate, 
-                        TimeStampBet, Extra
-                    FROM members
-                    ORDER BY TimeStampCreate DESC", conn);
+                        Id, Wxid, Nickname, Phone, Balance, State, Remark,
+                        CreatedAt, UpdatedAt
+                    FROM Members
+                    ORDER BY CreatedAt DESC", conn);
 
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
-                    var member = MapReaderToMember(reader);
+                    var member = new V2Member
+                    {
+                        Id = reader.GetInt64(0),
+                        Wxid = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        Nickname = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                        Account = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                        Balance = reader.IsDBNull(4) ? 0f : (float)reader.GetDouble(4),
+                        State = (MemberState)(reader.IsDBNull(5) ? 0 : reader.GetInt32(5)),
+                        DisplayName = reader.IsDBNull(6) ? "" : reader.GetString(6)
+                    };
                     
                     // 🔥 自动追踪这个会员的属性变化
-                    _propertyTracker.Track(member, "members");
+                    _propertyTracker.Track(member, "Members");
                     
                     members.Add(member);
                 }
@@ -120,29 +129,38 @@ namespace BaiShengVx3Plus.Services.Member
 
                 try
                 {
+                    // 设置时间戳
+                    var now = DateTimeOffset.Now.ToUnixTimeSeconds();
+                    member.TimeStampCreate = now;
+                    member.TimeStampUpdate = now;
+
                     using var cmd = new SQLiteCommand(@"
-                        INSERT INTO members (
-                            MemberId, MemberName, MemberAlias, MemberAmount, 
-                            MemberState, TimeStampCreate, TimeStampUpdate, 
-                            TimeStampBet, Extra
+                        INSERT INTO Members (
+                            GroupWxId, Wxid, Nickname, Phone, Balance, State, Remark,
+                            CreatedAt, UpdatedAt
                         ) VALUES (
-                            @MemberId, @MemberName, @MemberAlias, @MemberAmount, 
-                            @MemberState, @TimeStampCreate, @TimeStampUpdate, 
-                            @TimeStampBet, @Extra
+                            @GroupWxId, @Wxid, @Nickname, @Phone, @Balance, @State, @Remark,
+                            datetime('now'), datetime('now')
                         );
                         SELECT last_insert_rowid();", conn, transaction);
 
-                    AddMemberParameters(cmd, member);
+                    cmd.Parameters.AddWithValue("@GroupWxId", member.GroupWxId ?? "");
+                    cmd.Parameters.AddWithValue("@Wxid", member.Wxid ?? "");
+                    cmd.Parameters.AddWithValue("@Nickname", member.Nickname ?? "");
+                    cmd.Parameters.AddWithValue("@Phone", member.Account ?? "");
+                    cmd.Parameters.AddWithValue("@Balance", member.Balance);
+                    cmd.Parameters.AddWithValue("@State", (int)member.State);
+                    cmd.Parameters.AddWithValue("@Remark", member.DisplayName ?? "");
 
-                    var newId = (long)cmd.ExecuteScalar();
+                    var newId = (long)cmd.ExecuteScalar()!;
                     member.Id = newId;
 
                     transaction.Commit();
 
                     // 🔥 追踪新添加的会员
-                    _propertyTracker.Track(member, "members");
+                    _propertyTracker.Track(member, "Members");
 
-                    _logService.Info("MemberService", $"✓ 添加会员成功: {member.MemberName} (ID: {newId})");
+                    _logService.Info("MemberService", $"✓ 添加会员成功: {member.Nickname} (ID: {newId})");
                     MembersChanged?.Invoke(this, EventArgs.Empty);
 
                     return newId;
@@ -155,7 +173,7 @@ namespace BaiShengVx3Plus.Services.Member
             }
             catch (Exception ex)
             {
-                _logService.Error("MemberService", $"添加会员失败: {member.MemberName}", ex);
+                _logService.Error("MemberService", $"添加会员失败: {member.Nickname}", ex);
                 throw;
             }
         }
@@ -167,19 +185,12 @@ namespace BaiShengVx3Plus.Services.Member
         {
             try
             {
-                // 先找到这个会员，停止追踪
-                var member = GetMemberById(id);
-                if (member != null)
-                {
-                    _propertyTracker.Untrack(member);
-                }
-
                 using var conn = _dbService.GetConnection();
                 using var transaction = conn.BeginTransaction();
 
                 try
                 {
-                    using var cmd = new SQLiteCommand("DELETE FROM members WHERE Id = @Id", conn, transaction);
+                    using var cmd = new SQLiteCommand("DELETE FROM Members WHERE Id = @Id", conn, transaction);
                     cmd.Parameters.AddWithValue("@Id", id);
 
                     var affected = cmd.ExecuteNonQuery();

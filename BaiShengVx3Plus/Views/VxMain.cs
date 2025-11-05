@@ -3,6 +3,7 @@ using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Services.Messages;
+using BaiShengVx3Plus.Core;
 using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,14 +23,17 @@ namespace BaiShengVx3Plus
         private readonly IMemberService _memberService; // 🔥 会员服务（自动追踪）
         private readonly IOrderService _orderService; // 🔥 订单服务（自动追踪）
         private BindingList<WxContact> _contactsBindingList;
-        private BindingList<V2Member> _membersBindingList;
-        private BindingList<V2MemberOrder> _ordersBindingList;
+        private TrackableBindingList<V2Member> _membersBindingList;  // 🔥 使用 Trackable 支持删除前事件
+        private TrackableBindingList<V2MemberOrder> _ordersBindingList;  // 🔥 使用 Trackable 支持删除前事件
         
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
         
         // 当前绑定的联系人对象
         private WxContact? _currentBoundContact;
+        
+        // 当前用户信息（用于检测用户切换）
+        private WxUserInfo? _currentUserInfo;
         
         // 连接取消令牌
         private CancellationTokenSource? _connectCts;
@@ -92,6 +96,10 @@ namespace BaiShengVx3Plus
             _contactsBindingList.AllowNew = false;
             _contactsBindingList.AllowRemove = false;
 
+            // 🔥 订阅会员和订单的删除前事件（同步立即保存）
+            _membersBindingList.ItemRemoving += MembersBindingList_ItemRemoving;
+            _ordersBindingList.ItemRemoving += OrdersBindingList_ItemRemoving;
+
             _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单（已自动追踪）");
 
             InitializeDataBindings();
@@ -129,6 +137,12 @@ namespace BaiShengVx3Plus
             // 🔥 美化订单列表样式
             CustomizeOrdersGridStyle();
 
+            // 🔥 配置会员表列（列宽、可见性、格式）
+            ConfigureMembersDataGridView();
+
+            // 🔥 配置订单表列（列宽、可见性、格式）
+            ConfigureOrdersDataGridView();
+
             // 添加测试数据
             LoadTestData();
         }
@@ -162,15 +176,8 @@ namespace BaiShengVx3Plus
                     HideContactColumns();
                 }
 
-                if (dgvMembers.Columns.Count > 0)
-                {
-                    HideMemberColumns();
-                }
-
-                if (dgvOrders.Columns.Count > 0)
-                {
-                    HideOrderColumns();
-                }
+                // 🔥 会员表和订单表的列配置已在 InitializeDataBindings() 中完成
+                // 不需要在这里重复调用配置方法
                 
                 // 🔥 统一使用 WeChatService 进行连接和初始化
                 // forceRestart = false，会先尝试快速连接，失败才启动/注入
@@ -254,6 +261,81 @@ namespace BaiShengVx3Plus
             // 🔥 3. 绑定鼠标事件（Hover 效果）
             dgvOrders.CellMouseEnter += dgvOrders_CellMouseEnter;
             dgvOrders.CellMouseLeave += dgvOrders_CellMouseLeave;
+        }
+
+        /// <summary>
+        /// 配置会员表列（列宽、可见性、格式）
+        /// </summary>
+        private void ConfigureMembersDataGridView()
+        {
+            // 隐藏不需要的列
+            ConfigureColumn(dgvMembers, "GroupWxId", visible: false);
+            ConfigureColumn(dgvMembers, "Wxid", visible: false);
+            ConfigureColumn(dgvMembers, "Account", visible: false);
+            ConfigureColumn(dgvMembers, "DisplayName", visible: false);
+            ConfigureColumn(dgvMembers, "BetWait", visible: false);
+            
+            // 设置列宽
+            ConfigureColumn(dgvMembers, "State", width: 69);
+            ConfigureColumn(dgvMembers, "Nickname", width: 80);
+            
+            // 设置数字格式
+            ConfigureColumn(dgvMembers, "Balance", format: "0.00");
+            ConfigureColumn(dgvMembers, "IncomeToday", format: "0.00");
+            ConfigureColumn(dgvMembers, "IncomeTotal", format: "0.00");
+            ConfigureColumn(dgvMembers, "BetCur", format: "0.00");
+            ConfigureColumn(dgvMembers, "BetToday", format: "0.00");
+            ConfigureColumn(dgvMembers, "BetTotal", format: "0.00");
+            ConfigureColumn(dgvMembers, "CreditToday", format: "0.00");
+            ConfigureColumn(dgvMembers, "CreditTotal", format: "0.00");
+            ConfigureColumn(dgvMembers, "WithdrawToday", format: "0.00");
+            ConfigureColumn(dgvMembers, "WithdrawTotal", format: "0.00");
+        }
+
+        /// <summary>
+        /// 配置订单表列（列宽、可见性、格式）
+        /// </summary>
+        private void ConfigureOrdersDataGridView()
+        {
+            // 隐藏不需要的列
+            ConfigureColumn(dgvOrders, "GroupWxId", visible: false);
+            ConfigureColumn(dgvOrders, "Wxid", visible: false);
+            ConfigureColumn(dgvOrders, "Account", visible: false);
+            ConfigureColumn(dgvOrders, "TimeStampBet", visible: false);
+            ConfigureColumn(dgvOrders, "BetContentOriginal", visible: false);
+            
+            // 设置列宽
+            ConfigureColumn(dgvOrders, "IssueId", width: 65);
+            ConfigureColumn(dgvOrders, "Nickname", width: 80);
+            ConfigureColumn(dgvOrders, "Nums", width: 26);
+            ConfigureColumn(dgvOrders, "AmountTotal", width: 50);
+            ConfigureColumn(dgvOrders, "Profit", width: 50);
+            ConfigureColumn(dgvOrders, "TimeString", width: 90);
+            
+            // 设置数字格式
+            ConfigureColumn(dgvOrders, "AmountTotal", format: "0.0");
+            ConfigureColumn(dgvOrders, "Profit", format: "0.0");
+            ConfigureColumn(dgvOrders, "NetProfit", format: "0.0");
+            ConfigureColumn(dgvOrders, "Odds", format: "0.00");
+        }
+
+        /// <summary>
+        /// 配置单个列（辅助方法）
+        /// </summary>
+        /// <param name="dgv">DataGridView 控件</param>
+        /// <param name="columnName">列名</param>
+        /// <param name="width">列宽</param>
+        /// <param name="visible">是否可见</param>
+        /// <param name="format">数字格式</param>
+        private void ConfigureColumn(DataGridView dgv, string columnName, 
+            int? width = null, bool? visible = null, string? format = null)
+        {
+            var cell = dgv.Columns[columnName];
+            if (cell == null) return;
+            
+            if (width.HasValue) cell.Width = width.Value;
+            if (visible.HasValue) cell.Visible = visible.Value;
+            if (!string.IsNullOrEmpty(format)) cell.DefaultCellStyle.Format = format;
         }
 
         #endregion
@@ -583,28 +665,6 @@ namespace BaiShengVx3Plus
             }
         }
 
-        private void HideMemberColumns()
-        {
-            // 隐藏Id列
-            if (dgvMembers.Columns["Id"] != null)
-                dgvMembers.Columns["Id"].Visible = false;
-
-            if (dgvMembers.Columns["GroupWxId"] != null)
-                dgvMembers.Columns["GroupWxId"].Visible = false;
-        }
-
-        private void HideOrderColumns()
-        {
-            // 隐藏Id列
-            if (dgvOrders.Columns["Id"] != null)
-                dgvOrders.Columns["Id"].Visible = false;
-
-            if (dgvOrders.Columns["GroupWxId"] != null)
-                dgvOrders.Columns["GroupWxId"].Visible = false;
-
-            if (dgvOrders.Columns["TimeStampBet"] != null)
-                dgvOrders.Columns["TimeStampBet"].Visible = false;
-        }
 
         #region 🔥 现代化方案：自动保存（PropertyChangeTracker）
 
@@ -1073,6 +1133,46 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"📱 用户信息已更新: {e.UserInfo.Nickname} ({e.UserInfo.Wxid})");
 
+                // 🔥 检测用户切换，清空内存数据
+                if (_currentUserInfo != null && !string.IsNullOrEmpty(_currentUserInfo.Wxid))
+                {
+                    if (_currentUserInfo.Wxid != e.UserInfo.Wxid)
+                    {
+                        _logService.Warning("VxMain", 
+                            $"⚠️ 检测到用户切换: {_currentUserInfo.Wxid} → {e.UserInfo.Wxid}，清空内存数据...");
+                        
+                        // 清空所有列表数据，防止数据污染
+                        if (InvokeRequired)
+                        {
+                            Invoke(new Action(() =>
+                            {
+                                _contactsBindingList.Clear();
+                                _membersBindingList.Clear();
+                                _ordersBindingList.Clear();
+                                _currentBoundContact = null;
+                                txtCurrentContact.Text = "未绑定";
+                                txtCurrentContact.FillColor = Color.White;
+                                txtCurrentContact.RectColor = Color.Silver;
+                            }));
+                        }
+                        else
+                        {
+                            _contactsBindingList.Clear();
+                            _membersBindingList.Clear();
+                            _ordersBindingList.Clear();
+                            _currentBoundContact = null;
+                            txtCurrentContact.Text = "未绑定";
+                            txtCurrentContact.FillColor = Color.White;
+                            txtCurrentContact.RectColor = Color.Silver;
+                        }
+                        
+                        _logService.Info("VxMain", "✓ 内存数据已清空");
+                    }
+                }
+                
+                // 更新当前用户信息
+                _currentUserInfo = e.UserInfo;
+
                 // 线程安全地更新 UI
                 if (InvokeRequired)
                 {
@@ -1279,6 +1379,74 @@ namespace BaiShengVx3Plus
             }
             
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 🔥 会员列表删除前事件（同步立即删除数据库）
+        /// </summary>
+        private void MembersBindingList_ItemRemoving(object? sender, ItemRemovingEventArgs<V2Member> e)
+        {
+            try
+            {
+                if (e.Item.Id <= 0)
+                {
+                    _logService.Warning("VxMain", "会员 ID 无效，跳过删除");
+                    return;
+                }
+
+                _logService.Info("VxMain", $"正在删除会员: {e.Item.Nickname} (ID: {e.Item.Id})");
+
+                // 🔥 同步立即删除数据库记录（强同步，无异步）
+                _memberService.DeleteMember(e.Item.Id);
+
+                _logService.Info("VxMain", $"✓ 会员已从数据库删除: {e.Item.Nickname} (ID: {e.Item.Id})");
+                
+                // 更新统计
+                UpdateStatistics();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"删除会员失败: {e.Item.Nickname} (ID: {e.Item.Id})", ex);
+                
+                // 取消删除（防止 UI 和数据库不一致）
+                e.Cancel = true;
+                
+                UIMessageBox.ShowError($"删除会员失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 🔥 订单列表删除前事件（同步立即删除数据库）
+        /// </summary>
+        private void OrdersBindingList_ItemRemoving(object? sender, ItemRemovingEventArgs<V2MemberOrder> e)
+        {
+            try
+            {
+                if (e.Item.Id <= 0)
+                {
+                    _logService.Warning("VxMain", "订单 ID 无效，跳过删除");
+                    return;
+                }
+
+                _logService.Info("VxMain", $"正在删除订单: 期号{e.Item.IssueId} (ID: {e.Item.Id})");
+
+                // 🔥 同步立即删除数据库记录（强同步，无异步）
+                _orderService.DeleteOrder(e.Item.Id);
+
+                _logService.Info("VxMain", $"✓ 订单已从数据库删除: 期号{e.Item.IssueId} (ID: {e.Item.Id})");
+                
+                // 更新统计
+                UpdateStatistics();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"删除订单失败: 期号{e.Item.IssueId} (ID: {e.Item.Id})", ex);
+                
+                // 取消删除（防止 UI 和数据库不一致）
+                e.Cancel = true;
+                
+                UIMessageBox.ShowError($"删除订单失败: {ex.Message}");
+            }
         }
 
         /// <summary>

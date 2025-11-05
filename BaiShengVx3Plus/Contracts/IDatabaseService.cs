@@ -47,6 +47,26 @@ namespace BaiShengVx3Plus.Contracts
         /// 初始化业务数据库（使用 wxid 组合表名）
         /// </summary>
         Task InitializeBusinessDatabaseAsync(string wxid);
+        
+        /// <summary>
+        /// 切换到指定用户的数据库 (business_{wxid}.db)
+        /// </summary>
+        void SwitchDatabase(string wxid);
+        
+        /// <summary>
+        /// 获取当前数据库路径
+        /// </summary>
+        string GetCurrentDatabasePath();
+        
+        /// <summary>
+        /// 获取当前用户的 wxid
+        /// </summary>
+        string? GetCurrentWxid();
+        
+        /// <summary>
+        /// 清空数据库连接（用户登出时调用）
+        /// </summary>
+        void ClearDatabase();
     }
 }
 

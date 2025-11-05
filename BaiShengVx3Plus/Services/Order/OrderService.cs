@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Data.SQLite;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Core;
 
 namespace BaiShengVx3Plus.Services.Order
 {
@@ -10,7 +11,7 @@ namespace BaiShengVx3Plus.Services.Order
     /// 订单服务实现（简化版，配合 PropertyChangeTracker 使用）
     /// 
     /// 核心机制：
-    /// 1. GetAllOrders() 返回 BindingList，自动追踪所有订单
+    /// 1. GetAllOrders() 返回 TrackableBindingList，自动追踪所有订单
     /// 2. 修改订单属性后，PropertyChangeTracker 自动保存单个字段
     /// 3. 只需要 Add/Delete 方法，Update 由 PropertyChangeTracker 自动处理
     /// </summary>
@@ -35,9 +36,9 @@ namespace BaiShengVx3Plus.Services.Order
         /// <summary>
         /// 获取所有订单（自动追踪属性变化）
         /// </summary>
-        public BindingList<V2MemberOrder> GetAllOrders()
+        public TrackableBindingList<V2MemberOrder> GetAllOrders()
         {
-            var orders = new BindingList<V2MemberOrder>();
+            var orders = new TrackableBindingList<V2MemberOrder>();
 
             try
             {
@@ -165,31 +166,38 @@ namespace BaiShengVx3Plus.Services.Order
 
                 try
                 {
+                    // 设置时间戳
+                    var now = DateTimeOffset.Now.ToUnixTimeSeconds();
+                    order.TimeStampCreate = now;
+                    order.TimeStampUpdate = now;
+
                     using var cmd = new SQLiteCommand(@"
-                        INSERT INTO orders (
-                            MemberId, MemberName, OrderId, OrderStatus, 
-                            OrderType, OrderAmountPlan, OrderAmount, OrderResult, 
-                            OrderTarget, OrderPlace, TimeStampCreate, TimeStampUpdate, 
-                            TimeStampBet, Extra
+                        INSERT INTO Orders (
+                            MemberId, OrderNo, Amount, Status, OrderType, TimeStampBet, Remark,
+                            CreatedAt, UpdatedAt
                         ) VALUES (
-                            @MemberId, @MemberName, @OrderId, @OrderStatus, 
-                            @OrderType, @OrderAmountPlan, @OrderAmount, @OrderResult, 
-                            @OrderTarget, @OrderPlace, @TimeStampCreate, @TimeStampUpdate, 
-                            @TimeStampBet, @Extra
+                            @MemberId, @OrderNo, @Amount, @Status, @OrderType, @TimeStampBet, @Remark,
+                            datetime('now'), datetime('now')
                         );
                         SELECT last_insert_rowid();", conn, transaction);
 
-                    AddOrderParameters(cmd, order);
+                    cmd.Parameters.AddWithValue("@MemberId", order.MemberId);
+                    cmd.Parameters.AddWithValue("@OrderNo", order.IssueId.ToString());
+                    cmd.Parameters.AddWithValue("@Amount", order.AmountTotal);
+                    cmd.Parameters.AddWithValue("@Status", (int)order.OrderStatus);
+                    cmd.Parameters.AddWithValue("@OrderType", (int)order.OrderType);
+                    cmd.Parameters.AddWithValue("@TimeStampBet", order.TimeStampBet);
+                    cmd.Parameters.AddWithValue("@Remark", order.Notes ?? "");
 
-                    var newId = (long)cmd.ExecuteScalar();
+                    var newId = (long)cmd.ExecuteScalar()!;
                     order.Id = newId;
 
                     transaction.Commit();
 
                     // 🔥 追踪新添加的订单
-                    _propertyTracker.Track(order, "orders");
+                    _propertyTracker.Track(order, "Orders");
 
-                    _logService.Info("OrderService", $"✓ 添加订单成功: {order.OrderId} (ID: {newId})");
+                    _logService.Info("OrderService", $"✓ 添加订单成功: 期号{order.IssueId} (ID: {newId})");
                     OrdersChanged?.Invoke(this, EventArgs.Empty);
 
                     return newId;
@@ -202,7 +210,7 @@ namespace BaiShengVx3Plus.Services.Order
             }
             catch (Exception ex)
             {
-                _logService.Error("OrderService", $"添加订单失败: {order.OrderId}", ex);
+                _logService.Error("OrderService", $"添加订单失败: 期号{order.IssueId}", ex);
                 throw;
             }
         }
@@ -214,19 +222,12 @@ namespace BaiShengVx3Plus.Services.Order
         {
             try
             {
-                // 先找到这个订单，停止追踪
-                var order = GetOrderById(id);
-                if (order != null)
-                {
-                    _propertyTracker.Untrack(order);
-                }
-
                 using var conn = _dbService.GetConnection();
                 using var transaction = conn.BeginTransaction();
 
                 try
                 {
-                    using var cmd = new SQLiteCommand("DELETE FROM orders WHERE Id = @Id", conn, transaction);
+                    using var cmd = new SQLiteCommand("DELETE FROM Orders WHERE Id = @Id", conn, transaction);
                     cmd.Parameters.AddWithValue("@Id", id);
 
                     var affected = cmd.ExecuteNonQuery();
