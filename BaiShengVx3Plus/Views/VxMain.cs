@@ -129,7 +129,7 @@ namespace BaiShengVx3Plus
             catch (Exception ex)
             {
                 _logService.Error("VxMain", $"初始化数据库失败: {ex.Message}");
-                ShowErrorTip($"初始化数据库失败: {ex.Message}");
+                UIMessageBox.ShowError($"初始化数据库失败: {ex.Message}");  // 🔥 使用 UIMessageBox
             }
         }
         
@@ -764,10 +764,7 @@ namespace BaiShengVx3Plus
                 // 保存当前绑定的联系人对象
                 _currentBoundContact = contact;
                 
-                // 调用服务保存绑定
-                _contactBindingService.BindContact(contact);
-                
-                // 🔥 更新文本框显示绑定的联系人
+                // 🔥 更新文本框显示绑定的联系人（不再需要 ContactBindingService）
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
                 txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
                 txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框

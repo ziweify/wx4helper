@@ -124,10 +124,10 @@ namespace BaiShengVx3Plus.Services.WeChat
                 }
 
                 // 4. 初始化数据库
-                _logService.Info("WeChatService", $"💾 步骤5: 初始化数据库 (wxid: {userInfo.Wxid})");
-                UpdateState(ConnectionState.InitializingDatabase, "正在初始化数据库...");
+                _logService.Info("WeChatService", $"💾 步骤5: 设置当前 wxid: {userInfo.Wxid}");
+                UpdateState(ConnectionState.InitializingDatabase, "正在初始化...");
 
-                await _databaseService.InitializeBusinessDatabaseAsync(userInfo.Wxid);
+                // 🔥 数据库初始化由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动处理
                 _contactDataService.SetCurrentWxid(userInfo.Wxid);
 
                 // 5. 获取联系人（带重试，等待数据库句柄初始化）
