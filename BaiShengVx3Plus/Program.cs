@@ -37,6 +37,7 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
                         services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
                         services.AddSingleton<IContactDataService, ContactDataService>(); // 联系人数据服务
+                        services.AddSingleton<IUserInfoService, UserInfoService>();       // 用户信息服务
 
                         // 消息处理
                         services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）

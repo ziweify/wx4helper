@@ -47,12 +47,13 @@ void WeixinX::CurrentUserInfo::read(WeixinX::Core* core) {
 				alias = str.str();
 				util::logging::print("Alias: {}", alias.c_str());
 
-				memcpy(&str, (void*)(*(__int64*)currentUserInfo + CurrentUserInfo::offset_nick), 32);
-				nick = str.str();
-				util::logging::wPrint(L"Nick: {}", util::utf8ToUtf16(nick.c_str()).c_str());
+			memcpy(&str, (void*)(*(__int64*)currentUserInfo + CurrentUserInfo::offset_nick), 32);
+			nick = str.str();
+			nickname = nick;  // ✅ 同时赋值给 nickname（用于 Socket 通信）
+			util::logging::wPrint(L"Nick: {}", util::utf8ToUtf16(nick.c_str()).c_str());
 
-				core->Notify("/online");
-				break;
+			core->Notify("/online");
+			break;
 			}
 
 
@@ -73,10 +74,19 @@ void WeixinX::CurrentUserInfo::clear() {
 
 	std::lock_guard<std::mutex> l(currentUserInfoMutex);
 
-
+	// 清空原始字段
 	wxid.clear();
 	alias.clear();
 	nick.clear();
+	
+	// 清空 Socket 通信字段
+	nickname.clear();
+	account.clear();
+	mobile.clear();
+	avatar.clear();
+	dataPath.clear();
+	currentDataPath.clear();
+	dbKey.clear();
 }
 
 

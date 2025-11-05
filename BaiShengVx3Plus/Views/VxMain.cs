@@ -17,12 +17,16 @@ namespace BaiShengVx3Plus
         private readonly Services.IWeixinSocketClient _socketClient; // Socket 客户端
         private readonly MessageDispatcher _messageDispatcher; // 消息分发器
         private readonly Services.IContactDataService _contactDataService; // 联系人数据服务
+        private readonly Services.IUserInfoService _userInfoService; // 用户信息服务
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
         
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
+        
+        // 当前绑定的联系人对象
+        private WxContact? _currentBoundContact;
 
         public VxMain(
             VxMainViewModel viewModel,
@@ -31,7 +35,8 @@ namespace BaiShengVx3Plus
             Services.ILogService logService,
             Services.IWeixinSocketClient socketClient,
             MessageDispatcher messageDispatcher,
-            Services.IContactDataService contactDataService) // 注入联系人数据服务
+            Services.IContactDataService contactDataService, // 注入联系人数据服务
+            Services.IUserInfoService userInfoService) // 注入用户信息服务
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -41,6 +46,7 @@ namespace BaiShengVx3Plus
             _socketClient = socketClient;
             _messageDispatcher = messageDispatcher;
             _contactDataService = contactDataService;
+            _userInfoService = userInfoService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -50,6 +56,15 @@ namespace BaiShengVx3Plus
             
             // 订阅联系人数据更新事件
             _contactDataService.ContactsUpdated += ContactDataService_ContactsUpdated;
+            
+            // 订阅用户信息更新事件
+            _userInfoService.UserInfoUpdated += UserInfoService_UserInfoUpdated;
+            
+            // 绑定用户信息到用户控件
+            ucUserInfo1.UserInfo = _userInfoService.CurrentUser;
+            
+            // 订阅用户控件的采集按钮事件
+            ucUserInfo1.CollectButtonClick += UcUserInfo_CollectButtonClick;
             
             // 记录主窗口打开
             _logService.Info("VxMain", "主窗口已打开");
@@ -348,13 +363,20 @@ namespace BaiShengVx3Plus
         {
             if (dgvContacts.CurrentRow?.DataBoundItem is WxContact contact)
             {
+                // 保存当前绑定的联系人对象
+                _currentBoundContact = contact;
+                
+                // 调用服务保存绑定
                 _contactBindingService.BindContact(contact);
+                
+                // 更新联系人列表编辑框显示
                 if (this.Controls.Find("txtCurrentContact", true).FirstOrDefault() is Sunny.UI.UITextBox txt)
                 {
-                    txt.Text = contact.Wxid;
+                    txt.Text = $"{contact.Nickname} ({contact.Wxid})";
                 }
+                
                 lblStatus.Text = $"已绑定联系人: {contact.Nickname} ({contact.Wxid})";
-                _logService.Info("VxMain", $"绑定联系人: {contact.Nickname} ({contact.Wxid})");
+                _logService.Info("VxMain", $"绑定联系人: {contact.Nickname} ({contact.Wxid}), IsGroup: {contact.IsGroup}");
                 UIMessageBox.ShowSuccess($"成功绑定联系人: {contact.Nickname}");
             }
             else
@@ -364,7 +386,10 @@ namespace BaiShengVx3Plus
             }
         }
 
-        private async void btnGetContactList_Click(object sender, EventArgs e)
+        /// <summary>
+        /// 用户控件的采集按钮点击事件（使用用户控件的按钮）
+        /// </summary>
+        private async void UcUserInfo_CollectButtonClick(object? sender, EventArgs e)
         {
             try
             {
@@ -692,6 +717,78 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
+        /// 用户信息更新事件处理（连接成功后自动获取联系人）
+        /// </summary>
+        private async void UserInfoService_UserInfoUpdated(object? sender, Services.UserInfoUpdatedEventArgs e)
+        {
+            try
+            {
+                _logService.Info("VxMain", $"📱 用户信息已更新: {e.UserInfo.Nickname} ({e.UserInfo.Wxid})");
+
+                // 线程安全地更新 UI
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() =>
+                    {
+                        lblStatus.Text = $"✓ 已登录: {e.UserInfo.Nickname}";
+                    }));
+                }
+                else
+                {
+                    lblStatus.Text = $"✓ 已登录: {e.UserInfo.Nickname}";
+                }
+
+                // 如果用户已登录（wxid 不为空），自动获取联系人数据
+                if (!string.IsNullOrEmpty(e.UserInfo.Wxid))
+                {
+                    _logService.Info("VxMain", "用户已登录，自动获取联系人列表");
+                    
+                    // 延迟一秒，确保服务器准备就绪
+                    await Task.Delay(1000);
+                    
+                    // 主动请求联系人数据
+                    await RefreshContactsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "处理用户信息更新失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 刷新联系人列表（封装供多处调用）
+        /// </summary>
+        private async Task RefreshContactsAsync()
+        {
+            try
+            {
+                _logService.Info("VxMain", "🔄 开始获取联系人列表");
+                lblStatus.Text = "正在获取联系人...";
+
+                // 主动请求联系人数据
+                var contactsData = await _socketClient.SendAsync<JsonDocument>("GetContacts", 10000);
+
+                if (contactsData != null)
+                {
+                    // 统一调用 ContactDataService 处理
+                    await _contactDataService.ProcessContactsAsync(contactsData.RootElement);
+                    _logService.Info("VxMain", "✓ 联系人获取成功");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "获取联系人失败");
+                    lblStatus.Text = "获取联系人失败";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "刷新联系人失败", ex);
+                lblStatus.Text = "刷新失败";
+            }
+        }
+
+        /// <summary>
         /// 更新联系人列表（UI 线程）
         /// </summary>
         private void UpdateContactsList(List<WxContact> contacts)
@@ -721,33 +818,7 @@ namespace BaiShengVx3Plus
         /// </summary>
         private async void btnRefreshContacts_Click(object sender, EventArgs e)
         {
-            try
-            {
-                _logService.Info("VxMain", "🔄 刷新联系人列表");
-                lblStatus.Text = "正在获取联系人...";
-
-                // 主动请求联系人数据
-                var contactsData = await _socketClient.SendAsync<JsonDocument>("GetContacts", 10000);
-
-                if (contactsData != null)
-                {
-                    // 统一调用 ContactDataService 处理（和服务器推送一样的处理逻辑）
-                    await _contactDataService.ProcessContactsAsync(contactsData.RootElement);
-                    _logService.Info("VxMain", "✓ 联系人刷新成功");
-                }
-                else
-                {
-                    _logService.Warning("VxMain", "获取联系人失败");
-                    lblStatus.Text = "获取联系人失败";
-                    UIMessageBox.ShowWarning("获取联系人失败\n请检查微信是否已登录");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", "刷新联系人失败", ex);
-                lblStatus.Text = "刷新失败";
-                UIMessageBox.ShowError($"刷新失败:\n{ex.Message}");
-            }
+            await RefreshContactsAsync();
         }
 
         /// <summary>

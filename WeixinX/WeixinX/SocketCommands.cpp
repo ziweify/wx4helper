@@ -1,6 +1,8 @@
 #include "SocketCommands.h"
 #include "Features.h"
 #include "util.h"
+#include <thread>
+#include <chrono>
 
 namespace WeixinX {
 namespace Socket {
@@ -155,6 +157,25 @@ Json::Value SocketCommands::HandleSendImage(const Json::Value& params)
 Json::Value SocketCommands::HandleGetUserInfo(const Json::Value& params)
 {
     util::logging::print("Handling GetUserInfo");
+    
+    // 检查用户是否在线
+    bool online = *reinterpret_cast<bool*>(util::getWeixinDllBase() + weixin_dll::v41021::offset::is_online);
+    
+    // 如果用户在线但数据为空，重新读取
+    if (online && Core::currentUserInfo.wxid.empty()) {
+        util::logging::print("User is online but currentUserInfo is empty, re-reading user info...");
+        
+        // 获取 Core 单例并重新读取用户信息
+        auto& core = util::Singleton<Core>::Get();
+        Core::currentUserInfo.read(&core);
+        
+        // 等待一小段时间让数据读取完成
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        
+        util::logging::print("User info re-read completed. wxid: {}, nickname: {}", 
+                           Core::currentUserInfo.wxid.c_str(), 
+                           Core::currentUserInfo.nickname.c_str());
+    }
     
     Json::Value result;
     

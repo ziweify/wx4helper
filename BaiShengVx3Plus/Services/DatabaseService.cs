@@ -229,6 +229,55 @@ namespace BaiShengVx3Plus.Services
             }
         }
 
+        /// <summary>
+        /// 初始化业务数据库（使用 wxid 组合表名）
+        /// </summary>
+        public async Task InitializeBusinessDatabaseAsync(string wxid)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(wxid))
+                    {
+                        _logService?.Warning("DatabaseService", "wxid 为空，无法初始化业务数据库");
+                        return;
+                    }
+
+                    using var connection = GetConnection();
+
+                    // 创建带 wxid 后缀的联系人表
+                    string tableName = $"contacts_{wxid}";
+                    var createTableSql = $@"
+                        CREATE TABLE IF NOT EXISTS {tableName} (
+                            wxid TEXT PRIMARY KEY,
+                            account TEXT,
+                            nickname TEXT,
+                            remark TEXT,
+                            avatar TEXT,
+                            sex INTEGER DEFAULT 0,
+                            province TEXT,
+                            city TEXT,
+                            country TEXT,
+                            is_group INTEGER DEFAULT 0,
+                            update_time INTEGER DEFAULT 0
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_{tableName}_nickname ON {tableName}(nickname);
+                    ";
+
+                    using var cmd = new SQLiteCommand(createTableSql, connection);
+                    cmd.ExecuteNonQuery();
+
+                    _logService?.Info("DatabaseService", $"业务数据库表 {tableName} 初始化成功");
+                }
+                catch (Exception ex)
+                {
+                    _logService?.Error("DatabaseService", $"初始化业务数据库失败（wxid: {wxid}）", ex);
+                    throw;
+                }
+            });
+        }
+
         private void AddParameters(SQLiteCommand command, object? parameters)
         {
             if (parameters == null) return;

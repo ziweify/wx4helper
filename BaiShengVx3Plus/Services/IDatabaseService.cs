@@ -42,6 +42,11 @@ namespace BaiShengVx3Plus.Services
         /// 初始化数据库
         /// </summary>
         void InitializeDatabase();
+
+        /// <summary>
+        /// 初始化业务数据库（使用 wxid 组合表名）
+        /// </summary>
+        Task InitializeBusinessDatabaseAsync(string wxid);
     }
 }
 
