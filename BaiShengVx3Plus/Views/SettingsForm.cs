@@ -1,6 +1,7 @@
 using Sunny.UI;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using BaiShengVx3Plus.Contracts;
 
 namespace BaiShengVx3Plus.Views
 {
@@ -9,10 +10,10 @@ namespace BaiShengVx3Plus.Views
     /// </summary>
     public partial class SettingsForm : UIForm
     {
-        private readonly Services.IWeixinSocketClient _socketClient;
-        private readonly Services.ILogService _logService;
+        private readonly IWeixinSocketClient _socketClient;
+        private readonly ILogService _logService;
 
-        public SettingsForm(Services.IWeixinSocketClient socketClient, Services.ILogService logService)
+        public SettingsForm(IWeixinSocketClient socketClient, ILogService logService)
         {
             InitializeComponent();
             _socketClient = socketClient;

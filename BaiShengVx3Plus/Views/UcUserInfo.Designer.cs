@@ -98,7 +98,7 @@
             btnGetContactList.RectSelectedColor = Color.FromArgb(60, 140, 235);
             btnGetContactList.Size = new Size(60, 40);
             btnGetContactList.TabIndex = 3;
-            btnGetContactList.Text = "采集";
+            btnGetContactList.Text = "连接";
             btnGetContactList.TipsFont = new Font("微软雅黑", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             // 
             // UcUserInfo

@@ -1,6 +1,7 @@
 using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Services.Messages;
 using System.ComponentModel;
 using System.Text.Json;
@@ -11,13 +12,13 @@ namespace BaiShengVx3Plus
     public partial class VxMain : UIForm
     {
         private readonly VxMainViewModel _viewModel;
-        private readonly Services.IContactBindingService _contactBindingService;
-        private readonly Services.IWeChatLoaderService _loaderService;
-        private readonly Services.ILogService _logService;
-        private readonly Services.IWeixinSocketClient _socketClient; // Socket 客户端
+        private readonly IContactBindingService _contactBindingService;
+        private readonly ILogService _logService;
+        private readonly IWeixinSocketClient _socketClient; // Socket 客户端
         private readonly MessageDispatcher _messageDispatcher; // 消息分发器
-        private readonly Services.IContactDataService _contactDataService; // 联系人数据服务
-        private readonly Services.IUserInfoService _userInfoService; // 用户信息服务
+        private readonly IContactDataService _contactDataService; // 联系人数据服务
+        private readonly IUserInfoService _userInfoService; // 用户信息服务
+        private readonly IWeChatService _wechatService; // 微信应用服务（Application Service）
         private BindingList<WxContact> _contactsBindingList;
         private BindingList<V2Member> _membersBindingList;
         private BindingList<V2MemberOrder> _ordersBindingList;
@@ -27,26 +28,29 @@ namespace BaiShengVx3Plus
         
         // 当前绑定的联系人对象
         private WxContact? _currentBoundContact;
+        
+        // 连接取消令牌
+        private CancellationTokenSource? _connectCts;
 
         public VxMain(
             VxMainViewModel viewModel,
-            Services.IContactBindingService contactBindingService,
-            Services.IWeChatLoaderService loaderService,
-            Services.ILogService logService,
-            Services.IWeixinSocketClient socketClient,
+            IContactBindingService contactBindingService,
+            ILogService logService,
+            IWeixinSocketClient socketClient,
             MessageDispatcher messageDispatcher,
-            Services.IContactDataService contactDataService, // 注入联系人数据服务
-            Services.IUserInfoService userInfoService) // 注入用户信息服务
+            IContactDataService contactDataService, // 注入联系人数据服务
+            IUserInfoService userInfoService, // 注入用户信息服务
+            IWeChatService wechatService) // 注入微信应用服务
         {
             InitializeComponent();
             _viewModel = viewModel;
             _contactBindingService = contactBindingService;
-            _loaderService = loaderService;
             _logService = logService;
             _socketClient = socketClient;
             _messageDispatcher = messageDispatcher;
             _contactDataService = contactDataService;
             _userInfoService = userInfoService;
+            _wechatService = wechatService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -60,10 +64,13 @@ namespace BaiShengVx3Plus
             // 订阅用户信息更新事件
             _userInfoService.UserInfoUpdated += UserInfoService_UserInfoUpdated;
             
+            // 订阅微信服务的连接状态变化事件
+            _wechatService.ConnectionStateChanged += WeChatService_ConnectionStateChanged;
+            
             // 绑定用户信息到用户控件
             ucUserInfo1.UserInfo = _userInfoService.CurrentUser;
             
-            // 订阅用户控件的采集按钮事件
+            // 订阅用户控件的连接按钮事件
             ucUserInfo1.CollectButtonClick += UcUserInfo_CollectButtonClick;
             
             // 记录主窗口打开
@@ -387,86 +394,95 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 用户控件的采集按钮点击事件（使用用户控件的按钮）
+        /// 用户控件的连接按钮点击事件
+        /// 功能：启动微信（如果未启动）→ 注入 DLL → 连接 Socket → 自动获取用户信息和联系人
+        /// </summary>
+        /// <summary>
+        /// 用户控件的连接按钮点击事件（使用新的 WeChatService）
         /// </summary>
         private async void UcUserInfo_CollectButtonClick(object? sender, EventArgs e)
         {
             try
             {
-                _logService.Info("VxMain", "开始采集联系人列表");
+                // 取消之前的连接（如果有）
+                _connectCts?.Cancel();
+                _connectCts = new CancellationTokenSource();
+
+                _logService.Info("VxMain", "用户点击连接按钮");
+
+                // 调用微信应用服务进行连接和初始化
+                // 状态更新由 WeChatService_ConnectionStateChanged 事件处理
+                var success = await _wechatService.ConnectAndInitializeAsync(_connectCts.Token);
                 
-                //var currentDir = AppDomain.CurrentDomain.BaseDirectory;
-                var currentDir = "D:\\gitcode\\wx4helper\\BaiShengVx3Plus\\bin\\Release\\net8.0-windows\\";
-                var dllPath = Path.Combine(currentDir, "WeixinX.dll");
-
-                if (!File.Exists(dllPath))
+                _logService.Info("VxMain", $">>> 连接和初始化完成，结果: {success}");
+                
+                // 如果成功，检查联系人列表
+                if (success)
                 {
-                    _logService.Error("VxMain", $"找不到 WeixinX.dll: {dllPath}");
-                    UIMessageBox.ShowError($"找不到 WeixinX.dll\n路径: {dllPath}");
-                    return;
+                    _logService.Info("VxMain", $">>> dgvContacts 行数: {dgvContacts.Rows.Count}");
+                    _logService.Info("VxMain", $">>> _contactsBindingList 数量: {_contactsBindingList.Count}");
                 }
-
-                lblStatus.Text = "正在检查微信进程...";
-                Application.DoEvents();
-
-                // 获取现有微信进程
-                var processes = _loaderService.GetWeChatProcesses();
-                _logService.Info("VxMain", $"检测到 {processes.Count} 个微信进程");
-
-                if (processes.Count > 0)
-                {
-                    lblStatus.Text = $"发现 {processes.Count} 个微信进程，正在注入...";
-                    Application.DoEvents();
-
-                    // 注入到第一个进程
-                    if (_loaderService.InjectToProcess(processes[0], dllPath, out string error))
-                    {
-                        lblStatus.Text = "成功注入到微信进程，正在连接 Socket...";
-                        _logService.Info("VxMain", $"成功注入到微信进程 (PID: {processes[0]})");
-                        
-                        // 等待 Socket 服务器启动（延迟 1 秒）
-                        await Task.Delay(1000);
-                        
-                        // 连接到 Socket 服务器
-                        await ConnectToSocketServerAsync();
-                    }
-                    else
-                    {
-                        lblStatus.Text = "注入失败";
-                        _logService.Error("VxMain", $"注入失败 (PID: {processes[0]}): {error}");
-                        UIMessageBox.ShowError($"注入失败:\n{error}");
-                    }
-                }
-                else
-                {
-                    lblStatus.Text = "未发现微信进程，正在启动...";
-                    Application.DoEvents();
-
-                    // 启动新微信并注入
-                    if (_loaderService.LaunchWeChat("127.0.0.1", "5672", dllPath, out string error))
-                    {
-                        lblStatus.Text = "成功启动微信并注入，正在连接 Socket...";
-                        _logService.Info("VxMain", "成功启动微信并注入 WeixinX.dll");
-                        
-                        // 等待微信启动和 Socket 服务器启动（延迟 2 秒）
-                        await Task.Delay(2000);
-                        
-                        // 连接到 Socket 服务器
-                        await ConnectToSocketServerAsync();
-                    }
-                    else
-                    {
-                        lblStatus.Text = "启动失败";
-                        _logService.Error("VxMain", $"启动微信失败: {error}");
-                        UIMessageBox.ShowError($"启动失败:\n{error}");
-                    }
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logService.Info("VxMain", "连接被用户取消");
             }
             catch (Exception ex)
             {
-                lblStatus.Text = "发生错误";
-                _logService.Error("VxMain", "采集联系人列表失败", ex);
-                UIMessageBox.ShowError($"发生错误:\n{ex.Message}\n\n{ex.StackTrace}");
+                _logService.Error("VxMain", "连接失败", ex);
+                UIMessageBox.ShowError($"连接失败:\n{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 微信服务连接状态变化事件处理（管理 UI 状态）
+        /// </summary>
+        private void WeChatService_ConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
+        {
+            // 切换到 UI 线程
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => WeChatService_ConnectionStateChanged(sender, e)));
+                return;
+            }
+
+            // 更新状态栏
+            string statusMessage = e.NewState switch
+            {
+                ConnectionState.Disconnected => "未连接",
+                ConnectionState.LaunchingWeChat => "正在启动微信...",
+                ConnectionState.InjectingDll => "正在注入 DLL...",
+                ConnectionState.ConnectingSocket => "正在连接 Socket...",
+                ConnectionState.FetchingUserInfo => "正在获取用户信息（等待登录）...",
+                ConnectionState.FetchingContacts => "正在获取联系人...",
+                ConnectionState.Connected => e.Message ?? "已连接",
+                ConnectionState.Failed => $"连接失败: {e.Message}",
+                _ => e.Message ?? "未知状态"
+            };
+
+            lblStatus.Text = statusMessage;
+
+            // 更新按钮状态
+            bool isConnecting = e.NewState switch
+            {
+                ConnectionState.LaunchingWeChat => true,
+                ConnectionState.InjectingDll => true,
+                ConnectionState.ConnectingSocket => true,
+                ConnectionState.FetchingUserInfo => true,
+                ConnectionState.FetchingContacts => true,
+                _ => false
+            };
+
+            // 连接中时禁用按钮，其他状态启用
+            ucUserInfo1.SetCollectButtonEnabled(!isConnecting);
+
+            // 记录日志
+            _logService.Info("VxMain", $"连接状态: {e.OldState} → {e.NewState} ({statusMessage})");
+
+            // 如果连接失败，显示错误信息
+            if (e.NewState == ConnectionState.Failed && e.Error != null)
+            {
+                UIMessageBox.ShowError($"连接失败:\n{e.Error.Message}");
             }
         }
 
@@ -633,7 +649,7 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 处理服务器主动推送的消息（使用消息分发器）
         /// </summary>
-        private async void SocketClient_OnServerPush(object? sender, Services.ServerPushEventArgs e)
+        private async void SocketClient_OnServerPush(object? sender, ServerPushEventArgs e)
         {
             try
             {
@@ -694,7 +710,7 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 处理联系人数据更新事件
         /// </summary>
-        private void ContactDataService_ContactsUpdated(object? sender, Services.ContactsUpdatedEventArgs e)
+        private void ContactDataService_ContactsUpdated(object? sender, ContactsUpdatedEventArgs e)
         {
             try
             {
@@ -717,9 +733,9 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 用户信息更新事件处理（连接成功后自动获取联系人）
+        /// 用户信息更新事件处理（仅负责 UI 更新，不再处理连接逻辑）
         /// </summary>
-        private async void UserInfoService_UserInfoUpdated(object? sender, Services.UserInfoUpdatedEventArgs e)
+        private void UserInfoService_UserInfoUpdated(object? sender, UserInfoUpdatedEventArgs e)
         {
             try
             {
@@ -730,24 +746,14 @@ namespace BaiShengVx3Plus
                 {
                     Invoke(new Action(() =>
                     {
-                        lblStatus.Text = $"✓ 已登录: {e.UserInfo.Nickname}";
+                        // ✅ 更新用户信息显示
+                        ucUserInfo1.UserInfo = e.UserInfo;
                     }));
                 }
                 else
                 {
-                    lblStatus.Text = $"✓ 已登录: {e.UserInfo.Nickname}";
-                }
-
-                // 如果用户已登录（wxid 不为空），自动获取联系人数据
-                if (!string.IsNullOrEmpty(e.UserInfo.Wxid))
-                {
-                    _logService.Info("VxMain", "用户已登录，自动获取联系人列表");
-                    
-                    // 延迟一秒，确保服务器准备就绪
-                    await Task.Delay(1000);
-                    
-                    // 主动请求联系人数据
-                    await RefreshContactsAsync();
+                    // ✅ 更新用户信息显示
+                    ucUserInfo1.UserInfo = e.UserInfo;
                 }
             }
             catch (Exception ex)

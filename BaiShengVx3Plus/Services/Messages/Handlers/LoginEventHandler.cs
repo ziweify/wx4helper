@@ -2,6 +2,8 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Messages;
 
 namespace BaiShengVx3Plus.Services.Messages.Handlers
 {

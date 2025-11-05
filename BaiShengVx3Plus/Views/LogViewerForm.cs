@@ -1,4 +1,4 @@
-using BaiShengVx3Plus.Services;
+using BaiShengVx3Plus.Contracts;
 using Sunny.UI;
 using LogLevel = BaiShengVx3Plus.Models.LogLevel;  // 明确使用我们的 LogLevel
 using LogEntry = BaiShengVx3Plus.Models.LogEntry;

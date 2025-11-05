@@ -102,11 +102,12 @@ namespace BaiShengVx3Plus.Views
             if (_userInfo == null || !_userInfo.IsLoggedIn)
             {
                 // 未登录状态
-                tbx_wxnick.Text = "未登录";
-                lbl_wxid.Text = "请先登录微信";
+                tbx_wxnick.Text = "未连接";
+                lbl_wxid.Text = "点击连接按钮启动微信";
                 pic_headimage.Image = null;
                 pic_headimage.BackColor = Color.LightGray;
-                btnGetContactList.Enabled = false;
+                // ✅ 未登录时也要启用按钮，因为连接按钮的作用就是启动微信/注入 DLL
+                btnGetContactList.Enabled = true;
             }
             else
             {

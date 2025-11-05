@@ -1,6 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using BaiShengVx3Plus.Services;
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Messages;
+using BaiShengVx3Plus.Services.Auth;
+using BaiShengVx3Plus.Services.Database;
+using BaiShengVx3Plus.Services.Logging;
+using BaiShengVx3Plus.Services.WeChat;
+using BaiShengVx3Plus.Services.Contact;
+using BaiShengVx3Plus.Services.UserInfo;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Services.Messages.Handlers;
 using BaiShengVx3Plus.ViewModels;
@@ -38,6 +45,7 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
                         services.AddSingleton<IContactDataService, ContactDataService>(); // 联系人数据服务
                         services.AddSingleton<IUserInfoService, UserInfoService>();       // 用户信息服务
+                        services.AddSingleton<IWeChatService, WeChatService>();           // 微信应用服务（编排层）
 
                         // 消息处理
                         services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）

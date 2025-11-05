@@ -1,6 +1,6 @@
 using BaiShengVx3Plus.Core;
 using BaiShengVx3Plus.Models;
-using BaiShengVx3Plus.Services;
+using BaiShengVx3Plus.Contracts;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
