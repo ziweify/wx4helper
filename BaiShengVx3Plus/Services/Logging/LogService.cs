@@ -44,6 +44,10 @@ namespace BaiShengVx3Plus.Services.Logging
             Info("LogService", "日志服务已启动");
         }
 
+        // ========================================
+        // 写入方法
+        // ========================================
+
         public void Trace(string source, string message, string? extraData = null) => 
             Log(new LogEntry { Level = LogLevel.Trace, Source = source, Message = message, ExtraData = extraData });
 
@@ -62,9 +66,7 @@ namespace BaiShengVx3Plus.Services.Logging
         public void Fatal(string source, string message, Exception? exception = null, string? extraData = null) => 
             Log(new LogEntry { Level = LogLevel.Fatal, Source = source, Message = message, Exception = exception?.ToString(), ExtraData = extraData });
 
-        public void SetMinimumLevel(LogLevel level) => _minimumLevel = level;
-
-        private void Log(LogEntry entry)
+        public void Log(LogEntry entry)
         {
             if (entry.Level < _minimumLevel) return;
 
@@ -80,6 +82,131 @@ namespace BaiShengVx3Plus.Services.Logging
 
             LogAdded?.Invoke(this, entry);
         }
+
+        // ========================================
+        // 查询方法
+        // ========================================
+
+        public IReadOnlyList<LogEntry> GetRecentLogs(int count = 100)
+        {
+            return _memoryLogs.TakeLast(count).ToList();
+        }
+
+        public IReadOnlyList<LogEntry> GetAllMemoryLogs()
+        {
+            return _memoryLogs.ToList();
+        }
+
+        public List<LogEntry> QueryLogs(
+            DateTime? startTime = null,
+            DateTime? endTime = null,
+            LogLevel? minLevel = null,
+            string? source = null,
+            string? keyword = null,
+            int limit = 1000)
+        {
+            try
+            {
+                using var connection = new SQLiteConnection(_dbPath);
+                var query = connection.Table<LogEntry>();
+
+                if (startTime.HasValue)
+                    query = query.Where(l => l.Timestamp >= startTime.Value);
+
+                if (endTime.HasValue)
+                    query = query.Where(l => l.Timestamp <= endTime.Value);
+
+                if (minLevel.HasValue)
+                    query = query.Where(l => l.Level >= minLevel.Value);
+
+                if (!string.IsNullOrEmpty(source))
+                    query = query.Where(l => l.Source == source);
+
+                if (!string.IsNullOrEmpty(keyword))
+                    query = query.Where(l => l.Message.Contains(keyword));
+
+                return query.OrderByDescending(l => l.Timestamp).Take(limit).ToList();
+            }
+            catch
+            {
+                return new List<LogEntry>();
+            }
+        }
+
+        public LogStatistics GetStatistics()
+        {
+            try
+            {
+                using var connection = new SQLiteConnection(_dbPath);
+                var allLogs = connection.Table<LogEntry>().ToList();
+
+                return new LogStatistics
+                {
+                    TotalCount = allLogs.Count,
+                    TraceCount = allLogs.Count(l => l.Level == LogLevel.Trace),
+                    DebugCount = allLogs.Count(l => l.Level == LogLevel.Debug),
+                    InfoCount = allLogs.Count(l => l.Level == LogLevel.Info),
+                    WarningCount = allLogs.Count(l => l.Level == LogLevel.Warning),
+                    ErrorCount = allLogs.Count(l => l.Level == LogLevel.Error),
+                    FatalCount = allLogs.Count(l => l.Level == LogLevel.Fatal),
+                    FirstLogTime = allLogs.MinBy(l => l.Timestamp)?.Timestamp,
+                    LastLogTime = allLogs.MaxBy(l => l.Timestamp)?.Timestamp
+                };
+            }
+            catch
+            {
+                return new LogStatistics();
+            }
+        }
+
+        // ========================================
+        // 管理方法
+        // ========================================
+
+        public void ClearMemoryLogs()
+        {
+            _memoryLogs.Clear();
+        }
+
+        public void ClearDatabaseLogs()
+        {
+            try
+            {
+                using var connection = new SQLiteConnection(_dbPath);
+                connection.Execute("DELETE FROM LogEntry");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"清空数据库日志失败: {ex.Message}");
+            }
+        }
+
+        public void SetMinimumLevel(LogLevel level)
+        {
+            _minimumLevel = level;
+        }
+
+        public async Task ExportToFileAsync(string filePath, DateTime? startTime = null, DateTime? endTime = null)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    var logs = QueryLogs(startTime, endTime, limit: int.MaxValue);
+                    var lines = logs.Select(log => 
+                        $"[{log.Timestamp:yyyy-MM-dd HH:mm:ss}] [{log.Level}] [{log.Source}] {log.Message}");
+                    File.WriteAllLines(filePath, lines);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"导出日志失败: {ex.Message}");
+                }
+            });
+        }
+
+        // ========================================
+        // 私有方法
+        // ========================================
 
         private void InitializeDatabase()
         {
@@ -153,52 +280,6 @@ namespace BaiShengVx3Plus.Services.Logging
             }
         }
 
-        public List<LogEntry> GetRecentLogs(int count = 100)
-        {
-            return _memoryLogs.TakeLast(count).ToList();
-        }
-
-        public List<LogEntry> QueryLogs(LogLevel? level = null, string? source = null, DateTime? startTime = null, DateTime? endTime = null, int limit = 1000)
-        {
-            try
-            {
-                using var connection = new SQLiteConnection(_dbPath);
-                var query = connection.Table<LogEntry>();
-
-                if (level.HasValue)
-                    query = query.Where(l => l.Level == level.Value);
-
-                if (!string.IsNullOrEmpty(source))
-                    query = query.Where(l => l.Source == source);
-
-                if (startTime.HasValue)
-                    query = query.Where(l => l.Timestamp >= startTime.Value);
-
-                if (endTime.HasValue)
-                    query = query.Where(l => l.Timestamp <= endTime.Value);
-
-                return query.OrderByDescending(l => l.Timestamp).Take(limit).ToList();
-            }
-            catch
-            {
-                return new List<LogEntry>();
-            }
-        }
-
-        public void ClearOldLogs(int daysToKeep = 30)
-        {
-            try
-            {
-                var cutoffDate = DateTime.Now.AddDays(-daysToKeep);
-                using var connection = new SQLiteConnection(_dbPath);
-                connection.Execute("DELETE FROM LogEntry WHERE Timestamp < ?", cutoffDate);  // 🔥 ORM Execute
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"清理旧日志失败: {ex.Message}");
-            }
-        }
-
         public void Dispose()
         {
             _cancellationTokenSource.Cancel();
@@ -207,4 +288,3 @@ namespace BaiShengVx3Plus.Services.Logging
         }
     }
 }
-
