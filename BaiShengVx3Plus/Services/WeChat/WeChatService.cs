@@ -19,7 +19,6 @@ namespace BaiShengVx3Plus.Services.WeChat
         private readonly IWeixinSocketClient _socketClient;
         private readonly IUserInfoService _userInfoService;
         private readonly IContactDataService _contactDataService;
-        private readonly IDatabaseService _databaseService;
         private readonly ILogService _logService;
 
         private ConnectionState _currentState = ConnectionState.Disconnected;
@@ -49,14 +48,12 @@ namespace BaiShengVx3Plus.Services.WeChat
             IWeixinSocketClient socketClient,
             IUserInfoService userInfoService,
             IContactDataService contactDataService,
-            IDatabaseService databaseService,
             ILogService logService)
         {
             _loaderService = loaderService;
             _socketClient = socketClient;
             _userInfoService = userInfoService;
             _contactDataService = contactDataService;
-            _databaseService = databaseService;
             _logService = logService;
         }
 

@@ -1,7 +1,7 @@
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
 using System.Collections.Concurrent;
-using System.Data.SQLite;
+using SQLite;
 using System.Text;
 
 namespace BaiShengVx3Plus.Services.Logging
@@ -26,7 +26,7 @@ namespace BaiShengVx3Plus.Services.Logging
         private readonly ConcurrentQueue<LogEntry> _pendingLogs;
         private readonly Thread _consumerThread;
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly string _connectionString;
+        private readonly string _dbPath;  // 🔥 改用文件路径（ORM）
         private LogLevel _minimumLevel = LogLevel.Trace;
         private const int MaxMemoryLogs = 1000;
         private const int BatchSize = 100;
@@ -42,8 +42,7 @@ namespace BaiShengVx3Plus.Services.Logging
 
             var dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
             Directory.CreateDirectory(dataDir);
-            var dbPath = Path.Combine(dataDir, "logs.db");
-            _connectionString = $"Data Source={dbPath};Version=3;Pooling=true;";
+            _dbPath = Path.Combine(dataDir, "logs.db");  // 🔥 ORM 直接使用文件路径
 
             InitializeDatabase();
 
@@ -170,7 +169,7 @@ namespace BaiShengVx3Plus.Services.Logging
         {
             var logs = new List<LogEntry>();
 
-            using var connection = new SQLiteConnection(_connectionString);
+            using var connection = new SQLiteConnection(_dbPath);  // 🔥 ORM
             connection.Open();
 
             var sql = new StringBuilder("SELECT * FROM Logs WHERE 1=1");
@@ -233,7 +232,7 @@ namespace BaiShengVx3Plus.Services.Logging
 
         public LogStatistics GetStatistics()
         {
-            using var connection = new SQLiteConnection(_connectionString);
+            using var connection = new SQLiteConnection(_dbPath);  // 🔥 ORM
             connection.Open();
 
             using var command = new SQLiteCommand(@"
@@ -276,7 +275,7 @@ namespace BaiShengVx3Plus.Services.Logging
 
         public void ClearDatabaseLogs()
         {
-            using var connection = new SQLiteConnection(_connectionString);
+            using var connection = new SQLiteConnection(_dbPath);  // 🔥 ORM
             connection.Open();
             using var command = new SQLiteCommand("DELETE FROM Logs", connection);
             command.ExecuteNonQuery();
@@ -303,7 +302,7 @@ namespace BaiShengVx3Plus.Services.Logging
 
         private void InitializeDatabase()
         {
-            using var connection = new SQLiteConnection(_connectionString);
+            using var connection = new SQLiteConnection(_dbPath);  // 🔥 ORM
             connection.Open();
 
             using var walCmd = new SQLiteCommand("PRAGMA journal_mode=WAL;", connection);
@@ -372,7 +371,7 @@ namespace BaiShengVx3Plus.Services.Logging
 
             try
             {
-                using var connection = new SQLiteConnection(_connectionString);
+                using var connection = new SQLiteConnection(_dbPath);  // 🔥 ORM
                 connection.Open();
 
                 using var transaction = connection.BeginTransaction();

@@ -7,24 +7,27 @@ using BaiShengVx3Plus.Core;
 using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using SQLite;
 
 namespace BaiShengVx3Plus
 {
     public partial class VxMain : UIForm
     {
         private readonly VxMainViewModel _viewModel;
-        private readonly IContactBindingService _contactBindingService;
         private readonly ILogService _logService;
         private readonly IWeixinSocketClient _socketClient; // Socket 客户端
         private readonly MessageDispatcher _messageDispatcher; // 消息分发器
         private readonly IContactDataService _contactDataService; // 联系人数据服务
         private readonly IUserInfoService _userInfoService; // 用户信息服务
         private readonly IWeChatService _wechatService; // 微信应用服务（Application Service）
-        private readonly IMemberService _memberService; // 🔥 会员服务（自动追踪）
-        private readonly IOrderService _orderService; // 🔥 订单服务（自动追踪）
+        
+        // 🔥 ORM 数据库连接
+        private SQLiteConnection? _db;
+        
+        // 数据绑定列表
         private BindingList<WxContact> _contactsBindingList;
-        private TrackableBindingList<V2Member> _membersBindingList;  // 🔥 使用 Trackable 支持删除前事件
-        private TrackableBindingList<V2MemberOrder> _ordersBindingList;  // 🔥 使用 Trackable 支持删除前事件
+        private V2MemberBindingList? _membersBindingList;  // 🔥 使用 ORM BindingList
+        private V2OrderBindingList? _ordersBindingList;    // 🔥 使用 ORM BindingList
         
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
@@ -40,27 +43,21 @@ namespace BaiShengVx3Plus
 
         public VxMain(
             VxMainViewModel viewModel,
-            IContactBindingService contactBindingService,
             ILogService logService,
             IWeixinSocketClient socketClient,
             MessageDispatcher messageDispatcher,
             IContactDataService contactDataService, // 注入联系人数据服务
             IUserInfoService userInfoService, // 注入用户信息服务
-            IWeChatService wechatService, // 注入微信应用服务
-            IMemberService memberService, // 🔥 注入会员服务（自动追踪）
-            IOrderService orderService) // 🔥 注入订单服务（自动追踪）
+            IWeChatService wechatService) // 注入微信应用服务
         {
             InitializeComponent();
             _viewModel = viewModel;
-            _contactBindingService = contactBindingService;
             _logService = logService;
             _socketClient = socketClient;
             _messageDispatcher = messageDispatcher;
             _contactDataService = contactDataService;
             _userInfoService = userInfoService;
             _wechatService = wechatService;
-            _memberService = memberService;
-            _orderService = orderService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -86,25 +83,56 @@ namespace BaiShengVx3Plus
             // 记录主窗口打开
             _logService.Info("VxMain", "主窗口已打开");
 
-            // 🔥 初始化数据绑定列表（从服务加载，自动追踪属性变化）
-            _contactsBindingList = new BindingList<WxContact>(); // 联系人稍后异步加载
-            _membersBindingList = _memberService.GetAllMembers();  // 会员立即加载（自动追踪）
-            _ordersBindingList = _orderService.GetAllOrders();     // 订单立即加载（自动追踪）
-
-            // 联系人列表手动配置（异步加载）
+            // 🔥 初始化联系人列表（会员/订单列表稍后在登录后初始化）
+            _contactsBindingList = new BindingList<WxContact>();
             _contactsBindingList.AllowEdit = true;
             _contactsBindingList.AllowNew = false;
             _contactsBindingList.AllowRemove = false;
 
-            // 🔥 订阅会员和订单的删除前事件（同步立即保存）
-            _membersBindingList.ItemRemoving += MembersBindingList_ItemRemoving;
-            _ordersBindingList.ItemRemoving += OrdersBindingList_ItemRemoving;
-
-            _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单（已自动追踪）");
-
             InitializeDataBindings();
         }
 
+        /// <summary>
+        /// 初始化数据库（使用 ORM）
+        /// </summary>
+        private void InitializeDatabase(string wxid)
+        {
+            try
+            {
+                // 关闭旧数据库连接
+                _db?.Close();
+                _db = null;
+                
+                // 创建数据目录
+                string dbPath = Path.Combine("Data", $"business_{wxid}.db");
+                Directory.CreateDirectory("Data");
+                
+                // 🔥 创建 ORM 数据库连接
+                _db = new SQLiteConnection(dbPath);
+                
+                // 🔥 创建 BindingList（自动建表、自动追踪）
+                string groupWxId = _currentBoundContact?.Wxid ?? "";
+                _membersBindingList = new V2MemberBindingList(_db, groupWxId);
+                _ordersBindingList = new V2OrderBindingList(_db);
+                
+                // 🔥 加载数据
+                _membersBindingList.LoadFromDatabase();
+                _ordersBindingList.LoadFromDatabase();
+                
+                // 绑定到 DataGridView
+                dgvMembers.DataSource = _membersBindingList;
+                dgvOrders.DataSource = _ordersBindingList;
+                
+                _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath}");
+                _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"初始化数据库失败: {ex.Message}");
+                ShowErrorTip($"初始化数据库失败: {ex.Message}");
+            }
+        }
+        
         private void InitializeDataBindings()
         {
             // 绑定联系人列表
@@ -115,8 +143,7 @@ namespace BaiShengVx3Plus
             // 🔥 美化联系人列表样式
             CustomizeContactsGridStyle();
 
-            // 绑定会员列表
-            dgvMembers.DataSource = _membersBindingList;
+            // 🔥 会员和订单列表稍后在 InitializeDatabase 中绑定
             dgvMembers.AutoGenerateColumns = true;
             dgvMembers.EditMode = DataGridViewEditMode.EditOnEnter;
 
@@ -1133,22 +1160,20 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"📱 用户信息已更新: {e.UserInfo.Nickname} ({e.UserInfo.Wxid})");
 
-                // 🔥 检测用户切换，清空内存数据
+                // 🔥 检测用户切换，重新初始化数据库
                 if (_currentUserInfo != null && !string.IsNullOrEmpty(_currentUserInfo.Wxid))
                 {
                     if (_currentUserInfo.Wxid != e.UserInfo.Wxid)
                     {
                         _logService.Warning("VxMain", 
-                            $"⚠️ 检测到用户切换: {_currentUserInfo.Wxid} → {e.UserInfo.Wxid}，清空内存数据...");
+                            $"⚠️ 检测到用户切换: {_currentUserInfo.Wxid} → {e.UserInfo.Wxid}，重新初始化数据库...");
                         
-                        // 清空所有列表数据，防止数据污染
+                        // 清空联系人列表
                         if (InvokeRequired)
                         {
                             Invoke(new Action(() =>
                             {
                                 _contactsBindingList.Clear();
-                                _membersBindingList.Clear();
-                                _ordersBindingList.Clear();
                                 _currentBoundContact = null;
                                 txtCurrentContact.Text = "未绑定";
                                 txtCurrentContact.FillColor = Color.White;
@@ -1158,20 +1183,19 @@ namespace BaiShengVx3Plus
                         else
                         {
                             _contactsBindingList.Clear();
-                            _membersBindingList.Clear();
-                            _ordersBindingList.Clear();
                             _currentBoundContact = null;
                             txtCurrentContact.Text = "未绑定";
                             txtCurrentContact.FillColor = Color.White;
                             txtCurrentContact.RectColor = Color.Silver;
                         }
-                        
-                        _logService.Info("VxMain", "✓ 内存数据已清空");
                     }
                 }
                 
                 // 更新当前用户信息
                 _currentUserInfo = e.UserInfo;
+                
+                // 🔥 初始化数据库（ORM）
+                InitializeDatabase(e.UserInfo.Wxid ?? "unknown");
 
                 // 线程安全地更新 UI
                 if (InvokeRequired)
@@ -1300,6 +1324,13 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"开始解析群成员数据，群ID: {groupWxid}");
 
+                // 🔥 确保 _membersBindingList 已初始化
+                if (_membersBindingList == null)
+                {
+                    _logService.Warning("VxMain", "会员列表未初始化，跳过加载");
+                    return Task.CompletedTask;
+                }
+
                 // 清空当前 dgvMembers 数据
                 _membersBindingList.Clear();
 
@@ -1328,6 +1359,7 @@ namespace BaiShengVx3Plus
                         // 创建 V2Member 对象
                         var member = new V2Member
                         {
+                            GroupWxId = groupWxid,  // 🔥 设置群ID
                             Wxid = memberWxid,
                             Nickname = memberNickname,
                             Account = memberAlias,
@@ -1348,7 +1380,7 @@ namespace BaiShengVx3Plus
                             IncomeTotal = 0
                         };
 
-                        // 添加到 BindingList
+                        // 🔥 添加到 BindingList，ItemAdded 事件会自动保存到数据库
                         _membersBindingList.Add(member);
                         count++;
 
@@ -1379,74 +1411,6 @@ namespace BaiShengVx3Plus
             }
             
             return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// 🔥 会员列表删除前事件（同步立即删除数据库）
-        /// </summary>
-        private void MembersBindingList_ItemRemoving(object? sender, ItemRemovingEventArgs<V2Member> e)
-        {
-            try
-            {
-                if (e.Item.Id <= 0)
-                {
-                    _logService.Warning("VxMain", "会员 ID 无效，跳过删除");
-                    return;
-                }
-
-                _logService.Info("VxMain", $"正在删除会员: {e.Item.Nickname} (ID: {e.Item.Id})");
-
-                // 🔥 同步立即删除数据库记录（强同步，无异步）
-                _memberService.DeleteMember(e.Item.Id);
-
-                _logService.Info("VxMain", $"✓ 会员已从数据库删除: {e.Item.Nickname} (ID: {e.Item.Id})");
-                
-                // 更新统计
-                UpdateStatistics();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", $"删除会员失败: {e.Item.Nickname} (ID: {e.Item.Id})", ex);
-                
-                // 取消删除（防止 UI 和数据库不一致）
-                e.Cancel = true;
-                
-                UIMessageBox.ShowError($"删除会员失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 🔥 订单列表删除前事件（同步立即删除数据库）
-        /// </summary>
-        private void OrdersBindingList_ItemRemoving(object? sender, ItemRemovingEventArgs<V2MemberOrder> e)
-        {
-            try
-            {
-                if (e.Item.Id <= 0)
-                {
-                    _logService.Warning("VxMain", "订单 ID 无效，跳过删除");
-                    return;
-                }
-
-                _logService.Info("VxMain", $"正在删除订单: 期号{e.Item.IssueId} (ID: {e.Item.Id})");
-
-                // 🔥 同步立即删除数据库记录（强同步，无异步）
-                _orderService.DeleteOrder(e.Item.Id);
-
-                _logService.Info("VxMain", $"✓ 订单已从数据库删除: 期号{e.Item.IssueId} (ID: {e.Item.Id})");
-                
-                // 更新统计
-                UpdateStatistics();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", $"删除订单失败: 期号{e.Item.IssueId} (ID: {e.Item.Id})", ex);
-                
-                // 取消删除（防止 UI 和数据库不一致）
-                e.Cancel = true;
-                
-                UIMessageBox.ShowError($"删除订单失败: {ex.Message}");
-            }
         }
 
         /// <summary>

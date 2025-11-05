@@ -1,11 +1,13 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using SQLite;
 
 namespace BaiShengVx3Plus.Models
 {
     /// <summary>
     /// 订单数据模型（实现 INotifyPropertyChanged，支持属性变化通知）
+    /// 使用 SQLite-net ORM 特性，自动建表和增删改
     /// </summary>
     public class V2MemberOrder : INotifyPropertyChanged
     {
@@ -55,17 +57,32 @@ namespace BaiShengVx3Plus.Models
         // 属性（带变化通知）
         // ========================================
 
-        [DisplayName("群ID")]
+        [PrimaryKey, AutoIncrement]
+        public long Id
+        {
+            get => _id;
+            set => SetField(ref _id, value);
+        }
+
+        [Indexed, DisplayName("群ID")]
         public string GroupWxId
         {
             get => _groupWxId;
             set => SetField(ref _groupWxId, value);
         }
 
-        public long Id
+        [Indexed, DisplayName("WxID")]
+        public string? Wxid
         {
-            get => _id;
-            set => SetField(ref _id, value);
+            get => _wxid;
+            set => SetField(ref _wxid, value);
+        }
+
+        [Indexed, DisplayName("期号")]
+        public int IssueId
+        {
+            get => _issueId;
+            set => SetField(ref _issueId, value);
         }
 
         public long MemberId
@@ -157,13 +174,7 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         // 🔥 联系人信息属性（从 IWxContacts）
         // ========================================
-
-        [DisplayName("会员ID")]
-        public string? Wxid
-        {
-            get => _wxid;
-            set => SetField(ref _wxid, value);
-        }
+        // Wxid 和 IssueId 已在上面定义（带 ORM 特性）
 
         [DisplayName("会员号码")]
         public string? Account
@@ -182,13 +193,6 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         // 🔥 业务订单属性
         // ========================================
-
-        [DisplayName("期号")]
-        public int IssueId
-        {
-            get => _issueId;
-            set => SetField(ref _issueId, value);
-        }
 
         [DisplayName("原始内容")]
         public string? BetContentOriginal

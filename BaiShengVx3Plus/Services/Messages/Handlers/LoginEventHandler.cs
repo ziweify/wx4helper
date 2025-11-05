@@ -14,18 +14,15 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
     {
         private readonly ILogService _logService;
         private readonly IUserInfoService _userInfoService;
-        private readonly IDatabaseService _databaseService;
 
         public ServerMessageType MessageType => ServerMessageType.OnLogin;
 
         public LoginEventHandler(
             ILogService logService, 
-            IUserInfoService userInfoService,
-            IDatabaseService databaseService)
+            IUserInfoService userInfoService)
         {
             _logService = logService;
             _userInfoService = userInfoService;
-            _databaseService = databaseService;
         }
 
         public async Task HandleAsync(JsonElement data)
@@ -64,26 +61,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
 
                 _userInfoService.UpdateUserInfo(userInfo);
 
-                // 2. 🔥 切换到用户专属数据库 (business_{wxid}.db)
-                // 🔥 重要：即使是同一个用户重新登录，也要切换数据库，确保数据隔离
-                var currentWxid = _databaseService.GetCurrentWxid();
-                if (currentWxid != loginData.Wxid)
-                {
-                    _logService.Info("LoginEventHandler", 
-                        $"检测到用户切换: {currentWxid ?? "无"} → {loginData.Wxid}，切换数据库...");
-                    _databaseService.SwitchDatabase(loginData.Wxid);
-                    _logService.Info("LoginEventHandler", $"✓ 已切换到用户数据库: {_databaseService.GetCurrentDatabasePath()}");
-                }
-                else
-                {
-                    _logService.Info("LoginEventHandler", $"用户未切换，继续使用当前数据库: {_databaseService.GetCurrentDatabasePath()}");
-                }
-                
-                // 3. 初始化业务数据库（使用 wxid 组合表名，用于联系人表）
-                await _databaseService.InitializeBusinessDatabaseAsync(loginData.Wxid);
-                _logService.Info("LoginEventHandler", $"✓ 联系人表初始化完成: contacts_{loginData.Wxid}");
-
-                // 注意：联系人列表的获取由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动触发
+                // 🔥 数据库初始化由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动触发
+                // 联系人列表的获取也在同一事件中自动触发
 
                 await Task.CompletedTask;
             }
@@ -101,18 +80,15 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
     {
         private readonly ILogService _logService;
         private readonly IUserInfoService _userInfoService;
-        private readonly IDatabaseService _databaseService;
 
         public ServerMessageType MessageType => ServerMessageType.OnLogout;
 
         public LogoutEventHandler(
             ILogService logService, 
-            IUserInfoService userInfoService,
-            IDatabaseService databaseService)
+            IUserInfoService userInfoService)
         {
             _logService = logService;
             _userInfoService = userInfoService;
-            _databaseService = databaseService;
         }
 
         public async Task HandleAsync(JsonElement data)
@@ -132,11 +108,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 // 1. 清空用户信息
                 _userInfoService.ClearUserInfo();
                 
-                // 2. 🔥 清空数据库连接，防止数据污染
-                _databaseService.ClearDatabase();
-                _logService.Info("LogoutEventHandler", "✓ 数据库连接已清空，防止数据污染");
-
-                // 注意：UI 更新由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动处理
+                // 🔥 数据库连接由 VxMain 管理，在用户切换时自动清空
+                // UI 更新由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动处理
 
                 await Task.CompletedTask;
             }

@@ -1,11 +1,13 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using SQLite;
 
 namespace BaiShengVx3Plus.Models
 {
     /// <summary>
     /// 会员数据模型（实现 INotifyPropertyChanged，支持属性变化通知）
+    /// 使用 SQLite-net ORM 特性，自动建表和增删改
     /// </summary>
     public class V2Member : INotifyPropertyChanged
     {
@@ -53,19 +55,53 @@ namespace BaiShengVx3Plus.Models
         // 属性（带变化通知）
         // ========================================
 
-        [DisplayName("群ID")]
-        public string GroupWxId
-        {
-            get => _groupWxId;
-            set => SetField(ref _groupWxId, value);
-        }
-
+        [PrimaryKey, AutoIncrement]
         public long Id
         {
             get => _id;
             set => SetField(ref _id, value);
         }
 
+        [Indexed, DisplayName("群ID")]
+        public string GroupWxId
+        {
+            get => _groupWxId;
+            set => SetField(ref _groupWxId, value);
+        }
+
+        [Indexed, DisplayName("WxID")]
+        public string? Wxid
+        {
+            get => _wxid;
+            set => SetField(ref _wxid, value);
+        }
+
+        [DisplayName("号")]
+        public string? Account
+        {
+            get => _account;
+            set => SetField(ref _account, value);
+        }
+
+        [DisplayName("昵称")]
+        public string? Nickname
+        {
+            get => _nickname;
+            set => SetField(ref _nickname, value);
+        }
+
+        [DisplayName("群昵称")]
+        public string? DisplayName
+        {
+            get => _displayName;
+            set => SetField(ref _displayName, value);
+        }
+
+        // ========================================
+        // 业务统计字段（ORM 忽略旧字段，使用新字段）
+        // ========================================
+
+        [Ignore]
         public long MemberId
         {
             get => _memberId;
@@ -114,42 +150,11 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _timeStampBet, value);
         }
 
+        [Ignore]
         public string? Extra
         {
             get => _extra;
             set => SetField(ref _extra, value);
-        }
-
-        // ========================================
-        // 🔥 联系人信息属性（从 IWxContacts）
-        // ========================================
-
-        [DisplayName("WxID")]
-        public string? Wxid
-        {
-            get => _wxid;
-            set => SetField(ref _wxid, value);
-        }
-
-        [DisplayName("号")]
-        public string? Account
-        {
-            get => _account;
-            set => SetField(ref _account, value);
-        }
-
-        [DisplayName("昵称")]
-        public string? Nickname
-        {
-            get => _nickname;
-            set => SetField(ref _nickname, value);
-        }
-
-        [DisplayName("群昵称")]
-        public string? DisplayName
-        {
-            get => _displayName;
-            set => SetField(ref _displayName, value);
         }
 
         // ========================================

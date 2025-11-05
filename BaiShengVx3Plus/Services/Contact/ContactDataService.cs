@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using SQLite;
 using System.Text.Json;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Models;
@@ -9,20 +9,18 @@ using BaiShengVx3Plus.Contracts;
 namespace BaiShengVx3Plus.Services.Contact
 {
     /// <summary>
-    /// 联系人数据处理服务实现
+    /// 联系人数据处理服务实现（使用 ORM）
     /// </summary>
     public class ContactDataService : IContactDataService
     {
         private readonly ILogService _logService;
-        private readonly IDatabaseService _dbService;
         private string? _currentWxid;
 
         public event EventHandler<ContactsUpdatedEventArgs>? ContactsUpdated;
 
-        public ContactDataService(ILogService logService, IDatabaseService dbService)
+        public ContactDataService(ILogService logService)
         {
             _logService = logService;
-            _dbService = dbService;
         }
 
         /// <summary>
@@ -45,12 +43,9 @@ namespace BaiShengVx3Plus.Services.Contact
 
                 // 1. 解析联系人数据
                 var contacts = ParseContacts(data);
-                _logService.Info("ContactDataService", $"解析到 {contacts.Count} 个联系人");
+                _logService.Info("ContactDataService", $"✓ 解析到 {contacts.Count} 个联系人");
 
-                // 2. 保存到数据库
-                await SaveContactsAsync(contacts);
-
-                // 3. 触发事件通知 UI
+                // 2. 触发事件通知 UI（不再保存到数据库，由 UI 层决定如何使用）
                 ContactsUpdated?.Invoke(this, new ContactsUpdatedEventArgs
                 {
                     Contacts = contacts,
@@ -188,149 +183,8 @@ namespace BaiShengVx3Plus.Services.Contact
             }
         }
 
-        /// <summary>
-        /// 保存联系人到数据库
-        /// </summary>
-        public async Task SaveContactsAsync(List<WxContact> contacts)
-        {
-            if (string.IsNullOrEmpty(_currentWxid))
-            {
-                _logService.Warning("ContactDataService", "当前微信 ID 为空，无法保存联系人");
-                return;
-            }
-
-            // 使用 Task.Run 在后台线程执行同步数据库操作
-            await Task.Run(() =>
-            {
-                try
-                {
-                    var conn = _dbService.GetConnection();
-
-                // 创建表（如果不存在）
-                var createTableSql = $@"
-                    CREATE TABLE IF NOT EXISTS contacts_{_currentWxid} (
-                        wxid TEXT PRIMARY KEY,
-                        account TEXT,
-                        nickname TEXT,
-                        remark TEXT,
-                        avatar TEXT,
-                        sex INTEGER DEFAULT 0,
-                        province TEXT,
-                        city TEXT,
-                        country TEXT,
-                        is_group INTEGER DEFAULT 0,
-                        update_time INTEGER DEFAULT 0
-                    )";
-
-                using (var cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = createTableSql;
-                    cmd.ExecuteNonQuery();
-                }
-
-                // 清空旧数据
-                using (var cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = $"DELETE FROM contacts_{_currentWxid}";
-                    cmd.ExecuteNonQuery();
-                }
-
-                // 批量插入新数据
-                using (var transaction = conn.BeginTransaction())
-                {
-                    foreach (var contact in contacts)
-                    {
-                        using var cmd = conn.CreateCommand();
-                        cmd.Transaction = transaction;
-                        cmd.CommandText = $@"
-                            INSERT INTO contacts_{_currentWxid} 
-                            (wxid, account, nickname, remark, avatar, sex, province, city, country, is_group, update_time)
-                            VALUES 
-                            (@wxid, @account, @nickname, @remark, @avatar, @sex, @province, @city, @country, @is_group, @update_time)";
-
-                        cmd.Parameters.AddWithValue("@wxid", contact.Wxid);
-                        cmd.Parameters.AddWithValue("@account", contact.Account);
-                        cmd.Parameters.AddWithValue("@nickname", contact.Nickname);
-                        cmd.Parameters.AddWithValue("@remark", contact.Remark);
-                        cmd.Parameters.AddWithValue("@avatar", contact.Avatar);
-                        cmd.Parameters.AddWithValue("@sex", contact.Sex);
-                        cmd.Parameters.AddWithValue("@province", contact.Province);
-                        cmd.Parameters.AddWithValue("@city", contact.City);
-                        cmd.Parameters.AddWithValue("@country", contact.Country);
-                        cmd.Parameters.AddWithValue("@is_group", contact.IsGroup ? 1 : 0);
-                        cmd.Parameters.AddWithValue("@update_time", DateTimeOffset.Now.ToUnixTimeSeconds());
-
-                        cmd.ExecuteNonQuery();
-                    }
-
-                    transaction.Commit();
-                }
-
-                    _logService.Info("ContactDataService", $"成功保存 {contacts.Count} 个联系人到数据库");
-                }
-                catch (Exception ex)
-                {
-                    _logService.Error("ContactDataService", "保存联系人到数据库失败", ex);
-                }
-            });
-        }
-
-        /// <summary>
-        /// 从数据库加载联系人
-        /// </summary>
-        public async Task<List<WxContact>> LoadContactsAsync()
-        {
-            if (string.IsNullOrEmpty(_currentWxid))
-            {
-                _logService.Warning("ContactDataService", "当前微信 ID 为空，无法加载联系人");
-                return new List<WxContact>();
-            }
-
-            // 使用 Task.Run 在后台线程执行同步数据库操作
-            return await Task.Run(() =>
-            {
-                var contacts = new List<WxContact>();
-                
-                try
-                {
-                    var conn = _dbService.GetConnection();
-
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = $@"
-                    SELECT wxid, account, nickname, remark, avatar, sex, province, city, country, is_group
-                    FROM contacts_{_currentWxid}
-                    ORDER BY nickname";
-
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    var contact = new WxContact
-                    {
-                        Wxid = reader.GetString(0),
-                        Account = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                        Nickname = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-                        Remark = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
-                        Avatar = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
-                        Sex = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
-                        Province = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
-                        City = reader.IsDBNull(7) ? string.Empty : reader.GetString(7),
-                        Country = reader.IsDBNull(8) ? string.Empty : reader.GetString(8),
-                        IsGroup = reader.IsDBNull(9) ? false : reader.GetInt32(9) == 1
-                    };
-
-                    contacts.Add(contact);
-                }
-
-                    _logService.Info("ContactDataService", $"从数据库加载 {contacts.Count} 个联系人");
-                }
-                catch (Exception ex)
-                {
-                    _logService.Error("ContactDataService", "从数据库加载联系人失败", ex);
-                }
-
-                return contacts;
-            });
-        }
+        // 🔥 ContactDataService 不再负责数据库操作
+        // 联系人数据由 UI 层（VxMain）决定如何存储和使用
     }
 }
 

@@ -19,21 +19,11 @@ namespace BaiShengVx3Plus.Contracts
 
         /// <summary>
         /// 处理联系人数据（统一入口，无论是主动请求还是服务器推送）
+        /// 只负责解析数据并触发事件，不再保存到数据库（由 UI 层决定如何存储）
         /// </summary>
         /// <param name="data">联系人 JSON 数据</param>
         /// <returns>解析后的联系人列表</returns>
         Task<List<WxContact>> ProcessContactsAsync(JsonElement data);
-
-        /// <summary>
-        /// 保存联系人到数据库
-        /// </summary>
-        /// <param name="contacts">联系人列表</param>
-        Task SaveContactsAsync(List<WxContact> contacts);
-
-        /// <summary>
-        /// 从数据库加载联系人
-        /// </summary>
-        Task<List<WxContact>> LoadContactsAsync();
 
         /// <summary>
         /// 联系人数据更新事件
