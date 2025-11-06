@@ -142,28 +142,51 @@ namespace BaiShengVx3Plus.Services.Api
             return await GetAsync<T>("bingguo/current");
         }
         
-        public async Task<BsApiResponse<T>> GetBinggoDataAsync<T>(int issueId)
-        {
-            return await GetAsync<T>("bingguo/issue", new Dictionary<string, string>
-            {
-                ["issue_id"] = issueId.ToString()
-            });
-        }
-        
+        /// <summary>
+        /// 获取最近的炳狗开奖数据
+        /// 🔥 完全参考 F5BotV2 的 getbgday 接口
+        /// URL: /api/boter/getbgday?limit={count}&sign={c_sign}&fill=1
+        /// </summary>
         public async Task<BsApiResponse<T>> GetRecentBinggoDataAsync<T>(int count = 10)
         {
-            return await GetAsync<T>("bingguo/recent", new Dictionary<string, string>
+            var parameters = new Dictionary<string, string>
             {
-                ["count"] = count.ToString()
-            });
+                ["limit"] = count.ToString(),
+                ["fill"] = "1"  // fill=1 表示如果数据不够，从上一天补充
+            };
+            
+            return await GetAsync<T>("getbgday", parameters);
         }
         
+        /// <summary>
+        /// 获取指定日期的炳狗开奖数据
+        /// 🔥 完全参考 F5BotV2 的 getbgday 接口
+        /// URL: /api/boter/getbgday?date={date}&limit={count}&sign={c_sign}
+        /// </summary>
         public async Task<BsApiResponse<T>> GetBinggoDataListAsync<T>(System.DateTime date)
         {
-            return await GetAsync<T>("bingguo/list", new Dictionary<string, string>
+            var parameters = new Dictionary<string, string>
             {
-                ["date"] = date.ToString("yyyy-MM-dd")
-            });
+                ["date"] = date.ToString("yyyy-MM-dd"),
+                ["limit"] = "203"  // 一天最多 203 期
+            };
+            
+            return await GetAsync<T>("getbgday", parameters);
+        }
+        
+        /// <summary>
+        /// 获取指定期号的炳狗开奖数据
+        /// 🔥 完全参考 F5BotV2 的 getBgdata 接口
+        /// URL: /api/boter/getbgData?issueid={issueid}&sign={c_sign}
+        /// </summary>
+        public async Task<BsApiResponse<T>> GetBinggoDataAsync<T>(int issueId)
+        {
+            var parameters = new Dictionary<string, string>
+            {
+                ["issueid"] = issueId.ToString()
+            };
+            
+            return await GetAsync<T>("getbgData", parameters);
         }
     }
 }

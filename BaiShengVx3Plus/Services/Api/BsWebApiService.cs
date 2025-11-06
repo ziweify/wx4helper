@@ -28,26 +28,34 @@ namespace BaiShengVx3Plus.Services.Api
         {
             try
             {
-                _logService.Info("BsWebApiService", $"开始登录: {username}");
+                _logService.Info("BsWebApiService", $"🌐 开始登录: {username}");
                 
-                var response = await _apiClient.PostAsync<BsApiUser>("login", new { username, password });
+                // 🔥 完全参考 F5BotV2 的登录接口
+                // URL: http://8.134.71.102:789/api/boter/login?user={user}&pwd={pwd}
+                var parameters = new Dictionary<string, string>
+                {
+                    { "user", username },
+                    { "pwd", password }
+                };
+                
+                var response = await _apiClient.GetAsync<BsApiUser>("login", parameters);
                 
                 if (response.IsSuccess && response.Data != null)
                 {
                     _currentUser = response.Data;
                     _isAuthenticated = true;
                     
-                    // 设置 Sign 供后续请求使用
+                    // 🔥 设置 c_sign（F5BotV2 使用 c_sign，不是 token）
                     _apiClient.SetSign(_currentUser.Token);
                     
                     _logService.Info("BsWebApiService", 
-                        $"登录成功: {username}, 有效期: {_currentUser.ValidUntil:yyyy-MM-dd HH:mm:ss}");
+                        $"✅ 登录成功: {username}, 有效期: {_currentUser.ValidUntil:yyyy-MM-dd HH:mm:ss}");
                     
                     return true;
                 }
                 
                 _lastError = response.Msg;
-                _logService.Warning("BsWebApiService", $"登录失败: {_lastError}");
+                _logService.Warning("BsWebApiService", $"❌ 登录失败: {_lastError}");
                 return false;
             }
             catch (System.Exception ex)

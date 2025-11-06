@@ -36,9 +36,10 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         public float MaxBetPerIssue { get; set; } = 50000.0f;
         
         /// <summary>
-        /// 提前封盘秒数
+        /// 提前封盘秒数（参考 F5BotV2: reduceCloseSeconds，默认 49 秒）
+        /// 用于计算：倒计时 = 开奖时间 - 当前时间 - 提前封盘秒数
         /// </summary>
-        public int SealSecondsAhead { get; set; } = 30;
+        public int SealSecondsAhead { get; set; } = 49;
         
         /// <summary>
         /// 每期时长（秒）

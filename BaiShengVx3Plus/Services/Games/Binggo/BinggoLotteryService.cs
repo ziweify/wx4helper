@@ -129,7 +129,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 步骤1: 使用本地计算获取当前期号（始终可用）
                 // ========================================
                 int localIssueId = BinggoTimeHelper.GetCurrentIssueId();
-                int secondsToSeal = BinggoTimeHelper.GetSecondsToSeal(localIssueId, _settings.SealSecondsAhead);
+                
+                // 🔥 关键区分：
+                // 1. secondsToOpen = 距离开奖的真实倒计时（用于显示）
+                // 2. secondsToSeal = 距离封盘的倒计时（用于状态判断）
+                int secondsToOpen = BinggoTimeHelper.GetSecondsToOpen(localIssueId);
+                int secondsToSeal = secondsToOpen - _settings.SealSecondsAhead;
                 
                 lock (_lock)
                 {
@@ -154,16 +159,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         }
                     }
                     
-                    // 更新倒计时
-                    _secondsToSeal = secondsToSeal;
+                    // 🔥 更新倒计时（存储真实的到开奖时间）
+                    _secondsToSeal = secondsToOpen;  // 实际上应该改名为 _secondsToOpen
                     
-                    // 检查状态变更
+                    // 🔥 检查状态变更（使用到封盘的时间）
                     UpdateStatus(secondsToSeal);
                     
-                    // 触发倒计时事件
+                    // 🔥 触发倒计时事件（显示真实的到开奖时间）
                     CountdownTick?.Invoke(this, new BinggoCountdownEventArgs
                     {
-                        Seconds = _secondsToSeal,
+                        Seconds = secondsToOpen,  // 显示到开奖的时间
                         IssueId = _currentIssueId
                     });
                 }
@@ -316,9 +321,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     });
                 }
             }
-            else if (secondsToSeal > -45)
+            else if (secondsToSeal > -_settings.SealSecondsAhead)
             {
-                // 封盘中（0 到 -45 秒，等待开奖）
+                // 封盘中（0 到 -配置的封盘秒数，等待开奖）
                 newStatus = BinggoLotteryStatus.封盘中;
             }
             else

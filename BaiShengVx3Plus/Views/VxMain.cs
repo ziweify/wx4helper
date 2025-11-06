@@ -36,6 +36,7 @@ namespace BaiShengVx3Plus
         private readonly IBinggoOrderService _orderService;
         private readonly BinggoMessageHandler _binggoMessageHandler;
         private readonly BinggoGameSettings _binggoSettings;
+        private readonly IBsWebApiService _webApiService;
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
@@ -107,7 +108,8 @@ namespace BaiShengVx3Plus
             IBinggoLotteryService lotteryService, // 🎮 注入炳狗开奖服务
             IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
-            BinggoGameSettings binggoSettings) // 🎮 注入炳狗游戏配置
+            BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
+            IBsWebApiService webApiService) // 🌐 注入WebAPI服务
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -123,6 +125,7 @@ namespace BaiShengVx3Plus
             _orderService = orderService;
             _binggoMessageHandler = binggoMessageHandler;
             _binggoSettings = binggoSettings;
+            _webApiService = webApiService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -316,6 +319,73 @@ namespace BaiShengVx3Plus
         }
         
         /// <summary>
+        /// 初始化快速设置面板
+        /// </summary>
+        private void InitializeFastSettings()
+        {
+            try
+            {
+                // 从配置加载到 UI
+                txtSealSeconds.Value = _binggoSettings.SealSecondsAhead;
+                txtMinBet.Value = (int)_binggoSettings.MinBet;
+                txtMaxBet.Value = (int)_binggoSettings.MaxBet;
+                
+                _logService.Info("VxMain", "✅ 快速设置面板已初始化");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"快速设置面板初始化失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 封盘提前秒数值改变事件
+        /// </summary>
+        private void TxtSealSeconds_ValueChanged(object? sender, int value)
+        {
+            try
+            {
+                _binggoSettings.SealSecondsAhead = value;
+                _logService.Info("VxMain", $"封盘提前秒数已更新: {value} 秒");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"更新封盘提前秒数失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 加载最近的开奖数据
+        /// </summary>
+        private async Task LoadRecentLotteryDataAsync()
+        {
+            try
+            {
+                _logService.Info("VxMain", "📊 开始加载最近开奖数据...");
+                
+                // 🔥 完全参考 F5BotV2 的 getbgday 接口
+                // URL: http://8.134.71.102:789/api/boter/getbgday?limit=100&sign={c_sign}&fill=1
+                var recentData = await _lotteryService.GetRecentLotteryDataAsync(100);
+                
+                if (recentData != null && recentData.Count > 0)
+                {
+                    _logService.Info("VxMain", $"✅ 成功加载 {recentData.Count} 期开奖数据");
+                    
+                    // 数据已经自动保存到数据库和 BindingList
+                    // UI 会自动更新
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "❌ 未获取到开奖数据");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"加载开奖数据失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
         /// 开奖事件处理（自动结算）
         /// </summary>
         private async void OnLotteryOpened(object? sender, BinggoLotteryOpenedEventArgs e)
@@ -458,6 +528,12 @@ namespace BaiShengVx3Plus
 
                 // 🔥 会员表和订单表的列配置已在 InitializeDataBindings() 中完成
                 // 不需要在这里重复调用配置方法
+                
+                // 🎮 初始化快速设置面板
+                InitializeFastSettings();
+                
+                // 🌐 登录成功后加载开奖数据（登录窗口已经完成 WebAPI 登录）
+                _ = LoadRecentLotteryDataAsync();
                 
                 // 🔥 统一使用 WeChatService 进行连接和初始化
                 // forceRestart = false，会先尝试快速连接，失败才启动/注入

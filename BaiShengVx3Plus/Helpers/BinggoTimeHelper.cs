@@ -31,29 +31,33 @@ namespace BaiShengVx3Plus.Helpers
         // ========================================
         
         /// <summary>
-        /// 获取指定时间的当前期号
+        /// 获取指定时间的当前期号（完全参考 F5BotV2 的 getNextIssueId）
         /// </summary>
         /// <param name="time">查询时间（默认为当前时间）</param>
-        /// <returns>当前期号</returns>
+        /// <returns>得到该时间的前一期数据, 也就该时间的最后一次开奖期号</returns>
         public static int GetCurrentIssueId(DateTime? time = null)
         {
             var currentTime = time ?? DateTime.Now;
             var firstTime = DateTimeOffset.FromUnixTimeSeconds(FIRST_TIMESTAMP).LocalDateTime;
             
             // 计算天数差
-            var daysDiff = (currentTime.Date - firstTime.Date).Days;
+            var timeSpan = currentTime - firstTime;
+            var days = timeSpan.Days;
             
             // 当天的基础期号
-            int baseDayIssueId = FIRST_ISSUE_ID + daysDiff * ISSUES_PER_DAY;
+            int baseDayIssueId = FIRST_ISSUE_ID + days * ISSUES_PER_DAY;
             
-            // 计算当天已经过了多少期
-            int issuesToday = 0;
+            // 🔥 关键：计算当天已经过了多少期（参考 F5BotV2 逻辑）
+            int issueCount = 0;
             for (int i = 0; i < ISSUES_PER_DAY; i++)
             {
-                var issueTime = GetIssueOpenTime(baseDayIssueId + i);
-                if (currentTime >= issueTime)
+                var issueTimestamp = GetIssueOpenTimestamp(baseDayIssueId + i);
+                var issueTime = DateTimeOffset.FromUnixTimeSeconds(issueTimestamp).LocalDateTime;
+                
+                // 🔥 关键判断：如果当前时间 > 该期开奖时间，说明该期已过
+                if (currentTime > issueTime)
                 {
-                    issuesToday++;
+                    issueCount++;
                 }
                 else
                 {
@@ -61,7 +65,7 @@ namespace BaiShengVx3Plus.Helpers
                 }
             }
             
-            return baseDayIssueId + issuesToday;
+            return baseDayIssueId + issueCount;
         }
         
         // ========================================
@@ -69,24 +73,37 @@ namespace BaiShengVx3Plus.Helpers
         // ========================================
         
         /// <summary>
-        /// 根据期号计算开奖时间
+        /// 根据期号计算开奖时间戳（完全参考 F5BotV2 的 getOpenTimestamp）
+        /// </summary>
+        /// <param name="issueId">期号</param>
+        /// <returns>Unix 时间戳（秒）</returns>
+        public static long GetIssueOpenTimestamp(int issueId)
+        {
+            var firstTime = DateTimeOffset.FromUnixTimeSeconds(FIRST_TIMESTAMP).LocalDateTime;
+            
+            // 计算天数差
+            int days = GetDaysDiff(issueId);
+            
+            // 计算当天第几期（1-203）
+            int number = GetIssueNumber(issueId);
+            
+            // 计算开奖时间
+            var nowDay = firstTime.AddDays(days);
+            var openTime = nowDay.AddMinutes(MINUTES_PER_ISSUE * (number - 1));
+            
+            // 转换为 Unix 时间戳
+            return new DateTimeOffset(openTime).ToUnixTimeSeconds();
+        }
+        
+        /// <summary>
+        /// 根据期号计算开奖时间（完全参考 F5BotV2 的 getOpenDatetime）
         /// </summary>
         /// <param name="issueId">期号</param>
         /// <returns>开奖时间</returns>
         public static DateTime GetIssueOpenTime(int issueId)
         {
-            var firstTime = DateTimeOffset.FromUnixTimeSeconds(FIRST_TIMESTAMP).LocalDateTime;
-            
-            // 计算天数差
-            int daysDiff = GetDaysDiff(issueId);
-            
-            // 计算当天第几期
-            int issueNumber = GetIssueNumber(issueId);
-            
-            // 计算开奖时间
-            var openTime = firstTime.AddDays(daysDiff).AddMinutes(MINUTES_PER_ISSUE * (issueNumber - 1));
-            
-            return openTime;
+            long timestamp = GetIssueOpenTimestamp(issueId);
+            return DateTimeOffset.FromUnixTimeSeconds(timestamp).LocalDateTime;
         }
         
         // ========================================
@@ -134,11 +151,29 @@ namespace BaiShengVx3Plus.Helpers
         
         /// <summary>
         /// 获取期号在当天是第几期（1-203）
+        /// 🔥 完全参考 F5BotV2 的 getNumber 方法
         /// </summary>
         private static int GetIssueNumber(int issueId)
         {
-            int remainder = (issueId - FIRST_ISSUE_ID) % ISSUES_PER_DAY;
-            return remainder == 0 ? ISSUES_PER_DAY : remainder;
+            int result = 0;
+            int value = issueId - FIRST_ISSUE_ID;
+            
+            if (value >= 0)
+            {
+                // 🔥 关键：result = value % 203 + 1
+                // 例如：value = 0, result = 1 (第1期)
+                //      value = 202, result = 203 (第203期)
+                //      value = 203, result = 1 (第2天第1期)
+                result = value % ISSUES_PER_DAY + 1;
+            }
+            else
+            {
+                // 处理负数（历史期号）
+                result = value % ISSUES_PER_DAY + 1;
+                result = ISSUES_PER_DAY - Math.Abs(result);
+            }
+            
+            return result;
         }
         
         /// <summary>
