@@ -117,7 +117,7 @@ namespace BaiShengVx3Plus.Views
             txtPassword.ShowText = false;
             txtPassword.Size = new Size(270, 35);
             txtPassword.TabIndex = 4;
-            txtPassword.Text = "admin";
+            txtPassword.Text = "aaa111";
             txtPassword.TextAlignment = ContentAlignment.MiddleLeft;
             txtPassword.Watermark = "请输入密码";
             // 
@@ -143,7 +143,7 @@ namespace BaiShengVx3Plus.Views
             txtUsername.ShowText = false;
             txtUsername.Size = new Size(270, 35);
             txtUsername.TabIndex = 2;
-            txtUsername.Text = "admin";
+            txtUsername.Text = "test001";
             txtUsername.TextAlignment = ContentAlignment.MiddleLeft;
             txtUsername.Watermark = "请输入用户名";
             // 

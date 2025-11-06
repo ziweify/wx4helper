@@ -55,7 +55,7 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
                         
                         // 业务服务
-                        services.AddSingleton<IAuthService, AuthService>();
+                        // ✅ IAuthService 已删除，直接使用 BoterApi
                         services.AddSingleton<IInsUserService, InsUserService>();
                         services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
                         services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
@@ -71,8 +71,7 @@ namespace BaiShengVx3Plus
                             services.AddSingleton<BinggoMessageHandler>();              // 炳狗消息处理器
                             
                             // 🌐 WebAPI 服务
-                            services.AddHttpClient<IBsWebApiClient, BsWebApiClient>(); // HTTP 客户端
-                            services.AddSingleton<IBsWebApiService, BsWebApiService>(); // WebAPI 服务
+                            // ✅ 已删除，直接使用 BoterApi 单例
                             
                             // 🎲 炳狗开奖和订单服务
                             services.AddSingleton<IBinggoLotteryService, BinggoLotteryService>(); // 开奖服务

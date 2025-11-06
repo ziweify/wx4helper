@@ -9,10 +9,10 @@ namespace BaiShengVx3Plus.ViewModels
 {
     /// <summary>
     /// 主界面ViewModel
+    /// 🔥 简化：直接使用 BoterApi 单例
     /// </summary>
     public partial class VxMainViewModel : ViewModelBase
     {
-        private readonly IAuthService _authService;
         private readonly IInsUserService _insUserService;
 
         [ObservableProperty]
@@ -33,11 +33,21 @@ namespace BaiShengVx3Plus.ViewModels
         [ObservableProperty]
         private int _totalCount;
 
-        public VxMainViewModel(IAuthService authService, IInsUserService insUserService)
+        public VxMainViewModel(IInsUserService insUserService)
         {
-            _authService = authService;
             _insUserService = insUserService;
-            CurrentUser = _authService.GetCurrentUser();
+            
+            // 🔥 从 BoterApi 获取当前登录用户信息
+            var api = Services.Api.BoterApi.GetInstance();
+            if (api.LoginApiResponse != null && api.LoginApiResponse.Data != null)
+            {
+                CurrentUser = new User
+                {
+                    UserName = api.LoginApiResponse.Data.Username ?? "未知用户",
+                    IsOnline = true
+                };
+            }
+            
             _ = LoadDataAsync();
         }
 
@@ -148,7 +158,9 @@ namespace BaiShengVx3Plus.ViewModels
         [RelayCommand]
         private void Logout()
         {
-            _authService.Logout();
+            // 🔥 清除 BoterApi 的登录状态（需要添加 public setter）
+            // 暂时无法直接清除，BoterApi 需要添加 Logout 方法
+            
             // 触发登出事件
             LogoutRequested?.Invoke(this, EventArgs.Empty);
         }

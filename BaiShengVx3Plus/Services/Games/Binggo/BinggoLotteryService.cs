@@ -25,7 +25,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
     /// </summary>
     public class BinggoLotteryService : IBinggoLotteryService
     {
-        private readonly IBsWebApiClient _apiClient;
         private readonly ILogService _logService;
         private readonly BinggoGameSettings _settings;
         private SQLiteConnection? _db;
@@ -55,11 +54,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         public bool IsRunning => _isRunning;
         
         public BinggoLotteryService(
-            IBsWebApiClient apiClient, 
             ILogService logService,
             BinggoGameSettings settings)
         {
-            _apiClient = apiClient;
             _logService = logService;
             _settings = settings;
         }
@@ -242,40 +239,30 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 {
                     _logService.Info("BinggoLotteryService", $"📡 第 {retryCount + 1}/{maxRetries} 次请求开奖数据: {issueId}");
                     
-                    var response = await _apiClient.GetBinggoDataAsync<Models.Api.BsApiLotteryData>(issueId);
+                    // 🔥 使用 BoterApi 单例
+                    var api = Services.Api.BoterApi.GetInstance();
+                    var response = await api.GetBgDataAsync(issueId);
                     
-                    if (response.IsSuccess && response.Data != null)
+                    // 🔥 BoterApi 已经返回解析好的 BinggoLotteryData
+                    if (response.Code == 0 && response.Data != null && response.Data.IsOpened)
                     {
-                        var apiData = response.Data;
+                        data = response.Data;
                         
-                        // 检查是否有完整的开奖数据
-                        if (!string.IsNullOrEmpty(apiData.P1) && !string.IsNullOrEmpty(apiData.P2) && 
-                            !string.IsNullOrEmpty(apiData.P3) && !string.IsNullOrEmpty(apiData.P4) && 
-                            !string.IsNullOrEmpty(apiData.P5))
+                        // 保存到数据库
+                        if (_db != null)
                         {
-                            // 🔥 转换为 BinggoLotteryData
-                            string numbersString = $"{apiData.P1},{apiData.P2},{apiData.P3},{apiData.P4},{apiData.P5}";
-                            string openTimeString = $"{apiData.Date} {apiData.LotteryTime}";
-                            
-                            data = new BinggoLotteryData()
-                                .FillLotteryData(apiData.IssueId, numbersString, openTimeString);
-                            
-                            // 保存到数据库
-                            if (_db != null)
-                            {
-                                _db.InsertOrReplace(data);
-                                _bindingList?.LoadFromDatabase(100);
-                                _logService.Info("BinggoLotteryService", $"✅ 开奖数据已保存: {issueId} - {data.ToLotteryString()}");
-                            }
-                            
-                            // 触发开奖事件
-                            LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
-                            {
-                                LotteryData = data
-                            });
-                            
-                            return;  // 成功获取，退出轮询
+                            _db.InsertOrReplace(data);
+                            _bindingList?.LoadFromDatabase(100);
+                            _logService.Info("BinggoLotteryService", $"✅ 开奖数据已保存: {issueId} - {data.ToLotteryString()}");
                         }
+                        
+                        // 触发开奖事件
+                        LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                        {
+                            LotteryData = data
+                        });
+                        
+                        return;  // 成功获取，退出轮询
                     }
                     
                     // 未获取到数据，等待后重试
@@ -516,9 +503,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 步骤2: 本地没有，从网络获取
                 _logService.Info("BinggoLotteryService", $"🌐 从网络获取期号 {issueId} 数据");
-                var response = await _apiClient.GetBinggoDataAsync<BinggoLotteryData>(issueId);
                 
-                if (response.IsSuccess && response.Data != null && response.Data.IsOpened)
+                // 🔥 使用 BoterApi 单例
+                var api = Services.Api.BoterApi.GetInstance();
+                var response = await api.GetBgDataAsync(issueId);
+                
+                if (response.Code == 0 && response.Data != null && response.Data.IsOpened)
                 {
                     // 步骤3: 保存到本地缓存
                     await SaveLotteryDataAsync(response.Data);
@@ -544,58 +534,19 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Info("BinggoLotteryService", $"开始从 API 获取最近 {count} 期数据...");
                 
-                // 🔥 从 API 获取数据（F5BotV2 格式）
-                var response = await _apiClient.GetRecentBinggoDataAsync<List<Models.Api.BsApiLotteryData>>(count);
+                // 🔥 直接使用 BoterApi 单例（完全参考 F5BotV2）
+                var api = Services.Api.BoterApi.GetInstance();
+                var response = await api.GetBgDayAsync("", count, true);
                 
-                if (response.IsSuccess && response.Data != null && response.Data.Count > 0)
+                // 🔥 BoterApi 已经返回解析好的 List<BinggoLotteryData>，无需再转换
+                if (response.Code == 0 && response.Data != null && response.Data.Count > 0)
                 {
                     _logService.Info("BinggoLotteryService", $"✅ API 返回 {response.Data.Count} 期数据");
                     
-                    // 🔥 转换 API 格式 → 本地模型格式（参考 F5BotV2 的 FillLotteryData）
-                    var lotteryDataList = new List<BinggoLotteryData>();
-                    foreach (var apiData in response.Data)
-                    {
-                        try
-                        {
-                            // 组合号码字符串：p1,p2,p3,p4,p5
-                            string lotteryData = $"{apiData.P1},{apiData.P2},{apiData.P3},{apiData.P4},{apiData.P5}";
-                            
-                            // 组合时间字符串：date + lottery_time
-                            string openTime = $"{apiData.Date} {apiData.LotteryTime}";
-                            
-                            // 🔥 使用 FillLotteryData 方法（完全参考 F5BotV2）
-                            var bgData = new BinggoLotteryData().FillLotteryData(
-                                issueId: apiData.IssueId,
-                                lotteryData: lotteryData,
-                                openTime: openTime
-                            );
-                            
-                            lotteryDataList.Add(bgData);
-                            
-                            _logService.Info("BinggoLotteryService", 
-                                $"✅ 解析: {bgData.ToLotteryString()}");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logService.Error("BinggoLotteryService", 
-                                $"解析单条数据失败 (期号 {apiData.IssueId}): {ex.Message}", ex);
-                        }
-                    }
+                    // 保存到本地缓存
+                    await SaveLotteryDataListAsync(response.Data);
                     
-                    if (lotteryDataList.Count > 0)
-                    {
-                        // 保存到本地缓存
-                        await SaveLotteryDataListAsync(lotteryDataList);
-                        
-                        _logService.Info("BinggoLotteryService", 
-                            $"✅ 成功转换并保存 {lotteryDataList.Count} 期数据");
-                        
-                        return lotteryDataList;
-                    }
-                    else
-                    {
-                        _logService.Warning("BinggoLotteryService", "❌ 数据解析后为空");
-                    }
+                    return response.Data;
                 }
                 else
                 {
@@ -653,9 +604,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             try
             {
-                var response = await _apiClient.GetBinggoDataListAsync<List<BinggoLotteryData>>(date);
+                // 🔥 使用 BoterApi 单例
+                var api = Services.Api.BoterApi.GetInstance();
+                string dateStr = date.ToString("yyyy-MM-dd");
+                var response = await api.GetBgDayAsync(dateStr, 203, false);
                 
-                if (response.IsSuccess && response.Data != null)
+                if (response.Code == 0 && response.Data != null)
                 {
                     await SaveLotteryDataListAsync(response.Data);
                     return response.Data;
@@ -704,13 +658,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         }
         
         /// <summary>
-        /// 批量保存开奖数据到本地缓存
+        /// 批量保存开奖数据到本地缓存并更新 BindingList
         /// </summary>
         public async Task SaveLotteryDataListAsync(List<BinggoLotteryData> dataList)
         {
             await Task.Run(() =>
             {
                 if (_db == null) return;
+                
+                int savedCount = 0;
+                int updatedCount = 0;
                 
                 foreach (var data in dataList.Where(d => d.IsOpened))
                 {
@@ -722,11 +679,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         if (existing == null)
                         {
                             _db.Insert(data);
+                            savedCount++;
                         }
                         else
                         {
                             data.Id = existing.Id;
                             _db.Update(data);
+                            updatedCount++;
                         }
                     }
                     catch (Exception ex)
@@ -736,8 +695,39 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                 }
                 
-                _logService.Info("BinggoLotteryService", $"💾 批量保存 {dataList.Count} 期数据");
+                _logService.Info("BinggoLotteryService", 
+                    $"💾 批量保存到数据库: 新增 {savedCount} 期，更新 {updatedCount} 期");
             });
+            
+            // 🔥 更新 BindingList（在主线程上执行，BindingList 会自动通知 UI）
+            if (_bindingList != null)
+            {
+                foreach (var data in dataList.Where(d => d.IsOpened))
+                {
+                    try
+                    {
+                        var existingInList = _bindingList.FirstOrDefault(d => d.IssueId == data.IssueId);
+                        if (existingInList == null)
+                        {
+                            _bindingList.Add(data);
+                        }
+                        else
+                        {
+                            // 更新现有项
+                            int index = _bindingList.IndexOf(existingInList);
+                            _bindingList[index] = data;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Warning("BinggoLotteryService", 
+                            $"更新 BindingList 期号 {data.IssueId} 失败: {ex.Message}");
+                    }
+                }
+                
+                _logService.Info("BinggoLotteryService", 
+                    $"✅ BindingList 更新完成，共 {dataList.Count} 期数据");
+            }
         }
     }
 }

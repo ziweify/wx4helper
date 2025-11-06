@@ -36,7 +36,6 @@ namespace BaiShengVx3Plus
         private readonly IBinggoOrderService _orderService;
         private readonly BinggoMessageHandler _binggoMessageHandler;
         private readonly BinggoGameSettings _binggoSettings;
-        private readonly IBsWebApiService _webApiService;
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
@@ -49,6 +48,7 @@ namespace BaiShengVx3Plus
         
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
+        private Views.BinggoLotteryResultForm? _lotteryResultForm;  // 🎲 开奖结果窗口
         
         // 当前绑定的联系人对象
         private WxContact? _currentBoundContact;
@@ -108,8 +108,7 @@ namespace BaiShengVx3Plus
             IBinggoLotteryService lotteryService, // 🎮 注入炳狗开奖服务
             IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
-            BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
-            IBsWebApiService webApiService) // 🌐 注入WebAPI服务
+            BinggoGameSettings binggoSettings) // 🎮 注入炳狗游戏配置
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -125,7 +124,6 @@ namespace BaiShengVx3Plus
             _orderService = orderService;
             _binggoMessageHandler = binggoMessageHandler;
             _binggoSettings = binggoSettings;
-            _webApiService = webApiService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -304,10 +302,58 @@ namespace BaiShengVx3Plus
                 _ = _lotteryService.StartAsync();  // 异步启动，不等待
                 
                 // 7. 🎨 绑定 UI 控件到开奖服务
+                _logService.Info("VxMain", "🎨 开始绑定 UI 控件到开奖服务...");
+                
+                if (ucBinggoDataCur == null)
+                {
+                    _logService.Error("VxMain", "❌ ucBinggoDataCur 为 null！");
+                }
+                if (ucBinggoDataLast == null)
+                {
+                    _logService.Error("VxMain", "❌ ucBinggoDataLast 为 null！");
+                }
+                
                 UpdateUIThreadSafeAsync(() =>
                 {
-                    ucBinggoDataCur?.SetLotteryService(_lotteryService);
-                    ucBinggoDataLast?.SetLotteryService(_lotteryService);
+                    _logService.Info("VxMain", "📍 在 UI 线程中执行绑定...");
+                    
+                    if (ucBinggoDataCur != null)
+                    {
+                        ucBinggoDataCur.SetLotteryService(_lotteryService);
+                        _logService.Info("VxMain", "✅ ucBinggoDataCur.SetLotteryService 完成");
+                    }
+                    
+                    if (ucBinggoDataLast != null)
+                    {
+                        ucBinggoDataLast.SetLotteryService(_lotteryService);
+                        _logService.Info("VxMain", "✅ ucBinggoDataLast.SetLotteryService 完成");
+                    }
+                });
+                
+                // 🔥 立即加载最近的开奖数据（确保上期数据显示）
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(500);  // 等待500ms，确保服务完全启动
+                        _logService.Info("VxMain", "🎲 开始立即加载最近开奖数据...");
+                        
+                        var recentData = await _lotteryService.GetRecentLotteryDataAsync(5);
+                        if (recentData != null && recentData.Count > 0)
+                        {
+                            _logService.Info("VxMain", $"✅ 立即加载成功，获取 {recentData.Count} 期数据");
+                            _logService.Info("VxMain", $"   最新期号: {recentData[0].IssueId}");
+                            _logService.Info("VxMain", $"   开奖号码: {recentData[0].ToLotteryString()}");
+                        }
+                        else
+                        {
+                            _logService.Warning("VxMain", "⚠️ 立即加载失败，未获取到开奖数据");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", $"立即加载开奖数据失败: {ex.Message}", ex);
+                    }
                 });
                 
                 _logService.Info("VxMain", "✅ 炳狗服务初始化完成（含 UI 控件绑定）");
@@ -532,9 +578,6 @@ namespace BaiShengVx3Plus
                 // 🎮 初始化快速设置面板
                 InitializeFastSettings();
                 
-                // 🌐 登录成功后加载开奖数据（登录窗口已经完成 WebAPI 登录）
-                _ = LoadRecentLotteryDataAsync();
-                
                 // 🔥 统一使用 WeChatService 进行连接和初始化
                 // forceRestart = false，会先尝试快速连接，失败才启动/注入
                 _logService.Info("VxMain", "程序启动，开始自动连接和初始化...");
@@ -550,6 +593,16 @@ namespace BaiShengVx3Plus
                 {
                     _logService.Info("VxMain", "✅ 自动连接和初始化成功");
                 }
+                
+                // 🌐 登录成功后加载开奖数据（登录窗口已经完成 WebAPI 登录）
+                // ⚠️ 重要：必须在数据库初始化后才能加载开奖数据
+                // 数据库初始化在 UserInfoService_UserInfoUpdated 中触发
+                // 这里延迟加载，确保数据库已经准备好
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(2000);  // 等待2秒，确保数据库已初始化
+                    await LoadRecentLotteryDataAsync();
+                });
             }
             catch (Exception ex)
             {
@@ -1332,10 +1385,36 @@ namespace BaiShengVx3Plus
             }
         }
 
+        /// <summary>
+        /// 🔥 打开开奖结果窗口
+        /// </summary>
         private void btnOpenLotteryResult_Click(object sender, EventArgs e)
         {
-            lblStatus.Text = "打开开奖结果窗口...";
-            // TODO: 实现开奖结果窗口
+            try
+            {
+                if (_lotteryResultForm == null || _lotteryResultForm.IsDisposed)
+                {
+                    _lotteryResultForm = new Views.BinggoLotteryResultForm(_lotteryService, _logService);
+                    _lotteryResultForm.SetBindingList(_lotteryDataBindingList);
+                }
+                
+                if (_lotteryResultForm.Visible)
+                {
+                    _lotteryResultForm.Activate(); // 如果已打开，激活窗口
+                }
+                else
+                {
+                    _lotteryResultForm.Show();
+                }
+                
+                lblStatus.Text = "开奖结果窗口已打开";
+                _logService.Info("VxMain", "开奖结果窗口已打开");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开开奖结果窗口失败", ex);
+                UIMessageBox.ShowError($"打开开奖结果窗口失败: {ex.Message}");
+            }
         }
 
         private void btnClearData_Click(object sender, EventArgs e)

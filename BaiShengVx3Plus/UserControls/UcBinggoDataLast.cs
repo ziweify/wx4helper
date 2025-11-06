@@ -165,19 +165,57 @@ namespace BaiShengVx3Plus.UserControls
         {
             try
             {
-                if (_lotteryService == null) return;
+                Console.WriteLine("========== UcBinggoDataLast.LoadLastLotteryData 开始 ==========");
+                
+                if (_lotteryService == null)
+                {
+                    Console.WriteLine("❌ LoadLastLotteryData: _lotteryService is null");
+                    return;
+                }
+                
+                Console.WriteLine("📡 LoadLastLotteryData: 开始获取最近1期数据...");
+                Console.WriteLine($"📡 _lotteryService 类型: {_lotteryService.GetType().Name}");
                 
                 // 🔥 获取最近1期数据
                 var recentData = await _lotteryService.GetRecentLotteryDataAsync(1);
+                
+                Console.WriteLine($"📡 API返回数据: recentData={recentData}, Count={recentData?.Count ?? 0}");
+                
                 if (recentData != null && recentData.Count > 0)
                 {
                     _lastData = recentData[0];
+                    Console.WriteLine($"✅ LoadLastLotteryData: 获取到数据");
+                    Console.WriteLine($"   期号={_lastData.IssueId}");
+                    Console.WriteLine($"   IsOpened={_lastData.IsOpened}");
+                    Console.WriteLine($"   LotteryData={_lastData.LotteryData}");
+                    Console.WriteLine($"   OpenTime={_lastData.OpenTime}");
+                    
+                    if (_lastData.P1 != null)
+                    {
+                        Console.WriteLine($"   号码: P1={_lastData.P1.Number}, P2={_lastData.P2?.Number}, P3={_lastData.P3?.Number}, P4={_lastData.P4?.Number}, P5={_lastData.P5?.Number}");
+                        Console.WriteLine($"   总和: {_lastData.PSum?.Number}");
+                        Console.WriteLine($"   龙虎: {_lastData.DragonTiger}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("   ⚠️ P1 为 null（数据未解析？）");
+                    }
+                    
+                    Console.WriteLine("📍 调用 UpdateDisplay...");
                     UpdateDisplay();
+                    Console.WriteLine("✅ UpdateDisplay 完成");
                 }
+                else
+                {
+                    Console.WriteLine("⚠️ LoadLastLotteryData: 未获取到数据 (recentData is null or empty)");
+                }
+                
+                Console.WriteLine("========== UcBinggoDataLast.LoadLastLotteryData 结束 ==========");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"加载上期数据失败: {ex.Message}");
+                Console.WriteLine($"❌ LoadLastLotteryData 失败: {ex.Message}");
+                Console.WriteLine($"   StackTrace: {ex.StackTrace}");
             }
         }
         

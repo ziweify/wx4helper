@@ -1,5 +1,4 @@
 using BaiShengVx3Plus.Core;
-using BaiShengVx3Plus.Contracts;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -7,11 +6,10 @@ namespace BaiShengVx3Plus.ViewModels
 {
     /// <summary>
     /// 登录页面ViewModel
+    /// 🔥 简化：直接使用 BoterApi 单例（完全参考 F5BotV2）
     /// </summary>
     public partial class LoginViewModel : ViewModelBase
     {
-        private readonly IAuthService _authService;
-
         [ObservableProperty]
         private string _username = string.Empty;
 
@@ -24,9 +22,9 @@ namespace BaiShengVx3Plus.ViewModels
         [ObservableProperty]
         private bool _rememberPassword;
 
-        public LoginViewModel(IAuthService authService)
+        public LoginViewModel()
         {
-            _authService = authService;
+            // 🔥 不再需要依赖注入
         }
 
         /// <summary>
@@ -43,21 +41,24 @@ namespace BaiShengVx3Plus.ViewModels
 
             try
             {
-                var (success, message, user) = await _authService.LoginAsync(Username, Password);
+                // 🔥 直接使用 BoterApi 单例（完全参考 F5BotV2）
+                var api = Services.Api.BoterApi.GetInstance();
+                var response = await api.LoginAsync(Username, Password);
 
-                if (success)
+                if (response.Code == 0)
                 {
+                    Console.WriteLine($"✅ 登录成功: {Username}");
                     // 触发登录成功事件
                     LoginSucceeded?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
-                    ErrorMessage = message;
+                    ErrorMessage = $"登录失败: {response.Msg}";
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"登录失败: {ex.Message}";
+                ErrorMessage = $"登录异常: {ex.Message}";
             }
             finally
             {
