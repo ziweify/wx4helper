@@ -30,6 +30,8 @@ namespace BaiShengVx3Plus
         /// </summary>
         private void InitializeComponent()
         {
+            ucBinggoDataCur = new UserControls.UcBinggoDataCur();
+            ucBinggoDataLast = new UserControls.UcBinggoDataLast();
             DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
@@ -581,6 +583,8 @@ namespace BaiShengVx3Plus
             // 
             // pnl_opendata
             // 
+            pnl_opendata.Controls.Add(ucBinggoDataLast);
+            pnl_opendata.Controls.Add(ucBinggoDataCur);
             pnl_opendata.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             pnl_opendata.Location = new Point(3, 246);
             pnl_opendata.Margin = new Padding(4, 5, 4, 5);
@@ -589,6 +593,22 @@ namespace BaiShengVx3Plus
             pnl_opendata.Size = new Size(239, 283);
             pnl_opendata.TabIndex = 2;
             pnl_opendata.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
+            // ucBinggoDataCur
+            // 
+            ucBinggoDataCur.BackColor = Color.FromArgb(243, 249, 255);
+            ucBinggoDataCur.Location = new Point(0, 0);
+            ucBinggoDataCur.Name = "ucBinggoDataCur";
+            ucBinggoDataCur.Size = new Size(239, 140);
+            ucBinggoDataCur.TabIndex = 0;
+            // 
+            // ucBinggoDataLast
+            // 
+            ucBinggoDataLast.BackColor = Color.FromArgb(255, 248, 225);
+            ucBinggoDataLast.Location = new Point(0, 143);
+            ucBinggoDataLast.Name = "ucBinggoDataLast";
+            ucBinggoDataLast.Size = new Size(239, 140);
+            ucBinggoDataLast.TabIndex = 1;
             // 
             // VxMain
             // 
@@ -656,5 +676,7 @@ namespace BaiShengVx3Plus
         private Views.UcUserInfo ucUserInfo1;
         private Sunny.UI.UIContextMenuStrip cmsMembers;
         private Sunny.UI.UIPanel pnl_opendata;
+        private UserControls.UcBinggoDataCur ucBinggoDataCur;
+        private UserControls.UcBinggoDataLast ucBinggoDataLast;
     }
 }

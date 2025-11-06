@@ -12,6 +12,7 @@ using BaiShengVx3Plus.Services.GroupBinding;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Services.Messages.Handlers;
 using BaiShengVx3Plus.Services.Games.Binggo;
+using BaiShengVx3Plus.Services;
 using BaiShengVx3Plus.Services.Api;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.ViewModels;
@@ -50,18 +51,19 @@ namespace BaiShengVx3Plus
                 var host = Host.CreateDefaultBuilder()
                     .ConfigureServices((context, services) =>
                     {
-                            // 核心服务
-                            services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
-                            
-                            // 业务服务
-                            services.AddSingleton<IAuthService, AuthService>();
-                            services.AddSingleton<IInsUserService, InsUserService>();
-                            services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
-                            services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
-                            services.AddSingleton<IContactDataService, ContactDataService>(); // 联系人数据服务
-                            services.AddSingleton<IUserInfoService, UserInfoService>();       // 用户信息服务
-                            services.AddSingleton<IWeChatService, WeChatService>();           // 微信应用服务（编排层）
-                            services.AddSingleton<IGroupBindingService, GroupBindingService>(); // 群组绑定服务
+                        // 核心服务
+                        services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
+                        
+                        // 业务服务
+                        services.AddSingleton<IAuthService, AuthService>();
+                        services.AddSingleton<IInsUserService, InsUserService>();
+                        services.AddSingleton<IWeChatLoaderService, WeChatLoaderService>();
+                        services.AddSingleton<IWeixinSocketClient, WeixinSocketClient>(); // Socket 通信客户端
+                        services.AddSingleton<IContactDataService, ContactDataService>(); // 联系人数据服务
+                        services.AddSingleton<IUserInfoService, UserInfoService>();       // 用户信息服务
+                        services.AddSingleton<IWeChatService, WeChatService>();           // 微信应用服务（编排层）
+                        services.AddSingleton<IGroupBindingService, GroupBindingService>(); // 群组绑定服务
+                        services.AddSingleton<IMemberDataService, MemberDataService>();    // 会员数据访问服务
                             
                             // 🎮 游戏配置和服务
                             services.AddSingleton(new BinggoGameSettings());            // 炳狗游戏配置

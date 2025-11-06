@@ -6,6 +6,7 @@ using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Services.Messages.Handlers;
 using BaiShengVx3Plus.Services.Games.Binggo;
+using BaiShengVx3Plus.Services;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
 using BaiShengVx3Plus.Helpers;
@@ -28,6 +29,7 @@ namespace BaiShengVx3Plus
         private readonly IUserInfoService _userInfoService; // 用户信息服务
         private readonly IWeChatService _wechatService; // 微信应用服务（Application Service）
         private readonly IGroupBindingService _groupBindingService; // 群组绑定服务
+        private readonly IMemberDataService _memberDataService; // 会员数据访问服务
         
         // 🎮 炳狗游戏服务
         private readonly IBinggoLotteryService _lotteryService;
@@ -101,6 +103,7 @@ namespace BaiShengVx3Plus
             IUserInfoService userInfoService, // 注入用户信息服务
             IWeChatService wechatService, // 注入微信应用服务
             IGroupBindingService groupBindingService, // 注入群组绑定服务
+            IMemberDataService memberDataService, // 注入会员数据访问服务
             IBinggoLotteryService lotteryService, // 🎮 注入炳狗开奖服务
             IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
@@ -112,6 +115,7 @@ namespace BaiShengVx3Plus
             _socketClient = socketClient;
             _messageDispatcher = messageDispatcher;
             _contactDataService = contactDataService;
+            _memberDataService = memberDataService;
             _userInfoService = userInfoService;
             _wechatService = wechatService;
             _groupBindingService = groupBindingService;
@@ -226,6 +230,12 @@ namespace BaiShengVx3Plus
                     UpdateStatistics();
                 });
                 
+                // 🎮 设置会员列表到 MemberDataService（供消息处理器使用）
+                if (_memberDataService is MemberDataService mds)
+                {
+                    mds.SetMembersBindingList(_membersBindingList);
+                }
+                
                 // ========================================
                 // 🔥 步骤3: 初始化炳狗服务（异步，不阻塞）
                 // ========================================
@@ -290,7 +300,14 @@ namespace BaiShengVx3Plus
                 // 6. 启动开奖服务
                 _ = _lotteryService.StartAsync();  // 异步启动，不等待
                 
-                _logService.Info("VxMain", "✅ 炳狗服务初始化完成");
+                // 7. 🎨 绑定 UI 控件到开奖服务
+                UpdateUIThreadSafeAsync(() =>
+                {
+                    ucBinggoDataCur?.SetLotteryService(_lotteryService);
+                    ucBinggoDataLast?.SetLotteryService(_lotteryService);
+                });
+                
+                _logService.Info("VxMain", "✅ 炳狗服务初始化完成（含 UI 控件绑定）");
             }
             catch (Exception ex)
             {
