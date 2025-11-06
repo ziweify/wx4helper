@@ -35,7 +35,7 @@ namespace BaiShengVx3Plus.Services.Contact
         /// <summary>
         /// 处理联系人数据（统一入口）
         /// </summary>
-        public async Task<List<WxContact>> ProcessContactsAsync(JsonElement data)
+        public Task<List<WxContact>> ProcessContactsAsync(JsonElement data)
         {
             try
             {
@@ -53,12 +53,12 @@ namespace BaiShengVx3Plus.Services.Contact
                     Source = "Process"
                 });
 
-                return contacts;
+                return Task.FromResult(contacts);
             }
             catch (Exception ex)
             {
                 _logService.Error("ContactDataService", "处理联系人数据失败", ex);
-                return new List<WxContact>();
+                return Task.FromResult(new List<WxContact>());
             }
         }
 

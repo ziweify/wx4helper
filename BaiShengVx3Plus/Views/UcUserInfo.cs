@@ -42,11 +42,6 @@ namespace BaiShengVx3Plus.Views
             }
         }
 
-        /// <summary>
-        /// 采集按钮点击事件（由外部处理）
-        /// </summary>
-        public event EventHandler? CollectButtonClick;
-
         public UcUserInfo()
         {
             InitializeComponent();
@@ -54,28 +49,8 @@ namespace BaiShengVx3Plus.Views
             // 强制设置背景色和样式（确保在 VxMain 中显示正确）
             this.BackColor = Color.White;
             
-            InitializeComponent_Custom();
-        }
-
-        /// <summary>
-        /// 自定义初始化（美化UI）
-        /// </summary>
-        private void InitializeComponent_Custom()
-        {
-            // 设置采集按钮点击事件
-            btnGetContactList.Click += BtnGetContactList_Click;
-            
             // 初始状态
             UpdateDisplay();
-        }
-
-        /// <summary>
-        /// 采集按钮点击处理
-        /// </summary>
-        private void BtnGetContactList_Click(object? sender, EventArgs e)
-        {
-            // 触发外部事件
-            CollectButtonClick?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -106,15 +81,12 @@ namespace BaiShengVx3Plus.Views
                 lbl_wxid.Text = "点击连接按钮启动微信";
                 pic_headimage.Image = null;
                 pic_headimage.BackColor = Color.LightGray;
-                // ✅ 未登录时也要启用按钮，因为连接按钮的作用就是启动微信/注入 DLL
-                btnGetContactList.Enabled = true;
             }
             else
             {
                 // 已登录状态
                 tbx_wxnick.Text = _userInfo.Nickname;
                 lbl_wxid.Text = $"ID: {_userInfo.Wxid}";
-                btnGetContactList.Enabled = true;
                 
                 // 加载头像（如果有）
                 LoadAvatar(_userInfo.Avatar);
@@ -144,21 +116,6 @@ namespace BaiShengVx3Plus.Views
             {
                 pic_headimage.Image = null;
                 pic_headimage.BackColor = Color.FromArgb(80, 160, 255);
-            }
-        }
-
-        /// <summary>
-        /// 设置采集按钮的启用状态
-        /// </summary>
-        public void SetCollectButtonEnabled(bool enabled)
-        {
-            if (InvokeRequired)
-            {
-                Invoke(new Action(() => btnGetContactList.Enabled = enabled));
-            }
-            else
-            {
-                btnGetContactList.Enabled = enabled;
             }
         }
     }

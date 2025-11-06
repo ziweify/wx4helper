@@ -110,11 +110,9 @@ namespace BaiShengVx3Plus
             // 订阅微信服务的连接状态变化事件
             _wechatService.ConnectionStateChanged += WeChatService_ConnectionStateChanged;
             
-            // 绑定用户信息到用户控件
+            // 🔥 现代化数据绑定：用户信息服务 → 用户控件
+            // 用户控件通过 PropertyChanged 自动更新，无需手动调用 UpdateDisplay
             ucUserInfo1.UserInfo = _userInfoService.CurrentUser;
-            
-            // 订阅用户控件的连接按钮事件
-            ucUserInfo1.CollectButtonClick += UcUserInfo_CollectButtonClick;
             
             // 记录主窗口打开
             _logService.Info("VxMain", "主窗口已打开");
@@ -905,13 +903,15 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 用户控件的连接按钮点击事件
-        /// 功能：启动微信（如果未启动）→ 注入 DLL → 连接 Socket → 自动获取用户信息和联系人
+        /// 连接按钮点击事件（现代化方式）
+        /// 
+        /// 🔥 精简、现代化、易维护的实现：
+        /// 1. 直接调用 WeChatService.ConnectAndInitializeAsync()
+        /// 2. UserInfo 自动通过 _userInfoService 更新
+        /// 3. ucUserInfo1 通过数据绑定自动刷新（无需手动更新）
+        /// 4. 状态更新通过 WeChatService_ConnectionStateChanged 事件处理
         /// </summary>
-        /// <summary>
-        /// 用户控件的连接按钮点击事件（使用新的 WeChatService）
-        /// </summary>
-        private async void UcUserInfo_CollectButtonClick(object? sender, EventArgs e)
+        private async void btnConnect_Click(object? sender, EventArgs e)
         {
             try
             {
@@ -921,19 +921,12 @@ namespace BaiShengVx3Plus
 
                 _logService.Info("VxMain", "用户点击连接按钮");
 
-                // 调用微信应用服务进行连接和初始化
+                // 🔥 调用微信应用服务进行连接和初始化
                 // forceRestart = false，让服务自动判断
-                // 状态更新由 WeChatService_ConnectionStateChanged 事件处理
+                // UserInfo 会通过 _userInfoService 自动更新
                 var success = await _wechatService.ConnectAndInitializeAsync(forceRestart: false, _connectCts.Token);
                 
-                _logService.Info("VxMain", $">>> 连接和初始化完成，结果: {success}");
-                
-                // 如果成功，检查联系人列表
-                if (success)
-                {
-                    _logService.Info("VxMain", $">>> dgvContacts 行数: {dgvContacts.Rows.Count}");
-                    _logService.Info("VxMain", $">>> _contactsBindingList 数量: {_contactsBindingList.Count}");
-                }
+                _logService.Info("VxMain", $"连接和初始化完成，结果: {success}");
             }
             catch (OperationCanceledException)
             {
@@ -942,7 +935,7 @@ namespace BaiShengVx3Plus
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "连接失败", ex);
-                UIMessageBox.ShowError($"连接失败:\n{ex.Message}");
+                UpdateUIThreadSafe(() => UIMessageBox.ShowError($"连接失败:\n{ex.Message}"));
             }
         }
 
@@ -985,8 +978,8 @@ namespace BaiShengVx3Plus
                 _ => false
             };
 
-            // 连接中时禁用按钮，其他状态启用
-            ucUserInfo1.SetCollectButtonEnabled(!isConnecting);
+            // 🔥 连接中时禁用连接按钮，其他状态启用
+            UpdateUIThreadSafe(() => btnConnect.Enabled = !isConnecting);
 
             // 记录日志
             _logService.Info("VxMain", $"连接状态: {e.OldState} → {e.NewState} ({statusMessage})");
@@ -1030,9 +1023,9 @@ namespace BaiShengVx3Plus
         {
             if (UIMessageBox.ShowAsk("确定要清空所有数据吗？"))
             {
-                _contactsBindingList.Clear();
-                _membersBindingList.Clear();
-                _ordersBindingList.Clear();
+                _contactsBindingList?.Clear();
+                _membersBindingList?.Clear();
+                _ordersBindingList?.Clear();
                 UpdateStatistics();
                 lblStatus.Text = "数据已清空";
             }
@@ -1300,20 +1293,8 @@ namespace BaiShengVx3Plus
                 // 🔥 初始化数据库（ORM）
                 InitializeDatabase(e.UserInfo.Wxid ?? "unknown");
 
-                // 线程安全地更新 UI
-                if (InvokeRequired)
-                {
-                    Invoke(new Action(() =>
-                    {
-                        // ✅ 更新用户信息显示
-                        ucUserInfo1.UserInfo = e.UserInfo;
-                    }));
-                }
-                else
-                {
-                    // ✅ 更新用户信息显示
-                    ucUserInfo1.UserInfo = e.UserInfo;
-                }
+                // 🔥 用户信息通过现代化数据绑定自动更新
+                // ucUserInfo1 订阅了 UserInfo.PropertyChanged 事件，会自动刷新显示
 
                 // 🔥 如果用户已登录（wxid 不为空）且 WeChatService 不在获取流程中，自动获取联系人
                 // 这个主要处理服务器主动推送 OnLogin 的情况（自动重连后）

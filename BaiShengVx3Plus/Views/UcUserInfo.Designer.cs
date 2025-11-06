@@ -31,7 +31,6 @@
             pic_headimage = new PictureBox();
             tbx_wxnick = new Sunny.UI.UITextBox();
             lbl_wxid = new Sunny.UI.UIMarkLabel();
-            btnGetContactList = new Sunny.UI.UIButton();
             ((System.ComponentModel.ISupportInitialize)pic_headimage).BeginInit();
             SuspendLayout();
             // 
@@ -50,7 +49,6 @@
             // 
             tbx_wxnick.BackColor = Color.White;
             tbx_wxnick.Font = new Font("微软雅黑", 12F, FontStyle.Bold, GraphicsUnit.Point, 134);
-            tbx_wxnick.ForeColor = Color.FromArgb(48, 48, 48);
             tbx_wxnick.Location = new Point(65, 8);
             tbx_wxnick.Margin = new Padding(4, 5, 4, 5);
             tbx_wxnick.MinimumSize = new Size(1, 16);
@@ -59,9 +57,8 @@
             tbx_wxnick.Radius = 0;
             tbx_wxnick.ReadOnly = true;
             tbx_wxnick.RectColor = Color.Transparent;
-            tbx_wxnick.RectSize = 0;
             tbx_wxnick.ShowText = false;
-            tbx_wxnick.Size = new Size(200, 25);
+            tbx_wxnick.Size = new Size(175, 25);
             tbx_wxnick.TabIndex = 1;
             tbx_wxnick.Text = "未登录";
             tbx_wxnick.TextAlignment = ContentAlignment.MiddleLeft;
@@ -75,43 +72,20 @@
             lbl_wxid.Location = new Point(65, 35);
             lbl_wxid.Name = "lbl_wxid";
             lbl_wxid.Padding = new Padding(5, 0, 0, 0);
-            lbl_wxid.Size = new Size(200, 18);
+            lbl_wxid.Size = new Size(175, 18);
             lbl_wxid.TabIndex = 2;
             lbl_wxid.Text = "请先登录微信";
-            // 
-            // btnGetContactList
-            // 
-            btnGetContactList.Cursor = Cursors.Hand;
-            btnGetContactList.FillColor = Color.FromArgb(80, 160, 255);
-            btnGetContactList.FillHoverColor = Color.FromArgb(100, 180, 255);
-            btnGetContactList.FillPressColor = Color.FromArgb(60, 140, 235);
-            btnGetContactList.FillSelectedColor = Color.FromArgb(60, 140, 235);
-            btnGetContactList.Font = new Font("微软雅黑", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 134);
-            btnGetContactList.ForeColor = Color.White;
-            btnGetContactList.Location = new Point(272, 10);
-            btnGetContactList.MinimumSize = new Size(1, 1);
-            btnGetContactList.Name = "btnGetContactList";
-            btnGetContactList.Radius = 6;
-            btnGetContactList.RectColor = Color.FromArgb(80, 160, 255);
-            btnGetContactList.RectHoverColor = Color.FromArgb(100, 180, 255);
-            btnGetContactList.RectPressColor = Color.FromArgb(60, 140, 235);
-            btnGetContactList.RectSelectedColor = Color.FromArgb(60, 140, 235);
-            btnGetContactList.Size = new Size(60, 40);
-            btnGetContactList.TabIndex = 3;
-            btnGetContactList.Text = "连接";
-            btnGetContactList.TipsFont = new Font("微软雅黑", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             // 
             // UcUserInfo
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
-            Controls.Add(btnGetContactList);
             Controls.Add(lbl_wxid);
             Controls.Add(tbx_wxnick);
             Controls.Add(pic_headimage);
             Name = "UcUserInfo";
-            Size = new Size(340, 60);
+            Size = new Size(242, 60);
             ((System.ComponentModel.ISupportInitialize)pic_headimage).EndInit();
             ResumeLayout(false);
         }
@@ -121,6 +95,5 @@
         private PictureBox pic_headimage;
         private Sunny.UI.UITextBox tbx_wxnick;
         private Sunny.UI.UIMarkLabel lbl_wxid;
-        private Sunny.UI.UIButton btnGetContactList;
     }
 }
