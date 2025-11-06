@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
+using System.Windows.Forms;
 using BaiShengVx3Plus.Models;
 using SQLite;
 
@@ -14,16 +16,21 @@ namespace BaiShengVx3Plus.Core
     /// 1. 零 SQL：Insert/Update/Delete 一行代码
     /// 2. 自动追踪：PropertyChanged 自动保存
     /// 3. 自动去重：检查 GroupWxId + Wxid
+    /// 4. 🔥 线程安全：数据库操作立即执行，UI 更新在 UI 线程执行
     /// </summary>
     public class V2MemberBindingList : BindingList<V2Member>
     {
         private readonly SQLiteConnection _db;
         private readonly string _groupWxId;
+        private readonly SynchronizationContext? _syncContext;
 
         public V2MemberBindingList(SQLiteConnection db, string groupWxId)
         {
             _db = db;
             _groupWxId = groupWxId;
+            
+            // 🔥 捕获 UI 线程的 SynchronizationContext
+            _syncContext = SynchronizationContext.Current;
             
             // 🔥 自动建表（零 SQL）
             _db.CreateTable<V2Member>();
@@ -31,9 +38,14 @@ namespace BaiShengVx3Plus.Core
 
         /// <summary>
         /// 重写 InsertItem：添加时自动保存到数据库
+        /// 🔥 线程安全：数据库操作立即执行，UI 更新在 UI 线程执行
         /// </summary>
         protected override void InsertItem(int index, V2Member item)
         {
+            // ========================================
+            // 🔥 步骤1: 数据库操作（在当前线程立即执行，保证可靠写入）
+            // ========================================
+            
             // 🔥 修复：只在 GroupWxId 为空时才设置，否则保留原值
             // 这样可以支持在同一个数据库中存储多个群的会员
             if (string.IsNullOrEmpty(item.GroupWxId))
@@ -72,14 +84,41 @@ namespace BaiShengVx3Plus.Core
                 _db.Update(item);
             }
 
-            base.InsertItem(index, item);
-
-            // 🔥 订阅属性变化：自动保存（一行代码）
+            // ========================================
+            // 🔥 步骤2: UI 更新（在 UI 线程执行）
+            // ========================================
+            if (_syncContext != null && SynchronizationContext.Current != _syncContext)
+            {
+                // 🔥 从非 UI 线程调用，切换到 UI 线程
+                _syncContext.Post(_ =>
+                {
+                    base.InsertItem(index, item);
+                    SubscribePropertyChanged(item);
+                }, null);
+            }
+            else
+            {
+                // 🔥 已在 UI 线程，直接执行
+                base.InsertItem(index, item);
+                SubscribePropertyChanged(item);
+            }
+        }
+        
+        /// <summary>
+        /// 订阅属性变化，自动保存到数据库
+        /// 🔥 线程安全：数据库更新立即执行，UI 刷新在 UI 线程执行
+        /// </summary>
+        private void SubscribePropertyChanged(V2Member item)
+        {
             item.PropertyChanged += (s, e) =>
             {
                 if (item.Id > 0)
                 {
-                    _db.Update(item);  // 🔥 自动更新
+                    // 🔥 立即保存到数据库（在当前线程执行）
+                    _db.Update(item);
+                    
+                    // 🔥 线程安全地刷新 UI
+                    NotifyItemChanged(item);
                 }
             };
         }
@@ -101,6 +140,7 @@ namespace BaiShengVx3Plus.Core
 
         /// <summary>
         /// 从数据库加载所有会员
+        /// 🔥 必须在 UI 线程调用
         /// </summary>
         public void LoadFromDatabase()
         {
@@ -111,15 +151,27 @@ namespace BaiShengVx3Plus.Core
             foreach (var member in members)
             {
                 base.InsertItem(Count, member);
-                
-                // 订阅属性变化
-                member.PropertyChanged += (s, e) =>
+                SubscribePropertyChanged(member);
+            }
+        }
+        
+        /// <summary>
+        /// 通知指定会员的数据已更新
+        /// 🔥 线程安全：触发 UI 刷新
+        /// </summary>
+        public void NotifyItemChanged(V2Member member)
+        {
+            var index = IndexOf(member);
+            if (index >= 0)
+            {
+                if (_syncContext != null && SynchronizationContext.Current != _syncContext)
                 {
-                    if (member.Id > 0)
-                    {
-                        _db.Update(member);
-                    }
-                };
+                    _syncContext.Post(_ => ResetItem(index), null);
+                }
+                else
+                {
+                    ResetItem(index);
+                }
             }
         }
     }

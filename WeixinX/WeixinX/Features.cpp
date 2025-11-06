@@ -911,12 +911,12 @@ void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::
 
 	// 将 msgReceived 转换为 JSON 并打印（不转义中文字符）
 	Json::Value j;
-	j["receiver1"] = msgReceived.receiver1;
-	j["receiver2"] = msgReceived.receiver2;
-	j["sender"] = msgReceived.sender;
-	j["ts"] = (Json::Int64)msgReceived.ts;
-	j["fromChatroom"] = msgReceived.fromChatroom;
-	j["content"] = msgReceived.content;
+	j["receiver1"] = msgReceived.receiver1;	//这个是聊天对象ID, 如果是群的话，就是群ID
+	j["receiver2"] = msgReceived.receiver2; //群主ID?
+	j["sender"] = msgReceived.sender;		//发送者ID
+	j["ts"] = (Json::Int64)msgReceived.ts;	//消息发送时间戳
+	j["fromChatroom"] = msgReceived.fromChatroom; //是否是群聊 true:是群聊 false:不是群聊
+	j["content"] = msgReceived.content;	//消息内容
 	
 	Json::StreamWriterBuilder builder;
 	builder["indentation"] = "  ";
@@ -924,6 +924,15 @@ void WeixinX::MsgReceived::Received(WeixinX::weixin_dll::v41021::weixin_struct::
 	const std::string jsonString = Json::writeString(builder, j);
 	
 	util::logging::wPrint(L"MsgReceived JSON:\n{}", util::utf8ToUtf16(jsonString.c_str()));
+	
+	// 🔥 推送消息到所有已连接的 Socket 客户端（C# 端）
+	auto& core = util::Singleton<Core>::Get();
+	auto* socketServer = core.GetSocketServer();
+	if (socketServer) {
+		// 构造推送消息的 params（直接使用 j 作为参数）
+		socketServer->Broadcast("OnMessage", j);
+		util::logging::print("📤 Message pushed to C# client via Socket");
+	}
 
 	//test_queue.push(rawContent);
 	//util::logging::print("ts = {:d} msg.ts = {:d} ts - msg.ts = {:d}", util::Timestamp(), msgReceived.ts, util::Timestamp() - msgReceived.ts);

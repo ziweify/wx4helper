@@ -178,7 +178,8 @@ namespace BaiShengVx3Plus.Views
                 RowHeadersVisible = false,
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.Fixed3D,
-                Font = new Font("微软雅黑", 9F)
+                Font = new Font("微软雅黑", 9F),
+                RowTemplate = { Height = 36 }  // 🔥 设置行高，与列宽匹配形成正方形
             };
             this.Controls.Add(dgvLotteryData);
         }
@@ -207,7 +208,7 @@ namespace BaiShengVx3Plus.Views
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
             
-            // P1-P5 列
+            // P1-P5 列（正方形单元格，便于绘制圆形）
             for (int i = 1; i <= 5; i++)
             {
                 dgvLotteryData.Columns.Add(new DataGridViewTextBoxColumn
@@ -215,11 +216,11 @@ namespace BaiShengVx3Plus.Views
                     Name = $"P{i}",
                     HeaderText = $"P{i}",
                     DataPropertyName = $"P{i}",
-                    Width = 40,
+                    Width = 45,  // 🔥 调整为正方形
                     DefaultCellStyle = new DataGridViewCellStyle
                     {
                         Alignment = DataGridViewContentAlignment.MiddleCenter,
-                        Font = new Font("微软雅黑", 9F, FontStyle.Bold)
+                        Font = new Font("微软雅黑", 10F, FontStyle.Bold)
                     }
                 });
             }
@@ -229,12 +230,11 @@ namespace BaiShengVx3Plus.Views
                 Name = "PSum",
                 HeaderText = "总和",
                 DataPropertyName = "PSum",
-                Width = 50,
+                Width = 50,  // 🔥 总和列稍宽
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
                     Alignment = DataGridViewContentAlignment.MiddleCenter,
-                    Font = new Font("微软雅黑", 9F, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(255, 87, 34)
+                    Font = new Font("微软雅黑", 10F, FontStyle.Bold)
                 }
             });
             
@@ -278,7 +278,7 @@ namespace BaiShengVx3Plus.Views
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
             
-            // 🔥 设置行样式
+            // 🔥 设置行样式（只用颜色区分大小）
             dgvLotteryData.CellFormatting += DgvLotteryData_CellFormatting;
         }
         
@@ -465,44 +465,37 @@ namespace BaiShengVx3Plus.Views
         }
         
         /// <summary>
-        /// 🔥 单元格格式化（设置号码颜色）
+        /// 🔥 单元格格式化：大红小绿（极简高效）
+        /// 直接根据数值判断，不访问 DataBoundItem
         /// </summary>
         private void DgvLotteryData_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             try
             {
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+                if (e.Value == null) return;
                 
                 var columnName = dgvLotteryData.Columns[e.ColumnIndex].Name;
                 
-                // P1-P5 列设置颜色
-                if (columnName.StartsWith("P") && columnName.Length == 2 && char.IsDigit(columnName[1]))
+                // P1-P5 和 PSum 列设置颜色
+                if ((columnName.StartsWith("P") && columnName.Length == 2 && char.IsDigit(columnName[1])) || 
+                    columnName == "PSum")
                 {
-                    var row = dgvLotteryData.Rows[e.RowIndex];
-                    var data = row.DataBoundItem as BinggoLotteryData;
-                    
-                    if (data != null && e.Value != null)
+                    // 🔥 直接从单元格值判断（最高效）
+                    if (int.TryParse(e.Value.ToString(), out int number))
                     {
-                        int number = 0;
-                        if (columnName == "P1" && data.P1 != null) number = data.P1.Number;
-                        else if (columnName == "P2" && data.P2 != null) number = data.P2.Number;
-                        else if (columnName == "P3" && data.P3 != null) number = data.P3.Number;
-                        else if (columnName == "P4" && data.P4 != null) number = data.P4.Number;
-                        else if (columnName == "P5" && data.P5 != null) number = data.P5.Number;
+                        // 判断大小：总和 >= 84.5 为大，< 84.5 为小
+                        // P1-P5: >= 14.5 为大；PSum: >= 84.5 为大
+                        bool isBig = (columnName == "PSum") ? (number >= 85) : (number >= 15);
                         
-                        if (number >= 1 && number <= 10)
+                        if (isBig)
                         {
-                            e.CellStyle.BackColor = Color.FromArgb(33, 150, 243); // 蓝色
+                            e.CellStyle.BackColor = Color.FromArgb(244, 67, 54);  // 红色（大）
                             e.CellStyle.ForeColor = Color.White;
                         }
-                        else if (number >= 11 && number <= 20)
+                        else
                         {
-                            e.CellStyle.BackColor = Color.FromArgb(76, 175, 80); // 绿色
-                            e.CellStyle.ForeColor = Color.White;
-                        }
-                        else if (number >= 21 && number <= 28)
-                        {
-                            e.CellStyle.BackColor = Color.FromArgb(244, 67, 54); // 红色
+                            e.CellStyle.BackColor = Color.FromArgb(76, 175, 80);  // 绿色（小）
                             e.CellStyle.ForeColor = Color.White;
                         }
                     }

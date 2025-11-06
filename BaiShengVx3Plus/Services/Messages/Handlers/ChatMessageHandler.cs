@@ -58,7 +58,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 // ========================================
                 
                 // 1. 检查是否为群消息
-                if (string.IsNullOrEmpty(message.Receiver) || !message.Receiver.Contains("@chatroom"))
+                if (!message.FromChatroom || !message.Receiver1.Contains("@chatroom"))
                 {
                     _logService.Debug("ChatMessageHandler", "非群消息，跳过炳狗处理");
                     return;
@@ -80,9 +80,16 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 // 4. 如果已处理，发送回复消息
                 if (handled && !string.IsNullOrEmpty(replyMessage))
                 {
-                    await SendWeChatReplyAsync(message.Receiver, replyMessage);
+                    // 🔥 修复：使用 Receiver1（群ID）而不是 Receiver
+                    string replyTo = message.Receiver1;  // 群ID
+                    
                     _logService.Info("ChatMessageHandler", 
-                        $"✅ 已回复: {replyMessage.Substring(0, Math.Min(50, replyMessage.Length))}...");
+                        $"准备回复到群: {replyTo}, 消息: {replyMessage.Substring(0, Math.Min(50, replyMessage.Length))}...");
+                    
+                    await SendWeChatReplyAsync(replyTo, replyMessage);
+                    
+                    _logService.Info("ChatMessageHandler", 
+                        $"✅ 已发送回复");
                 }
 
                 await Task.CompletedTask;
@@ -103,36 +110,32 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         
         /// <summary>
         /// 发送回复消息到微信群
+        /// 🔥 修复：使用正确的 JSON-RPC 调用方式
         /// </summary>
         private async Task SendWeChatReplyAsync(string toWxid, string message)
         {
             try
             {
-                // 构造 SendText 命令
-                var command = new
+                _logService.Info("ChatMessageHandler", 
+                    $"🔥 开始发送回复 | 目标: {toWxid} | 消息: {message}");
+                
+                // 🔥 修复：使用正确的方法签名
+                // SendAsync<TResult>(string method, params object[] parameters)
+                // C++ 端注册的命令是 "SendMessage"，参数是 (wxid, message)
+                var response = await _socketClient.SendAsync<object>("SendMessage", toWxid, message);
+                
+                if (response != null)
                 {
-                    command = "SendText",
-                    wxid = toWxid,
-                    message = message
-                };
-                
-                var commandJson = JsonSerializer.Serialize(command);
-                
-                // 通过 Socket 发送（使用默认超时）
-                var response = await _socketClient.SendAsync<string>(commandJson);
-                
-                if (response != "(null)")
-                {
-                    _logService.Info("ChatMessageHandler", $"✅ 消息已发送: {response}");
+                    _logService.Info("ChatMessageHandler", $"✅ 消息已成功发送到微信");
                 }
                 else
                 {
-                    _logService.Warning("ChatMessageHandler", "消息发送返回 null");
+                    _logService.Warning("ChatMessageHandler", "⚠️ 消息发送返回 null");
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error("ChatMessageHandler", $"发送消息失败: {ex.Message}", ex);
+                _logService.Error("ChatMessageHandler", $"❌ 发送消息失败: {ex.Message}", ex);
             }
         }
     }

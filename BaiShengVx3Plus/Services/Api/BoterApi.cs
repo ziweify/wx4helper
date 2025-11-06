@@ -62,8 +62,12 @@ namespace BaiShengVx3Plus.Services.Api
             
             try
             {
+                Console.WriteLine($"📡 登录请求: {funcUrl}");
+                
                 var response = await _httpClient.GetAsync(funcUrl);
                 var json = await response.Content.ReadAsStringAsync();
+                
+                Console.WriteLine($"📡 登录响应: {json}");
                 
                 LoginApiResponse = JsonConvert.DeserializeObject<BsApiResponse<BsApiUser>>(json);
                 
@@ -71,7 +75,18 @@ namespace BaiShengVx3Plus.Services.Api
                 {
                     Console.WriteLine($"✅ 登录成功: {user}");
                     Console.WriteLine($"   c_sign: {LoginApiResponse.Data?.Token}");
-                    Console.WriteLine($"   有效期: {LoginApiResponse.Data?.ValidUntil}");
+                    Console.WriteLine($"   c_soft_name: {LoginApiResponse.Data?.SoftName}");
+                    Console.WriteLine($"   c_off_time: {LoginApiResponse.Data?.ValidUntil}");
+                    
+                    // 🔥 验证 c_sign 是否正确解析
+                    if (string.IsNullOrEmpty(LoginApiResponse.Data?.Token))
+                    {
+                        Console.WriteLine("⚠️ 警告: c_sign 为空！");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"❌ 登录失败: Code={LoginApiResponse?.Code}, Msg={LoginApiResponse?.Msg}");
                 }
                 
                 return LoginApiResponse ?? new BsApiResponse<BsApiUser>
@@ -82,7 +97,8 @@ namespace BaiShengVx3Plus.Services.Api
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ 登录失败: {ex.Message}");
+                Console.WriteLine($"❌ 登录异常: {ex.Message}");
+                Console.WriteLine($"   StackTrace: {ex.StackTrace}");
                 return new BsApiResponse<BsApiUser>
                 {
                     Code = -1,

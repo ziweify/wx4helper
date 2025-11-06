@@ -27,9 +27,45 @@ namespace BaiShengVx3Plus.UserControls
         private BinggoLotteryData? _lastData;
         private UILabel[] numberLabels = new UILabel[6];  // P1-P5 + Sum
         
+        // 🔥 闪烁动画相关
+        private System.Windows.Forms.Timer? _blinkTimer;
+        private bool _isBlinking = false;
+        private int _blinkCount = 0;
+        
         public UcBinggoDataLast()
         {
             InitializeUI();
+            InitializeBlinkTimer();
+        }
+        
+        /// <summary>
+        /// 🔥 初始化闪烁定时器（让"开奖中"更有动感）
+        /// </summary>
+        private void InitializeBlinkTimer()
+        {
+            _blinkTimer = new System.Windows.Forms.Timer();
+            _blinkTimer.Interval = 500;  // 0.5秒闪烁一次
+            _blinkTimer.Tick += (s, e) =>
+            {
+                if (_isBlinking && _lastData != null && !_lastData.IsOpened)
+                {
+                    _blinkCount++;
+                    bool showBright = (_blinkCount % 2 == 0);
+                    
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (showBright)
+                        {
+                            numberLabels[i].BackColor = Color.FromArgb(255, 235, 59);  // 亮黄色
+                        }
+                        else
+                        {
+                            numberLabels[i].BackColor = Color.FromArgb(255, 193, 7);   // 金黄色
+                        }
+                        numberLabels[i].Invalidate();
+                    }
+                }
+            };
         }
         
         /// <summary>
@@ -38,10 +74,12 @@ namespace BaiShengVx3Plus.UserControls
         /// </summary>
         public void SetLotteryService(IBinggoLotteryService lotteryService)
         {
+            Console.WriteLine("========== UcBinggoDataLast.SetLotteryService 开始 ==========");
+            
             // 取消订阅旧服务
             if (_lotteryService != null)
             {
-                _lotteryService.IssueChanged -= OnIssueChanged;  // 🔥 新增：订阅期号变更
+                _lotteryService.IssueChanged -= OnIssueChanged;
                 _lotteryService.LotteryOpened -= OnLotteryOpened;
             }
             
@@ -50,12 +88,31 @@ namespace BaiShengVx3Plus.UserControls
             // 订阅新服务
             if (_lotteryService != null)
             {
-                _lotteryService.IssueChanged += OnIssueChanged;  // 🔥 新增：订阅期号变更
+                _lotteryService.IssueChanged += OnIssueChanged;
                 _lotteryService.LotteryOpened += OnLotteryOpened;
                 
-                // 🔥 立即加载上期数据
+                // 🔥 立即本地计算并显示上期期号和时间（不等待 API）
+                int currentIssueId = BinggoTimeHelper.GetCurrentIssueId();
+                int lastIssueId = BinggoTimeHelper.GetPreviousIssueId(currentIssueId);
+                DateTime lastOpenTime = BinggoTimeHelper.GetIssueOpenTime(lastIssueId);
+                
+                Console.WriteLine($"🔥 SetLotteryService: 本地计算上期 - 当前期号={currentIssueId}, 上期期号={lastIssueId}, 开奖时间={lastOpenTime:HH:mm:ss}");
+                
+                // 🔥 立即创建空数据对象并显示
+                _lastData = new BinggoLotteryData
+                {
+                    IssueId = lastIssueId,
+                    OpenTime = lastOpenTime.ToString("yyyy-MM-dd HH:mm:ss")
+                };
+                
+                Console.WriteLine("✅ SetLotteryService: 立即显示上期期号和时间");
+                UpdateDisplay();  // 立即显示期号和时间（号码为 ✱）
+                
+                // 🔥 异步加载号码（不阻塞）
                 LoadLastLotteryData();
             }
+            
+            Console.WriteLine("========== UcBinggoDataLast.SetLotteryService 完成 ==========");
         }
         
         private void InitializeUI()
@@ -100,7 +157,8 @@ namespace BaiShengVx3Plus.UserControls
             };
             this.Controls.Add(lblOpenTime);
             
-            // 🔥 号码显示区域（6个圆形号码：P1-P5 + Sum）
+            // 🔥 号码显示区域（6个号码：P1-P5 + Sum）
+            // 优化：字体调小以显示两位数，根据单双显示圆形或方形
             int startX = 9;
             int startY = 42;
             int spacing = 37;
@@ -111,7 +169,7 @@ namespace BaiShengVx3Plus.UserControls
                 var lblNumber = new UILabel
                 {
                     Text = "-",
-                    Font = new Font("微软雅黑", 11F, FontStyle.Bold),
+                    Font = new Font("微软雅黑", 10F, FontStyle.Bold),  // 🔥 字体调小
                     ForeColor = Color.White,
                     Location = new Point(startX + i * spacing, startY),
                     Size = new Size(ballSize, ballSize),
@@ -119,16 +177,32 @@ namespace BaiShengVx3Plus.UserControls
                     BackColor = Color.Gray
                 };
                 
-                // 🔥 自定义绘制圆形背景
+                // 🔥 自定义绘制（圆形或方形，根据单双决定）
                 lblNumber.Paint += (s, e) =>
                 {
                     var lbl = s as UILabel;
                     if (lbl != null)
                     {
                         e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        
+                        // 🔥 判断是否为单数（通过 Tag 传递）
+                        bool isOdd = lbl.Tag is bool odd && odd;
+                        
                         using (var brush = new SolidBrush(lbl.BackColor))
                         {
-                            e.Graphics.FillEllipse(brush, 0, 0, lbl.Width - 1, lbl.Height - 1);
+                            if (isOdd)
+                            {
+                                // 单数：圆形背景
+                                e.Graphics.FillEllipse(brush, 0, 0, lbl.Width - 1, lbl.Height - 1);
+                            }
+                            else
+                            {
+                                // 双数：方形背景（圆角矩形）
+                                using (var path = GetRoundedRectPath(new Rectangle(0, 0, lbl.Width - 1, lbl.Height - 1), 6))
+                                {
+                                    e.Graphics.FillPath(brush, path);
+                                }
+                            }
                         }
                         
                         // 绘制文字
@@ -152,8 +226,8 @@ namespace BaiShengVx3Plus.UserControls
             lblStatistics = new UILabel
             {
                 Text = "大小单双: -",
-                Font = new Font("微软雅黑", 8F),
-                ForeColor = Color.FromArgb(80, 80, 80),
+                Font = new Font("微软雅黑", 10F, FontStyle.Bold),  // 🔥 字体放大加粗
+                ForeColor = Color.FromArgb(48, 48, 48),
                 Location = new Point(5, 78),
                 Size = new Size(229, 28),
                 TextAlign = ContentAlignment.TopCenter
@@ -162,7 +236,30 @@ namespace BaiShengVx3Plus.UserControls
         }
         
         /// <summary>
-        /// 🔥 加载上期数据
+        /// 🔥 获取圆角矩形路径（用于绘制双数的方形背景）
+        /// </summary>
+        private System.Drawing.Drawing2D.GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            int diameter = radius * 2;
+            
+            // 左上角
+            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+            // 右上角
+            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+            // 右下角
+            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+            // 左下角
+            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+            
+            path.CloseFigure();
+            return path;
+        }
+        
+        /// <summary>
+        /// 🔥 加载上期数据（完全参考 F5BotV2 的逻辑）
+        /// ⚠️ 注意：这个方法已经不需要了，因为期号切换时会自动设置上期数据
+        /// 但保留用于初始化时的数据加载
         /// </summary>
         private async void LoadLastLotteryData()
         {
@@ -176,10 +273,8 @@ namespace BaiShengVx3Plus.UserControls
                     return;
                 }
                 
-                Console.WriteLine("📡 LoadLastLotteryData: 开始获取最近1期数据...");
-                Console.WriteLine($"📡 _lotteryService 类型: {_lotteryService.GetType().Name}");
-                
-                // 🔥 获取最近1期数据
+                // 🔥 从 API 获取最近1期号码
+                Console.WriteLine("📡 LoadLastLotteryData: 开始从 API 获取号码...");
                 var recentData = await _lotteryService.GetRecentLotteryDataAsync(1);
                 
                 Console.WriteLine($"📡 API返回数据: recentData={recentData}, Count={recentData?.Count ?? 0}");
@@ -263,17 +358,35 @@ namespace BaiShengVx3Plus.UserControls
                     lblOpenTime.Text = "-";
                 }
                 
-                // 🔥 如果未开奖，号码显示为 "-"
+                // 🔥 如果未开奖，号码显示为 "✱"（参考 F5BotV2）
                 if (!_lastData.IsOpened)
                 {
-                    lblStatistics.Text = "等待开奖...";
+                    lblStatistics.Text = "🎲 开 奖 中 🎲";
                     for (int i = 0; i < 6; i++)
                     {
-                        numberLabels[i].Text = "-";
-                        numberLabels[i].BackColor = Color.Gray;
+                        numberLabels[i].Text = "✱";  // 使用 Unicode 星号，更美观
+                        numberLabels[i].Font = new Font("微软雅黑", 18F, FontStyle.Bold);
+                        numberLabels[i].BackColor = Color.FromArgb(255, 193, 7);  // 金黄色，表示开奖中
+                        numberLabels[i].ForeColor = Color.White;
                         numberLabels[i].Invalidate();
                     }
+                    
+                    // 🔥 启动闪烁动画
+                    if (!_isBlinking)
+                    {
+                        _isBlinking = true;
+                        _blinkCount = 0;
+                        _blinkTimer?.Start();
+                    }
+                    
                     return;  // ⚠️ 这里返回，不再继续处理号码
+                }
+                
+                // 🔥 已开奖，停止闪烁动画
+                if (_isBlinking)
+                {
+                    _isBlinking = false;
+                    _blinkTimer?.Stop();
                 }
                 
                 // 🔥 使用新的 P1-P5 和 PSum 属性
@@ -286,31 +399,20 @@ namespace BaiShengVx3Plus.UserControls
                     {
                         int number = ball.Number;
                         numberLabels[i].Text = number.ToString();
+                        numberLabels[i].Font = new Font("微软雅黑", 10F, FontStyle.Bold);
                         
-                        // 🔥 根据号码设置颜色
-                        if (i < 5)  // P1-P5
+                        // 🔥 新规则：大红色，小绿色（基于 Size 属性）
+                        if (ball.Size == BaiShengVx3Plus.Models.Games.Binggo.SizeType.Big)
                         {
-                            if (number >= 1 && number <= 10)
-                            {
-                                numberLabels[i].BackColor = Color.FromArgb(33, 150, 243);  // 蓝色
-                            }
-                            else if (number >= 11 && number <= 20)
-                            {
-                                numberLabels[i].BackColor = Color.FromArgb(76, 175, 80);  // 绿色
-                            }
-                            else if (number >= 21 && number <= 28)
-                            {
-                                numberLabels[i].BackColor = Color.FromArgb(244, 67, 54);  // 红色
-                            }
-                            else
-                            {
-                                numberLabels[i].BackColor = Color.FromArgb(158, 158, 158);  // 灰色
-                            }
+                            numberLabels[i].BackColor = Color.FromArgb(244, 67, 54);  // 红色（大）
                         }
-                        else  // PSum（总和）
+                        else  // Small
                         {
-                            numberLabels[i].BackColor = Color.FromArgb(255, 152, 0);  // 橙色
+                            numberLabels[i].BackColor = Color.FromArgb(76, 175, 80);  // 绿色（小）
                         }
+                        
+                        // 🔥 通过 Tag 传递单双信息（用于绘制圆形或方形）
+                        numberLabels[i].Tag = (ball.OddEven == BaiShengVx3Plus.Models.Games.Binggo.OddEvenType.Odd);
                         
                         numberLabels[i].Invalidate(); // 触发重绘
                     }
@@ -318,6 +420,8 @@ namespace BaiShengVx3Plus.UserControls
                     {
                         numberLabels[i].Text = "-";
                         numberLabels[i].BackColor = Color.Gray;
+                        numberLabels[i].Tag = false;
+                        numberLabels[i].Invalidate();
                     }
                 }
                 
@@ -333,8 +437,9 @@ namespace BaiShengVx3Plus.UserControls
         }
         
         /// <summary>
-        /// 🔥 新增：处理期号变更事件（参考 F5BotV2 的逻辑）
-        /// 期号变更时，立即显示上期的期号和时间（即使号码还未开出）
+        /// 🔥 处理期号变更事件（完全参考 F5BotV2 的逻辑）
+        /// 期号切换时，Service 已经计算好了上期数据（期号、时间），直接显示
+        /// 号码显示为 "✱"（开奖中）
         /// </summary>
         private void OnIssueChanged(object? sender, BinggoIssueChangedEventArgs e)
         {
@@ -342,9 +447,11 @@ namespace BaiShengVx3Plus.UserControls
             
             if (e.LastLotteryData != null)
             {
-                Console.WriteLine($"✅ 期号变更带来的上期数据: IssueId={e.LastLotteryData.IssueId}, IsOpened={e.LastLotteryData.IsOpened}");
+                Console.WriteLine($"✅ 期号变更带来的上期数据: IssueId={e.LastLotteryData.IssueId}, OpenTime={e.LastLotteryData.OpenTime}");
+                Console.WriteLine($"   IsOpened={e.LastLotteryData.IsOpened}（false表示号码显示为✱）");
+                
                 _lastData = e.LastLotteryData;
-                UpdateDisplay();  // 立即显示期号和时间（号码显示为 "-"）
+                UpdateDisplay();  // 立即显示：期号、时间、号码（✱）
             }
             else
             {

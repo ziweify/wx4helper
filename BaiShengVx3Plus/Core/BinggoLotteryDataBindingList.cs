@@ -27,8 +27,33 @@ namespace BaiShengVx3Plus.Core
             _db = db;
             _logService = logService;
             
-            // 创建表
+            // 🔥 重要：检查并迁移数据库表结构
+            try
+            {
+                // 尝试查询表，如果列不匹配会抛出异常
+                var testQuery = _db.Table<BinggoLotteryData>().Take(1).ToList();
+                _logService.Info("BinggoLotteryDataBindingList", "✅ 表结构验证通过");
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("BinggoLotteryDataBindingList", 
+                    $"表结构不匹配或表不存在，尝试重建: {ex.Message}");
+                
+                try
+                {
+                    // 删除旧表
+                    _db.Execute("DROP TABLE IF EXISTS BinggoLotteryData");
+                    _logService.Info("BinggoLotteryDataBindingList", "🗑️ 已删除旧表");
+                }
+                catch (Exception dropEx)
+                {
+                    _logService.Warning("BinggoLotteryDataBindingList", $"删除旧表失败: {dropEx.Message}");
+                }
+            }
+            
+            // 创建或重建表
             _db.CreateTable<BinggoLotteryData>();
+            _logService.Info("BinggoLotteryDataBindingList", "✅ 表已创建或更新");
             
             // 启用通知
             AllowEdit = true;

@@ -13,6 +13,9 @@ namespace BaiShengVx3Plus.Views
     {
         private readonly ILogService _logService;
         private System.Windows.Forms.Timer? _refreshTimer;
+        
+        // 🔥 智能滚动控制：用户是否在底部查看
+        private bool _isUserScrolledToBottom = true;
 
         public LogViewerForm(ILogService logService)
         {
@@ -22,11 +25,43 @@ namespace BaiShengVx3Plus.Views
             // 订阅实时日志事件
             _logService.LogAdded += OnLogAdded;
             
+            // 🔥 订阅滚动事件，检测用户是否手动滚动
+            dgvLogs.Scroll += DgvLogs_Scroll;
+            
             // 加载历史日志
             LoadRecentLogs();
             
             // 启动定时刷新（备用方案）
             StartRefreshTimer();
+        }
+        
+        /// <summary>
+        /// 🔥 检测用户是否滚动到底部（智能滚动核心）
+        /// </summary>
+        private void DgvLogs_Scroll(object? sender, ScrollEventArgs e)
+        {
+            if (dgvLogs.Rows.Count == 0)
+            {
+                _isUserScrolledToBottom = true;
+                return;
+            }
+            
+            try
+            {
+                // 🔥 检测是否接近底部（最后3行内）
+                int lastVisibleRow = dgvLogs.FirstDisplayedScrollingRowIndex + dgvLogs.DisplayedRowCount(false) - 1;
+                int totalRows = dgvLogs.Rows.Count;
+                
+                // 如果用户在最后3行内，认为在底部
+                _isUserScrolledToBottom = (totalRows - lastVisibleRow) <= 3;
+                
+                // 调试日志
+                Console.WriteLine($"滚动检测: lastRow={lastVisibleRow}, totalRows={totalRows}, isBottom={_isUserScrolledToBottom}");
+            }
+            catch
+            {
+                _isUserScrolledToBottom = true;
+            }
         }
 
         private void OnLogAdded(object? sender, LogEntry entry)
@@ -46,7 +81,14 @@ namespace BaiShengVx3Plus.Views
         {
             try
             {
-                // 添加到表格顶部（最新的在上面）
+                // 🔥 保存当前滚动位置（用于判断是否在底部）
+                int lastVisibleRow = -1;
+                if (dgvLogs.Rows.Count > 0 && dgvLogs.DisplayedRowCount(false) > 0)
+                {
+                    lastVisibleRow = dgvLogs.FirstDisplayedScrollingRowIndex + dgvLogs.DisplayedRowCount(false) - 1;
+                }
+                
+                // 添加到表格底部（最新的在下面，更符合日志习惯）
                 var index = dgvLogs.Rows.Add(
                     entry.FormattedTime,
                     entry.LevelName,
@@ -73,16 +115,23 @@ namespace BaiShengVx3Plus.Views
                         break;
                 }
 
-                // 限制显示行数（保留最新1000条）
+                // 限制显示行数（保留最新1000条，删除顶部旧数据）
                 if (dgvLogs.Rows.Count > 1000)
                 {
-                    dgvLogs.Rows.RemoveAt(dgvLogs.Rows.Count - 1);
+                    dgvLogs.Rows.RemoveAt(0);  // 删除最旧的（顶部）
                 }
 
-                // 自动滚动到顶部（如果启用）
-                if (chkAutoScroll.Checked && dgvLogs.Rows.Count > 0)
+                // 🔥 智能滚动：只有当用户在底部时才自动滚动到底部
+                if (chkAutoScroll.Checked && _isUserScrolledToBottom && dgvLogs.Rows.Count > 0)
                 {
-                    dgvLogs.FirstDisplayedScrollingRowIndex = 0;
+                    try
+                    {
+                        dgvLogs.FirstDisplayedScrollingRowIndex = dgvLogs.Rows.Count - 1;
+                    }
+                    catch
+                    {
+                        // 忽略滚动错误
+                    }
                 }
 
                 // 更新统计

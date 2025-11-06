@@ -100,18 +100,40 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (false, errorMessage, null);
                 }
                 
-                // 3. 创建订单
+                // 3. 创建订单（完全参考 F5BotV2 的 V2MemberOrder 构造函数）
+                long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
+                
                 var order = new V2MemberOrder
                 {
+                    // 🔥 会员信息
                     Wxid = member.Wxid,
+                    Account = member.Account,  // 🔥 修复：添加账号
                     Nickname = member.Nickname,
                     GroupWxId = member.GroupWxId,
+                    
+                    // 🔥 订单基础信息
                     IssueId = issueId,
-                    BetContent = betContent.ToStandardString(),
-                    BetAmount = betContent.TotalAmount,
+                    TimeStampBet = timestampBet,
+                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    CreatedAt = DateTime.Now,
+                    
+                    // 🔥 投注内容（参考 F5BotV2）
+                    BetContentOriginal = messageContent,  // 🔥 原始内容："6大50"
+                    BetContentStandar = betContent.ToStandardString(),  // 🔥 标准内容："6,大,50"
+                    Nums = betContent.Items.Count,  // 🔥 修复：注数
+                    AmountTotal = (float)betContent.TotalAmount,  // 🔥 修复：总金额（float类型）
+                    
+                    // 🔥 结算信息
                     Profit = 0,  // 未结算
+                    NetProfit = 0,  // 未结算
+                    Odds = 1.97f,  // 🔥 修复：赔率（参考 F5BotV2 默认值）
+                    OrderStatus = OrderStatus.待结算,
+                    OrderType = OrderType.盘内,
                     IsSettled = false,
-                    CreatedAt = DateTime.Now
+                    
+                    // 🔥 开奖服务专用字段（保留兼容）
+                    BetContent = betContent.ToStandardString(),
+                    BetAmount = betContent.TotalAmount
                 };
                 
                 // 4. 扣除余额（如果不是托或管理）

@@ -135,25 +135,25 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 lock (_lock)
                 {
-                    // 检查期号变更
+                    // 🔥 检查期号变更（首次初始化也走统一流程）
                     if (localIssueId != _currentIssueId)
                     {
-                        if (_currentIssueId != 0)
+                        int previousIssueId = _currentIssueId;
+                        
+                        if (_currentIssueId == 0)
                         {
-                            // 期号变更，触发开奖逻辑
-                            var previousIssueId = _currentIssueId;
-                            _currentIssueId = localIssueId;
-                            _ = HandleIssueChangeAsync(previousIssueId, localIssueId);  // 异步处理开奖
+                            // 🔥 首次初始化：计算上一期
+                            previousIssueId = BinggoTimeHelper.GetPreviousIssueId(localIssueId);
+                            _logService.Info("BinggoLotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
                         }
                         else
                         {
-                            // 首次初始化
-                            _currentIssueId = localIssueId;
-                            _logService.Info("BinggoLotteryService", $"✅ 初始化当前期号: {localIssueId}");
-                            
-                            // 立即加载上期数据
-                            _ = LoadPreviousLotteryDataAsync(BinggoTimeHelper.GetPreviousIssueId(localIssueId));
+                            _logService.Info("BinggoLotteryService", $"🔄 期号变更: {previousIssueId} → {localIssueId}");
                         }
+                        
+                        // 🔥 统一的期号切换流程（首次初始化和期号变更都走这里）
+                        _currentIssueId = localIssueId;
+                        _ = HandleIssueChangeAsync(previousIssueId, localIssueId);
                     }
                     
                     // 🔥 更新倒计时（存储真实的到开奖时间）
@@ -178,7 +178,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         /// <summary>
         /// 处理期号变更（新版 - 异步）
-        /// 🔥 完全参考 F5BotV2 的逻辑：期号变更时立即创建空的上期数据对象
+        /// 🔥 完全参考 F5BotV2 的逻辑：期号变更时同时设置当期和上期数据
         /// </summary>
         private async Task HandleIssueChangeAsync(int oldIssueId, int newIssueId)
         {
@@ -186,25 +186,27 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Info("BinggoLotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
                 
-                // 🔥 参考 F5BotV2: 立即创建空的上期数据对象（只有期号和开奖时间，号码为空）
+                // 🔥 参考 F5BotV2: 同时创建当期和上期数据对象
+                // 1. 创建上期数据（用于 UcBinggoDataLast 显示）
                 var dataLast = new BinggoLotteryData
                 {
                     IssueId = oldIssueId,
                     OpenTime = BinggoTimeHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
-                    // IsOpened 由 FillLotteryData 方法根据号码自动计算
                 };
                 
-                _logService.Info("BinggoLotteryService", $"📢 触发期号变更事件，上期 {oldIssueId} 的空数据对象已创建");
+                _logService.Info("BinggoLotteryService", $"📢 期号变更事件: 当期={newIssueId}, 上期={oldIssueId}");
+                _logService.Info("BinggoLotteryService", $"   当期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
+                _logService.Info("BinggoLotteryService", $"   上期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
                 
-                // 触发期号变更事件（传入空的上期数据）
+                // 🔥 触发期号变更事件（同时传递当期和上期数据）
                 IssueChanged?.Invoke(this, new BinggoIssueChangedEventArgs
                 {
                     OldIssueId = oldIssueId,
                     NewIssueId = newIssueId,
-                    LastLotteryData = dataLast  // 🔥 传入空数据对象，让 UI 先显示期号和时间
+                    LastLotteryData = dataLast  // 上期数据（号码为空，显示为 ✱）
                 });
                 
-                // 异步加载上期开奖数据
+                // 🔥 异步加载上期开奖数据
                 // 当数据到达时，会触发 LotteryOpened 事件，UI 会再次更新
                 await LoadPreviousLotteryDataAsync(oldIssueId);
             }
@@ -558,6 +560,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 保存到本地缓存
                     await SaveLotteryDataListAsync(response.Data);
                     
+                    // 🔥 检查上期数据是否已开奖，如果是，触发 LotteryOpened 事件（参考 F5BotV2）
+                    CheckAndNotifyLastIssue(response.Data);
+                    
                     return response.Data;
                 }
                 else
@@ -576,6 +581,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         .ToList();
                     
                     _logService.Info("BinggoLotteryService", $"📂 从本地缓存获取 {local.Count} 期数据");
+                    
+                    // 🔥 同样检查上期数据
+                    CheckAndNotifyLastIssue(local);
+                    
                     return local;
                 }
                 
@@ -597,6 +606,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             .ToList();
                         
                         _logService.Info("BinggoLotteryService", $"📂 异常恢复：从本地缓存获取 {local.Count} 期数据");
+                        
+                        // 🔥 同样检查上期数据
+                        CheckAndNotifyLastIssue(local);
+                        
                         return local;
                     }
                     catch (Exception dbEx)
@@ -606,6 +619,46 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 return new List<BinggoLotteryData>();
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 检查并通知上期开奖数据（参考 F5BotV2）
+        /// </summary>
+        private void CheckAndNotifyLastIssue(List<BinggoLotteryData> dataList)
+        {
+            if (dataList == null || dataList.Count == 0)
+                return;
+            
+            try
+            {
+                // 计算上期期号
+                int currentIssueId = BinggoTimeHelper.GetCurrentIssueId();
+                int lastIssueId = BinggoTimeHelper.GetPreviousIssueId(currentIssueId);
+                
+                // 🔥 在返回的数据中查找上期数据
+                var lastData = dataList.FirstOrDefault(d => d.IssueId == lastIssueId);
+                
+                if (lastData != null && lastData.IsOpened)
+                {
+                    _logService.Info("BinggoLotteryService", 
+                        $"🎲 发现上期已开奖数据: {lastIssueId} - {lastData.ToLotteryString()}");
+                    
+                    // 触发开奖事件，通知 UI 更新
+                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                    {
+                        LotteryData = lastData
+                    });
+                }
+                else
+                {
+                    _logService.Info("BinggoLotteryService", 
+                        $"⏳ 上期数据未开奖或未找到: {lastIssueId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"检查上期数据异常: {ex.Message}", ex);
             }
         }
         

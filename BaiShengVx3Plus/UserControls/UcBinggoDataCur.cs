@@ -206,7 +206,22 @@ namespace BaiShengVx3Plus.UserControls
         
         private void OnIssueChanged(object? sender, BinggoIssueChangedEventArgs e)
         {
-            UpdateDisplay();
+            Console.WriteLine($"📢 UcBinggoDataCur 收到期号变更事件: {e.OldIssueId} → {e.NewIssueId}");
+            
+            // 🔥 立即显示新期号和开奖时间（参考 F5BotV2）
+            if (_lotteryService != null)
+            {
+                UpdateUIThreadSafe(() =>
+                {
+                    lblCurrentIssue.Text = e.NewIssueId.ToString();
+                    
+                    // 计算并显示开奖时间
+                    var openTime = BinggoTimeHelper.GetIssueOpenTime(e.NewIssueId);
+                    lblOpenTime.Text = openTime.ToString("HH:mm:ss");
+                    
+                    Console.WriteLine($"✅ UcBinggoDataCur 已更新: 期号={e.NewIssueId}, 时间={openTime:HH:mm:ss}");
+                });
+            }
         }
         
         private void OnStatusChanged(object? sender, BinggoStatusChangedEventArgs e)
