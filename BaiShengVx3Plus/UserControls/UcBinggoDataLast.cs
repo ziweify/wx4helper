@@ -34,12 +34,14 @@ namespace BaiShengVx3Plus.UserControls
         
         /// <summary>
         /// 设置开奖服务并订阅事件
+        /// 🔥 完全参考 F5BotV2 的逻辑：订阅期号变更和开奖事件
         /// </summary>
         public void SetLotteryService(IBinggoLotteryService lotteryService)
         {
             // 取消订阅旧服务
             if (_lotteryService != null)
             {
+                _lotteryService.IssueChanged -= OnIssueChanged;  // 🔥 新增：订阅期号变更
                 _lotteryService.LotteryOpened -= OnLotteryOpened;
             }
             
@@ -48,6 +50,7 @@ namespace BaiShengVx3Plus.UserControls
             // 订阅新服务
             if (_lotteryService != null)
             {
+                _lotteryService.IssueChanged += OnIssueChanged;  // 🔥 新增：订阅期号变更
                 _lotteryService.LotteryOpened += OnLotteryOpened;
                 
                 // 🔥 立即加载上期数据
@@ -221,7 +224,7 @@ namespace BaiShengVx3Plus.UserControls
         
         private void UpdateDisplay()
         {
-            if (_lastData == null || !_lastData.IsOpened)
+            if (_lastData == null)
             {
                 UpdateUIThreadSafe(() =>
                 {
@@ -232,7 +235,7 @@ namespace BaiShengVx3Plus.UserControls
                     {
                         numberLabels[i].Text = "-";
                         numberLabels[i].BackColor = Color.Gray;
-                        numberLabels[i].Invalidate(); // 触发重绘
+                        numberLabels[i].Invalidate();
                     }
                 });
                 return;
@@ -240,11 +243,11 @@ namespace BaiShengVx3Plus.UserControls
             
             UpdateUIThreadSafe(() =>
             {
-                // 更新期号
-                lblLastIssue.Text = $"期号: {_lastData?.IssueId ?? 0}";
+                // 🔥 期号和时间始终显示（即使未开奖）
+                lblLastIssue.Text = $"期号: {_lastData.IssueId}";
                 
                 // 🔥 更新开奖时间
-                if (!string.IsNullOrEmpty(_lastData?.OpenTime))
+                if (!string.IsNullOrEmpty(_lastData.OpenTime))
                 {
                     if (DateTime.TryParse(_lastData.OpenTime, out DateTime openTime))
                     {
@@ -258,6 +261,19 @@ namespace BaiShengVx3Plus.UserControls
                 else
                 {
                     lblOpenTime.Text = "-";
+                }
+                
+                // 🔥 如果未开奖，号码显示为 "-"
+                if (!_lastData.IsOpened)
+                {
+                    lblStatistics.Text = "等待开奖...";
+                    for (int i = 0; i < 6; i++)
+                    {
+                        numberLabels[i].Text = "-";
+                        numberLabels[i].BackColor = Color.Gray;
+                        numberLabels[i].Invalidate();
+                    }
+                    return;  // ⚠️ 这里返回，不再继续处理号码
                 }
                 
                 // 🔥 使用新的 P1-P5 和 PSum 属性
@@ -316,10 +332,31 @@ namespace BaiShengVx3Plus.UserControls
             });
         }
         
+        /// <summary>
+        /// 🔥 新增：处理期号变更事件（参考 F5BotV2 的逻辑）
+        /// 期号变更时，立即显示上期的期号和时间（即使号码还未开出）
+        /// </summary>
+        private void OnIssueChanged(object? sender, BinggoIssueChangedEventArgs e)
+        {
+            Console.WriteLine($"📢 UcBinggoDataLast 收到期号变更事件: {e.OldIssueId} → {e.NewIssueId}");
+            
+            if (e.LastLotteryData != null)
+            {
+                Console.WriteLine($"✅ 期号变更带来的上期数据: IssueId={e.LastLotteryData.IssueId}, IsOpened={e.LastLotteryData.IsOpened}");
+                _lastData = e.LastLotteryData;
+                UpdateDisplay();  // 立即显示期号和时间（号码显示为 "-"）
+            }
+            else
+            {
+                Console.WriteLine("⚠️ 期号变更事件中的 LastLotteryData 为 null");
+            }
+        }
+        
         private void OnLotteryOpened(object? sender, BinggoLotteryOpenedEventArgs e)
         {
+            Console.WriteLine($"📢 UcBinggoDataLast 收到开奖事件: IssueId={e.LotteryData.IssueId}");
             _lastData = e.LotteryData;
-            UpdateDisplay();
+            UpdateDisplay();  // 再次显示，这次包含号码
         }
         
         private void UpdateUIThreadSafe(Action action)

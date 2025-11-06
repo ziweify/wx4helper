@@ -178,6 +178,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         /// <summary>
         /// 处理期号变更（新版 - 异步）
+        /// 🔥 完全参考 F5BotV2 的逻辑：期号变更时立即创建空的上期数据对象
         /// </summary>
         private async Task HandleIssueChangeAsync(int oldIssueId, int newIssueId)
         {
@@ -185,15 +186,26 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Info("BinggoLotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
                 
-                // 触发期号变更事件
+                // 🔥 参考 F5BotV2: 立即创建空的上期数据对象（只有期号和开奖时间，号码为空）
+                var dataLast = new BinggoLotteryData
+                {
+                    IssueId = oldIssueId,
+                    OpenTime = BinggoTimeHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
+                    // IsOpened 由 FillLotteryData 方法根据号码自动计算
+                };
+                
+                _logService.Info("BinggoLotteryService", $"📢 触发期号变更事件，上期 {oldIssueId} 的空数据对象已创建");
+                
+                // 触发期号变更事件（传入空的上期数据）
                 IssueChanged?.Invoke(this, new BinggoIssueChangedEventArgs
                 {
                     OldIssueId = oldIssueId,
                     NewIssueId = newIssueId,
-                    LastLotteryData = null
+                    LastLotteryData = dataLast  // 🔥 传入空数据对象，让 UI 先显示期号和时间
                 });
                 
                 // 异步加载上期开奖数据
+                // 当数据到达时，会触发 LotteryOpened 事件，UI 会再次更新
                 await LoadPreviousLotteryDataAsync(oldIssueId);
             }
             catch (Exception ex)
