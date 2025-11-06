@@ -1,4 +1,6 @@
-﻿namespace BaiShengVx3Plus
+﻿using BaiShengVx3Plus.Models;
+
+namespace BaiShengVx3Plus
 {
     partial class VxMain
     {
@@ -40,6 +42,7 @@
             DataGridViewCellStyle dataGridViewCellStyle34 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle35 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle36 = new DataGridViewCellStyle();
+            cmsMembers = new Sunny.UI.UIContextMenuStrip();
             splitContainerMain = new Sunny.UI.UISplitContainer();
             pnlLeft = new Sunny.UI.UIPanel();
             dgvContacts = new Sunny.UI.UIDataGridView();
@@ -87,6 +90,27 @@
             pnlTopButtons.SuspendLayout();
             statusStrip.SuspendLayout();
             SuspendLayout();
+            // 
+            // cmsMembers
+            // 
+            cmsMembers.BackColor = Color.FromArgb(243, 249, 255);
+            cmsMembers.Font = new Font("微软雅黑", 10F);
+            cmsMembers.ImageScalingSize = new Size(20, 20);
+            cmsMembers.Items.AddRange(new ToolStripItem[] {
+                new ToolStripMenuItem("🔄 清零", null, OnMenuClearBalance_Click) { Name = "menuClearBalance" },
+                new ToolStripMenuItem("🗑️ 删除", null, OnMenuDeleteMember_Click) { Name = "menuDeleteMember" },
+                new ToolStripSeparator(),
+                new ToolStripMenuItem("👔 设置角色", null, new ToolStripItem[] {
+                    new ToolStripMenuItem("👑 管理", null, OnMenuSetRole_Click) { Name = "menuRoleAdmin", Tag = MemberState.管理 },
+                    new ToolStripMenuItem("🤖 托", null, OnMenuSetRole_Click) { Name = "menuRoleTrust", Tag = MemberState.托 },
+                    new ToolStripMenuItem("👤 普会", null, OnMenuSetRole_Click) { Name = "menuRoleNormal", Tag = MemberState.普会 },
+                    new ToolStripMenuItem("💎 蓝会", null, OnMenuSetRole_Click) { Name = "menuRoleBlue", Tag = MemberState.蓝会 },
+                    new ToolStripMenuItem("💜 紫会", null, OnMenuSetRole_Click) { Name = "menuRolePurple", Tag = MemberState.紫会 }
+                }) { Name = "menuSetRole" }
+            });
+            cmsMembers.Name = "cmsMembers";
+            cmsMembers.Size = new Size(181, 148);
+            cmsMembers.ZoomScaleRect = new Rectangle(0, 0, 0, 0);
             // 
             // splitContainerMain
             // 
@@ -296,6 +320,7 @@
             dgvMembers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dgvMembers.BackgroundColor = Color.White;
             dgvMembers.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
+            dgvMembers.ContextMenuStrip = cmsMembers;
             dataGridViewCellStyle30.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle30.BackColor = Color.FromArgb(80, 160, 255);
             dataGridViewCellStyle30.Font = new Font("微软雅黑", 12F);
@@ -629,5 +654,6 @@
         private StatusStrip statusStrip;
         private ToolStripStatusLabel lblStatus;
         private Views.UcUserInfo ucUserInfo1;
+        private Sunny.UI.UIContextMenuStrip cmsMembers;
     }
 }

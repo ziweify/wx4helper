@@ -1,7 +1,9 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 using SQLite;
+using BaiShengVx3Plus.Attributes;
 
 namespace BaiShengVx3Plus.Models
 {
@@ -63,51 +65,57 @@ namespace BaiShengVx3Plus.Models
         private string? _notes;
 
         // ========================================
-        // 属性（带变化通知）
+        // 属性（带变化通知 + DataGridView 列配置）
         // ========================================
 
         [PrimaryKey, AutoIncrement]
+        [Browsable(false)]  // 🔥 不在 DataGridView 中显示
         public long Id
         {
             get => _id;
             set => SetField(ref _id, value);
         }
 
-        [Indexed, DisplayName("群ID")]
+        [Indexed]
+        [Browsable(false)]  // 🔥 不在 DataGridView 中显示
         public string GroupWxId
         {
             get => _groupWxId;
             set => SetField(ref _groupWxId, value);
         }
 
-        [Indexed, DisplayName("WxID")]
+        [Indexed]
+        [DataGridColumn(HeaderText = "微信ID", Width = 120, Order = 1)]
         public string? Wxid
         {
             get => _wxid;
             set => SetField(ref _wxid, value);
         }
 
-        [Indexed, DisplayName("期号")]
+        [Indexed]
+        [DataGridColumn(HeaderText = "期号", Width = 80, Order = 2, 
+                        Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public int IssueId
         {
             get => _issueId;
             set => SetField(ref _issueId, value);
         }
 
-        [DisplayName("会员号码")]
+        [DataGridColumn(HeaderText = "账号", Width = 100, Order = 3)]
         public string? Account
         {
             get => _account;
             set => SetField(ref _account, value);
         }
 
-        [DisplayName("昵称")]
+        [DataGridColumn(HeaderText = "昵称", Width = 100, Order = 4)]
         public string? Nickname
         {
             get => _nickname;
             set => SetField(ref _nickname, value);
         }
 
+        [Browsable(false)]  // 🔥 不在 DataGridView 中显示（时间戳）
         public long TimeStampBet
         {
             get => _timeStampBet;
@@ -115,80 +123,87 @@ namespace BaiShengVx3Plus.Models
         }
 
         // ========================================
-        // 🔥 业务订单属性（对应 F5BotV2）
+        // 🔥 业务订单属性（对应 F5BotV2 + DataGridView 列配置）
         // ========================================
 
-        [DisplayName("原始内容")]
+        [DataGridColumn(HeaderText = "投注内容", Width = 200, Order = 5)]
         public string? BetContentOriginal
         {
             get => _betContentOriginal;
             set => SetField(ref _betContentOriginal, value);
         }
 
-        [DisplayName("标准内容")]
+        [Browsable(false)]  // 🔥 不显示标准内容（给业务逻辑用）
         public string? BetContentStandar
         {
             get => _betContentStandar;
             set => SetField(ref _betContentStandar, value);
         }
 
-        [DisplayName("数量")]
+        [DataGridColumn(HeaderText = "注数", Width = 60, Order = 6, 
+                        Alignment = DataGridViewContentAlignment.MiddleRight)]
         public int Nums
         {
             get => _nums;
             set => SetField(ref _nums, value);
         }
 
-        [DisplayName("总金额")]
+        [DataGridColumn(HeaderText = "金额", Width = 80, Order = 7, 
+                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
         public float AmountTotal
         {
             get => _amountTotal;
             set => SetField(ref _amountTotal, value);
         }
 
-        [DisplayName("盈利")]
+        [DataGridColumn(HeaderText = "盈利", Width = 80, Order = 8, 
+                        Format = "{0:+0.00;-0.00;0.00}", Alignment = DataGridViewContentAlignment.MiddleRight)]
         public float Profit
         {
             get => _profit;
             set => SetField(ref _profit, value);
         }
 
-        [DisplayName("纯利")]
+        [DataGridColumn(HeaderText = "纯利", Width = 80, Order = 9, 
+                        Format = "{0:+0.00;-0.00;0.00}", Alignment = DataGridViewContentAlignment.MiddleRight)]
         public float NetProfit
         {
             get => _netProfit;
             set => SetField(ref _netProfit, value);
         }
 
-        [DisplayName("赔率")]
+        [DataGridColumn(HeaderText = "赔率", Width = 60, Order = 10, 
+                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public float Odds
         {
             get => _odds;
             set => SetField(ref _odds, value);
         }
 
-        [DisplayName("状态")]
+        [DataGridColumn(HeaderText = "状态", Width = 80, Order = 11, 
+                        Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public OrderStatus OrderStatus
         {
             get => _orderStatus;
             set => SetField(ref _orderStatus, value);
         }
 
-        [DisplayName("类型")]
+        [DataGridColumn(HeaderText = "类型", Width = 60, Order = 12, 
+                        Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public OrderType OrderType
         {
             get => _orderType;
             set => SetField(ref _orderType, value);
         }
 
-        [DisplayName("日期时间")]
+        [DataGridColumn(HeaderText = "时间", Width = 150, Order = 13)]
         public string? TimeString
         {
             get => _timeString;
             set => SetField(ref _timeString, value);
         }
 
-        [DisplayName("备注")]
+        [DataGridColumn(HeaderText = "备注", Width = 100, Order = 14)]
         public string? Notes
         {
             get => _notes;

@@ -4,6 +4,7 @@ using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Core;
+using BaiShengVx3Plus.Extensions;
 using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -132,13 +133,18 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 初始化数据库（使用 ORM）
         /// 
+        /// 🔥 数据库命名规则：
+        /// 1. 默认数据库: business.db（空的，不存储任何数据）
+        /// 2. 微信专属数据库: business_{wxid}.db（存储所有业务数据：会员、订单等）
+        /// 3. 日志数据库: logs.db（全局共享）
+        /// 
         /// 🔥 重要设计原则：
         /// 1. 数据库操作（增删改查）= 同步执行，保证数据一致性，避免污染
         /// 2. UI 更新（状态文本等）= 异步执行，避免阻塞 UI 线程，保证流畅
         /// 3. 数据绑定（DataSource）= 同步执行，确保数据立即生效
         /// </summary>
-        /// <param name="identifier">数据库标识，"default" 表示通用数据库，群ID表示群专属数据库</param>
-        private void InitializeDatabase(string identifier)
+        /// <param name="wxid">微信ID，"default" 表示默认空数据库，其他为实际微信ID</param>
+        private void InitializeDatabase(string wxid)
         {
             try
             {
@@ -150,21 +156,24 @@ namespace BaiShengVx3Plus
                 _db?.Close();
                 _db = null;
                 
-                // 创建数据目录
-                string dbPath = identifier == "default" 
-                    ? Path.Combine("Data", "business.db")  // 通用数据库
-                    : Path.Combine("Data", $"business_{identifier}.db");  // 群专属数据库
+                // 🔥 数据库命名规则：
+                // - default → business.db（空数据库）
+                // - wxid_xxx → business_wxid_xxx.db（微信专属数据库，存储所有业务数据）
+                string dbPath = wxid == "default" 
+                    ? Path.Combine("Data", "business.db")  // 默认空数据库
+                    : Path.Combine("Data", $"business_{wxid}.db");  // 微信专属数据库
                     
                 Directory.CreateDirectory("Data");
+                
+                _logService.Info("VxMain", $"初始化数据库: {dbPath}");
                 
                 // 🔥 创建 ORM 数据库连接（同步）
                 _db = new SQLiteConnection(dbPath);
                 
                 // 🔥 创建 BindingList（同步，自动建表）
-                // 如果是 default 模式，使用空字符串，不加载任何会员
-                // 如果是群模式，使用 identifier（群ID）
-                string groupWxId = identifier == "default" ? "" : identifier;
-                _membersBindingList = new V2MemberBindingList(_db, groupWxId);
+                // ⚠️ 注意：这里不传 groupWxId，因为会员数据属于当前微信，不区分群
+                // 群ID 只是用来筛选显示，不是数据隔离的维度
+                _membersBindingList = new V2MemberBindingList(_db, "");  // 空字符串表示加载所有会员
                 _ordersBindingList = new V2OrderBindingList(_db);
                 
                 // 🔥 加载数据（同步，确保数据完整加载）
@@ -191,7 +200,7 @@ namespace BaiShengVx3Plus
                 // 🔥 步骤3: 日志记录（异步，不阻塞）
                 // ========================================
                 
-                _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath} (GroupWxId={groupWxId})");
+                _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath}");
                 _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单");
             }
             catch (Exception ex)
@@ -381,78 +390,36 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 配置会员表列（列宽、可见性、格式）
+        /// 🔥 配置会员表列（使用特性系统）
+        /// 一行代码完成所有配置：列标题、列宽、对齐、格式化、顺序
         /// </summary>
         private void ConfigureMembersDataGridView()
         {
-            // 隐藏不需要的列
-            ConfigureColumn(dgvMembers, "GroupWxId", visible: false);
-            ConfigureColumn(dgvMembers, "Wxid", visible: false);
-            ConfigureColumn(dgvMembers, "Account", visible: false);
-            ConfigureColumn(dgvMembers, "DisplayName", visible: false);
-            ConfigureColumn(dgvMembers, "BetWait", visible: false);
+            // 🔥 从 V2Member 模型的特性自动配置
+            dgvMembers.ConfigureFromModel<V2Member>();
             
-            // 设置列宽
-            ConfigureColumn(dgvMembers, "State", width: 69);
-            ConfigureColumn(dgvMembers, "Nickname", width: 80);
+            // 可选：隐藏额外的列（如果需要）
+            dgvMembers.HideColumns("Account", "DisplayName", "BetWait");
             
-            // 设置数字格式
-            ConfigureColumn(dgvMembers, "Balance", format: "0.00");
-            ConfigureColumn(dgvMembers, "IncomeToday", format: "0.00");
-            ConfigureColumn(dgvMembers, "IncomeTotal", format: "0.00");
-            ConfigureColumn(dgvMembers, "BetCur", format: "0.00");
-            ConfigureColumn(dgvMembers, "BetToday", format: "0.00");
-            ConfigureColumn(dgvMembers, "BetTotal", format: "0.00");
-            ConfigureColumn(dgvMembers, "CreditToday", format: "0.00");
-            ConfigureColumn(dgvMembers, "CreditTotal", format: "0.00");
-            ConfigureColumn(dgvMembers, "WithdrawToday", format: "0.00");
-            ConfigureColumn(dgvMembers, "WithdrawTotal", format: "0.00");
+            // 🔥 设置为只读，不允许直接修改数据
+            dgvMembers.ReadOnly = true;
+            dgvMembers.AllowUserToAddRows = false;
+            dgvMembers.AllowUserToDeleteRows = false;
         }
 
         /// <summary>
-        /// 配置订单表列（列宽、可见性、格式）
+        /// 🔥 配置订单表列（使用特性系统）
+        /// 一行代码完成所有配置：列标题、列宽、对齐、格式化、顺序
         /// </summary>
         private void ConfigureOrdersDataGridView()
         {
-            // 隐藏不需要的列
-            ConfigureColumn(dgvOrders, "GroupWxId", visible: false);
-            ConfigureColumn(dgvOrders, "Wxid", visible: false);
-            ConfigureColumn(dgvOrders, "Account", visible: false);
-            ConfigureColumn(dgvOrders, "TimeStampBet", visible: false);
-            ConfigureColumn(dgvOrders, "BetContentOriginal", visible: false);
+            // 🔥 从 V2MemberOrder 模型的特性自动配置
+            dgvOrders.ConfigureFromModel<V2MemberOrder>();
             
-            // 设置列宽
-            ConfigureColumn(dgvOrders, "IssueId", width: 65);
-            ConfigureColumn(dgvOrders, "Nickname", width: 80);
-            ConfigureColumn(dgvOrders, "Nums", width: 26);
-            ConfigureColumn(dgvOrders, "AmountTotal", width: 50);
-            ConfigureColumn(dgvOrders, "Profit", width: 50);
-            ConfigureColumn(dgvOrders, "TimeString", width: 90);
-            
-            // 设置数字格式
-            ConfigureColumn(dgvOrders, "AmountTotal", format: "0.0");
-            ConfigureColumn(dgvOrders, "Profit", format: "0.0");
-            ConfigureColumn(dgvOrders, "NetProfit", format: "0.0");
-            ConfigureColumn(dgvOrders, "Odds", format: "0.00");
-        }
-
-        /// <summary>
-        /// 配置单个列（辅助方法）
-        /// </summary>
-        /// <param name="dgv">DataGridView 控件</param>
-        /// <param name="columnName">列名</param>
-        /// <param name="width">列宽</param>
-        /// <param name="visible">是否可见</param>
-        /// <param name="format">数字格式</param>
-        private void ConfigureColumn(DataGridView dgv, string columnName, 
-            int? width = null, bool? visible = null, string? format = null)
-        {
-            var cell = dgv.Columns[columnName];
-            if (cell == null) return;
-            
-            if (width.HasValue) cell.Width = width.Value;
-            if (visible.HasValue) cell.Visible = visible.Value;
-            if (!string.IsNullOrEmpty(format)) cell.DefaultCellStyle.Format = format;
+            // 🔥 设置为只读，不允许直接修改数据
+            dgvOrders.ReadOnly = true;
+            dgvOrders.AllowUserToAddRows = false;
+            dgvOrders.AllowUserToDeleteRows = false;
         }
 
         #endregion
@@ -862,11 +829,21 @@ namespace BaiShengVx3Plus
                 // 🔥 刷新 DataGridView，更新行颜色
                 dgvContacts.Refresh();
                 
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 正在切换数据库...";
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 正在获取群成员...";
                 _logService.Info("VxMain", $"绑定群组: {contact.Nickname} ({contact.Wxid})");
                 
-                // 🔥 业务流程2：切换到群专属数据库 business_{group_wxid}.db
-                InitializeDatabase(contact.Wxid);
+                // 🔥 业务流程2：清空当前会员和订单列表
+                // ⚠️ 重要：不需要创建新数据库！
+                // 数据库已经在登录时初始化为 business_{UserInfo.Wxid}.db
+                // 所有会员和订单数据都存储在当前微信的数据库中
+                // 这里只需要清空列表，准备加载新群的成员数据
+                UpdateUIThreadSafe(() =>
+                {
+                    _membersBindingList?.Clear();
+                    _ordersBindingList?.Clear();
+                    UpdateStatistics();
+                });
+                
                 lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在获取群成员...";
                 
                 // 🔥 业务流程3：调用 GetGroupContacts 获取群成员
@@ -1257,41 +1234,47 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", $"📱 用户信息已更新: {e.UserInfo.Nickname} ({e.UserInfo.Wxid})");
 
                 // 🔥 检测用户切换，重新初始化数据库
+                bool isUserChanged = false;
                 if (_currentUserInfo != null && !string.IsNullOrEmpty(_currentUserInfo.Wxid))
                 {
                     if (_currentUserInfo.Wxid != e.UserInfo.Wxid)
                     {
+                        isUserChanged = true;
                         _logService.Warning("VxMain", 
-                            $"⚠️ 检测到用户切换: {_currentUserInfo.Wxid} → {e.UserInfo.Wxid}，重新初始化数据库...");
+                            $"⚠️ 检测到用户切换: {_currentUserInfo.Wxid} → {e.UserInfo.Wxid}，准备重新绑定数据库...");
                         
-                        // 清空联系人列表
-                        if (InvokeRequired)
-                        {
-                            Invoke(new Action(() =>
-                            {
-                                _contactsBindingList.Clear();
-                                _currentBoundContact = null;
-                                txtCurrentContact.Text = "未绑定";
-                                txtCurrentContact.FillColor = Color.White;
-                                txtCurrentContact.RectColor = Color.Silver;
-                            }));
-                        }
-                        else
+                        // 清空联系人列表和绑定信息
+                        UpdateUIThreadSafe(() =>
                         {
                             _contactsBindingList.Clear();
                             _currentBoundContact = null;
                             txtCurrentContact.Text = "未绑定";
                             txtCurrentContact.FillColor = Color.White;
                             txtCurrentContact.RectColor = Color.Silver;
-                        }
+                        });
                     }
                 }
                 
                 // 更新当前用户信息
                 _currentUserInfo = e.UserInfo;
                 
-                // 🔥 初始化数据库（ORM）
-                InitializeDatabase(e.UserInfo.Wxid ?? "unknown");
+                // 🔥 重新绑定数据库（微信专属数据库：business_{wxid}.db）
+                // ⚠️ 重要：只要 wxid 有效，就重新绑定数据库
+                // 这样可以确保用户切换后，数据库也正确切换
+                if (!string.IsNullOrEmpty(e.UserInfo.Wxid))
+                {
+                    _logService.Info("VxMain", 
+                        isUserChanged 
+                            ? $"🔄 用户切换，重新绑定数据库: business_{e.UserInfo.Wxid}.db"
+                            : $"📂 初始化数据库: business_{e.UserInfo.Wxid}.db");
+                    
+                    InitializeDatabase(e.UserInfo.Wxid);
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ UserInfo.Wxid 为空，使用默认数据库");
+                    InitializeDatabase("unknown");
+                }
 
                 // 🔥 用户信息通过现代化数据绑定自动更新
                 // ucUserInfo1 订阅了 UserInfo.PropertyChanged 事件，会自动刷新显示
@@ -1521,6 +1504,124 @@ namespace BaiShengVx3Plus
             }
             
             base.OnFormClosing(e);
+        }
+
+        #endregion
+
+        #region 会员表右键菜单事件
+
+        /// <summary>
+        /// 🔥 菜单项：清零（清空会员余额和统计数据）
+        /// </summary>
+        private void OnMenuClearBalance_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.CurrentRow?.DataBoundItem is not V2Member member)
+                {
+                    UIMessageBox.ShowWarning("请先选择一个会员！");
+                    return;
+                }
+
+                var result = UIMessageBox.ShowAsk($"确定要清零会员 [{member.Nickname}] 的所有数据吗？\n\n此操作将重置余额和所有统计数据。");
+                if (!result) return;
+
+                _logService.Info("VxMain", $"清零会员: {member.Nickname} (Wxid: {member.Wxid})");
+
+                // 🔥 清零操作（数据会自动保存）
+                member.Balance = 0;
+                member.BetCur = 0;
+                member.BetWait = 0;
+                member.IncomeToday = 0;
+                member.CreditToday = 0;
+                member.BetToday = 0;
+                member.WithdrawToday = 0;
+                member.BetTotal = 0;
+                member.CreditTotal = 0;
+                member.WithdrawTotal = 0;
+                member.IncomeTotal = 0;
+
+                // 刷新显示
+                dgvMembers.Refresh();
+                UpdateStatistics();
+
+                UIMessageBox.ShowSuccess($"会员 [{member.Nickname}] 已清零！");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "清零会员失败", ex);
+                UIMessageBox.ShowError($"清零失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 🔥 菜单项：删除会员
+        /// </summary>
+        private void OnMenuDeleteMember_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.CurrentRow?.DataBoundItem is not V2Member member)
+                {
+                    UIMessageBox.ShowWarning("请先选择一个会员！");
+                    return;
+                }
+
+                var result = UIMessageBox.ShowAsk($"确定要删除会员 [{member.Nickname}] 吗？\n\n此操作不可恢复！");
+                if (!result) return;
+
+                _logService.Info("VxMain", $"删除会员: {member.Nickname} (Wxid: {member.Wxid})");
+
+                // 🔥 从 BindingList 中移除（会自动从数据库删除）
+                _membersBindingList?.Remove(member);
+
+                // 刷新显示
+                UpdateStatistics();
+
+                UIMessageBox.ShowSuccess($"会员 [{member.Nickname}] 已删除！");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "删除会员失败", ex);
+                UIMessageBox.ShowError($"删除失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 🔥 菜单项：设置会员角色
+        /// </summary>
+        private void OnMenuSetRole_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.CurrentRow?.DataBoundItem is not V2Member member)
+                {
+                    UIMessageBox.ShowWarning("请先选择一个会员！");
+                    return;
+                }
+
+                if (sender is not ToolStripMenuItem menuItem || menuItem.Tag is not MemberState newRole)
+                {
+                    UIMessageBox.ShowWarning("无效的角色选择！");
+                    return;
+                }
+
+                var oldRole = member.State;
+                _logService.Info("VxMain", $"设置会员角色: {member.Nickname} ({oldRole} -> {newRole})");
+
+                // 🔥 修改角色（数据会自动保存）
+                member.State = newRole;
+
+                // 刷新显示
+                dgvMembers.Refresh();
+
+                UIMessageBox.ShowSuccess($"会员 [{member.Nickname}] 的角色已设置为 [{newRole}]");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "设置角色失败", ex);
+                UIMessageBox.ShowError($"设置角色失败：{ex.Message}");
+            }
         }
 
         #endregion

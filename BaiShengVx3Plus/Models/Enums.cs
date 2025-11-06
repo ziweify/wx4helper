@@ -10,7 +10,10 @@ namespace BaiShengVx3Plus.Models
         会员 = 1,
         托 = 2,
         管理 = 3,
-        已退群 = 4
+        已退群 = 4,
+        普会 = 5,
+        蓝会 = 6,
+        紫会 = 7
     }
 
     /// <summary>
