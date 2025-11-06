@@ -34,7 +34,12 @@ namespace BaiShengVx3Plus.Core
         /// </summary>
         protected override void InsertItem(int index, V2Member item)
         {
-            item.GroupWxId = _groupWxId;
+            // 🔥 修复：只在 GroupWxId 为空时才设置，否则保留原值
+            // 这样可以支持在同一个数据库中存储多个群的会员
+            if (string.IsNullOrEmpty(item.GroupWxId))
+            {
+                item.GroupWxId = _groupWxId;
+            }
 
             // 🔥 检查是否已存在（去重）
             var existing = _db.Table<V2Member>()

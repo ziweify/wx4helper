@@ -21,6 +21,7 @@ namespace BaiShengVx3Plus
         private readonly IContactDataService _contactDataService; // 联系人数据服务
         private readonly IUserInfoService _userInfoService; // 用户信息服务
         private readonly IWeChatService _wechatService; // 微信应用服务（Application Service）
+        private readonly IGroupBindingService _groupBindingService; // 群组绑定服务
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
@@ -85,7 +86,8 @@ namespace BaiShengVx3Plus
             MessageDispatcher messageDispatcher,
             IContactDataService contactDataService, // 注入联系人数据服务
             IUserInfoService userInfoService, // 注入用户信息服务
-            IWeChatService wechatService) // 注入微信应用服务
+            IWeChatService wechatService, // 注入微信应用服务
+            IGroupBindingService groupBindingService) // 注入群组绑定服务
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -95,6 +97,7 @@ namespace BaiShengVx3Plus
             _contactDataService = contactDataService;
             _userInfoService = userInfoService;
             _wechatService = wechatService;
+            _groupBindingService = groupBindingService;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -169,6 +172,12 @@ namespace BaiShengVx3Plus
                 
                 // 🔥 创建 ORM 数据库连接（同步）
                 _db = new SQLiteConnection(dbPath);
+                
+                // 🔥 将数据库连接传递给群组绑定服务
+                if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)
+                {
+                    groupBindingService.SetDatabase(_db);
+                }
                 
                 // 🔥 创建 BindingList（同步，自动建表）
                 // ⚠️ 注意：这里不传 groupWxId，因为会员数据属于当前微信，不区分群
@@ -597,56 +606,87 @@ namespace BaiShengVx3Plus
         #region 会员列表 - CellPainting
 
         /// <summary>
-        /// 会员列表：自定义效果（Hover + 选中）
+        /// 🔥 会员列表：自定义效果（会员状态背景色 + Hover + 选中）
+        /// 
+        /// 会员状态背景色：
+        /// - 管理: 金色
+        /// - 托: 橙色
+        /// - 已退群: 灰色
+        /// - 已删除: 红色
+        /// - 普会: 白色
+        /// - 蓝会: 蓝色
+        /// - 紫会: 紫色
         /// </summary>
         private void dgvMembers_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Graphics == null) return;
             
+            // 🔥 获取会员对象，确定状态背景色
+            Color baseBackColor = Color.White;  // 默认白色
+            if (dgvMembers.Rows[e.RowIndex].DataBoundItem is V2Member member)
+            {
+                baseBackColor = member.State switch
+                {
+                    MemberState.管理 => Color.FromArgb(255, 248, 220),    // 金色（浅）
+                    MemberState.托 => Color.FromArgb(255, 228, 181),       // 橙色（浅）
+                    MemberState.已退群 => Color.FromArgb(220, 220, 220),  // 灰色
+                    MemberState.已删除 => Color.FromArgb(255, 200, 200),  // 红色（浅）
+                    MemberState.普会 => Color.White,                       // 白色
+                    MemberState.蓝会 => Color.FromArgb(224, 240, 255),    // 蓝色（浅）
+                    MemberState.紫会 => Color.FromArgb(245, 230, 255),    // 紫色（浅）
+                    _ => Color.White
+                };
+            }
+            
             bool isSelected = dgvMembers.Rows[e.RowIndex].Selected;
             bool isHover = (e.RowIndex == _hoverRowIndex_Members);
             
-            if (isSelected || isHover)
+            // 🔥 绘制背景（状态背景色）
+            e.PaintBackground(e.CellBounds, false);
+            using (var backBrush = new SolidBrush(baseBackColor))
             {
-                e.PaintBackground(e.CellBounds, false);
-                
-                if (isSelected)
-                {
-                    e.Graphics.FillRectangle(
-                        new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
-                        e.CellBounds);
-                    
-                    using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
-                    {
-                        e.Graphics.DrawRectangle(pen, 
-                            e.CellBounds.X, 
-                            e.CellBounds.Y, 
-                            e.CellBounds.Width - 1, 
-                            e.CellBounds.Height - 1);
-                    }
-                }
-                else if (isHover && !isSelected)
-                {
-                    e.Graphics.FillRectangle(
-                        new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
-                        e.CellBounds);
-                }
-                
-                if (e.Value != null && e.CellStyle?.Font != null)
-                {
-                    using (SolidBrush brush = new SolidBrush(e.CellStyle.ForeColor))
-                    {
-                        e.Graphics.DrawString(
-                            e.Value.ToString() ?? string.Empty,
-                            e.CellStyle.Font,
-                            brush,
-                            e.CellBounds.X + 5,
-                            e.CellBounds.Y + (e.CellBounds.Height - e.CellStyle.Font.Height) / 2);
-                    }
-                }
-                
-                e.Handled = true;
+                e.Graphics.FillRectangle(backBrush, e.CellBounds);
             }
+            
+            // 🔥 绘制选中效果（透明蒙板 + 边框）
+            if (isSelected)
+            {
+                e.Graphics.FillRectangle(
+                    new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
+                    e.CellBounds);
+                
+                using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                {
+                    e.Graphics.DrawRectangle(pen, 
+                        e.CellBounds.X, 
+                        e.CellBounds.Y, 
+                        e.CellBounds.Width - 1, 
+                        e.CellBounds.Height - 1);
+                }
+            }
+            // 🔥 绘制 Hover 效果（透明蒙板）
+            else if (isHover)
+            {
+                e.Graphics.FillRectangle(
+                    new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
+                    e.CellBounds);
+            }
+            
+            // 🔥 绘制文本
+            if (e.Value != null && e.CellStyle?.Font != null)
+            {
+                using (SolidBrush brush = new SolidBrush(e.CellStyle.ForeColor))
+                {
+                    e.Graphics.DrawString(
+                        e.Value.ToString() ?? string.Empty,
+                        e.CellStyle.Font,
+                        brush,
+                        e.CellBounds.X + 5,
+                        e.CellBounds.Y + (e.CellBounds.Height - e.CellStyle.Font.Height) / 2);
+                }
+            }
+            
+            e.Handled = true;
         }
 
         #endregion
@@ -806,11 +846,91 @@ namespace BaiShengVx3Plus
             // 这里可以创建一个过滤后的BindingList
         }
 
+        /// <summary>
+        /// 🔥 解析服务器返回的群成员数据
+        /// 
+        /// GetGroupContacts 返回的字段名：
+        /// - member_wxid
+        /// - member_nickname
+        /// - member_alias
+        /// - member_remark
+        /// </summary>
+        private List<V2Member> ParseServerMembers(JsonElement arrayElement, string groupWxId)
+        {
+            var members = new List<V2Member>();
+            
+            try
+            {
+                foreach (var item in arrayElement.EnumerateArray())
+                {
+                    try
+                    {
+                        // 🔥 解析 GetGroupContacts 返回的字段
+                        string? wxid = item.TryGetProperty("member_wxid", out var wxidProp) ? wxidProp.GetString() : null;
+                        string? nickname = item.TryGetProperty("member_nickname", out var nicknameProp) ? nicknameProp.GetString() : null;
+                        string? alias = item.TryGetProperty("member_alias", out var aliasProp) ? aliasProp.GetString() : null;
+                        string? remark = item.TryGetProperty("member_remark", out var remarkProp) ? remarkProp.GetString() : null;
+                        
+                        // 优先使用备注名，其次昵称
+                        string displayName = !string.IsNullOrEmpty(remark) ? remark : 
+                                           !string.IsNullOrEmpty(nickname) ? nickname : "";
+                        
+                        if (string.IsNullOrEmpty(wxid))
+                        {
+                            _logService.Warning("VxMain", "解析单个会员失败: member_wxid 为空");
+                            continue;
+                        }
+                        
+                        var member = new V2Member
+                        {
+                            GroupWxId = groupWxId,
+                            Wxid = wxid,
+                            Nickname = nickname ?? "",
+                            Account = alias ?? "",           // 微信号
+                            DisplayName = displayName,       // 群昵称/备注
+                            State = MemberState.会员         // 默认状态
+                        };
+                        
+                        members.Add(member);
+                        _logService.Info("VxMain", $"✓ 解析会员: {member.Nickname} ({member.Wxid})");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Warning("VxMain", $"解析单个会员失败: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"解析群成员数据失败: {ex.Message}", ex);
+            }
+            
+            _logService.Info("VxMain", $"✅ 解析完成: 共 {members.Count} 个会员");
+            return members;
+        }
+        
+        /// <summary>
+        /// 🔥 绑定群组按钮点击事件（现代化、服务化）
+        /// 
+        /// 核心逻辑：
+        /// 1. 验证是否为群组
+        /// 2. 使用 GroupBindingService 绑定群组
+        /// 3. 获取服务器数据
+        /// 4. 智能合并数据库和服务器数据
+        /// 5. 加载到 UI（自动保存）
+        /// </summary>
         private async void btnBindingContacts_Click(object sender, EventArgs e)
         {
-            if (dgvContacts.CurrentRow?.DataBoundItem is WxContact contact)
+            if (dgvContacts.CurrentRow?.DataBoundItem is not WxContact contact)
             {
-                // 🔥 业务流程1：判断是否为群（wxid 包含 '@' 符号）
+                _logService.Warning("VxMain", "绑定联系人失败: 未选择联系人");
+                UIMessageBox.ShowWarning("请先选择一个联系人");
+                return;
+            }
+
+            try
+            {
+                // 🔥 步骤1：验证是否为群（wxid 包含 '@' 符号）
                 if (!contact.Wxid.Contains("@"))
                 {
                     _logService.Warning("VxMain", $"绑定失败: 选中的不是群组 - {contact.Nickname} ({contact.Wxid})");
@@ -818,25 +938,20 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 保存当前绑定的联系人对象
+                // 🔥 步骤2：使用服务绑定群组
+                _groupBindingService.BindGroup(contact);
                 _currentBoundContact = contact;
                 
-                // 🔥 更新文本框显示绑定的联系人
+                // 更新 UI 显示
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
                 txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
                 txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
-                
-                // 🔥 刷新 DataGridView，更新行颜色
                 dgvContacts.Refresh();
                 
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 正在获取群成员...";
-                _logService.Info("VxMain", $"绑定群组: {contact.Nickname} ({contact.Wxid})");
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在获取群成员...";
+                _logService.Info("VxMain", $"✓ 绑定群组: {contact.Nickname} ({contact.Wxid})");
                 
-                // 🔥 业务流程2：清空当前会员和订单列表
-                // ⚠️ 重要：不需要创建新数据库！
-                // 数据库已经在登录时初始化为 business_{UserInfo.Wxid}.db
-                // 所有会员和订单数据都存储在当前微信的数据库中
-                // 这里只需要清空列表，准备加载新群的成员数据
+                // 🔥 步骤3：清空当前显示
                 UpdateUIThreadSafe(() =>
                 {
                     _membersBindingList?.Clear();
@@ -844,38 +959,44 @@ namespace BaiShengVx3Plus
                     UpdateStatistics();
                 });
                 
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在获取群成员...";
+                // 🔥 步骤4：获取服务器数据
+                _logService.Info("VxMain", $"开始获取群成员列表: {contact.Wxid}");
+                var result = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
                 
-                // 🔥 业务流程3：调用 GetGroupContacts 获取群成员
-                try
+                if (result == null || result.RootElement.ValueKind != JsonValueKind.Array)
                 {
-                    _logService.Info("VxMain", $"开始获取群成员列表: {contact.Wxid}");
-                    
-                    var result = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
-                    
-                    if (result == null || result.RootElement.ValueKind != JsonValueKind.Array)
+                    _logService.Error("VxMain", "获取群成员失败: 返回数据为空或格式错误");
+                    UIMessageBox.ShowError("获取群成员失败！");
+                    return;
+                }
+                
+                // 🔥 步骤5：解析服务器返回的会员数据
+                var serverMembers = ParseServerMembers(result.RootElement, contact.Wxid);
+                _logService.Info("VxMain", $"服务器返回 {serverMembers.Count} 个群成员");
+                
+                // 🔥 步骤6：使用服务智能合并数据
+                var mergedMembers = _groupBindingService.LoadAndMergeMembers(serverMembers, contact.Wxid);
+                _logService.Info("VxMain", $"智能合并完成: 共 {mergedMembers.Count} 个会员");
+                
+                // 🔥 步骤7：加载到 UI（自动保存到数据库）
+                UpdateUIThreadSafe(() =>
+                {
+                    foreach (var member in mergedMembers)
                     {
-                        _logService.Error("VxMain", "获取群成员失败: 返回数据为空或格式错误");
-                        UIMessageBox.ShowError("获取群成员失败！");
-                        return;
+                        _membersBindingList?.Add(member);  // 自动触发保存
                     }
-                    
-                    // 🔥 业务流程4：解析数据并填充到 dgvMembers
-                    await LoadGroupMembersToDataGridAsync(result.RootElement, contact.Wxid);
-                    
-                    lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 群成员加载完成";
-                    _logService.Info("VxMain", $"群成员加载完成: {contact.Wxid}");
-                }
-                catch (Exception ex)
-                {
-                    _logService.Error("VxMain", $"获取群成员异常: {ex.Message}", ex);
-                    UIMessageBox.ShowError($"获取群成员失败！\n\n{ex.Message}");
-                }
+                    UpdateStatistics();
+                });
+                
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载了 {mergedMembers.Count} 个会员";
+                _logService.Info("VxMain", $"✅ 群成员加载完成: {mergedMembers.Count} 个会员");
+                
+                //UIMessageBox.ShowSuccess($"绑定成功！\n\n群组: {contact.Nickname}\n会员数: {mergedMembers.Count}");
             }
-            else
+            catch (Exception ex)
             {
-                _logService.Warning("VxMain", "绑定联系人失败: 未选择联系人");
-                UIMessageBox.ShowWarning("请先选择一个联系人");
+                _logService.Error("VxMain", $"绑定群组失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"绑定群组失败！\n\n{ex.Message}");
             }
         }
 
