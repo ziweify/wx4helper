@@ -88,15 +88,14 @@ namespace BaiShengVx3Plus.Core
                     if (existing != null)
                     {
                         // 更新现有数据
-                        existing.NumbersString = data.NumbersString;
-                        existing.IssueStartTime = data.IssueStartTime;
+                        existing.LotteryData = data.LotteryData;
                         existing.OpenTime = data.OpenTime;
                         
                         // 保存到数据库
                         _db.Update(existing);
                         
                         _logService.Info("BinggoLotteryDataBindingList", 
-                            $"更新开奖数据: {data.IssueId} - {data.NumbersString}");
+                            $"更新开奖数据: {data.ToLotteryString()}");
                         
                         // 触发列表变更事件
                         ResetBindings();

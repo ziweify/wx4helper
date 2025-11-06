@@ -2,6 +2,7 @@ using Sunny.UI;
 using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
+using BaiShengVx3Plus.Helpers;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -10,11 +11,13 @@ namespace BaiShengVx3Plus.UserControls
 {
     /// <summary>
     /// 当前期开奖数据显示控件
+    /// 🔥 完全参考 F5BotV2 的简洁排版设计
     /// 
     /// 功能：
     /// - 显示当前期号
+    /// - 显示开奖时间
     /// - 显示距封盘倒计时
-    /// - 显示当前状态（开盘/封盘/开奖）
+    /// - 显示当前状态
     /// - 实时更新
     /// </summary>
     public partial class UcBinggoDataCur : UserControl
@@ -55,54 +58,74 @@ namespace BaiShengVx3Plus.UserControls
         
         private void InitializeUI()
         {
-            // 设置控件大小和样式
-            this.Size = new Size(239, 140);
+            // 🔥 F5BotV2 风格：紧凑、简洁、信息密集
+            this.Size = new Size(239, 85);
             this.BackColor = Color.FromArgb(243, 249, 255);
+            this.BorderStyle = BorderStyle.FixedSingle;
             
-            // 标题标签
-            var lblTitle = new UILabel
+            // ========================================
+            // 🔥 第一行：期号 + 开奖时间（左右布局）
+            // ========================================
+            
+            var lblIssueTitle = new Label
             {
-                Text = "当前期数据",
+                Text = "期号:",
+                Font = new Font("微软雅黑", 9F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(5, 5),
+                Size = new Size(36, 18),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            this.Controls.Add(lblIssueTitle);
+            
+            lblCurrentIssue = new Label
+            {
+                Text = "-",
                 Font = new Font("微软雅黑", 10F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(48, 48, 48),
-                Location = new Point(10, 10),
-                Size = new Size(219, 25),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            this.Controls.Add(lblTitle);
-            
-            // 期号标签
-            lblCurrentIssue = new UILabel
-            {
-                Text = "期号: -",
-                Font = new Font("微软雅黑", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(48, 48, 48),
-                Location = new Point(10, 45),
-                Size = new Size(219, 30),
-                TextAlign = ContentAlignment.MiddleCenter
+                Location = new Point(43, 5),
+                Size = new Size(100, 18),
+                TextAlign = ContentAlignment.MiddleLeft
             };
             this.Controls.Add(lblCurrentIssue);
             
-            // 倒计时标签（大字体，醒目）
-            lblCountdown = new UILabel
+            lblOpenTime = new Label
+            {
+                Text = "-",
+                Font = new Font("微软雅黑", 9F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(150, 5),
+                Size = new Size(84, 18),
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            this.Controls.Add(lblOpenTime);
+            
+            // ========================================
+            // 🔥 第二行：倒计时（大字体，居中）
+            // ========================================
+            
+            lblCountdown = new Label
             {
                 Text = "00:00",
-                Font = new Font("微软雅黑", 24F, FontStyle.Bold),
+                Font = new Font("微软雅黑", 26F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(0, 150, 136),
-                Location = new Point(10, 75),
-                Size = new Size(219, 40),
+                Location = new Point(5, 25),
+                Size = new Size(229, 40),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             this.Controls.Add(lblCountdown);
             
-            // 状态标签
-            lblStatus = new UILabel
+            // ========================================
+            // 🔥 第三行：状态（底部居中）
+            // ========================================
+            
+            lblStatus = new Label
             {
                 Text = "未开始",
                 Font = new Font("微软雅黑", 9F),
                 ForeColor = Color.Gray,
-                Location = new Point(10, 115),
-                Size = new Size(219, 20),
+                Location = new Point(5, 65),
+                Size = new Size(229, 18),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             this.Controls.Add(lblStatus);
@@ -115,9 +138,19 @@ namespace BaiShengVx3Plus.UserControls
             UpdateUIThreadSafe(() =>
             {
                 // 更新期号
-                lblCurrentIssue.Text = _lotteryService.CurrentIssueId > 0 
-                    ? $"期号: {_lotteryService.CurrentIssueId}" 
-                    : "期号: -";
+                int issueId = _lotteryService.CurrentIssueId;
+                lblCurrentIssue.Text = issueId > 0 ? issueId.ToString() : "-";
+                
+                // 🔥 更新开奖时间（F5BotV2 风格：简洁显示）
+                if (issueId > 0)
+                {
+                    var openTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+                    lblOpenTime.Text = openTime.ToString("HH:mm:ss");
+                }
+                else
+                {
+                    lblOpenTime.Text = "-";
+                }
                 
                 // 更新倒计时
                 int seconds = _lotteryService.SecondsToSeal;
@@ -125,8 +158,12 @@ namespace BaiShengVx3Plus.UserControls
                 int secs = seconds % 60;
                 lblCountdown.Text = $"{minutes:D2}:{secs:D2}";
                 
-                // 根据倒计时调整颜色
-                if (seconds <= 10)
+                // 🔥 根据倒计时调整颜色（参考 F5BotV2）
+                if (seconds <= 0)
+                {
+                    lblCountdown.ForeColor = Color.FromArgb(156, 39, 176); // 紫色（开奖中）
+                }
+                else if (seconds <= 10)
                 {
                     lblCountdown.ForeColor = Color.FromArgb(244, 67, 54); // 红色警告
                 }
@@ -154,6 +191,10 @@ namespace BaiShengVx3Plus.UserControls
                     case BinggoLotteryStatus.开奖中:
                         lblStatus.Text = "● 开奖中";
                         lblStatus.ForeColor = Color.FromArgb(156, 39, 176);
+                        break;
+                    case BinggoLotteryStatus.即将封盘:
+                        lblStatus.Text = "● 即将封盘";
+                        lblStatus.ForeColor = Color.FromArgb(255, 152, 0);
                         break;
                     default:
                         lblStatus.Text = "● 未开始";
@@ -205,11 +246,11 @@ namespace BaiShengVx3Plus.UserControls
         
         #region 设计器生成的字段
         
-        private UILabel lblCurrentIssue = null!;
-        private UILabel lblCountdown = null!;
-        private UILabel lblStatus = null!;
+        private Label lblCurrentIssue = null!;
+        private Label lblOpenTime = null!;
+        private Label lblCountdown = null!;
+        private Label lblStatus = null!;
         
         #endregion
     }
 }
-

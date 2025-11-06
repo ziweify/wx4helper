@@ -272,23 +272,23 @@ namespace BaiShengVx3Plus.Helpers
             // 龙虎特殊处理
             if (betItem.PlayType == BinggoPlayType.龙)
             {
-                return lotteryData.DragonTiger == "龙";
+                return lotteryData.DragonTiger == DragonTigerType.Dragon;
             }
             if (betItem.PlayType == BinggoPlayType.虎)
             {
-                return lotteryData.DragonTiger == "虎";
+                return lotteryData.DragonTiger == DragonTigerType.Tiger;
             }
             
             // 获取对应车号的值
             int value = 0;
             switch (betItem.CarNumber)
             {
-                case 1: value = lotteryData.P1; break;
-                case 2: value = lotteryData.P2; break;
-                case 3: value = lotteryData.P3; break;
-                case 4: value = lotteryData.P4; break;
-                case 5: value = lotteryData.P5; break;
-                case 6: value = lotteryData.Sum; break;
+                case 1: value = lotteryData.P1?.Number ?? 0; break;
+                case 2: value = lotteryData.P2?.Number ?? 0; break;
+                case 3: value = lotteryData.P3?.Number ?? 0; break;
+                case 4: value = lotteryData.P4?.Number ?? 0; break;
+                case 5: value = lotteryData.P5?.Number ?? 0; break;
+                case 6: value = lotteryData.PSum?.Number ?? 0; break;
                 default: return false;
             }
             

@@ -260,7 +260,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 string summary = $"期号: {issueId}\n" +
                                $"订单数: {settledCount}\n" +
                                $"总盈利: {totalProfit:F2}\n" +
-                               $"开奖号码: {lotteryData.NumbersString}";
+                               $"开奖: {lotteryData.ToLotteryString()}";
                 
                 return (settledCount, summary);
             }

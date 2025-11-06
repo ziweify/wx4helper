@@ -44,15 +44,16 @@ namespace BaiShengVx3Plus
             DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
             ucBinggoDataCur = new BaiShengVx3Plus.UserControls.UcBinggoDataCur();
             ucBinggoDataLast = new BaiShengVx3Plus.UserControls.UcBinggoDataLast();
-            lblSealSeconds = new System.Windows.Forms.Label();
+            lblSealSeconds = new Label();
             txtSealSeconds = new Sunny.UI.UIIntegerUpDown();
-            lblMinBet = new System.Windows.Forms.Label();
+            lblMinBet = new Label();
             txtMinBet = new Sunny.UI.UIIntegerUpDown();
-            lblMaxBet = new System.Windows.Forms.Label();
+            lblMaxBet = new Label();
             txtMaxBet = new Sunny.UI.UIIntegerUpDown();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
             splitContainerMain = new Sunny.UI.UISplitContainer();
             pnlLeft = new Sunny.UI.UIPanel();
+            pnl_fastsetting = new Sunny.UI.UIPanel();
             pnl_opendata = new Sunny.UI.UIPanel();
             dgvContacts = new Sunny.UI.UIDataGridView();
             pnlLeftTop = new Sunny.UI.UIPanel();
@@ -78,12 +79,12 @@ namespace BaiShengVx3Plus
             btnSettings = new Sunny.UI.UIButton();
             statusStrip = new StatusStrip();
             lblStatus = new ToolStripStatusLabel();
-            pnl_fastsetting = new Sunny.UI.UIPanel();
             (splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
             splitContainerMain.SuspendLayout();
             pnlLeft.SuspendLayout();
+            pnl_fastsetting.SuspendLayout();
             pnl_opendata.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvContacts).BeginInit();
             pnlLeftTop.SuspendLayout();
@@ -105,18 +106,95 @@ namespace BaiShengVx3Plus
             // ucBinggoDataCur
             // 
             ucBinggoDataCur.BackColor = Color.FromArgb(243, 249, 255);
+            ucBinggoDataCur.BorderStyle = BorderStyle.FixedSingle;
             ucBinggoDataCur.Location = new Point(0, 0);
             ucBinggoDataCur.Name = "ucBinggoDataCur";
-            ucBinggoDataCur.Size = new Size(239, 140);
+            ucBinggoDataCur.Size = new Size(239, 101);
             ucBinggoDataCur.TabIndex = 0;
             // 
             // ucBinggoDataLast
             // 
             ucBinggoDataLast.BackColor = Color.FromArgb(255, 248, 225);
-            ucBinggoDataLast.Location = new Point(0, 143);
+            ucBinggoDataLast.Location = new Point(0, 108);
             ucBinggoDataLast.Name = "ucBinggoDataLast";
-            ucBinggoDataLast.Size = new Size(239, 140);
+            ucBinggoDataLast.Size = new Size(239, 118);
             ucBinggoDataLast.TabIndex = 1;
+            // 
+            // lblSealSeconds
+            // 
+            lblSealSeconds.Font = new Font("微软雅黑", 10F);
+            lblSealSeconds.Location = new Point(5, 30);
+            lblSealSeconds.Name = "lblSealSeconds";
+            lblSealSeconds.Size = new Size(90, 23);
+            lblSealSeconds.TabIndex = 0;
+            lblSealSeconds.Text = "封盘提前(秒)";
+            lblSealSeconds.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtSealSeconds
+            // 
+            txtSealSeconds.Font = new Font("微软雅黑", 10F);
+            txtSealSeconds.Location = new Point(100, 28);
+            txtSealSeconds.Margin = new Padding(4, 5, 4, 5);
+            txtSealSeconds.Maximum = 300;
+            txtSealSeconds.Minimum = 10;
+            txtSealSeconds.MinimumSize = new Size(100, 0);
+            txtSealSeconds.Name = "txtSealSeconds";
+            txtSealSeconds.ShowText = false;
+            txtSealSeconds.Size = new Size(130, 29);
+            txtSealSeconds.TabIndex = 1;
+            txtSealSeconds.Text = "49";
+            txtSealSeconds.TextAlignment = ContentAlignment.MiddleCenter;
+            txtSealSeconds.ValueChanged += TxtSealSeconds_ValueChanged;
+            // 
+            // lblMinBet
+            // 
+            lblMinBet.Font = new Font("微软雅黑", 10F);
+            lblMinBet.Location = new Point(5, 63);
+            lblMinBet.Name = "lblMinBet";
+            lblMinBet.Size = new Size(90, 23);
+            lblMinBet.TabIndex = 2;
+            lblMinBet.Text = "最小投注";
+            lblMinBet.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtMinBet
+            // 
+            txtMinBet.Font = new Font("微软雅黑", 10F);
+            txtMinBet.Location = new Point(100, 61);
+            txtMinBet.Margin = new Padding(4, 5, 4, 5);
+            txtMinBet.Maximum = 10000;
+            txtMinBet.Minimum = 1;
+            txtMinBet.MinimumSize = new Size(100, 0);
+            txtMinBet.Name = "txtMinBet";
+            txtMinBet.ShowText = false;
+            txtMinBet.Size = new Size(130, 29);
+            txtMinBet.TabIndex = 3;
+            txtMinBet.Text = "1";
+            txtMinBet.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
+            // lblMaxBet
+            // 
+            lblMaxBet.Font = new Font("微软雅黑", 10F);
+            lblMaxBet.Location = new Point(5, 96);
+            lblMaxBet.Name = "lblMaxBet";
+            lblMaxBet.Size = new Size(90, 23);
+            lblMaxBet.TabIndex = 4;
+            lblMaxBet.Text = "最大投注";
+            lblMaxBet.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtMaxBet
+            // 
+            txtMaxBet.Font = new Font("微软雅黑", 10F);
+            txtMaxBet.Location = new Point(100, 94);
+            txtMaxBet.Margin = new Padding(4, 5, 4, 5);
+            txtMaxBet.Maximum = 1000000;
+            txtMaxBet.Minimum = 1;
+            txtMaxBet.MinimumSize = new Size(100, 0);
+            txtMaxBet.Name = "txtMaxBet";
+            txtMaxBet.ShowText = false;
+            txtMaxBet.Size = new Size(130, 29);
+            txtMaxBet.TabIndex = 5;
+            txtMaxBet.Text = "10000";
+            txtMaxBet.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // cmsMembers
             // 
@@ -163,6 +241,24 @@ namespace BaiShengVx3Plus
             pnlLeft.Text = null;
             pnlLeft.TextAlignment = ContentAlignment.MiddleCenter;
             // 
+            // pnl_fastsetting
+            // 
+            pnl_fastsetting.Controls.Add(lblSealSeconds);
+            pnl_fastsetting.Controls.Add(txtSealSeconds);
+            pnl_fastsetting.Controls.Add(lblMinBet);
+            pnl_fastsetting.Controls.Add(txtMinBet);
+            pnl_fastsetting.Controls.Add(lblMaxBet);
+            pnl_fastsetting.Controls.Add(txtMaxBet);
+            pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            pnl_fastsetting.Location = new Point(4, 484);
+            pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
+            pnl_fastsetting.MinimumSize = new Size(1, 1);
+            pnl_fastsetting.Name = "pnl_fastsetting";
+            pnl_fastsetting.Size = new Size(237, 179);
+            pnl_fastsetting.TabIndex = 3;
+            pnl_fastsetting.Text = "快速设置";
+            pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
+            // 
             // pnl_opendata
             // 
             pnl_opendata.Controls.Add(ucBinggoDataLast);
@@ -172,7 +268,7 @@ namespace BaiShengVx3Plus
             pnl_opendata.Margin = new Padding(4, 5, 4, 5);
             pnl_opendata.MinimumSize = new Size(1, 1);
             pnl_opendata.Name = "pnl_opendata";
-            pnl_opendata.Size = new Size(239, 283);
+            pnl_opendata.Size = new Size(239, 233);
             pnl_opendata.TabIndex = 2;
             pnl_opendata.Text = null;
             pnl_opendata.TextAlignment = ContentAlignment.MiddleCenter;
@@ -620,94 +716,6 @@ namespace BaiShengVx3Plus
             lblStatus.Size = new Size(37, 20);
             lblStatus.Text = "就绪";
             // 
-            // pnl_fastsetting
-            // 
-            pnl_fastsetting.Controls.Add(lblSealSeconds);
-            pnl_fastsetting.Controls.Add(txtSealSeconds);
-            pnl_fastsetting.Controls.Add(lblMinBet);
-            pnl_fastsetting.Controls.Add(txtMinBet);
-            pnl_fastsetting.Controls.Add(lblMaxBet);
-            pnl_fastsetting.Controls.Add(txtMaxBet);
-            pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            pnl_fastsetting.Location = new Point(4, 537);
-            pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
-            pnl_fastsetting.MinimumSize = new Size(1, 1);
-            pnl_fastsetting.Name = "pnl_fastsetting";
-            pnl_fastsetting.Size = new Size(237, 126);
-            pnl_fastsetting.TabIndex = 3;
-            pnl_fastsetting.Text = "快速设置";
-            pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
-            // 
-            // lblSealSeconds
-            // 
-            lblSealSeconds.Font = new Font("微软雅黑", 10F);
-            lblSealSeconds.Location = new Point(5, 30);
-            lblSealSeconds.Name = "lblSealSeconds";
-            lblSealSeconds.Size = new Size(90, 23);
-            lblSealSeconds.TabIndex = 0;
-            lblSealSeconds.Text = "封盘提前(秒)";
-            lblSealSeconds.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // txtSealSeconds
-            // 
-            txtSealSeconds.Font = new Font("微软雅黑", 10F);
-            txtSealSeconds.Location = new Point(100, 28);
-            txtSealSeconds.Maximum = 300;
-            txtSealSeconds.Minimum = 10;
-            txtSealSeconds.Name = "txtSealSeconds";
-            txtSealSeconds.ShowText = false;
-            txtSealSeconds.Size = new Size(130, 29);
-            txtSealSeconds.TabIndex = 1;
-            txtSealSeconds.Text = "49";
-            txtSealSeconds.TextAlignment = ContentAlignment.MiddleCenter;
-            txtSealSeconds.ValueChanged += TxtSealSeconds_ValueChanged;
-            // 
-            // lblMinBet
-            // 
-            lblMinBet.Font = new Font("微软雅黑", 10F);
-            lblMinBet.Location = new Point(5, 63);
-            lblMinBet.Name = "lblMinBet";
-            lblMinBet.Size = new Size(90, 23);
-            lblMinBet.TabIndex = 2;
-            lblMinBet.Text = "最小投注";
-            lblMinBet.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // txtMinBet
-            // 
-            txtMinBet.Font = new Font("微软雅黑", 10F);
-            txtMinBet.Location = new Point(100, 61);
-            txtMinBet.Maximum = 10000;
-            txtMinBet.Minimum = 1;
-            txtMinBet.Name = "txtMinBet";
-            txtMinBet.ShowText = false;
-            txtMinBet.Size = new Size(130, 29);
-            txtMinBet.TabIndex = 3;
-            txtMinBet.Text = "1";
-            txtMinBet.TextAlignment = ContentAlignment.MiddleCenter;
-            // 
-            // lblMaxBet
-            // 
-            lblMaxBet.Font = new Font("微软雅黑", 10F);
-            lblMaxBet.Location = new Point(5, 96);
-            lblMaxBet.Name = "lblMaxBet";
-            lblMaxBet.Size = new Size(90, 23);
-            lblMaxBet.TabIndex = 4;
-            lblMaxBet.Text = "最大投注";
-            lblMaxBet.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // txtMaxBet
-            // 
-            txtMaxBet.Font = new Font("微软雅黑", 10F);
-            txtMaxBet.Location = new Point(100, 94);
-            txtMaxBet.Maximum = 1000000;
-            txtMaxBet.Minimum = 1;
-            txtMaxBet.Name = "txtMaxBet";
-            txtMaxBet.ShowText = false;
-            txtMaxBet.Size = new Size(130, 29);
-            txtMaxBet.TabIndex = 5;
-            txtMaxBet.Text = "10000";
-            txtMaxBet.TextAlignment = ContentAlignment.MiddleCenter;
-            // 
             // VxMain
             // 
             AutoScaleMode = AutoScaleMode.None;
@@ -724,6 +732,7 @@ namespace BaiShengVx3Plus
             (splitContainerMain).EndInit();
             splitContainerMain.ResumeLayout(false);
             pnlLeft.ResumeLayout(false);
+            pnl_fastsetting.ResumeLayout(false);
             pnl_opendata.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvContacts).EndInit();
             pnlLeftTop.ResumeLayout(false);

@@ -2,25 +2,30 @@ using Sunny.UI;
 using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
+using BaiShengVx3Plus.Helpers;
 using System;
 using System.Drawing;
-using System.Windows.Forms;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace BaiShengVx3Plus.UserControls
 {
     /// <summary>
     /// 上期开奖数据显示控件
+    /// 🔥 完全参考 F5BotV2 的显示逻辑
     /// 
     /// 功能：
     /// - 显示上期期号
-    /// - 显示上期开奖结果（6 个号码）
-    /// - 显示大小、单双统计
+    /// - 显示上期开奖号码（P1-P5 + 总和）
+    /// - 显示大小单双、龙虎
+    /// - 显示开奖时间
+    /// - 实时更新
     /// </summary>
     public partial class UcBinggoDataLast : UserControl
     {
         private IBinggoLotteryService? _lotteryService;
         private BinggoLotteryData? _lastData;
+        private UILabel[] numberLabels = new UILabel[6];  // P1-P5 + Sum
         
         public UcBinggoDataLast()
         {
@@ -45,68 +50,74 @@ namespace BaiShengVx3Plus.UserControls
             {
                 _lotteryService.LotteryOpened += OnLotteryOpened;
                 
-                // 加载最近一期数据
+                // 🔥 立即加载上期数据
                 LoadLastLotteryData();
             }
         }
         
         private void InitializeUI()
         {
-            // 设置控件大小和样式
-            this.Size = new Size(239, 140);
+            // 🔥 设置控件大小和样式（压缩高度）
+            this.Size = new Size(239, 110);
             this.BackColor = Color.FromArgb(255, 248, 225);
             
-            // 标题标签
+            // 标题标签（压缩高度）
             var lblTitle = new UILabel
             {
                 Text = "上期开奖",
-                Font = new Font("微软雅黑", 10F, FontStyle.Bold),
+                Font = new Font("微软雅黑", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(48, 48, 48),
-                Location = new Point(10, 10),
-                Size = new Size(219, 25),
+                Location = new Point(5, 3),
+                Size = new Size(229, 18),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             this.Controls.Add(lblTitle);
             
-            // 期号标签
+            // 期号标签（压缩高度）
             lblLastIssue = new UILabel
             {
                 Text = "期号: -",
                 Font = new Font("微软雅黑", 9F),
                 ForeColor = Color.FromArgb(48, 48, 48),
-                Location = new Point(10, 40),
-                Size = new Size(219, 20),
-                TextAlign = ContentAlignment.MiddleCenter
+                Location = new Point(5, 23),
+                Size = new Size(120, 16),
+                TextAlign = ContentAlignment.MiddleLeft
             };
             this.Controls.Add(lblLastIssue);
             
-            // 号码面板
-            pnlNumbers = new UIPanel
+            // 🔥 开奖时间标签（新增，右对齐）
+            lblOpenTime = new UILabel
             {
-                Location = new Point(10, 65),
-                Size = new Size(219, 40),
-                FillColor = Color.Transparent,
-                RectColor = Color.Transparent
+                Text = "-",
+                Font = new Font("微软雅黑", 8F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(130, 23),
+                Size = new Size(104, 16),
+                TextAlign = ContentAlignment.MiddleRight
             };
-            this.Controls.Add(pnlNumbers);
+            this.Controls.Add(lblOpenTime);
             
-            // 创建 6 个号码标签（使用简单的 Label，手动绘制圆形）
-            numberLabels = new UILabel[6];
+            // 🔥 号码显示区域（6个圆形号码：P1-P5 + Sum）
+            int startX = 9;
+            int startY = 42;
+            int spacing = 37;
+            int ballSize = 32;
+            
             for (int i = 0; i < 6; i++)
             {
-                numberLabels[i] = new UILabel
+                var lblNumber = new UILabel
                 {
                     Text = "-",
                     Font = new Font("微软雅黑", 11F, FontStyle.Bold),
                     ForeColor = Color.White,
-                    BackColor = Color.Gray,
-                    Location = new Point(i * 36 + 2, 5),
-                    Size = new Size(32, 32),
+                    Location = new Point(startX + i * spacing, startY),
+                    Size = new Size(ballSize, ballSize),
                     TextAlign = ContentAlignment.MiddleCenter,
-                    BorderStyle = BorderStyle.None
+                    BackColor = Color.Gray
                 };
-                // 添加圆形外观
-                numberLabels[i].Paint += (s, e) =>
+                
+                // 🔥 自定义绘制圆形背景
+                lblNumber.Paint += (s, e) =>
                 {
                     var lbl = s as UILabel;
                     if (lbl != null)
@@ -116,33 +127,47 @@ namespace BaiShengVx3Plus.UserControls
                         {
                             e.Graphics.FillEllipse(brush, 0, 0, lbl.Width - 1, lbl.Height - 1);
                         }
-                        TextRenderer.DrawText(e.Graphics, lbl.Text, lbl.Font, 
-                            lbl.ClientRectangle, lbl.ForeColor,
-                            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                        
+                        // 绘制文字
+                        using (var format = new StringFormat
+                        {
+                            Alignment = StringAlignment.Center,
+                            LineAlignment = StringAlignment.Center
+                        })
+                        {
+                            e.Graphics.DrawString(lbl.Text, lbl.Font, new SolidBrush(lbl.ForeColor), 
+                                new RectangleF(0, 0, lbl.Width, lbl.Height), format);
+                        }
                     }
                 };
-                pnlNumbers.Controls.Add(numberLabels[i]);
+                
+                numberLabels[i] = lblNumber;
+                this.Controls.Add(lblNumber);
             }
             
-            // 统计标签
+            // 统计信息标签（大小单双、龙虎）
             lblStatistics = new UILabel
             {
                 Text = "大小单双: -",
                 Font = new Font("微软雅黑", 8F),
-                ForeColor = Color.FromArgb(96, 96, 96),
-                Location = new Point(10, 110),
-                Size = new Size(219, 20),
-                TextAlign = ContentAlignment.MiddleCenter
+                ForeColor = Color.FromArgb(80, 80, 80),
+                Location = new Point(5, 78),
+                Size = new Size(229, 28),
+                TextAlign = ContentAlignment.TopCenter
             };
             this.Controls.Add(lblStatistics);
         }
         
+        /// <summary>
+        /// 🔥 加载上期数据
+        /// </summary>
         private async void LoadLastLotteryData()
         {
-            if (_lotteryService == null) return;
-            
             try
             {
+                if (_lotteryService == null) return;
+                
+                // 🔥 获取最近1期数据
                 var recentData = await _lotteryService.GetRecentLotteryDataAsync(1);
                 if (recentData != null && recentData.Count > 0)
                 {
@@ -158,12 +183,13 @@ namespace BaiShengVx3Plus.UserControls
         
         private void UpdateDisplay()
         {
-            if (_lastData == null || _lastData.Numbers == null || _lastData.Numbers.Length == 0)
+            if (_lastData == null || !_lastData.IsOpened)
             {
                 UpdateUIThreadSafe(() =>
                 {
                     lblLastIssue.Text = "期号: -";
-                    lblStatistics.Text = "大小单双: -";
+                    lblOpenTime.Text = "-";
+                    lblStatistics.Text = "暂无数据";
                     for (int i = 0; i < 6; i++)
                     {
                         numberLabels[i].Text = "-";
@@ -179,37 +205,75 @@ namespace BaiShengVx3Plus.UserControls
                 // 更新期号
                 lblLastIssue.Text = $"期号: {_lastData?.IssueId ?? 0}";
                 
-                // 更新号码
-                int numCount = Math.Min(6, _lastData?.Numbers?.Length ?? 0);
-                for (int i = 0; i < numCount; i++)
+                // 🔥 更新开奖时间
+                if (!string.IsNullOrEmpty(_lastData?.OpenTime))
                 {
-                    int number = _lastData!.Numbers![i];
-                    numberLabels[i].Text = number.ToString();
-                    
-                    // 根据号码设置颜色（1-10 蓝色，11-20 绿色，21-28 红色）
-                    if (number >= 1 && number <= 10)
+                    if (DateTime.TryParse(_lastData.OpenTime, out DateTime openTime))
                     {
-                        numberLabels[i].BackColor = Color.FromArgb(33, 150, 243);
-                    }
-                    else if (number >= 11 && number <= 20)
-                    {
-                        numberLabels[i].BackColor = Color.FromArgb(76, 175, 80);
+                        lblOpenTime.Text = openTime.ToString("HH:mm:ss");
                     }
                     else
                     {
-                        numberLabels[i].BackColor = Color.FromArgb(244, 67, 54);
+                        lblOpenTime.Text = _lastData.OpenTime;
                     }
-                    numberLabels[i].Invalidate(); // 触发重绘
+                }
+                else
+                {
+                    lblOpenTime.Text = "-";
                 }
                 
-                // 更新统计
-                var numbers = _lastData?.Numbers;
-                if (numbers != null && numbers.Length >= 6)
+                // 🔥 使用新的 P1-P5 和 PSum 属性
+                var balls = new[] { _lastData.P1, _lastData.P2, _lastData.P3, _lastData.P4, _lastData.P5, _lastData.PSum };
+                
+                for (int i = 0; i < 6; i++)
                 {
-                    int sum = numbers.Take(6).Sum();
-                    string bigSmall = sum >= 84 ? "大" : "小";
-                    string oddEven = (sum % 2 == 0) ? "双" : "单";
-                    lblStatistics.Text = $"{bigSmall} {oddEven} | 总和: {sum}";
+                    var ball = balls[i];
+                    if (ball != null)
+                    {
+                        int number = ball.Number;
+                        numberLabels[i].Text = number.ToString();
+                        
+                        // 🔥 根据号码设置颜色
+                        if (i < 5)  // P1-P5
+                        {
+                            if (number >= 1 && number <= 10)
+                            {
+                                numberLabels[i].BackColor = Color.FromArgb(33, 150, 243);  // 蓝色
+                            }
+                            else if (number >= 11 && number <= 20)
+                            {
+                                numberLabels[i].BackColor = Color.FromArgb(76, 175, 80);  // 绿色
+                            }
+                            else if (number >= 21 && number <= 28)
+                            {
+                                numberLabels[i].BackColor = Color.FromArgb(244, 67, 54);  // 红色
+                            }
+                            else
+                            {
+                                numberLabels[i].BackColor = Color.FromArgb(158, 158, 158);  // 灰色
+                            }
+                        }
+                        else  // PSum（总和）
+                        {
+                            numberLabels[i].BackColor = Color.FromArgb(255, 152, 0);  // 橙色
+                        }
+                        
+                        numberLabels[i].Invalidate(); // 触发重绘
+                    }
+                    else
+                    {
+                        numberLabels[i].Text = "-";
+                        numberLabels[i].BackColor = Color.Gray;
+                    }
+                }
+                
+                // 🔥 使用新的 PSum 属性更新统计
+                if (_lastData.PSum != null)
+                {
+                    string bigSmall = _lastData.PSum.GetSizeText();
+                    string oddEven = _lastData.PSum.GetOddEvenText();
+                    string dragonTiger = _lastData.GetDragonTigerText();
+                    lblStatistics.Text = $"{bigSmall} {oddEven} | {dragonTiger} | 总和: {_lastData.PSum.Number}";
                 }
             });
         }
@@ -246,11 +310,9 @@ namespace BaiShengVx3Plus.UserControls
         #region 设计器生成的字段
         
         private UILabel lblLastIssue = null!;
-        private UIPanel pnlNumbers = null!;
-        private UILabel[] numberLabels = null!;
+        private UILabel lblOpenTime = null!;
         private UILabel lblStatistics = null!;
         
         #endregion
     }
 }
-

@@ -393,7 +393,7 @@ namespace BaiShengVx3Plus
             try
             {
                 _logService.Info("VxMain", 
-                    $"🎲 开奖: {e.LotteryData.IssueId} - {e.LotteryData.NumbersString}");
+                    $"🎲 开奖: {e.LotteryData.ToLotteryString()}");
                 
                 // 自动结算订单
                 var (settledCount, summary) = await _orderService.SettleOrdersAsync(

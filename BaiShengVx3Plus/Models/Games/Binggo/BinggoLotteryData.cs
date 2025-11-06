@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -8,17 +9,26 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
 {
     /// <summary>
     /// 炳狗开奖数据
+    /// 🔥 完全参考 F5BotV2 的 BgLotteryData 设计
     /// 
-    /// 存储每一期的开奖号码、统计信息等
+    /// 核心设计思想：
+    /// 1. 存储原始号码字符串（LotteryData: "7,14,21,8,2"）
+    /// 2. 每个球都是 LotteryNumber 对象，包含大小、单双、尾大小、合单双等属性
+    /// 3. P1-P5 是单个球，PSum 是总和
+    /// 4. 这些属性对后期算法分析非常重要！
     /// </summary>
     [Table("BinggoLotteryData")]
     public class BinggoLotteryData : INotifyPropertyChanged
     {
         private int _id;
         private int _issueId;
-        private string _numbersString = string.Empty;
-        private DateTime _issueStartTime;
-        private DateTime? _openTime;
+        private string _lotteryData = string.Empty;
+        private string _openTime = string.Empty;
+        private string _lastError = string.Empty;
+        
+        // ========================================
+        // 🔥 数据库字段
+        // ========================================
         
         /// <summary>
         /// 主键 ID
@@ -31,7 +41,7 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         }
         
         /// <summary>
-        /// 期号 (例如：20251106001)
+        /// 期号（例如：114062884）
         /// </summary>
         [Indexed]
         public int IssueId
@@ -41,143 +51,248 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         }
         
         /// <summary>
-        /// 开奖号码字符串 (格式："1,2,3,4,5")
+        /// 开奖号码字符串（格式："7,14,21,8,2"）
+        /// 🔥 与 F5BotV2 的 lotteryData 对应
         /// </summary>
-        public string NumbersString
+        public string LotteryData
         {
-            get => _numbersString;
+            get => _lotteryData;
             set
             {
-                if (SetProperty(ref _numbersString, value))
+                if (SetProperty(ref _lotteryData, value))
                 {
-                    // 号码变更后，通知所有计算属性
-                    OnPropertyChanged(nameof(Numbers));
+                    // 号码变更后，重新解析并通知所有计算属性
+                    ParseLotteryData();
                     OnPropertyChanged(nameof(P1));
                     OnPropertyChanged(nameof(P2));
                     OnPropertyChanged(nameof(P3));
                     OnPropertyChanged(nameof(P4));
                     OnPropertyChanged(nameof(P5));
-                    OnPropertyChanged(nameof(Sum));
-                    OnPropertyChanged(nameof(BigSmall));
-                    OnPropertyChanged(nameof(OddEven));
+                    OnPropertyChanged(nameof(PSum));
                     OnPropertyChanged(nameof(DragonTiger));
+                    OnPropertyChanged(nameof(IsOpened));
                 }
             }
         }
         
         /// <summary>
-        /// 期号开始时间
+        /// 开奖时间字符串（例如："2025-11-06 21:00:00"）
+        /// 🔥 与 F5BotV2 的 opentime 对应
         /// </summary>
-        public DateTime IssueStartTime
-        {
-            get => _issueStartTime;
-            set => SetProperty(ref _issueStartTime, value);
-        }
-        
-        /// <summary>
-        /// 开奖时间
-        /// </summary>
-        public DateTime? OpenTime
+        public string OpenTime
         {
             get => _openTime;
             set => SetProperty(ref _openTime, value);
         }
         
+        /// <summary>
+        /// 最后一次错误信息
+        /// 🔥 与 F5BotV2 的 lastError 对应
+        /// </summary>
+        public string LastError
+        {
+            get => _lastError;
+            set => SetProperty(ref _lastError, value);
+        }
+        
         // ========================================
-        // 🔥 计算属性 (不存储到数据库)
+        // 🔥 计算属性（不存储到数据库）
+        // 🔥 完全参考 F5BotV2 的设计
         // ========================================
         
         /// <summary>
-        /// 开奖号码数组
+        /// 号码列表（解析后的 LotteryNumber 对象）
+        /// 🔥 与 F5BotV2 的 items 对应
         /// </summary>
         [Ignore]
-        public int[] Numbers
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(NumbersString))
-                    return Array.Empty<int>();
-                
-                try
-                {
-                    return NumbersString.Split(',')
-                        .Select(s => int.TryParse(s.Trim(), out int n) ? n : 0)
-                        .ToArray();
-                }
-                catch
-                {
-                    return Array.Empty<int>();
-                }
-            }
-        }
+        public List<LotteryNumber> Items { get; private set; } = new List<LotteryNumber>();
         
         /// <summary>
         /// 第1球
         /// </summary>
         [Ignore]
-        public int P1 => Numbers.Length > 0 ? Numbers[0] : 0;
+        public LotteryNumber? P1 { get; private set; }
         
         /// <summary>
         /// 第2球
         /// </summary>
         [Ignore]
-        public int P2 => Numbers.Length > 1 ? Numbers[1] : 0;
+        public LotteryNumber? P2 { get; private set; }
         
         /// <summary>
         /// 第3球
         /// </summary>
         [Ignore]
-        public int P3 => Numbers.Length > 2 ? Numbers[2] : 0;
+        public LotteryNumber? P3 { get; private set; }
         
         /// <summary>
         /// 第4球
         /// </summary>
         [Ignore]
-        public int P4 => Numbers.Length > 3 ? Numbers[3] : 0;
+        public LotteryNumber? P4 { get; private set; }
         
         /// <summary>
         /// 第5球
         /// </summary>
         [Ignore]
-        public int P5 => Numbers.Length > 4 ? Numbers[4] : 0;
+        public LotteryNumber? P5 { get; private set; }
         
         /// <summary>
         /// 总和
+        /// 🔥 与 F5BotV2 的 P总 对应
         /// </summary>
         [Ignore]
-        public int Sum => P1 + P2 + P3 + P4 + P5;
+        public LotteryNumber? PSum { get; private set; }
         
         /// <summary>
-        /// 大小 (总和 >= 15 为大，< 15 为小)
+        /// 龙虎
+        /// 🔥 与 F5BotV2 的 P龙虎 对应
         /// </summary>
         [Ignore]
-        public string BigSmall => Sum >= 15 ? "大" : "小";
-        
-        /// <summary>
-        /// 单双 (总和为奇数=单，偶数=双)
-        /// </summary>
-        [Ignore]
-        public string OddEven => Sum % 2 == 0 ? "双" : "单";
-        
-        /// <summary>
-        /// 龙虎 (P1 > P5 为龙，P1 < P5 为虎，P1 == P5 为和)
-        /// </summary>
-        [Ignore]
-        public string DragonTiger
-        {
-            get
-            {
-                if (P1 > P5) return "龙";
-                if (P1 < P5) return "虎";
-                return "和";
-            }
-        }
+        public DragonTigerType DragonTiger { get; private set; } = DragonTigerType.Unknown;
         
         /// <summary>
         /// 是否已开奖
         /// </summary>
         [Ignore]
-        public bool IsOpened => !string.IsNullOrEmpty(NumbersString) && Numbers.Length == 5;
+        public bool IsOpened => !string.IsNullOrEmpty(LotteryData) && Items.Count >= 5;
+        
+        // ========================================
+        // 🔥 核心方法
+        // ========================================
+        
+        /// <summary>
+        /// 填充开奖数据
+        /// 🔥 完全参考 F5BotV2 的 FillLotteryData 方法
+        /// </summary>
+        public BinggoLotteryData FillLotteryData(int issueId, string lotteryData, string openTime)
+        {
+            try
+            {
+                IssueId = issueId;
+                LotteryData = lotteryData;
+                OpenTime = openTime;
+                
+                // LotteryData setter 会自动调用 ParseLotteryData()
+                
+                return this;
+            }
+            catch (Exception ex)
+            {
+                LastError = $"issueId={issueId}, lotteryData={lotteryData}, openTime={openTime}, msg={ex.Message}";
+                return this;
+            }
+        }
+        
+        /// <summary>
+        /// 解析开奖号码字符串
+        /// 🔥 完全参考 F5BotV2 的逻辑
+        /// </summary>
+        private void ParseLotteryData()
+        {
+            try
+            {
+                Items.Clear();
+                P1 = P2 = P3 = P4 = P5 = PSum = null;
+                DragonTiger = DragonTigerType.Unknown;
+                
+                if (string.IsNullOrEmpty(LotteryData))
+                    return;
+                
+                string[] data = LotteryData.Split(',');
+                if (data.Length < 5)
+                    return;
+                
+                // 🔥 解析 P1-P5
+                for (int i = 0; i < 5; i++)
+                {
+                    if (int.TryParse(data[i].Trim(), out int number))
+                    {
+                        Items.Add(new LotteryNumber((BallPosition)(i + 1), number));
+                    }
+                }
+                
+                if (Items.Count == 5)
+                {
+                    P1 = Items[0];
+                    P2 = Items[1];
+                    P3 = Items[2];
+                    P4 = Items[3];
+                    P5 = Items[4];
+                    
+                    // 🔥 计算总和
+                    int sum = P1.Number + P2.Number + P3.Number + P4.Number + P5.Number;
+                    PSum = new LotteryNumber(BallPosition.Sum, sum);
+                    Items.Add(PSum);
+                    
+                    // 🔥 计算龙虎
+                    if (P1.Number > P5.Number)
+                    {
+                        DragonTiger = DragonTigerType.Dragon;
+                    }
+                    else if (P1.Number < P5.Number)
+                    {
+                        DragonTiger = DragonTigerType.Tiger;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LastError = $"解析号码失败: {ex.Message}";
+            }
+        }
+        
+        /// <summary>
+        /// 根据位置获取号码
+        /// 🔥 与 F5BotV2 的 GetCarNumber 对应
+        /// </summary>
+        public LotteryNumber? GetBallNumber(BallPosition position)
+        {
+            return position switch
+            {
+                BallPosition.P1 => P1,
+                BallPosition.P2 => P2,
+                BallPosition.P3 => P3,
+                BallPosition.P4 => P4,
+                BallPosition.P5 => P5,
+                BallPosition.Sum => PSum,
+                _ => null
+            };
+        }
+        
+        /// <summary>
+        /// 转换为开奖字符串
+        /// 🔥 与 F5BotV2 的 ToLotteryString 对应
+        /// </summary>
+        public string ToLotteryString()
+        {
+            try
+            {
+                if (P1 == null || P2 == null || P3 == null || P4 == null || P5 == null || PSum == null)
+                    return "0,0,0,0,0 * * *";
+                
+                return $"{P1.Number},{P2.Number},{P3.Number},{P4.Number},{P5.Number} " +
+                       $"{PSum.GetSizeText()}{PSum.GetOddEvenText()} " +
+                       $"{GetDragonTigerText()}";
+            }
+            catch
+            {
+                return "0,0,0,0,0 * * *";
+            }
+        }
+        
+        /// <summary>
+        /// 获取龙虎文本
+        /// </summary>
+        public string GetDragonTigerText()
+        {
+            return DragonTiger switch
+            {
+                DragonTigerType.Dragon => "龙",
+                DragonTigerType.Tiger => "虎",
+                _ => "和"
+            };
+        }
         
         // ========================================
         // 🔥 INotifyPropertyChanged 实现
@@ -199,4 +314,3 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         }
     }
 }
-
