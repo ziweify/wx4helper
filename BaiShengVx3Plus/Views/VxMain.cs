@@ -2,7 +2,13 @@ using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Services.Messages;
+using BaiShengVx3Plus.Services.Messages.Handlers;
+using BaiShengVx3Plus.Services.Games.Binggo;
+using BaiShengVx3Plus.Models.Games.Binggo;
+using BaiShengVx3Plus.Models.Games.Binggo.Events;
+using BaiShengVx3Plus.Helpers;
 using BaiShengVx3Plus.Core;
 using BaiShengVx3Plus.Extensions;
 using System.ComponentModel;
@@ -23,6 +29,12 @@ namespace BaiShengVx3Plus
         private readonly IWeChatService _wechatService; // 微信应用服务（Application Service）
         private readonly IGroupBindingService _groupBindingService; // 群组绑定服务
         
+        // 🎮 炳狗游戏服务
+        private readonly IBinggoLotteryService _lotteryService;
+        private readonly IBinggoOrderService _orderService;
+        private readonly BinggoMessageHandler _binggoMessageHandler;
+        private readonly BinggoGameSettings _binggoSettings;
+        
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
         
@@ -30,6 +42,7 @@ namespace BaiShengVx3Plus
         private BindingList<WxContact> _contactsBindingList;
         private V2MemberBindingList? _membersBindingList;  // 🔥 使用 ORM BindingList
         private V2OrderBindingList? _ordersBindingList;    // 🔥 使用 ORM BindingList
+        private BinggoLotteryDataBindingList? _lotteryDataBindingList; // 🎲 炳狗开奖数据 BindingList
         
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
@@ -87,7 +100,11 @@ namespace BaiShengVx3Plus
             IContactDataService contactDataService, // 注入联系人数据服务
             IUserInfoService userInfoService, // 注入用户信息服务
             IWeChatService wechatService, // 注入微信应用服务
-            IGroupBindingService groupBindingService) // 注入群组绑定服务
+            IGroupBindingService groupBindingService, // 注入群组绑定服务
+            IBinggoLotteryService lotteryService, // 🎮 注入炳狗开奖服务
+            IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
+            BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
+            BinggoGameSettings binggoSettings) // 🎮 注入炳狗游戏配置
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -98,6 +115,10 @@ namespace BaiShengVx3Plus
             _userInfoService = userInfoService;
             _wechatService = wechatService;
             _groupBindingService = groupBindingService;
+            _lotteryService = lotteryService;
+            _orderService = orderService;
+            _binggoMessageHandler = binggoMessageHandler;
+            _binggoSettings = binggoSettings;
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -206,7 +227,13 @@ namespace BaiShengVx3Plus
                 });
                 
                 // ========================================
-                // 🔥 步骤3: 日志记录（异步，不阻塞）
+                // 🔥 步骤3: 初始化炳狗服务（异步，不阻塞）
+                // ========================================
+                
+                InitializeBinggoServices();
+                
+                // ========================================
+                // 🔥 步骤4: 日志记录（异步，不阻塞）
                 // ========================================
                 
                 _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath}");
@@ -222,6 +249,107 @@ namespace BaiShengVx3Plus
                     UIMessageBox.ShowError($"初始化数据库失败: {ex.Message}");
                 });
             }
+        }
+        
+        /// <summary>
+        /// 初始化炳狗游戏服务
+        /// </summary>
+        private void InitializeBinggoServices()
+        {
+            try
+            {
+                _logService.Info("VxMain", "🎮 初始化炳狗服务...");
+                
+                // 检查数据库是否已初始化
+                if (_db == null)
+                {
+                    _logService.Warning("VxMain", "数据库未初始化，跳过炳狗服务初始化");
+                    return;
+                }
+                
+                // 1. 设置数据库连接
+                _lotteryService.SetDatabase(_db);
+                _orderService.SetDatabase(_db);
+                
+                // 2. 创建开奖数据 BindingList
+                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
+                _lotteryDataBindingList.LoadFromDatabase(100); // 加载最近 100 期
+                
+                // 3. 设置开奖服务的 BindingList（用于自动更新 UI）
+                _lotteryService.SetBindingList(_lotteryDataBindingList);
+                
+                // 4. 设置订单服务的 BindingList（可能为 null，服务内部会处理）
+                _orderService.SetOrdersBindingList(_ordersBindingList);
+                _orderService.SetMembersBindingList(_membersBindingList);
+                
+                // 5. 订阅开奖事件（自动结算）
+                _lotteryService.LotteryOpened += OnLotteryOpened;
+                _lotteryService.StatusChanged += OnLotteryStatusChanged;
+                _lotteryService.IssueChanged += OnLotteryIssueChanged;
+                
+                // 6. 启动开奖服务
+                _ = _lotteryService.StartAsync();  // 异步启动，不等待
+                
+                _logService.Info("VxMain", "✅ 炳狗服务初始化完成");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"炳狗服务初始化失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 开奖事件处理（自动结算）
+        /// </summary>
+        private async void OnLotteryOpened(object? sender, BinggoLotteryOpenedEventArgs e)
+        {
+            try
+            {
+                _logService.Info("VxMain", 
+                    $"🎲 开奖: {e.LotteryData.IssueId} - {e.LotteryData.NumbersString}");
+                
+                // 自动结算订单
+                var (settledCount, summary) = await _orderService.SettleOrdersAsync(
+                    e.LotteryData.IssueId, 
+                    e.LotteryData);
+                
+                _logService.Info("VxMain", 
+                    $"✅ 结算完成: {settledCount} 单");
+                
+                // TODO: 可选 - 发送结算通知到微信群
+                // if (_binggoSettings.AutoSendSettlementNotice)
+                // {
+                //     await SendWeChatMessageAsync(summary);
+                // }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"开奖事件处理失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 状态变更事件处理
+        /// </summary>
+        private void OnLotteryStatusChanged(object? sender, BinggoStatusChangedEventArgs e)
+        {
+            UpdateUIThreadSafeAsync(() =>
+            {
+                _logService.Info("VxMain", $"🔄 状态变更: {e.NewStatus} - {e.Message}");
+                // TODO: 更新 UI 状态显示
+            });
+        }
+        
+        /// <summary>
+        /// 期号变更事件处理
+        /// </summary>
+        private void OnLotteryIssueChanged(object? sender, BinggoIssueChangedEventArgs e)
+        {
+            UpdateUIThreadSafeAsync(() =>
+            {
+                _logService.Info("VxMain", $"📅 期号变更: {e.NewIssueId}");
+                // TODO: 可选 - 发送开盘通知到微信群
+            });
         }
         
         private void InitializeDataBindings()

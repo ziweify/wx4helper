@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Contracts.Messages;
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Services.Auth;
 using BaiShengVx3Plus.Services.Logging;
 using BaiShengVx3Plus.Services.WeChat;
@@ -10,6 +11,9 @@ using BaiShengVx3Plus.Services.UserInfo;
 using BaiShengVx3Plus.Services.GroupBinding;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Services.Messages.Handlers;
+using BaiShengVx3Plus.Services.Games.Binggo;
+using BaiShengVx3Plus.Services.Api;
+using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Views;
 
@@ -58,6 +62,19 @@ namespace BaiShengVx3Plus
                             services.AddSingleton<IUserInfoService, UserInfoService>();       // 用户信息服务
                             services.AddSingleton<IWeChatService, WeChatService>();           // 微信应用服务（编排层）
                             services.AddSingleton<IGroupBindingService, GroupBindingService>(); // 群组绑定服务
+                            
+                            // 🎮 游戏配置和服务
+                            services.AddSingleton(new BinggoGameSettings());            // 炳狗游戏配置
+                            services.AddSingleton<BinggoOrderValidator>();              // 炳狗订单验证器
+                            services.AddSingleton<BinggoMessageHandler>();              // 炳狗消息处理器
+                            
+                            // 🌐 WebAPI 服务
+                            services.AddHttpClient<IBsWebApiClient, BsWebApiClient>(); // HTTP 客户端
+                            services.AddSingleton<IBsWebApiService, BsWebApiService>(); // WebAPI 服务
+                            
+                            // 🎲 炳狗开奖和订单服务
+                            services.AddSingleton<IBinggoLotteryService, BinggoLotteryService>(); // 开奖服务
+                            services.AddSingleton<IBinggoOrderService, BinggoOrderService>();     // 订单服务
 
                             // 消息处理
                             services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）

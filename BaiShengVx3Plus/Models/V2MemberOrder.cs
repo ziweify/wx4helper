@@ -54,8 +54,10 @@ namespace BaiShengVx3Plus.Models
         private int _issueId;
         private string? _betContentOriginal;
         private string? _betContentStandar;
+        private string? _betContent;  // 用于开奖服务
         private int _nums;
         private float _amountTotal;
+        private decimal _betAmount;  // 用于开奖服务
         private float _profit;
         private float _netProfit;
         private float _odds;
@@ -63,6 +65,8 @@ namespace BaiShengVx3Plus.Models
         private OrderType _orderType;
         private string? _timeString;
         private string? _notes;
+        private bool _isSettled;  // 是否已结算
+        private DateTime _createdAt;  // 创建时间
 
         // ========================================
         // 属性（带变化通知 + DataGridView 列配置）
@@ -208,6 +212,38 @@ namespace BaiShengVx3Plus.Models
         {
             get => _notes;
             set => SetField(ref _notes, value);
+        }
+
+        // ========================================
+        // 🔥 开奖服务专用字段
+        // ========================================
+
+        [Browsable(false)]
+        public string? BetContent
+        {
+            get => _betContent;
+            set => SetField(ref _betContent, value);
+        }
+
+        [Browsable(false)]
+        public decimal BetAmount
+        {
+            get => _betAmount;
+            set => SetField(ref _betAmount, value);
+        }
+
+        [Browsable(false)]
+        public bool IsSettled
+        {
+            get => _isSettled;
+            set => SetField(ref _isSettled, value);
+        }
+
+        [Browsable(false)]
+        public DateTime CreatedAt
+        {
+            get => _createdAt;
+            set => SetField(ref _createdAt, value);
         }
 
         // ========================================

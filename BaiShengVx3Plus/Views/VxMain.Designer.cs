@@ -30,18 +30,18 @@ namespace BaiShengVx3Plus
         /// </summary>
         private void InitializeComponent()
         {
-            DataGridViewCellStyle dataGridViewCellStyle25 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle26 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle27 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle28 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle29 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle30 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle31 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle32 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle33 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle34 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle35 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle36 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle4 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle5 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle9 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle11 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
             splitContainerMain = new Sunny.UI.UISplitContainer();
             pnlLeft = new Sunny.UI.UIPanel();
@@ -61,6 +61,7 @@ namespace BaiShengVx3Plus
             pnlOrdersTop = new Sunny.UI.UIPanel();
             lblOrderInfo = new Sunny.UI.UILabel();
             pnlTopButtons = new Sunny.UI.UIPanel();
+            ucUserInfo1 = new BaiShengVx3Plus.Views.UcUserInfo();
             btnClearData = new Sunny.UI.UIButton();
             btnOpenLotteryResult = new Sunny.UI.UIButton();
             btnConnect = new Sunny.UI.UIButton();
@@ -68,7 +69,7 @@ namespace BaiShengVx3Plus
             btnSettings = new Sunny.UI.UIButton();
             statusStrip = new StatusStrip();
             lblStatus = new ToolStripStatusLabel();
-            ucUserInfo1 = new BaiShengVx3Plus.Views.UcUserInfo();
+            pnl_opendata = new Sunny.UI.UIPanel();
             (splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -96,21 +97,8 @@ namespace BaiShengVx3Plus
             cmsMembers.BackColor = Color.FromArgb(243, 249, 255);
             cmsMembers.Font = new Font("微软雅黑", 10F);
             cmsMembers.ImageScalingSize = new Size(20, 20);
-            cmsMembers.Items.AddRange(new ToolStripItem[] {
-                new ToolStripMenuItem("🔄 清零", null, OnMenuClearBalance_Click) { Name = "menuClearBalance" },
-                new ToolStripMenuItem("🗑️ 删除", null, OnMenuDeleteMember_Click) { Name = "menuDeleteMember" },
-                new ToolStripSeparator(),
-                new ToolStripMenuItem("👔 设置角色", null, new ToolStripItem[] {
-                    new ToolStripMenuItem("👑 管理", null, OnMenuSetRole_Click) { Name = "menuRoleAdmin", Tag = MemberState.管理 },
-                    new ToolStripMenuItem("🤖 托", null, OnMenuSetRole_Click) { Name = "menuRoleTrust", Tag = MemberState.托 },
-                    new ToolStripMenuItem("👤 普会", null, OnMenuSetRole_Click) { Name = "menuRoleNormal", Tag = MemberState.普会 },
-                    new ToolStripMenuItem("💎 蓝会", null, OnMenuSetRole_Click) { Name = "menuRoleBlue", Tag = MemberState.蓝会 },
-                    new ToolStripMenuItem("💜 紫会", null, OnMenuSetRole_Click) { Name = "menuRolePurple", Tag = MemberState.紫会 }
-                }) { Name = "menuSetRole" }
-            });
             cmsMembers.Name = "cmsMembers";
-            cmsMembers.Size = new Size(181, 148);
-            cmsMembers.ZoomScaleRect = new Rectangle(0, 0, 0, 0);
+            cmsMembers.Size = new Size(61, 4);
             // 
             // splitContainerMain
             // 
@@ -134,6 +122,7 @@ namespace BaiShengVx3Plus
             // 
             // pnlLeft
             // 
+            pnlLeft.Controls.Add(pnl_opendata);
             pnlLeft.Controls.Add(dgvContacts);
             pnlLeft.Controls.Add(pnlLeftTop);
             pnlLeft.Dock = DockStyle.Fill;
@@ -152,20 +141,20 @@ namespace BaiShengVx3Plus
             dgvContacts.AllowUserToAddRows = false;
             dgvContacts.AllowUserToDeleteRows = false;
             dgvContacts.AllowUserToResizeRows = false;
-            dataGridViewCellStyle25.BackColor = Color.FromArgb(235, 243, 255);
-            dgvContacts.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle25;
+            dataGridViewCellStyle1.BackColor = Color.FromArgb(235, 243, 255);
+            dgvContacts.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             dgvContacts.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvContacts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvContacts.BackgroundColor = Color.White;
             dgvContacts.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
-            dataGridViewCellStyle26.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle26.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle26.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle26.ForeColor = Color.White;
-            dataGridViewCellStyle26.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle26.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle26.WrapMode = DataGridViewTriState.True;
-            dgvContacts.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle26;
+            dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle2.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle2.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle2.ForeColor = Color.White;
+            dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
+            dgvContacts.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             dgvContacts.ColumnHeadersHeight = 32;
             dgvContacts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvContacts.EnableHeadersVisualStyles = false;
@@ -175,19 +164,19 @@ namespace BaiShengVx3Plus
             dgvContacts.MultiSelect = false;
             dgvContacts.Name = "dgvContacts";
             dgvContacts.ReadOnly = true;
-            dataGridViewCellStyle27.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle27.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle27.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle27.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle27.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle27.SelectionForeColor = Color.White;
-            dataGridViewCellStyle27.WrapMode = DataGridViewTriState.True;
-            dgvContacts.RowHeadersDefaultCellStyle = dataGridViewCellStyle27;
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle3.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle3.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle3.SelectionForeColor = Color.White;
+            dataGridViewCellStyle3.WrapMode = DataGridViewTriState.True;
+            dgvContacts.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
             dgvContacts.RowHeadersVisible = false;
             dgvContacts.RowHeadersWidth = 51;
-            dataGridViewCellStyle28.BackColor = Color.White;
-            dataGridViewCellStyle28.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            dgvContacts.RowsDefaultCellStyle = dataGridViewCellStyle28;
+            dataGridViewCellStyle4.BackColor = Color.White;
+            dataGridViewCellStyle4.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvContacts.RowsDefaultCellStyle = dataGridViewCellStyle4;
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -314,42 +303,42 @@ namespace BaiShengVx3Plus
             dgvMembers.AllowUserToAddRows = false;
             dgvMembers.AllowUserToDeleteRows = false;
             dgvMembers.AllowUserToResizeRows = false;
-            dataGridViewCellStyle29.BackColor = Color.FromArgb(235, 243, 255);
-            dgvMembers.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle29;
+            dataGridViewCellStyle5.BackColor = Color.FromArgb(235, 243, 255);
+            dgvMembers.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle5;
             dgvMembers.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvMembers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dgvMembers.BackgroundColor = Color.White;
             dgvMembers.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
-            dgvMembers.ContextMenuStrip = cmsMembers;
-            dataGridViewCellStyle30.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle30.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle30.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle30.ForeColor = Color.White;
-            dataGridViewCellStyle30.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle30.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle30.WrapMode = DataGridViewTriState.True;
-            dgvMembers.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle30;
+            dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle6.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle6.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle6.ForeColor = Color.White;
+            dataGridViewCellStyle6.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle6.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle6.WrapMode = DataGridViewTriState.True;
+            dgvMembers.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle6;
             dgvMembers.ColumnHeadersHeight = 32;
             dgvMembers.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgvMembers.ContextMenuStrip = cmsMembers;
             dgvMembers.EnableHeadersVisualStyles = false;
             dgvMembers.Font = new Font("微软雅黑", 10F);
             dgvMembers.GridColor = Color.FromArgb(80, 160, 255);
             dgvMembers.Location = new Point(0, 30);
             dgvMembers.MultiSelect = false;
             dgvMembers.Name = "dgvMembers";
-            dataGridViewCellStyle31.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle31.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle31.Font = new Font("微软雅黑", 10F);
-            dataGridViewCellStyle31.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle31.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle31.SelectionForeColor = Color.White;
-            dataGridViewCellStyle31.WrapMode = DataGridViewTriState.True;
-            dgvMembers.RowHeadersDefaultCellStyle = dataGridViewCellStyle31;
+            dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle7.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle7.Font = new Font("微软雅黑", 10F);
+            dataGridViewCellStyle7.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle7.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle7.SelectionForeColor = Color.White;
+            dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
+            dgvMembers.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
             dgvMembers.RowHeadersVisible = false;
             dgvMembers.RowHeadersWidth = 51;
-            dataGridViewCellStyle32.BackColor = Color.White;
-            dataGridViewCellStyle32.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            dgvMembers.RowsDefaultCellStyle = dataGridViewCellStyle32;
+            dataGridViewCellStyle8.BackColor = Color.White;
+            dataGridViewCellStyle8.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvMembers.RowsDefaultCellStyle = dataGridViewCellStyle8;
             dgvMembers.RowTemplate.Height = 29;
             dgvMembers.SelectedIndex = -1;
             dgvMembers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -404,20 +393,20 @@ namespace BaiShengVx3Plus
             dgvOrders.AllowUserToAddRows = false;
             dgvOrders.AllowUserToDeleteRows = false;
             dgvOrders.AllowUserToResizeRows = false;
-            dataGridViewCellStyle33.BackColor = Color.FromArgb(235, 243, 255);
-            dgvOrders.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle33;
+            dataGridViewCellStyle9.BackColor = Color.FromArgb(235, 243, 255);
+            dgvOrders.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle9;
             dgvOrders.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvOrders.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dgvOrders.BackgroundColor = Color.White;
             dgvOrders.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
-            dataGridViewCellStyle34.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle34.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle34.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle34.ForeColor = Color.White;
-            dataGridViewCellStyle34.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle34.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle34.WrapMode = DataGridViewTriState.True;
-            dgvOrders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle34;
+            dataGridViewCellStyle10.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle10.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle10.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle10.ForeColor = Color.White;
+            dataGridViewCellStyle10.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle10.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle10.WrapMode = DataGridViewTriState.True;
+            dgvOrders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle10;
             dgvOrders.ColumnHeadersHeight = 32;
             dgvOrders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvOrders.EnableHeadersVisualStyles = false;
@@ -426,19 +415,19 @@ namespace BaiShengVx3Plus
             dgvOrders.Location = new Point(0, 30);
             dgvOrders.MultiSelect = false;
             dgvOrders.Name = "dgvOrders";
-            dataGridViewCellStyle35.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle35.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle35.Font = new Font("微软雅黑", 10F);
-            dataGridViewCellStyle35.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle35.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle35.SelectionForeColor = Color.White;
-            dataGridViewCellStyle35.WrapMode = DataGridViewTriState.True;
-            dgvOrders.RowHeadersDefaultCellStyle = dataGridViewCellStyle35;
+            dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle11.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle11.Font = new Font("微软雅黑", 10F);
+            dataGridViewCellStyle11.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle11.SelectionForeColor = Color.White;
+            dataGridViewCellStyle11.WrapMode = DataGridViewTriState.True;
+            dgvOrders.RowHeadersDefaultCellStyle = dataGridViewCellStyle11;
             dgvOrders.RowHeadersVisible = false;
             dgvOrders.RowHeadersWidth = 51;
-            dataGridViewCellStyle36.BackColor = Color.White;
-            dataGridViewCellStyle36.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            dgvOrders.RowsDefaultCellStyle = dataGridViewCellStyle36;
+            dataGridViewCellStyle12.BackColor = Color.White;
+            dataGridViewCellStyle12.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvOrders.RowsDefaultCellStyle = dataGridViewCellStyle12;
             dgvOrders.RowTemplate.Height = 29;
             dgvOrders.SelectedIndex = -1;
             dgvOrders.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -491,6 +480,14 @@ namespace BaiShengVx3Plus
             pnlTopButtons.TabIndex = 1;
             pnlTopButtons.Text = null;
             pnlTopButtons.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
+            // ucUserInfo1
+            // 
+            ucUserInfo1.BackColor = Color.White;
+            ucUserInfo1.Location = new Point(1, 0);
+            ucUserInfo1.Name = "ucUserInfo1";
+            ucUserInfo1.Size = new Size(246, 60);
+            ucUserInfo1.TabIndex = 5;
             // 
             // btnClearData
             // 
@@ -582,13 +579,16 @@ namespace BaiShengVx3Plus
             lblStatus.Size = new Size(37, 20);
             lblStatus.Text = "就绪";
             // 
-            // ucUserInfo1
+            // pnl_opendata
             // 
-            ucUserInfo1.BackColor = Color.White;
-            ucUserInfo1.Location = new Point(1, 0);
-            ucUserInfo1.Name = "ucUserInfo1";
-            ucUserInfo1.Size = new Size(246, 60);
-            ucUserInfo1.TabIndex = 5;
+            pnl_opendata.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            pnl_opendata.Location = new Point(3, 246);
+            pnl_opendata.Margin = new Padding(4, 5, 4, 5);
+            pnl_opendata.MinimumSize = new Size(1, 1);
+            pnl_opendata.Name = "pnl_opendata";
+            pnl_opendata.Size = new Size(239, 283);
+            pnl_opendata.TabIndex = 2;
+            pnl_opendata.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // VxMain
             // 
@@ -655,5 +655,6 @@ namespace BaiShengVx3Plus
         private ToolStripStatusLabel lblStatus;
         private Views.UcUserInfo ucUserInfo1;
         private Sunny.UI.UIContextMenuStrip cmsMembers;
+        private Sunny.UI.UIPanel pnl_opendata;
     }
 }
