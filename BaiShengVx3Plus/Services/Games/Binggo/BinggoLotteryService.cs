@@ -8,6 +8,7 @@ using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
 using BaiShengVx3Plus.Core;
+using BaiShengVx3Plus.Helpers;
 using SQLite;
 
 namespace BaiShengVx3Plus.Services.Games.Binggo
@@ -36,6 +37,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private int _secondsToSeal;
         private bool _isRunning;
         private readonly object _lock = new object();
+        
+        // 🔥 时间提醒标志（防止重复触发，参考 F5BotV2）
+        private bool _reminded30Seconds = false;
+        private bool _reminded15Seconds = false;
         
         // 事件
         public event EventHandler<BinggoIssueChangedEventArgs>? IssueChanged;
@@ -120,33 +125,42 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             
             try
             {
-                // 步骤1: 获取最新数据
-                var response = await _apiClient.GetCurrentBinggoDataAsync<BinggoLotteryData>();
-                if (!response.IsSuccess || response.Data == null)
-                {
-                    _logService.Warning("BinggoLotteryService", "获取当前期数据失败");
-                    return;
-                }
-                
-                var data = response.Data;
+                // ========================================
+                // 🔥 步骤1: 使用本地计算获取当前期号（始终可用）
+                // ========================================
+                int localIssueId = BinggoTimeHelper.GetCurrentIssueId();
+                int secondsToSeal = BinggoTimeHelper.GetSecondsToSeal(localIssueId, _settings.SealSecondsAhead);
                 
                 lock (_lock)
                 {
-                    // 步骤2: 检查期号变更
-                    if (data.IssueId != _currentIssueId && _currentIssueId != 0)
+                    // 检查期号变更
+                    if (localIssueId != _currentIssueId)
                     {
-                        OnIssueChanged(data);
+                        if (_currentIssueId != 0)
+                        {
+                            // 期号变更，触发开奖逻辑
+                            var previousIssueId = _currentIssueId;
+                            _currentIssueId = localIssueId;
+                            _ = HandleIssueChangeAsync(previousIssueId, localIssueId);  // 异步处理开奖
+                        }
+                        else
+                        {
+                            // 首次初始化
+                            _currentIssueId = localIssueId;
+                            _logService.Info("BinggoLotteryService", $"✅ 初始化当前期号: {localIssueId}");
+                            
+                            // 立即加载上期数据
+                            _ = LoadPreviousLotteryDataAsync(BinggoTimeHelper.GetPreviousIssueId(localIssueId));
+                        }
                     }
                     
-                    _currentIssueId = data.IssueId;
+                    // 更新倒计时
+                    _secondsToSeal = secondsToSeal;
                     
-                    // 步骤3: 计算倒计时
-                    _secondsToSeal = CalculateSecondsToSeal(data);
+                    // 检查状态变更
+                    UpdateStatus(secondsToSeal);
                     
-                    // 步骤4: 检查状态变更
-                    CheckStatusChange(data);
-                    
-                    // 步骤5: 触发倒计时事件
+                    // 触发倒计时事件
                     CountdownTick?.Invoke(this, new BinggoCountdownEventArgs
                     {
                         Seconds = _secondsToSeal,
@@ -161,7 +175,190 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         }
         
         /// <summary>
-        /// 处理期号变更
+        /// 处理期号变更（新版 - 异步）
+        /// </summary>
+        private async Task HandleIssueChangeAsync(int oldIssueId, int newIssueId)
+        {
+            try
+            {
+                _logService.Info("BinggoLotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
+                
+                // 触发期号变更事件
+                IssueChanged?.Invoke(this, new BinggoIssueChangedEventArgs
+                {
+                    OldIssueId = oldIssueId,
+                    NewIssueId = newIssueId,
+                    LastLotteryData = null
+                });
+                
+                // 异步加载上期开奖数据
+                await LoadPreviousLotteryDataAsync(oldIssueId);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"期号变更处理异常: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 加载上期数据（本地优先 + API补充）
+        /// </summary>
+        private async Task LoadPreviousLotteryDataAsync(int issueId)
+        {
+            try
+            {
+                // 步骤1: 先查本地
+                BinggoLotteryData? data = null;
+                if (_db != null)
+                {
+                    data = _db.Table<BinggoLotteryData>()
+                        .Where(d => d.IssueId == issueId)
+                        .FirstOrDefault();
+                }
+                
+                // 步骤2: 如果本地没有开奖数据，从API获取
+                if (data == null || string.IsNullOrEmpty(data.NumbersString))
+                {
+                    _logService.Info("BinggoLotteryService", $"📡 从API获取开奖数据: {issueId}");
+                    var response = await _apiClient.GetBinggoDataAsync<BinggoLotteryData>(issueId);
+                    
+                    if (response.IsSuccess && response.Data != null)
+                    {
+                        data = response.Data;
+                        data.OpenTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+                        
+                        // 保存到数据库
+                        if (_db != null && !string.IsNullOrEmpty(data.NumbersString))
+                        {
+                            _db.InsertOrReplace(data);
+                            _bindingList?.LoadFromDatabase(100);
+                            _logService.Info("BinggoLotteryService", $"💾 开奖数据已保存: {issueId}");
+                        }
+                    }
+                }
+                
+                // 步骤3: 如果有开奖数据，触发开奖事件
+                if (data != null && !string.IsNullOrEmpty(data.NumbersString))
+                {
+                    _logService.Info("BinggoLotteryService", $"🎲 开奖: {issueId}, 号码: {data.NumbersString}");
+                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                    {
+                        LotteryData = data
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"加载开奖数据异常: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 状态更新（基于倒计时）
+        /// 🔥 完全参考 F5BotV2 的实现逻辑
+        /// </summary>
+        private void UpdateStatus(int secondsToSeal)
+        {
+            var oldStatus = _currentStatus;
+            BinggoLotteryStatus newStatus;
+            
+            // ========================================
+            // 🔥 根据倒计时判断状态（本地计算）
+            // ========================================
+            
+            if (secondsToSeal > 30)
+            {
+                // 开盘中（距离封盘超过 30 秒）
+                newStatus = BinggoLotteryStatus.开盘中;
+                
+                // 重置提醒标志（新一期开始）
+                _reminded30Seconds = false;
+                _reminded15Seconds = false;
+            }
+            else if (secondsToSeal > 0)
+            {
+                // 即将封盘（0-30 秒）
+                newStatus = BinggoLotteryStatus.即将封盘;
+                
+                // ========================================
+                // 🔥 30 秒提醒（参考 F5BotV2: sec < 30 && !b30）
+                // ========================================
+                if (secondsToSeal < 30 && !_reminded30Seconds)
+                {
+                    _reminded30Seconds = true;
+                    _logService.Info("BinggoLotteryService", $"⏰ 30秒提醒: 期号 {_currentIssueId}");
+                    
+                    // 触发状态变更事件（带提醒消息）
+                    StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                    {
+                        OldStatus = oldStatus,
+                        NewStatus = newStatus,
+                        IssueId = _currentIssueId,
+                        Message = $"还剩 30 秒封盘"
+                    });
+                }
+                
+                // ========================================
+                // 🔥 15 秒提醒（参考 F5BotV2: sec < 15 && !b15）
+                // ========================================
+                if (secondsToSeal < 15 && !_reminded15Seconds)
+                {
+                    _reminded15Seconds = true;
+                    _logService.Info("BinggoLotteryService", $"⏰ 15秒提醒: 期号 {_currentIssueId}");
+                    
+                    // 触发状态变更事件（带提醒消息）
+                    StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                    {
+                        OldStatus = oldStatus,
+                        NewStatus = newStatus,
+                        IssueId = _currentIssueId,
+                        Message = $"还剩 15 秒封盘"
+                    });
+                }
+            }
+            else if (secondsToSeal > -45)
+            {
+                // 封盘中（0 到 -45 秒，等待开奖）
+                newStatus = BinggoLotteryStatus.封盘中;
+            }
+            else
+            {
+                // 等待中（开奖后，等待下一期）
+                newStatus = BinggoLotteryStatus.等待中;
+            }
+            
+            // ========================================
+            // 🔥 只在状态真正变更时触发事件
+            // ========================================
+            if (newStatus != oldStatus)
+            {
+                _currentStatus = newStatus;
+                _logService.Info("BinggoLotteryService", $"🔔 状态变更: {oldStatus} → {newStatus}");
+                
+                StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                {
+                    OldStatus = oldStatus,
+                    NewStatus = newStatus,
+                    IssueId = _currentIssueId,
+                    Message = GetStatusMessage(newStatus)
+                });
+            }
+        }
+        
+        private string GetStatusMessage(BinggoLotteryStatus status)
+        {
+            return status switch
+            {
+                BinggoLotteryStatus.开盘中 => "开盘中",
+                BinggoLotteryStatus.即将封盘 => "即将封盘",
+                BinggoLotteryStatus.封盘中 => "封盘中",
+                BinggoLotteryStatus.等待中 => "等待中",
+                _ => "未知状态"
+            };
+        }
+        
+        /// <summary>
+        /// 处理期号变更（旧版 - 保留兼容）
         /// </summary>
         private void OnIssueChanged(BinggoLotteryData newData)
         {

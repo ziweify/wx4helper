@@ -16,14 +16,19 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         开盘中 = 1,
         
         /// <summary>
+        /// 即将封盘 (倒计时 < 30秒)
+        /// </summary>
+        即将封盘 = 2,
+        
+        /// <summary>
         /// 封盘中 (停止接受下注，等待开奖)
         /// </summary>
-        封盘中 = 2,
+        封盘中 = 3,
         
         /// <summary>
         /// 开奖中 (开奖数据处理中)
         /// </summary>
-        开奖中 = 3
+        开奖中 = 4
     }
 }
 
