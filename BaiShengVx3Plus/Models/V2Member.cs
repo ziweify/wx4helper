@@ -8,6 +8,17 @@ namespace BaiShengVx3Plus.Models
     /// <summary>
     /// 会员数据模型（实现 INotifyPropertyChanged，支持属性变化通知）
     /// 使用 SQLite-net ORM 特性，自动建表和增删改
+    /// 
+    /// 🔥 字段对照（参考 F5BotV2）：
+    /// - Id = 主键（自增）
+    /// - GroupWxId = 群ID
+    /// - Wxid = 微信ID
+    /// - Account = 微信号（对应 F5BotV2 的 account）
+    /// - Nickname = 昵称（对应 F5BotV2 的 nickname）
+    /// - DisplayName = 群昵称（对应 F5BotV2 的 display_name）
+    /// - Balance = 余额（对应 F5BotV2 的 Balance）
+    /// - State = 状态（对应 F5BotV2 的 State）
+    /// - 其他业务字段与 F5BotV2 完全一致
     /// </summary>
     public class V2Member : INotifyPropertyChanged
     {
@@ -16,18 +27,9 @@ namespace BaiShengVx3Plus.Models
         // ========================================
 
         private long _id;
-        private long _memberId;
-        private string? _memberName;
-        private string? _memberAlias;
-        private double _memberAmount;
-        private MemberState _memberState;
-        private long _timeStampCreate;
-        private long _timeStampUpdate;
-        private long _timeStampBet;
-        private string? _extra;
 
         // ========================================
-        // 🔥 联系人信息字段（从 IWxContacts）
+        // 🔥 联系人信息字段（对应 F5BotV2 的 IWxContacts）
         // ========================================
         private string _groupWxId = "";
         private string? _wxid;
@@ -36,7 +38,7 @@ namespace BaiShengVx3Plus.Models
         private string? _displayName;
 
         // ========================================
-        // 🔥 业务统计字段
+        // 🔥 业务统计字段（对应 F5BotV2 的业务字段）
         // ========================================
         private float _balance;
         private MemberState _state;
@@ -98,67 +100,7 @@ namespace BaiShengVx3Plus.Models
         }
 
         // ========================================
-        // 业务统计字段（ORM 忽略旧字段，使用新字段）
-        // ========================================
-
-        [Ignore]
-        public long MemberId
-        {
-            get => _memberId;
-            set => SetField(ref _memberId, value);
-        }
-
-        public string? MemberName
-        {
-            get => _memberName;
-            set => SetField(ref _memberName, value);
-        }
-
-        public string? MemberAlias
-        {
-            get => _memberAlias;
-            set => SetField(ref _memberAlias, value);
-        }
-
-        public double MemberAmount
-        {
-            get => _memberAmount;
-            set => SetField(ref _memberAmount, value);
-        }
-
-        public MemberState MemberState
-        {
-            get => _memberState;
-            set => SetField(ref _memberState, value);
-        }
-
-        public long TimeStampCreate
-        {
-            get => _timeStampCreate;
-            set => SetField(ref _timeStampCreate, value);
-        }
-
-        public long TimeStampUpdate
-        {
-            get => _timeStampUpdate;
-            set => SetField(ref _timeStampUpdate, value);
-        }
-
-        public long TimeStampBet
-        {
-            get => _timeStampBet;
-            set => SetField(ref _timeStampBet, value);
-        }
-
-        [Ignore]
-        public string? Extra
-        {
-            get => _extra;
-            set => SetField(ref _extra, value);
-        }
-
-        // ========================================
-        // 🔥 业务统计属性
+        // 🔥 业务统计属性（对应 F5BotV2）
         // ========================================
 
         [DisplayName("余额")]

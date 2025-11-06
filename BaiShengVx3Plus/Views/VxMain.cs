@@ -41,6 +41,42 @@ namespace BaiShengVx3Plus
         // 连接取消令牌
         private CancellationTokenSource? _connectCts;
 
+        #region 线程安全的 UI 更新辅助方法
+
+        /// <summary>
+        /// 线程安全的 UI 更新（同步版本）
+        /// 用于：必须立即完成的 UI 更新，例如显示错误对话框
+        /// </summary>
+        private void UpdateUIThreadSafe(Action uiAction)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(uiAction);  // 同步等待
+            }
+            else
+            {
+                uiAction();
+            }
+        }
+
+        /// <summary>
+        /// 线程安全的 UI 更新（异步版本）
+        /// 用于：不阻塞调用线程的 UI 更新，例如更新状态文本
+        /// </summary>
+        private void UpdateUIThreadSafeAsync(Action uiAction)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(uiAction);  // 异步，不等待
+            }
+            else
+            {
+                uiAction();
+            }
+        }
+
+        #endregion
+
         public VxMain(
             VxMainViewModel viewModel,
             ILogService logService,
@@ -83,53 +119,92 @@ namespace BaiShengVx3Plus
             // 记录主窗口打开
             _logService.Info("VxMain", "主窗口已打开");
 
-            // 🔥 初始化联系人列表（会员/订单列表稍后在登录后初始化）
+            // 🔥 初始化联系人列表
             _contactsBindingList = new BindingList<WxContact>();
             _contactsBindingList.AllowEdit = true;
             _contactsBindingList.AllowNew = false;
             _contactsBindingList.AllowRemove = false;
+
+            // 🔥 立即初始化默认数据库 business.db（不需要等待 wxid）
+            InitializeDatabase("default");
 
             InitializeDataBindings();
         }
 
         /// <summary>
         /// 初始化数据库（使用 ORM）
+        /// 
+        /// 🔥 重要设计原则：
+        /// 1. 数据库操作（增删改查）= 同步执行，保证数据一致性，避免污染
+        /// 2. UI 更新（状态文本等）= 异步执行，避免阻塞 UI 线程，保证流畅
+        /// 3. 数据绑定（DataSource）= 同步执行，确保数据立即生效
         /// </summary>
-        private void InitializeDatabase(string wxid)
+        /// <param name="identifier">数据库标识，"default" 表示通用数据库，群ID表示群专属数据库</param>
+        private void InitializeDatabase(string identifier)
         {
             try
             {
+                // ========================================
+                // 🔥 步骤1: 数据库操作（同步，不阻塞UI）
+                // ========================================
+                
                 // 关闭旧数据库连接
                 _db?.Close();
                 _db = null;
                 
                 // 创建数据目录
-                string dbPath = Path.Combine("Data", $"business_{wxid}.db");
+                string dbPath = identifier == "default" 
+                    ? Path.Combine("Data", "business.db")  // 通用数据库
+                    : Path.Combine("Data", $"business_{identifier}.db");  // 群专属数据库
+                    
                 Directory.CreateDirectory("Data");
                 
-                // 🔥 创建 ORM 数据库连接
+                // 🔥 创建 ORM 数据库连接（同步）
                 _db = new SQLiteConnection(dbPath);
                 
-                // 🔥 创建 BindingList（自动建表、自动追踪）
-                string groupWxId = _currentBoundContact?.Wxid ?? "";
+                // 🔥 创建 BindingList（同步，自动建表）
+                // 如果是 default 模式，使用空字符串，不加载任何会员
+                // 如果是群模式，使用 identifier（群ID）
+                string groupWxId = identifier == "default" ? "" : identifier;
                 _membersBindingList = new V2MemberBindingList(_db, groupWxId);
                 _ordersBindingList = new V2OrderBindingList(_db);
                 
-                // 🔥 加载数据
-                _membersBindingList.LoadFromDatabase();
-                _ordersBindingList.LoadFromDatabase();
+                // 🔥 加载数据（同步，确保数据完整加载）
+                _membersBindingList.LoadFromDatabase();  // 同步读取
+                _ordersBindingList.LoadFromDatabase();   // 同步读取
                 
-                // 绑定到 DataGridView
-                dgvMembers.DataSource = _membersBindingList;
-                dgvOrders.DataSource = _ordersBindingList;
+                // ========================================
+                // 🔥 步骤2: UI 更新（同步，确保立即生效）
+                // ========================================
                 
-                _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath}");
+                UpdateUIThreadSafe(() =>
+                {
+                    // 绑定到 DataGridView（同步，确保数据立即显示）
+                    if (dgvMembers.DataSource != _membersBindingList)
+                        dgvMembers.DataSource = _membersBindingList;
+                    if (dgvOrders.DataSource != _ordersBindingList)
+                        dgvOrders.DataSource = _ordersBindingList;
+                    
+                    // 更新统计信息（同步）
+                    UpdateStatistics();
+                });
+                
+                // ========================================
+                // 🔥 步骤3: 日志记录（异步，不阻塞）
+                // ========================================
+                
+                _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath} (GroupWxId={groupWxId})");
                 _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单");
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", $"初始化数据库失败: {ex.Message}");
-                UIMessageBox.ShowError($"初始化数据库失败: {ex.Message}");  // 🔥 使用 UIMessageBox
+                _logService.Error("VxMain", $"初始化数据库失败: {ex.Message}", ex);
+                
+                // 错误提示（同步，确保用户看到）
+                UpdateUIThreadSafe(() => 
+                {
+                    UIMessageBox.ShowError($"初始化数据库失败: {ex.Message}");
+                });
             }
         }
         
@@ -187,8 +262,25 @@ namespace BaiShengVx3Plus
         private void UpdateStatistics()
         {
             //lblContactList.Text = $"联系人列表({_contactsBindingList.Count})";
-            lblMemberInfo.Text = $"会员列表 (共{_membersBindingList.Count}人)";
-            lblOrderInfo.Text = $"订单列表 (共{_ordersBindingList.Count}单)";
+            
+            // 🔥 检查 null，因为数据库可能还未初始化
+            if (_membersBindingList != null)
+            {
+                lblMemberInfo.Text = $"会员列表 (共{_membersBindingList.Count}人)";
+            }
+            else
+            {
+                lblMemberInfo.Text = "会员列表 (未加载)";
+            }
+            
+            if (_ordersBindingList != null)
+            {
+                lblOrderInfo.Text = $"订单列表 (共{_ordersBindingList.Count}单)";
+            }
+            else
+            {
+                lblOrderInfo.Text = "订单列表 (未加载)";
+            }
         }
 
         private async void VxMain_Load(object sender, EventArgs e)
@@ -764,7 +856,7 @@ namespace BaiShengVx3Plus
                 // 保存当前绑定的联系人对象
                 _currentBoundContact = contact;
                 
-                // 🔥 更新文本框显示绑定的联系人（不再需要 ContactBindingService）
+                // 🔥 更新文本框显示绑定的联系人
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
                 txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
                 txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
@@ -772,10 +864,14 @@ namespace BaiShengVx3Plus
                 // 🔥 刷新 DataGridView，更新行颜色
                 dgvContacts.Refresh();
                 
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 正在获取群成员...";
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 正在切换数据库...";
                 _logService.Info("VxMain", $"绑定群组: {contact.Nickname} ({contact.Wxid})");
                 
-                // 🔥 业务流程2：调用 GetGroupContacts 获取群成员
+                // 🔥 业务流程2：切换到群专属数据库 business_{group_wxid}.db
+                InitializeDatabase(contact.Wxid);
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在获取群成员...";
+                
+                // 🔥 业务流程3：调用 GetGroupContacts 获取群成员
                 try
                 {
                     _logService.Info("VxMain", $"开始获取群成员列表: {contact.Wxid}");
@@ -789,7 +885,7 @@ namespace BaiShengVx3Plus
                         return;
                     }
                     
-                    // 🔥 业务流程3：解析数据并填充到 dgvMembers
+                    // 🔥 业务流程4：解析数据并填充到 dgvMembers
                     await LoadGroupMembersToDataGridAsync(result.RootElement, contact.Wxid);
                     
                     lblStatus.Text = $"✓ 已绑定: {contact.Nickname} ({contact.Wxid}) - 群成员加载完成";
@@ -797,7 +893,7 @@ namespace BaiShengVx3Plus
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("VxMain", $"获取群成员异常: {ex.Message}");
+                    _logService.Error("VxMain", $"获取群成员异常: {ex.Message}", ex);
                     UIMessageBox.ShowError($"获取群成员失败！\n\n{ex.Message}");
                 }
             }
@@ -1126,16 +1222,26 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 处理联系人数据更新事件
         /// </summary>
-        private void ContactDataService_ContactsUpdated(object? sender, ContactsUpdatedEventArgs e)
+        private async void ContactDataService_ContactsUpdated(object? sender, ContactsUpdatedEventArgs e)
         {
             try
             {
                 _logService.Info("VxMain", $"📇 联系人数据已更新，共 {e.Contacts.Count} 个");
 
+                // 🔥 使用异步方式切换到 UI 线程，避免阻塞
+                await Task.Run(() =>
+                {
+                    // 在后台线程处理数据（如果需要）
+                    _logService.Info("VxMain", "准备更新联系人列表到 UI");
+                });
+
                 // 切换到 UI 线程更新
                 if (InvokeRequired)
                 {
-                    Invoke(new Action(() => UpdateContactsList(e.Contacts)));
+                    await Task.Factory.StartNew(() =>
+                    {
+                        Invoke(new Action(() => UpdateContactsList(e.Contacts)));
+                    });
                 }
                 else
                 {

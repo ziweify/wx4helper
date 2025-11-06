@@ -8,6 +8,26 @@ namespace BaiShengVx3Plus.Models
     /// <summary>
     /// 订单数据模型（实现 INotifyPropertyChanged，支持属性变化通知）
     /// 使用 SQLite-net ORM 特性，自动建表和增删改
+    /// 
+    /// 🔥 字段对照（参考 F5BotV2 的 V2MemberOrder）：
+    /// - Id = 主键（自增）
+    /// - GroupWxId = 群ID
+    /// - Wxid = 会员微信ID
+    /// - Account = 会员号码
+    /// - Nickname = 会员昵称
+    /// - IssueId = 期号
+    /// - TimeStampBet = 下注时间戳
+    /// - BetContentOriginal = 原始投注内容
+    /// - BetContentStandar = 标准投注内容
+    /// - Nums = 注码数量
+    /// - AmountTotal = 投注总金额
+    /// - Profit = 盈利
+    /// - NetProfit = 纯利
+    /// - Odds = 赔率
+    /// - OrderStatus = 订单状态
+    /// - OrderType = 订单类型
+    /// - TimeString = 日期时间字符串
+    /// - Notes = 备注
     /// </summary>
     public class V2MemberOrder : INotifyPropertyChanged
     {
@@ -16,23 +36,10 @@ namespace BaiShengVx3Plus.Models
         // ========================================
 
         private long _id;
-        private long _memberId;
-        private string? _memberName;
-        private string? _orderId;
-        private OrderStatus _orderStatus;
-        private OrderType _orderType;
-        private double _orderAmountPlan;
-        private double _orderAmount;
-        private string? _orderResult;
-        private string? _orderTarget;
-        private string? _orderPlace;
-        private long _timeStampCreate;
-        private long _timeStampUpdate;
         private long _timeStampBet;
-        private string? _extra;
 
         // ========================================
-        // 🔥 联系人信息字段（从 IWxContacts）
+        // 🔥 联系人信息字段（对应 F5BotV2 的 IWxContacts）
         // ========================================
         private string _groupWxId = "";
         private string? _wxid;
@@ -40,7 +47,7 @@ namespace BaiShengVx3Plus.Models
         private string? _nickname;
 
         // ========================================
-        // 🔥 业务订单字段
+        // 🔥 业务订单字段（对应 F5BotV2）
         // ========================================
         private int _issueId;
         private string? _betContentOriginal;
@@ -50,6 +57,8 @@ namespace BaiShengVx3Plus.Models
         private float _profit;
         private float _netProfit;
         private float _odds;
+        private OrderStatus _orderStatus;
+        private OrderType _orderType;
         private string? _timeString;
         private string? _notes;
 
@@ -85,97 +94,6 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _issueId, value);
         }
 
-        public long MemberId
-        {
-            get => _memberId;
-            set => SetField(ref _memberId, value);
-        }
-
-        public string? MemberName
-        {
-            get => _memberName;
-            set => SetField(ref _memberName, value);
-        }
-
-        public string? OrderId
-        {
-            get => _orderId;
-            set => SetField(ref _orderId, value);
-        }
-
-        [DisplayName("状态")]
-        public OrderStatus OrderStatus
-        {
-            get => _orderStatus;
-            set => SetField(ref _orderStatus, value);
-        }
-
-        [DisplayName("类型")]
-        public OrderType OrderType
-        {
-            get => _orderType;
-            set => SetField(ref _orderType, value);
-        }
-
-        public double OrderAmountPlan
-        {
-            get => _orderAmountPlan;
-            set => SetField(ref _orderAmountPlan, value);
-        }
-
-        public double OrderAmount
-        {
-            get => _orderAmount;
-            set => SetField(ref _orderAmount, value);
-        }
-
-        public string? OrderResult
-        {
-            get => _orderResult;
-            set => SetField(ref _orderResult, value);
-        }
-
-        public string? OrderTarget
-        {
-            get => _orderTarget;
-            set => SetField(ref _orderTarget, value);
-        }
-
-        public string? OrderPlace
-        {
-            get => _orderPlace;
-            set => SetField(ref _orderPlace, value);
-        }
-
-        public long TimeStampCreate
-        {
-            get => _timeStampCreate;
-            set => SetField(ref _timeStampCreate, value);
-        }
-
-        public long TimeStampUpdate
-        {
-            get => _timeStampUpdate;
-            set => SetField(ref _timeStampUpdate, value);
-        }
-
-        public long TimeStampBet
-        {
-            get => _timeStampBet;
-            set => SetField(ref _timeStampBet, value);
-        }
-
-        public string? Extra
-        {
-            get => _extra;
-            set => SetField(ref _extra, value);
-        }
-
-        // ========================================
-        // 🔥 联系人信息属性（从 IWxContacts）
-        // ========================================
-        // Wxid 和 IssueId 已在上面定义（带 ORM 特性）
-
         [DisplayName("会员号码")]
         public string? Account
         {
@@ -190,8 +108,14 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _nickname, value);
         }
 
+        public long TimeStampBet
+        {
+            get => _timeStampBet;
+            set => SetField(ref _timeStampBet, value);
+        }
+
         // ========================================
-        // 🔥 业务订单属性
+        // 🔥 业务订单属性（对应 F5BotV2）
         // ========================================
 
         [DisplayName("原始内容")]
@@ -241,6 +165,20 @@ namespace BaiShengVx3Plus.Models
         {
             get => _odds;
             set => SetField(ref _odds, value);
+        }
+
+        [DisplayName("状态")]
+        public OrderStatus OrderStatus
+        {
+            get => _orderStatus;
+            set => SetField(ref _orderStatus, value);
+        }
+
+        [DisplayName("类型")]
+        public OrderType OrderType
+        {
+            get => _orderType;
+            set => SetField(ref _orderType, value);
         }
 
         [DisplayName("日期时间")]
