@@ -16,11 +16,12 @@ namespace BsBrowserClient.Services
     /// </summary>
     public class SocketServer : IDisposable
     {
-        private readonly int _port;
+        private const int VXMAIN_SERVER_PORT = 19527; // VxMain 监听的固定端口
+        
+        private readonly int _configId;
         private readonly Action<CommandRequest> _onCommandReceived;
         private readonly Action<string> _onLog;
         
-        private TcpListener? _listener;
         private TcpClient? _client;
         private StreamReader? _reader;
         private StreamWriter? _writer;
@@ -29,15 +30,15 @@ namespace BsBrowserClient.Services
         
         public bool IsRunning { get; private set; }
         
-        public SocketServer(int port, Action<CommandRequest> onCommandReceived, Action<string> onLog)
+        public SocketServer(int configId, Action<CommandRequest> onCommandReceived, Action<string> onLog)
         {
-            _port = port;
+            _configId = configId;
             _onCommandReceived = onCommandReceived;
             _onLog = onLog;
         }
         
         /// <summary>
-        /// 启动服务器
+        /// 启动服务器（主动连接 VxMain）
         /// </summary>
         public void Start()
         {
@@ -46,17 +47,15 @@ namespace BsBrowserClient.Services
             try
             {
                 _cts = new CancellationTokenSource();
-                _listener = new TcpListener(IPAddress.Loopback, _port);
-                _listener.Start();
-                
                 IsRunning = true;
-                _onLog($"✅ Socket 服务器已启动，端口: {_port}");
                 
-                _listenerTask = Task.Run(() => ListenAsync(_cts.Token), _cts.Token);
+                _onLog($"🔗 尝试连接到 VxMain (端口: {VXMAIN_SERVER_PORT})...");
+                
+                _listenerTask = Task.Run(() => ConnectAndListenAsync(_cts.Token), _cts.Token);
             }
             catch (Exception ex)
             {
-                _onLog($"❌ Socket 服务器启动失败: {ex.Message}");
+                _onLog($"❌ 连接失败: {ex.Message}");
                 throw;
             }
         }
@@ -71,37 +70,53 @@ namespace BsBrowserClient.Services
             IsRunning = false;
             
             _cts?.Cancel();
-            _listener?.Stop();
             
             _reader?.Dispose();
             _writer?.Dispose();
             _client?.Close();
             
-            _onLog("⏹️ Socket 服务器已停止");
+            _onLog("⏹️ Socket 已停止");
         }
         
         /// <summary>
-        /// 监听连接
+        /// 连接到 VxMain 并持续监听命令
         /// </summary>
-        private async Task ListenAsync(CancellationToken cancellationToken)
+        private async Task ConnectAndListenAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    if (_listener == null) break;
-                    
-                    _onLog("⏳ 等待主程序连接...");
-                    
-                    // 接受连接
-                    _client = await _listener.AcceptTcpClientAsync();
-                    _onLog("✅ 主程序已连接");
+                    // 1. 连接到 VxMain
+                    _client = new TcpClient();
+                    await _client.ConnectAsync("127.0.0.1", VXMAIN_SERVER_PORT, cancellationToken);
+                    _onLog("✅ 已连接到 VxMain");
                     
                     var stream = _client.GetStream();
                     _reader = new StreamReader(stream, Encoding.UTF8);
                     _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
                     
-                    // 处理命令
+                    // 2. 发送握手消息（包含配置ID）
+                    var handshake = new
+                    {
+                        type = "hello",
+                        configId = _configId
+                    };
+                    await _writer.WriteLineAsync(JsonConvert.SerializeObject(handshake));
+                    _onLog($"📤 已发送握手，配置ID: {_configId}");
+                    
+                    // 3. 等待确认消息
+                    var welcomeLine = await _reader.ReadLineAsync(cancellationToken);
+                    if (!string.IsNullOrEmpty(welcomeLine))
+                    {
+                        var welcome = JsonConvert.DeserializeObject<JObject>(welcomeLine);
+                        if (welcome?["type"]?.ToString() == "welcome")
+                        {
+                            _onLog($"✅ 握手成功: {welcome["message"]}");
+                        }
+                    }
+                    
+                    // 4. 持续处理命令
                     await ProcessCommandsAsync(cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -110,8 +125,19 @@ namespace BsBrowserClient.Services
                 }
                 catch (Exception ex)
                 {
-                    _onLog($"❌ 监听错误: {ex.Message}");
-                    await Task.Delay(1000, cancellationToken); // 延迟后重试
+                    _onLog($"❌ 连接错误: {ex.Message}");
+                    
+                    // 清理连接
+                    _reader?.Dispose();
+                    _writer?.Dispose();
+                    _client?.Close();
+                    
+                    // 等待后重试连接
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        _onLog("⏳ 5秒后重试连接...");
+                        await Task.Delay(5000, cancellationToken);
+                    }
                 }
             }
         }

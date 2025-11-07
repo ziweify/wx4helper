@@ -273,6 +273,9 @@ namespace BaiShengVx3Plus
                 _binggoMessageHandler.SetDatabase(_db);  // 🔥 设置消息处理器的数据库（用于上下分申请）
                 _autoBetService.SetDatabase(_db);  // 🤖 设置自动投注服务的数据库
                 
+                // 🤖 数据库设置完成后，重新加载自动投注设置
+                LoadAutoBetSettings();
+                
                 // 2. 创建开奖数据 BindingList
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
                 _lotteryDataBindingList.LoadFromDatabase(100); // 加载最近 100 期
@@ -3148,7 +3151,7 @@ namespace BaiShengVx3Plus
                     if (success)
                     {
                         _logService.Info("VxMain", "✅ 浏览器已启动");
-                        Sunny.UI.UIMessageBox.Show("浏览器已启动！", "成功", Sunny.UI.UIStyle.Green, Sunny.UI.UIMessageBoxButtons.OK);
+                        //Sunny.UI.UIMessageBox.Show("浏览器已启动！", "成功", Sunny.UI.UIStyle.Green, Sunny.UI.UIMessageBoxButtons.OK);
                     }
                     else
                     {

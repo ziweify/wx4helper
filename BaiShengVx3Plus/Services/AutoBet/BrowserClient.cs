@@ -56,6 +56,17 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
+        /// 附加已建立的连接（用于浏览器主动连接的情况）
+        /// </summary>
+        public void AttachConnection(TcpClient socket)
+        {
+            _socket = socket;
+            var stream = _socket.GetStream();
+            _reader = new StreamReader(stream, Encoding.UTF8);
+            _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+        }
+        
+        /// <summary>
         /// 启动浏览器进程并连接
         /// </summary>
         public async Task<bool> StartAsync(int port, string platform, string platformUrl)
@@ -163,6 +174,113 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     Success = false,
                     ErrorMessage = ex.Message
                 };
+            }
+        }
+        
+        /// <summary>
+        /// 显示窗口（通过 Socket 命令）
+        /// </summary>
+        public async Task<bool> ShowWindowAsync()
+        {
+            try
+            {
+                if (!IsConnected)
+                {
+                    return false;
+                }
+                
+                // 发送显示命令
+                var result = await SendCommandAsync("show");
+                return result.Success;
+            }
+            catch
+            {
+                // 如果 Socket 失败，尝试使用 Windows API
+                return ShowWindowByApi();
+            }
+        }
+        
+        /// <summary>
+        /// 使用 Windows API 显示窗口（备用方法）
+        /// </summary>
+        private bool ShowWindowByApi()
+        {
+            try
+            {
+                if (_process != null && !_process.HasExited)
+                {
+                    IntPtr hWnd = _process.MainWindowHandle;
+                    if (hWnd != IntPtr.Zero)
+                    {
+                        ShowWindow(hWnd, SW_RESTORE);
+                        SetForegroundWindow(hWnd);
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 检查浏览器状态（Ping）
+        /// </summary>
+        public async Task<(bool IsAlive, int ProcessId)> PingAsync()
+        {
+            try
+            {
+                if (!IsConnected)
+                {
+                    return (false, 0);
+                }
+                
+                var result = await SendCommandAsync("ping");
+                if (result.Success && result.Data != null)
+                {
+                    var data = result.Data as dynamic;
+                    return (true, data?.processId ?? 0);
+                }
+                
+                return (false, 0);
+            }
+            catch
+            {
+                return (false, 0);
+            }
+        }
+        
+        /// <summary>
+        /// 重新连接（用于 VxMain 重启后恢复连接）
+        /// </summary>
+        public async Task<bool> ReconnectAsync(int port)
+        {
+            try
+            {
+                // 如果已连接，先断开
+                if (_socket != null)
+                {
+                    _reader?.Dispose();
+                    _writer?.Dispose();
+                    _socket?.Close();
+                    _socket?.Dispose();
+                }
+                
+                // 重新连接
+                _socket = new TcpClient();
+                await _socket.ConnectAsync("127.0.0.1", port);
+                
+                var stream = _socket.GetStream();
+                _reader = new StreamReader(stream, Encoding.UTF8);
+                _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+                
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
         

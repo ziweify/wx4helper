@@ -54,9 +54,19 @@ namespace BaiShengVx3Plus.Models.AutoBet
         }
         
         /// <summary>
-        /// Cookie信息（用于保持登录状态）
+        /// Cookie信息（用于保持登录状态）- 兼容旧版本
         /// </summary>
         public string? Cookies { get; set; }
+        
+        /// <summary>
+        /// Cookie 数据（JSON 格式，新版本使用）
+        /// </summary>
+        public string? CookieData { get; set; }
+        
+        /// <summary>
+        /// Cookie 更新时间
+        /// </summary>
+        public DateTime? CookieUpdateTime { get; set; }
         
         /// <summary>
         /// 自定义投注脚本（高级功能）

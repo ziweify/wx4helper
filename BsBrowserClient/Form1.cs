@@ -36,11 +36,11 @@ public partial class Form1 : Form
         _platform = platform;
         _platformUrl = string.IsNullOrEmpty(platformUrl) ? GetDefaultUrl(platform) : platformUrl;
         
-        // 设置标题
-        this.Text = $"百盛浏览器 - {platform} (配置: {configId}, 端口: {port})";
+        // 设置窗口标题（包含配置ID用于识别）
+        this.Text = $"BsBrowser-{configId}";
         
         // 更新状态栏
-        lblPort.Text = $"端口: {port}";
+        lblPort.Text = $"端口: {port} | 平台: {platform} | 配置: {configId}";
         txtUrl.Text = _platformUrl;
     }
     
@@ -132,10 +132,16 @@ public partial class Form1 : Form
     /// </summary>
     private void InitializeSocketServer()
     {
-        _socketServer = new SocketServer(_port, OnCommandReceived, OnLogMessage);
+        // 解析配置ID
+        if (!int.TryParse(_configId, out var configIdInt))
+        {
+            configIdInt = 0;
+        }
+        
+        _socketServer = new SocketServer(configIdInt, OnCommandReceived, OnLogMessage);
         _socketServer.Start();
         
-        lblPort.Text = $"端口: {_port} ✅";
+        lblPort.Text = $"配置: {_configId} | 平台: {_platform}";
     }
     
     /// <summary>
@@ -191,6 +197,53 @@ public partial class Form1 : Form
             
             switch (command.Command.ToLower())
             {
+                case "show":
+                    // 显示窗口
+                    if (InvokeRequired)
+                    {
+                        Invoke(() =>
+                        {
+                            this.Show();
+                            this.WindowState = FormWindowState.Normal;
+                            this.Activate();
+                        });
+                    }
+                    else
+                    {
+                        this.Show();
+                        this.WindowState = FormWindowState.Normal;
+                        this.Activate();
+                    }
+                    response.Success = true;
+                    response.Message = "窗口已显示";
+                    break;
+                    
+                case "hide":
+                    // 隐藏窗口
+                    if (InvokeRequired)
+                    {
+                        Invoke(() => this.Hide());
+                    }
+                    else
+                    {
+                        this.Hide();
+                    }
+                    response.Success = true;
+                    response.Message = "窗口已隐藏";
+                    break;
+                    
+                case "ping":
+                    // 心跳检测
+                    response.Success = true;
+                    response.Message = "Pong";
+                    response.Data = new 
+                    { 
+                        configId = _configId,
+                        platform = _platform,
+                        processId = Environment.ProcessId
+                    };
+                    break;
+                    
                 case "login":
                     var loginData = command.Data as JObject;
                     var username = loginData?["username"]?.ToString() ?? "";
@@ -285,8 +338,19 @@ public partial class Form1 : Form
     
     private void Form1_FormClosing(object sender, FormClosingEventArgs e)
     {
-        _socketServer?.Stop();
-        _webView?.Dispose();
+        // 拦截关闭事件，改为隐藏窗口
+        if (e.CloseReason == CloseReason.UserClosing)
+        {
+            e.Cancel = true; // 取消关闭
+            this.Hide();     // 隐藏窗口
+            OnLogMessage($"窗口已隐藏（进程仍在运行）");
+        }
+        else
+        {
+            // 程序退出时才真正清理资源
+            _socketServer?.Stop();
+            _webView?.Dispose();
+        }
     }
     
     #endregion

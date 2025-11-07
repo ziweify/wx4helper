@@ -102,7 +102,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 状态变更事件 - 封盘时自动投注
+        /// 状态变更事件 - 封盘时推送通知并自动投注
         /// </summary>
         private async void LotteryService_StatusChanged(object? sender, BinggoStatusChangedEventArgs e)
         {
@@ -111,8 +111,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
             // 只在"即将封盘"状态时执行投注
             if (e.NewStatus == BinggoLotteryStatus.即将封盘)
             {
-                _log.Info("AutoBet", $"🎯 触发自动投注: {e.IssueId}");
+                _log.Info("AutoBet", $"🎯 触发封盘通知和自动投注: {e.IssueId}");
                 
+                // 1. 通过 Socket 推送封盘通知到浏览器
+                int secondsRemaining = _lotteryService.SecondsToSeal;
+                await _autoBetService.NotifySealingAsync(_currentConfigId, e.IssueId.ToString(), secondsRemaining);
+                
+                // 2. 执行自动投注
                 await ExecuteAutoBetAsync(e.IssueId);
             }
         }
@@ -137,16 +142,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 _log.Info("AutoBet", $"📤 自动投注: {order.PlayType} {order.BetContent} {order.Amount}元");
                 
-                var result = await _autoBetService.PlaceBet(_currentConfigId, order);
+                // 方式1: 通过 Socket 推送投注命令（实时推送）
+                await _autoBetService.SendBetCommandAsync(_currentConfigId, order);
                 
-                if (result.Success)
-                {
-                    _log.Info("AutoBet", $"✅ 自动投注成功! 订单号: {result.OrderId}");
-                }
-                else
-                {
-                    _log.Warning("AutoBet", $"❌ 自动投注失败: {result.ErrorMessage}");
-                }
+                // 方式2: 同时加入队列，供 HTTP 接口查询（兜底机制）
+                _autoBetService.QueueBetOrder(_currentConfigId, order);
+                
+                _log.Info("AutoBet", "✅ 投注命令已推送（Socket）并加入队列（HTTP）");
             }
             catch (Exception ex)
             {
