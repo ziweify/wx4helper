@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Models.AutoBet;
@@ -14,6 +15,15 @@ namespace BaiShengVx3Plus.Services.AutoBet
     /// </summary>
     public class BrowserClient : IDisposable
     {
+        // Windows API 用于显示窗口
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        
+        private const int SW_RESTORE = 9;
+        private const int SW_SHOW = 5;
         private readonly int _configId;
         private Process? _process;
         private TcpClient? _socket;
@@ -21,6 +31,24 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private StreamWriter? _writer;
         
         public bool IsConnected => _socket != null && _socket.Connected;
+        
+        /// <summary>
+        /// 检查进程是否还在运行
+        /// </summary>
+        public bool IsProcessRunning
+        {
+            get
+            {
+                try
+                {
+                    return _process != null && !_process.HasExited;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
         
         public BrowserClient(int configId)
         {

@@ -245,7 +245,7 @@ namespace BaiShengVx3Plus
             cbxPlatform.FillColor = Color.White;
             cbxPlatform.Font = new Font("微软雅黑", 9F);
             cbxPlatform.ItemHoverColor = Color.FromArgb(155, 200, 255);
-            cbxPlatform.Items.AddRange(new object[] { "云顶28", "海峡28", "红海28", "通宝" });
+            cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(235, 243, 255);
             cbxPlatform.Location = new Point(60, 153);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);

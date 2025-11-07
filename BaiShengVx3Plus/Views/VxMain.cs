@@ -2946,6 +2946,8 @@ namespace BaiShengVx3Plus
 
         #region 🤖 自动投注 UI 和逻辑
 
+        private System.Threading.Timer? _saveTimer;
+
         /// <summary>
         /// 初始化自动投注 UI 事件（控件已在 Designer 中创建）
         /// </summary>
@@ -2958,10 +2960,13 @@ namespace BaiShengVx3Plus
                 // 从默认配置加载设置
                 LoadAutoBetSettings();
                 
-                // 绑定自动保存事件（当控件值改变时自动保存）
+                // 绑定自动保存事件（使用防抖机制）
+                // 下拉框：立即保存
                 cbxPlatform.SelectedIndexChanged += (s, e) => SaveAutoBetSettings();
-                txtAutoBetUsername.TextChanged += (s, e) => SaveAutoBetSettings();
-                txtAutoBetPassword.TextChanged += (s, e) => SaveAutoBetSettings();
+                
+                // 文本框：延迟保存（防抖：用户停止输入1秒后再保存）
+                txtAutoBetUsername.TextChanged += (s, e) => DebounceSaveSettings();
+                txtAutoBetPassword.TextChanged += (s, e) => DebounceSaveSettings();
                 
                 _logService.Info("VxMain", "✅ 自动投注UI事件已绑定");
             }
@@ -2969,6 +2974,27 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", "初始化自动投注UI事件失败", ex);
             }
+        }
+
+        /// <summary>
+        /// 防抖保存设置（用户停止输入1秒后才保存）
+        /// </summary>
+        private void DebounceSaveSettings()
+        {
+            // 取消之前的计时器
+            _saveTimer?.Dispose();
+            
+            // 创建新的计时器，1秒后执行保存
+            _saveTimer = new System.Threading.Timer(_ =>
+            {
+                // 在UI线程上执行保存
+                this.Invoke(() =>
+                {
+                    SaveAutoBetSettings();
+                    _saveTimer?.Dispose();
+                    _saveTimer = null;
+                });
+            }, null, 1000, System.Threading.Timeout.Infinite);
         }
 
         /// <summary>
@@ -2984,9 +3010,14 @@ namespace BaiShengVx3Plus
                     // 加载平台
                     var platformIndex = defaultConfig.Platform switch
                     {
-                        "YunDing28" => 0,
-                        "HaiXia28" => 1,
-                        "HongHai28" => 2,
+                        "YunDing" => 0,
+                        "YunDing28" => 0,  // 兼容旧数据
+                        "HaiXia" => 1,
+                        "HaiXia28" => 1,   // 兼容旧数据
+                        "HongHai" => 2,
+                        "HongHai28" => 2,  // 兼容旧数据
+                        "TongBao" => 3,
+                        "TongBao28" => 3,  // 兼容旧数据
                         _ => 0
                     };
                     cbxPlatform.SelectedIndex = platformIndex;
@@ -3015,10 +3046,11 @@ namespace BaiShengVx3Plus
                     // 保存平台
                     defaultConfig.Platform = cbxPlatform.SelectedIndex switch
                     {
-                        0 => "YunDing28",
-                        1 => "HaiXia28",
-                        2 => "HongHai28",
-                        _ => "YunDing28"
+                        0 => "YunDing",
+                        1 => "HaiXia",
+                        2 => "HongHai",
+                        3 => "TongBao",
+                        _ => "YunDing"
                     };
 
                     // 保存账号密码
