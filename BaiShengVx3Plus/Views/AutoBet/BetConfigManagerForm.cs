@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models.AutoBet;
 using BaiShengVx3Plus.Services.AutoBet;
+using BaiShengVx3Plus.Shared.Platform;
 using Sunny.UI;
 
 namespace BaiShengVx3Plus.Views.AutoBet

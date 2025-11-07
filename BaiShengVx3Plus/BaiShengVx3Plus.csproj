@@ -28,6 +28,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BaiShengVx3Plus.Shared\BaiShengVx3Plus.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- 自动复制 SQLite 原生 DLL 到输出目录 -->
     <None Include="libs\e_sqlite3.dll" Condition="Exists('libs\e_sqlite3.dll')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -99,6 +103,9 @@
       <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.pdb" />
       <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.deps.json" />
       <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.runtimeconfig.json" />
+      <!-- 共享库 -->
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BaiShengVx3Plus.Shared.dll" />
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BaiShengVx3Plus.Shared.pdb" />
       <!-- WebView2 依赖 -->
       <OurCodeFiles Include="$(BrowserClientSourcePath)\Microsoft.Web.WebView2.Core.dll" />
       <OurCodeFiles Include="$(BrowserClientSourcePath)\Microsoft.Web.WebView2.WinForms.dll" />

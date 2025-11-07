@@ -504,7 +504,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             cbxPlatform.FillColor = System.Drawing.Color.White;
             cbxPlatform.Font = new System.Drawing.Font("微软雅黑", 10F);
             cbxPlatform.ItemHoverColor = System.Drawing.Color.FromArgb(155, 200, 255);
-            cbxPlatform.Items.AddRange(new object[] { "YunDing28", "HaiXia28", "HongHai28" });
+            cbxPlatform.Items.AddRange(BaiShengVx3Plus.Shared.Platform.BetPlatformHelper.GetAllPlatformNames());
             cbxPlatform.ItemSelectForeColor = System.Drawing.Color.FromArgb(235, 243, 255);
             cbxPlatform.Location = new System.Drawing.Point(150, 85);
             cbxPlatform.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);

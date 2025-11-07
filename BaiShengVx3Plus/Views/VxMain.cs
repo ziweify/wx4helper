@@ -2,6 +2,7 @@ using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Shared.Platform;
 using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Services.Messages;
 using BaiShengVx3Plus.Services.Messages.Handlers;
@@ -3007,20 +3008,9 @@ namespace BaiShengVx3Plus
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
-                    // 加载平台
-                    var platformIndex = defaultConfig.Platform switch
-                    {
-                        "YunDing" => 0,
-                        "YunDing28" => 0,  // 兼容旧数据
-                        "HaiXia" => 1,
-                        "HaiXia28" => 1,   // 兼容旧数据
-                        "HongHai" => 2,
-                        "HongHai28" => 2,  // 兼容旧数据
-                        "TongBao" => 3,
-                        "TongBao28" => 3,  // 兼容旧数据
-                        _ => 0
-                    };
-                    cbxPlatform.SelectedIndex = platformIndex;
+                    // 加载平台（使用共享库统一转换）
+                    var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
+                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
 
                     // 加载账号密码
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
@@ -3043,15 +3033,9 @@ namespace BaiShengVx3Plus
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
-                    // 保存平台
-                    defaultConfig.Platform = cbxPlatform.SelectedIndex switch
-                    {
-                        0 => "YunDing",
-                        1 => "HaiXia",
-                        2 => "HongHai",
-                        3 => "TongBao",
-                        _ => "YunDing"
-                    };
+                    // 保存平台（使用共享库统一转换）
+                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
+                    defaultConfig.Platform = platform.ToString();
 
                     // 保存账号密码
                     defaultConfig.Username = txtAutoBetUsername.Text;

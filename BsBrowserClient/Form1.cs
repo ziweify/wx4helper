@@ -7,6 +7,7 @@ using BsBrowserClient.PlatformScripts;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
+using BaiShengVx3Plus.Shared.Platform;
 
 namespace BsBrowserClient;
 
@@ -113,12 +114,15 @@ public partial class Form1 : Form
     /// </summary>
     private void InitializePlatformScript()
     {
-        _platformScript = _platform.ToLower() switch
+        // 使用共享库统一转换
+        var platform = BetPlatformHelper.Parse(_platform);
+        
+        _platformScript = platform switch
         {
-            "yunding28" => new YunDing28Script(_webView!, OnLogMessage),
-            "tongbao" => new TongBaoScript(_webView!, OnLogMessage),
-            "tongbao28" => new TongBaoScript(_webView!, OnLogMessage),
-            "通宝" => new TongBaoScript(_webView!, OnLogMessage),
+            BetPlatform.云顶 => new YunDing28Script(_webView!, OnLogMessage),
+            BetPlatform.通宝 => new TongBaoScript(_webView!, OnLogMessage),
+            BetPlatform.海峡 => new YunDing28Script(_webView!, OnLogMessage), // 暂用云顶脚本
+            BetPlatform.红海 => new YunDing28Script(_webView!, OnLogMessage), // 暂用云顶脚本
             _ => new YunDing28Script(_webView!, OnLogMessage)
         };
     }
@@ -260,14 +264,8 @@ public partial class Form1 : Form
     /// </summary>
     private string GetDefaultUrl(string platform)
     {
-        return platform.ToLower() switch
-        {
-            "yunding28" => "https://yd28.vip",
-            "tongbao" => "https://tbfowenb.fr.cvv66.top/",  // 来自F5BotV2
-            "tongbao28" => "https://tbfowenb.fr.cvv66.top/",
-            "通宝" => "https://tbfowenb.fr.cvv66.top/",
-            _ => "about:blank"
-        };
+        // 使用共享库统一获取URL
+        return BetPlatformHelper.GetDefaultUrl(platform);
     }
     
     #region UI 事件处理
