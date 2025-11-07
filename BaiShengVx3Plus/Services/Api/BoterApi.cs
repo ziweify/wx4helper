@@ -226,17 +226,94 @@ namespace BaiShengVx3Plus.Services.Api
                 var httpResponse = await _httpClient.GetAsync(funcUrl);
                 var json = await httpResponse.Content.ReadAsStringAsync();
                 
+                Console.WriteLine($"📡 GetBgData({issueId}) API 响应: {json}");  // 🔥 添加日志
+                
                 var apiResponse = JsonConvert.DeserializeObject<BsApiResponse<object>>(json);
-                if (apiResponse != null && apiResponse.Code == 0 && apiResponse.Data != null)
+                
+                // 🔥 修复：参考 F5BotV2，先检查 code
+                if (apiResponse == null || apiResponse.Code != 0)
                 {
-                    JObject d = JObject.Parse(apiResponse.Data.ToString()!);
-                    
-                    string p1 = d["p1"]?.ToString() ?? "-1";
-                    string p2 = d["p2"]?.ToString() ?? "-1";
-                    string p3 = d["p3"]?.ToString() ?? "-1";
-                    string p4 = d["p4"]?.ToString() ?? "-1";
-                    string p5 = d["p5"]?.ToString() ?? "-1";
+                    Console.WriteLine($"⚠️ API 返回失败: Code={apiResponse?.Code}, Msg={apiResponse?.Msg}");
+                    return new BsApiResponse<BinggoLotteryData>
+                    {
+                        Code = apiResponse?.Code ?? -1,
+                        Msg = apiResponse?.Msg ?? "API调用失败"
+                    };
+                }
+                
+                // 🔥 修复：检查 data 是否为空
+                if (apiResponse.Data == null)
+                {
+                    Console.WriteLine($"⚠️ 期号 {issueId} 数据为空（data=null）");
+                    return new BsApiResponse<BinggoLotteryData>
+                    {
+                        Code = -1,
+                        Msg = "数据为空"
+                    };
+                }
+                
+                JObject d = JObject.Parse(apiResponse.Data.ToString()!);
+                
+                // 🔥 修复：参考 F5BotV2，优先检查 lotteryData 字段
+                string lotteryDataStr = d["lotteryData"]?.ToString() ?? "";
+                
+                if (!string.IsNullOrEmpty(lotteryDataStr))
+                {
+                    // 🔥 方式1：使用 lotteryData 字段（与 F5BotV2 完全一致）
                     string lotteryTime = d["lottery_time"]?.ToString() ?? "";
+                    
+                    Console.WriteLine($"📊 解析 lotteryData: {lotteryDataStr}, time={lotteryTime}");
+                    
+                    var bgData = new BinggoLotteryData().FillLotteryData(
+                        issueId, 
+                        lotteryDataStr, 
+                        lotteryTime
+                    );
+                    
+                    if (bgData.IsOpened)
+                    {
+                        Console.WriteLine($"✅ 开奖数据解析成功: {issueId} - {bgData.ToLotteryString()}");
+                        return new BsApiResponse<BinggoLotteryData>
+                        {
+                            Code = 0,
+                            Msg = "成功",
+                            Data = bgData
+                        };
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠️ 期号 {issueId} 未开奖（IsOpened=false）");
+                        return new BsApiResponse<BinggoLotteryData>
+                        {
+                            Code = -1,
+                            Msg = "未开奖"
+                        };
+                    }
+                }
+                else
+                {
+                    // 🔥 方式2：兜底，尝试解析 p1-p5 字段
+                    string p1 = d["p1"]?.ToString() ?? "";
+                    string p2 = d["p2"]?.ToString() ?? "";
+                    string p3 = d["p3"]?.ToString() ?? "";
+                    string p4 = d["p4"]?.ToString() ?? "";
+                    string p5 = d["p5"]?.ToString() ?? "";
+                    string lotteryTime = d["lottery_time"]?.ToString() ?? "";
+                    
+                    Console.WriteLine($"📊 解析 p1-p5: {p1},{p2},{p3},{p4},{p5}, time={lotteryTime}");
+                    
+                    // 🔥 检查是否所有号码都为空或无效（表示未开奖）
+                    if (string.IsNullOrEmpty(p1) || string.IsNullOrEmpty(p2) || 
+                        string.IsNullOrEmpty(p3) || string.IsNullOrEmpty(p4) || 
+                        string.IsNullOrEmpty(p5))
+                    {
+                        Console.WriteLine($"⚠️ 期号 {issueId} 未开奖（号码为空）");
+                        return new BsApiResponse<BinggoLotteryData>
+                        {
+                            Code = -1,
+                            Msg = "未开奖"
+                        };
+                    }
                     
                     var bgData = new BinggoLotteryData().FillLotteryData(
                         issueId, 
@@ -244,19 +321,26 @@ namespace BaiShengVx3Plus.Services.Api
                         lotteryTime
                     );
                     
-                    return new BsApiResponse<BinggoLotteryData>
+                    if (bgData.IsOpened)
                     {
-                        Code = 0,
-                        Msg = "成功",
-                        Data = bgData
-                    };
+                        Console.WriteLine($"✅ 开奖数据解析成功: {issueId} - {bgData.ToLotteryString()}");
+                        return new BsApiResponse<BinggoLotteryData>
+                        {
+                            Code = 0,
+                            Msg = "成功",
+                            Data = bgData
+                        };
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠️ 期号 {issueId} 未开奖（FillLotteryData 后 IsOpened=false）");
+                        return new BsApiResponse<BinggoLotteryData>
+                        {
+                            Code = -1,
+                            Msg = "未开奖"
+                        };
+                    }
                 }
-                
-                return new BsApiResponse<BinggoLotteryData>
-                {
-                    Code = apiResponse?.Code ?? -1,
-                    Msg = apiResponse?.Msg ?? "获取失败"
-                };
             }
             catch (Exception ex)
             {
