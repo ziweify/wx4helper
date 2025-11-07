@@ -13,7 +13,8 @@ namespace BaiShengVx3Plus.Models
         已退群 = 4,
         普会 = 5,
         蓝会 = 6,
-        紫会 = 7
+        紫会 = 7,
+        黄会 = 8
     }
 
     /// <summary>
@@ -29,14 +30,16 @@ namespace BaiShengVx3Plus.Models
     }
 
     /// <summary>
-    /// 订单类型
+    /// 订单类型/会员类型
     /// </summary>
     public enum OrderType
     {
         待定 = 0,
-        盘内 = 1,       // 进盘的，就是盘内
-        盘外 = 2,       // 没进盘的，就是盘外
-        托 = 3          // 就是不打进盘的
+        普会 = 1,       // 普通会员
+        盘内 = 2,       // 进盘的，就是盘内（正式会员）
+        盘外 = 3,       // 没进盘的，就是盘外（蓝会）
+        托 = 4,         // 就是不打进盘的
+        黄会 = 5        // 黄会
     }
 
     /// <summary>

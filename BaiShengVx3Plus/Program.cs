@@ -76,6 +76,7 @@ namespace BaiShengVx3Plus
                             // 🎲 炳狗开奖和订单服务
                             services.AddSingleton<IBinggoLotteryService, BinggoLotteryService>(); // 开奖服务
                             services.AddSingleton<IBinggoOrderService, BinggoOrderService>();     // 订单服务
+                            services.AddSingleton<BinggoStatisticsService>();  // 🔥 统计服务（唯一更新入口）
 
                             // 消息处理
                             services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）

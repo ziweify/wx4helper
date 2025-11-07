@@ -36,6 +36,7 @@ namespace BaiShengVx3Plus.Core
         /// <summary>
         /// 重写 InsertItem：添加时自动保存到数据库
         /// 🔥 线程安全：数据库操作立即执行，UI 更新在 UI 线程执行
+        /// 🔥 新订单插入到列表顶部（索引0），保持与 LoadFromDatabase 一致（最新在上）
         /// </summary>
         protected override void InsertItem(int index, V2MemberOrder item)
         {
@@ -51,20 +52,21 @@ namespace BaiShengVx3Plus.Core
 
             // ========================================
             // 🔥 步骤2: UI 更新（在 UI 线程执行）
+            // 🔥 强制将新订单插入到顶部（索引0），保持"最新在上"的一致性
             // ========================================
             if (_syncContext != null && SynchronizationContext.Current != _syncContext)
             {
                 // 🔥 从非 UI 线程调用，切换到 UI 线程
                 _syncContext.Post(_ =>
                 {
-                    base.InsertItem(index, item);
+                    base.InsertItem(0, item);  // 🔥 插入到顶部
                     SubscribePropertyChanged(item);
                 }, null);
             }
             else
             {
                 // 🔥 已在 UI 线程，直接执行
-                base.InsertItem(index, item);
+                base.InsertItem(0, item);  // 🔥 插入到顶部
                 SubscribePropertyChanged(item);
             }
         }

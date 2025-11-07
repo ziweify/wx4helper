@@ -75,7 +75,7 @@ namespace BaiShengVx3Plus.Models
         // ========================================
 
         [PrimaryKey, AutoIncrement]
-        [Browsable(false)]  // 🔥 不在 DataGridView 中显示
+        [DataGridColumn(HeaderText = "ID", Width = 50, Order = 0)]  // 🔥 显示订单 ID
         public long Id
         {
             get => _id;
@@ -105,7 +105,7 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _timeStampBet, value);
         }
 
-        [DataGridColumn(HeaderText = "账号", Width = 100, Order = 15)]
+        [DataGridColumn(HeaderText = "账号", Width = 100, Order = 15, Visible = false)]
         public string? Account
         {
             get => _account;
@@ -215,7 +215,7 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _amountTotal, value);
         }
 
-        [DataGridColumn(HeaderText = "纯利润", Width = 80, Order = 11, 
+        [DataGridColumn(HeaderText = "纯利", Width = 70, Order = 11, 
                         Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
         public float NetProfit
         {
@@ -252,9 +252,11 @@ namespace BaiShengVx3Plus.Models
                 // 根据 OrderType 返回会员类型
                 return OrderType switch
                 {
-                    OrderType.托 => "托",
+                    OrderType.普会 => "普会",
                     OrderType.盘内 => "会员",
                     OrderType.盘外 => "蓝会",
+                    OrderType.托 => "托",
+                    OrderType.黄会 => "黄会",
                     _ => "未知"
                 };
             }

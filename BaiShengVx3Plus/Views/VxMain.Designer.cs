@@ -50,7 +50,18 @@ namespace BaiShengVx3Plus
             txtMinBet = new Sunny.UI.UIIntegerUpDown();
             lblMaxBet = new Label();
             txtMaxBet = new Sunny.UI.UIIntegerUpDown();
+            chkAdminMode = new Sunny.UI.UICheckBox(); // 🔥 管理模式checkbox
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
+            tsmiClearBalance = new ToolStripMenuItem();
+            tsmiDeleteMember = new ToolStripMenuItem();
+            tsmiSetMemberType = new ToolStripMenuItem();
+            tsmiSetNormal = new ToolStripMenuItem();
+            tsmiSetMember = new ToolStripMenuItem();
+            tsmiSetAgent = new ToolStripMenuItem();
+            tsmiSetBlue = new ToolStripMenuItem();
+            tsmiSetYellow = new ToolStripMenuItem();
+            toolStripSeparator1 = new ToolStripSeparator();
+            tsmiViewBalanceChange = new ToolStripMenuItem();
             splitContainerMain = new Sunny.UI.UISplitContainer();
             pnlLeft = new Sunny.UI.UIPanel();
             pnl_fastsetting = new Sunny.UI.UIPanel();
@@ -196,13 +207,101 @@ namespace BaiShengVx3Plus
             txtMaxBet.Text = "10000";
             txtMaxBet.TextAlignment = ContentAlignment.MiddleCenter;
             // 
+            // chkAdminMode
+            // 
+            chkAdminMode.Font = new Font("微软雅黑", 9F);
+            chkAdminMode.Location = new Point(100, 130);
+            chkAdminMode.MinimumSize = new Size(1, 1);
+            chkAdminMode.Name = "chkAdminMode";
+            chkAdminMode.Padding = new Padding(22, 0, 0, 0);
+            chkAdminMode.Size = new Size(130, 25);
+            chkAdminMode.TabIndex = 6;
+            chkAdminMode.Text = "管理模式";
+            chkAdminMode.CheckedChanged += ChkAdminMode_CheckedChanged;
+            // 
+            // tsmiClearBalance
+            // 
+            tsmiClearBalance.Name = "tsmiClearBalance";
+            tsmiClearBalance.Size = new Size(199, 26);
+            tsmiClearBalance.Text = "清分";
+            tsmiClearBalance.Click += TsmiClearBalance_Click;
+            // 
+            // tsmiDeleteMember
+            // 
+            tsmiDeleteMember.Name = "tsmiDeleteMember";
+            tsmiDeleteMember.Size = new Size(199, 26);
+            tsmiDeleteMember.Text = "删除会员";
+            tsmiDeleteMember.Click += TsmiDeleteMember_Click;
+            // 
+            // tsmiSetMemberType
+            // 
+            tsmiSetMemberType.DropDownItems.AddRange(new ToolStripItem[] {
+                tsmiSetNormal,
+                tsmiSetMember,
+                tsmiSetAgent,
+                tsmiSetBlue,
+                tsmiSetYellow
+            });
+            tsmiSetMemberType.Name = "tsmiSetMemberType";
+            tsmiSetMemberType.Size = new Size(199, 26);
+            tsmiSetMemberType.Text = "设置会员类型";
+            // 
+            // tsmiSetNormal
+            // 
+            tsmiSetNormal.Name = "tsmiSetNormal";
+            tsmiSetNormal.Size = new Size(180, 26);
+            tsmiSetNormal.Text = "普会";
+            tsmiSetNormal.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiSetMember
+            // 
+            tsmiSetMember.Name = "tsmiSetMember";
+            tsmiSetMember.Size = new Size(180, 26);
+            tsmiSetMember.Text = "会员（盘内）";
+            tsmiSetMember.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiSetAgent
+            // 
+            tsmiSetAgent.Name = "tsmiSetAgent";
+            tsmiSetAgent.Size = new Size(180, 26);
+            tsmiSetAgent.Text = "托";
+            tsmiSetAgent.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiSetBlue
+            // 
+            tsmiSetBlue.Name = "tsmiSetBlue";
+            tsmiSetBlue.Size = new Size(180, 26);
+            tsmiSetBlue.Text = "蓝会（盘外）";
+            tsmiSetBlue.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiSetYellow
+            // 
+            tsmiSetYellow.Name = "tsmiSetYellow";
+            tsmiSetYellow.Size = new Size(180, 26);
+            tsmiSetYellow.Text = "黄会";
+            tsmiSetYellow.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiViewBalanceChange
+            // 
+            tsmiViewBalanceChange.Name = "tsmiViewBalanceChange";
+            tsmiViewBalanceChange.Size = new Size(199, 26);
+            tsmiViewBalanceChange.Text = "资金变动";
+            tsmiViewBalanceChange.Click += TsmiViewBalanceChange_Click;
+            // 
             // cmsMembers
             // 
             cmsMembers.BackColor = Color.FromArgb(243, 249, 255);
             cmsMembers.Font = new Font("微软雅黑", 10F);
             cmsMembers.ImageScalingSize = new Size(20, 20);
+            cmsMembers.Items.AddRange(new ToolStripItem[] {
+                tsmiClearBalance,
+                tsmiDeleteMember,
+                tsmiSetMemberType,
+                toolStripSeparator1,
+                tsmiViewBalanceChange
+            });
             cmsMembers.Name = "cmsMembers";
-            cmsMembers.Size = new Size(61, 4);
+            cmsMembers.Size = new Size(200, 120);
             // 
             // splitContainerMain
             // 
@@ -249,6 +348,7 @@ namespace BaiShengVx3Plus
             pnl_fastsetting.Controls.Add(txtMinBet);
             pnl_fastsetting.Controls.Add(lblMaxBet);
             pnl_fastsetting.Controls.Add(txtMaxBet);
+            pnl_fastsetting.Controls.Add(chkAdminMode); // 🔥 管理模式checkbox
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             pnl_fastsetting.Location = new Point(4, 484);
             pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
@@ -384,6 +484,7 @@ namespace BaiShengVx3Plus
             txtCurrentContact.Text = "未绑定联系人";
             txtCurrentContact.TextAlignment = ContentAlignment.MiddleLeft;
             txtCurrentContact.Watermark = "点击绑定按钮选择联系人";
+            txtCurrentContact.KeyDown += TxtCurrentContact_KeyDown; // 🔥 管理模式手动绑定
             // 
             // pnlRight
             // 
@@ -509,6 +610,7 @@ namespace BaiShengVx3Plus
             lblMemberInfo.TabIndex = 0;
             lblMemberInfo.Text = "会员列表 (共0人)";
             lblMemberInfo.TextAlign = ContentAlignment.MiddleLeft;
+            lblMemberInfo.Paint += lblMemberInfo_Paint;
             // 
             // pnlOrders
             // 
@@ -783,6 +885,17 @@ namespace BaiShengVx3Plus
         private ToolStripStatusLabel lblStatus;
         private Views.UcUserInfo ucUserInfo1;
         private Sunny.UI.UIContextMenuStrip cmsMembers;
+        private ToolStripMenuItem tsmiClearBalance;       // 清分
+        private ToolStripMenuItem tsmiDeleteMember;        // 删除
+        private ToolStripMenuItem tsmiSetMemberType;       // 设置会员类型
+        private ToolStripSeparator toolStripSeparator1;    // 分隔线
+        private ToolStripMenuItem tsmiViewBalanceChange;   // 资金变动
+        // 设置会员类型子菜单
+        private ToolStripMenuItem tsmiSetNormal;           // 普会
+        private ToolStripMenuItem tsmiSetMember;           // 会员（盘内）
+        private ToolStripMenuItem tsmiSetAgent;            // 托
+        private ToolStripMenuItem tsmiSetBlue;             // 蓝会（盘外）
+        private ToolStripMenuItem tsmiSetYellow;           // 黄会
         private Sunny.UI.UIPanel pnl_opendata;
         private UserControls.UcBinggoDataCur ucBinggoDataCur;
         private UserControls.UcBinggoDataLast ucBinggoDataLast;
@@ -793,5 +906,6 @@ namespace BaiShengVx3Plus
         private Sunny.UI.UIIntegerUpDown txtMinBet;
         private System.Windows.Forms.Label lblMaxBet;
         private Sunny.UI.UIIntegerUpDown txtMaxBet;
+        private Sunny.UI.UICheckBox chkAdminMode; // 🔥 管理模式checkbox
     }
 }

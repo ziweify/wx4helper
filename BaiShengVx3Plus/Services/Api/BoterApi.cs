@@ -27,6 +27,7 @@ namespace BaiShengVx3Plus.Services.Api
         
         public BsApiResponse<BsApiUser>? LoginApiResponse { get; private set; }
         public string User { get; private set; } = string.Empty;
+        public string Password { get; private set; } = string.Empty;  // 🔥 保存密码（用于数据库备份加密）
         public DateTime OffTime { get; set; }
         
         private BoterApi()
@@ -57,6 +58,7 @@ namespace BaiShengVx3Plus.Services.Api
         public async Task<BsApiResponse<BsApiUser>> LoginAsync(string user, string pwd)
         {
             User = user;
+            Password = pwd;  // 🔥 保存密码
             
             string funcUrl = $"{_urlRoot}/api/boter/login?user={user}&pwd={pwd}";
             

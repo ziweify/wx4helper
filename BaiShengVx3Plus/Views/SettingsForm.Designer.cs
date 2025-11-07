@@ -30,11 +30,13 @@ namespace BaiShengVx3Plus.Views
         {
             uiTabControl1 = new Sunny.UI.UITabControl();
             tabPageConnection = new TabPage();
+            tabPageSystem = new TabPage(); // 🔥 系统设置选项卡
             uiGroupBox2 = new Sunny.UI.UIGroupBox();
             btnApplyReconnect = new Sunny.UI.UIButton();
             txtReconnectInterval = new Sunny.UI.UITextBox();
             uiLabel5 = new Sunny.UI.UILabel();
             chkAutoReconnect = new Sunny.UI.UICheckBox();
+            chkAdminModeSettings = new Sunny.UI.UICheckBox(); // 🔥 管理模式checkbox
             uiGroupBox1 = new Sunny.UI.UIGroupBox();
             btnRefreshStatus = new Sunny.UI.UIButton();
             lblConnectionStatus = new Sunny.UI.UILabel();
@@ -71,6 +73,7 @@ namespace BaiShengVx3Plus.Views
             // 
             // uiTabControl1
             // 
+            uiTabControl1.Controls.Add(tabPageSystem); // 🔥 系统设置选项卡
             uiTabControl1.Controls.Add(tabPageConnection);
             uiTabControl1.Controls.Add(tabPageTest);
             uiTabControl1.Dock = DockStyle.Top;
@@ -86,6 +89,27 @@ namespace BaiShengVx3Plus.Views
             uiTabControl1.TabIndex = 0;
             uiTabControl1.TabUnSelectedForeColor = Color.FromArgb(240, 240, 240);
             uiTabControl1.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            // 
+            // tabPageSystem
+            // 
+            tabPageSystem.BackColor = Color.White;
+            tabPageSystem.Controls.Add(chkAdminModeSettings);
+            tabPageSystem.Location = new Point(0, 40);
+            tabPageSystem.Name = "tabPageSystem";
+            tabPageSystem.Size = new Size(800, 470);
+            tabPageSystem.TabIndex = 0;
+            tabPageSystem.Text = "系统设置";
+            // 
+            // chkAdminModeSettings
+            // 
+            chkAdminModeSettings.Font = new Font("微软雅黑", 12F);
+            chkAdminModeSettings.Location = new Point(40, 40);
+            chkAdminModeSettings.MinimumSize = new Size(1, 1);
+            chkAdminModeSettings.Name = "chkAdminModeSettings";
+            chkAdminModeSettings.Padding = new Padding(22, 0, 0, 0);
+            chkAdminModeSettings.Size = new Size(300, 30);
+            chkAdminModeSettings.TabIndex = 0;
+            chkAdminModeSettings.Text = "管理模式（允许手动绑定群）";
             // 
             // tabPageConnection
             // 
@@ -571,6 +595,8 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UIButton btnCancel;
         private Sunny.UI.UIButton btnQuickSendImage;
         private Sunny.UI.UIButton btnQuickGetGroupContacts;
+        private TabPage tabPageSystem; // 🔥 系统设置选项卡
+        private Sunny.UI.UICheckBox chkAdminModeSettings; // 🔥 管理模式checkbox
     }
 }
 

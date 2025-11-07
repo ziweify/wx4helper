@@ -24,6 +24,11 @@ namespace BaiShengVx3Plus.Contracts.Games
         void SetMembersBindingList(V2MemberBindingList? bindingList);
         
         /// <summary>
+        /// 设置统计服务（用于自动更新统计）
+        /// </summary>
+        void SetStatisticsService(Services.Games.Binggo.BinggoStatisticsService? statisticsService);
+        
+        /// <summary>
         /// 创建订单（从微信消息）
         /// </summary>
         /// <returns>(成功, 回复消息, 订单对象)</returns>

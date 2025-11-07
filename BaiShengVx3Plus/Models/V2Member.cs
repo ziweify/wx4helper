@@ -60,7 +60,7 @@ namespace BaiShengVx3Plus.Models
         // ========================================
 
         [PrimaryKey, AutoIncrement]
-        [Browsable(false)]  // 🔥 不在 DataGridView 中显示
+        [DataGridColumn(HeaderText = "ID", Width = 50, Order = 0)]  // 🔥 显示 ID（用于上下分命令）
         public long Id
         {
             get => _id;
@@ -76,7 +76,7 @@ namespace BaiShengVx3Plus.Models
         }
 
         [Indexed]
-        [DataGridColumn(HeaderText = "微信ID", Width = 150, Order = 1)]
+        [DataGridColumn(HeaderText = "微信ID", Width = 150, Order = 1, Visible = false)]
         public string? Wxid
         {
             get => _wxid;

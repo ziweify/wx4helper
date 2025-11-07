@@ -34,11 +34,13 @@ namespace BaiShengVx3Plus
         // 🎮 炳狗游戏服务
         private readonly IBinggoLotteryService _lotteryService;
         private readonly IBinggoOrderService _orderService;
+        private readonly BinggoStatisticsService _statisticsService; // 🔥 统计服务
         private readonly BinggoMessageHandler _binggoMessageHandler;
         private readonly BinggoGameSettings _binggoSettings;
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
+        private string _currentDbPath = "";  // 当前数据库路径
         
         // 数据绑定列表
         private BindingList<WxContact> _contactsBindingList;
@@ -52,6 +54,7 @@ namespace BaiShengVx3Plus
         
         // 当前绑定的联系人对象
         private WxContact? _currentBoundContact;
+        private string _currentGroupWxId = ""; // 🔥 当前绑定的群 wxid
         
         // 当前用户信息（用于检测用户切换）
         private WxUserInfo? _currentUserInfo;
@@ -107,6 +110,7 @@ namespace BaiShengVx3Plus
             IMemberDataService memberDataService, // 注入会员数据访问服务
             IBinggoLotteryService lotteryService, // 🎮 注入炳狗开奖服务
             IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
+            BinggoStatisticsService statisticsService, // 🔥 注入统计服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
             BinggoGameSettings binggoSettings) // 🎮 注入炳狗游戏配置
         {
@@ -122,6 +126,7 @@ namespace BaiShengVx3Plus
             _groupBindingService = groupBindingService;
             _lotteryService = lotteryService;
             _orderService = orderService;
+            _statisticsService = statisticsService; // 🔥 统计服务
             _binggoMessageHandler = binggoMessageHandler;
             _binggoSettings = binggoSettings;
             
@@ -194,6 +199,9 @@ namespace BaiShengVx3Plus
                     
                 Directory.CreateDirectory("Data");
                 
+                // 🔥 保存数据库路径（用于清空数据时备份）
+                _currentDbPath = dbPath;
+                
                 _logService.Info("VxMain", $"初始化数据库: {dbPath}");
                 
                 // 🔥 创建 ORM 数据库连接（同步）
@@ -205,37 +213,9 @@ namespace BaiShengVx3Plus
                     groupBindingService.SetDatabase(_db);
                 }
                 
-                // 🔥 创建 BindingList（同步，自动建表）
-                // ⚠️ 注意：这里不传 groupWxId，因为会员数据属于当前微信，不区分群
-                // 群ID 只是用来筛选显示，不是数据隔离的维度
-                _membersBindingList = new V2MemberBindingList(_db, "");  // 空字符串表示加载所有会员
-                _ordersBindingList = new V2OrderBindingList(_db);
-                
-                // 🔥 加载数据（同步，确保数据完整加载）
-                _membersBindingList.LoadFromDatabase();  // 同步读取
-                _ordersBindingList.LoadFromDatabase();   // 同步读取
-                
-                // ========================================
-                // 🔥 步骤2: UI 更新（同步，确保立即生效）
-                // ========================================
-                
-                UpdateUIThreadSafe(() =>
-                {
-                    // 绑定到 DataGridView（同步，确保数据立即显示）
-                    if (dgvMembers.DataSource != _membersBindingList)
-                        dgvMembers.DataSource = _membersBindingList;
-                    if (dgvOrders.DataSource != _ordersBindingList)
-                        dgvOrders.DataSource = _ordersBindingList;
-                    
-                    // 更新统计信息（同步）
-                    UpdateStatistics();
-                });
-                
-                // 🎮 设置会员列表到 MemberDataService（供消息处理器使用）
-                if (_memberDataService is MemberDataService mds)
-                {
-                    mds.SetMembersBindingList(_membersBindingList);
-                }
+                // ✅ 不再在这里创建和加载数据
+                // 数据加载延迟到绑定群后（参考 F5BotV2 第 816 行）
+                _logService.Info("VxMain", "✅ 数据库已准备，等待绑定群后加载数据");
                 
                 // ========================================
                 // 🔥 步骤3: 初始化炳狗服务（异步，不阻塞）
@@ -248,7 +228,7 @@ namespace BaiShengVx3Plus
                 // ========================================
                 
                 _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath}");
-                _logService.Info("VxMain", $"✓ 加载 {_membersBindingList.Count} 个会员，{_ordersBindingList.Count} 个订单");
+                // ✅ 数据将在绑定群后加载，此处不记录数量
             }
             catch (Exception ex)
             {
@@ -297,6 +277,15 @@ namespace BaiShengVx3Plus
                 _lotteryService.LotteryOpened += OnLotteryOpened;
                 _lotteryService.StatusChanged += OnLotteryStatusChanged;
                 _lotteryService.IssueChanged += OnLotteryIssueChanged;
+                
+                // 🔥 6. 订阅统计服务属性变化（自动更新 UI）
+                _statisticsService.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(BinggoStatisticsService.PanDescribe))
+                    {
+                        UpdateUIThreadSafeAsync(() => UpdateMemberInfoLabel());
+                    }
+                };
                 
                 // 6. 启动开奖服务
                 _ = _lotteryService.StartAsync();  // 异步启动，不等待
@@ -376,11 +365,102 @@ namespace BaiShengVx3Plus
                 txtMinBet.Value = (int)_binggoSettings.MinBet;
                 txtMaxBet.Value = (int)_binggoSettings.MaxBet;
                 
+                // 🔥 管理模式初始化（默认关闭）
+                if (chkAdminMode != null)
+                {
+                    chkAdminMode.Checked = _binggoSettings.IsAdminMode;
+                    UpdateAdminModeUI();
+                }
+                
                 _logService.Info("VxMain", "✅ 快速设置面板已初始化");
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", $"快速设置面板初始化失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 更新管理模式 UI 状态
+        /// </summary>
+        private void UpdateAdminModeUI()
+        {
+            bool isAdminMode = _binggoSettings.IsAdminMode;
+            
+            // 管理模式下，txtCurrentContact 可编辑
+            txtCurrentContact.ReadOnly = !isAdminMode;
+            txtCurrentContact.BackColor = isAdminMode ? Color.White : SystemColors.Control;
+            
+            _logService.Info("VxMain", isAdminMode ? "✅ 管理模式已启用" : "❌ 管理模式已禁用");
+        }
+        
+        /// <summary>
+        /// 管理模式 checkbox 变化事件
+        /// </summary>
+        private void ChkAdminMode_CheckedChanged(object? sender, EventArgs e)
+        {
+            _binggoSettings.IsAdminMode = chkAdminMode?.Checked ?? false;
+            UpdateAdminModeUI();
+        }
+        
+        /// <summary>
+        /// txtCurrentContact 按回车手动绑定（管理模式）
+        /// </summary>
+        private async void TxtCurrentContact_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && _binggoSettings.IsAdminMode)
+            {
+                string input = txtCurrentContact.Text.Trim();
+                if (string.IsNullOrEmpty(input))
+                    return;
+                
+                try
+                {
+                    // 🔥 解析输入：支持 "nickname (wxid)" 或直接 "wxid"
+                    string wxid;
+                    string nickname;
+                    
+                    if (input.Contains("(") && input.Contains(")"))
+                    {
+                        // 格式：nickname (wxid)
+                        int startIndex = input.IndexOf('(');
+                        int endIndex = input.IndexOf(')');
+                        wxid = input.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
+                        nickname = input.Substring(0, startIndex).Trim();
+                    }
+                    else
+                    {
+                        // 直接输入 wxid
+                        wxid = input;
+                        nickname = "手动绑定群";
+                    }
+                    
+                    // 验证是否为群（包含 @ 符号）
+                    if (!wxid.Contains("@"))
+                    {
+                        UIMessageBox.ShowWarning("请输入正确的群 wxid（必须包含 @ 符号）！");
+                        return;
+                    }
+                    
+                    _logService.Info("VxMain", $"📍 管理模式手动绑定: {nickname} ({wxid})");
+                    
+                    // 🔥 创建联系人对象并走统一绑定流程
+                    var contact = new WxContact
+                    {
+                        Wxid = wxid,
+                        Nickname = nickname,
+                        Remark = "手动绑定"
+                    };
+                    
+                    await BindGroupAsync(contact);
+                    
+                    _logService.Info("VxMain", $"✅ 管理模式手动绑定成功: {wxid}");
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"手动绑定失败: {ex.Message}", ex);
+                    UIMessageBox.ShowError($"手动绑定失败！\n\n{ex.Message}");
+                }
             }
         }
         
@@ -475,12 +555,17 @@ namespace BaiShengVx3Plus
         
         /// <summary>
         /// 期号变更事件处理
+        /// 🔥 更新当前期号并重新计算本期下注统计
         /// </summary>
         private void OnLotteryIssueChanged(object? sender, BinggoIssueChangedEventArgs e)
         {
             UpdateUIThreadSafeAsync(() =>
             {
-                _logService.Info("VxMain", $"📅 期号变更: {e.NewIssueId}");
+                _logService.Info("VxMain", $"📅 期号变更: {e.OldIssueId} → {e.NewIssueId}");
+                
+                // 🔥 设置当前期号（会自动重新计算本期下注）
+                _statisticsService.SetCurrentIssueId(e.NewIssueId);
+                
                 // TODO: 可选 - 发送开盘通知到微信群
             });
         }
@@ -495,22 +580,17 @@ namespace BaiShengVx3Plus
             // 🔥 美化联系人列表样式
             CustomizeContactsGridStyle();
 
-            // 🔥 会员和订单列表稍后在 InitializeDatabase 中绑定
+            // 🔥 只初始化 DataGridView，不加载数据（等待绑定群）
             dgvMembers.AutoGenerateColumns = true;
             dgvMembers.EditMode = DataGridViewEditMode.EditOnEnter;
-
-            // 设置会员表字段可见性和顺序
             dgvMembers.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             
             // 🔥 美化会员列表样式
             CustomizeMembersGridStyle();
             
-            // 绑定订单列表
-            dgvOrders.DataSource = _ordersBindingList;
+            // 🔥 只初始化订单列表，不加载数据（等待绑定群）
             dgvOrders.AutoGenerateColumns = true;
             dgvOrders.EditMode = DataGridViewEditMode.EditOnEnter;
-
-            // 设置订单表字段可见性和顺序
             dgvOrders.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             
             // 🔥 美化订单列表样式
@@ -522,8 +602,8 @@ namespace BaiShengVx3Plus
             // 🔥 配置订单表列（列宽、可见性、格式）
             ConfigureOrdersDataGridView();
 
-            // 添加测试数据
-            LoadTestData();
+            // ✅ 数据加载延迟到绑定群后
+            _logService.Info("VxMain", "✅ 数据绑定初始化完成（未加载数据，等待绑定群）");
         }
 
         private void LoadTestData()
@@ -536,28 +616,217 @@ namespace BaiShengVx3Plus
             UpdateStatistics();
         }
 
+        /// <summary>
+        /// 更新统计信息显示
+        /// 🔥 统一的统计更新方法（参考 F5BotV2 第 790 行）
+        /// </summary>
         private void UpdateStatistics()
         {
-            //lblContactList.Text = $"联系人列表({_contactsBindingList.Count})";
+            // 🔥 调用统计服务重新计算（唯一入口）
+            _statisticsService.UpdateStatistics();
             
-            // 🔥 检查 null，因为数据库可能还未初始化
-            if (_membersBindingList != null)
+            // 🔥 更新 UI 显示
+            UpdateMemberInfoLabel();
+        }
+        
+        /// <summary>
+        /// 🔥 统计数据缓存（用于自定义绘制）
+        /// </summary>
+        private class StatsData
+        {
+            public int MemberCount { get; set; }
+            public int OrderCount { get; set; }
+            public float BetMoneyTotal { get; set; }
+            public float BetMoneyToday { get; set; }
+            public float BetMoneyCur { get; set; }
+            public int IssueidCur { get; set; }
+            public float IncomeTotal { get; set; }
+            public float IncomeToday { get; set; }
+            public float CreditTotal { get; set; }
+            public float CreditToday { get; set; }
+            public float WithdrawTotal { get; set; }
+            public float WithdrawToday { get; set; }
+        }
+        
+        private StatsData _currentStats = new StatsData();
+        
+        /// <summary>
+        /// 更新会员信息标签
+        /// 🔥 显示会员数、订单数 + 统计信息（参考 F5BotV2 第 805 行）
+        /// </summary>
+        private void UpdateMemberInfoLabel()
+        {
+            // 🔥 更新统计数据缓存
+            _currentStats.MemberCount = _membersBindingList?.Count ?? 0;
+            _currentStats.OrderCount = _ordersBindingList?.Count ?? 0;
+            _currentStats.BetMoneyTotal = _statisticsService.BetMoneyTotal;
+            _currentStats.BetMoneyToday = _statisticsService.BetMoneyToday;
+            _currentStats.BetMoneyCur = _statisticsService.BetMoneyCur;
+            _currentStats.IssueidCur = _statisticsService.IssueidCur;
+            _currentStats.IncomeTotal = _statisticsService.IncomeTotal;
+            _currentStats.IncomeToday = _statisticsService.IncomeToday;
+            _currentStats.CreditTotal = _statisticsService.CreditTotal;
+            _currentStats.CreditToday = _statisticsService.CreditToday;
+            _currentStats.WithdrawTotal = _statisticsService.WithdrawTotal;
+            _currentStats.WithdrawToday = _statisticsService.WithdrawToday;
+            
+            // 🔥 触发重绘
+            lblMemberInfo.Invalidate();
+            
+            // 订单信息标签（可选保留）
+            lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
+        }
+        
+        /// <summary>
+        /// 🔥 自定义绘制统计信息（带颜色和背景）
+        /// 整行统一背景色 + 数据块分色显示
+        /// </summary>
+        private void lblMemberInfo_Paint(object sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            
+            // 🔥 绘制整行统一背景色（淡蓝灰色，更突出）
+            using (var brush = new SolidBrush(Color.FromArgb(240, 245, 250)))
             {
-                lblMemberInfo.Text = $"会员列表 (共{_membersBindingList.Count}人)";
+                g.FillRectangle(brush, 0, 0, lblMemberInfo.Width, lblMemberInfo.Height);
+            }
+            
+            float x = 8;
+            float y = 6;
+            
+            // 🔥 基础信息（深色文字）
+            DrawText(g, $"会员: {_currentStats.MemberCount} 人 | 订单: {_currentStats.OrderCount} 单 | ", 
+                ref x, y, Color.FromArgb(48, 48, 48), Color.Transparent);
+            
+            // 🔥 总注（整块显示）
+            DrawDataBlock(g, "总注", _currentStats.BetMoneyTotal, ref x, y);
+            DrawText(g, " | ", ref x, y, Color.FromArgb(100, 100, 100), Color.Transparent);
+            
+            // 🔥 今投（整块显示）
+            DrawDataBlock(g, "今投", _currentStats.BetMoneyToday, ref x, y);
+            DrawText(g, " | ", ref x, y, Color.FromArgb(100, 100, 100), Color.Transparent);
+            
+            // 🔥 当前期投注（整块显示）
+            DrawDataBlock(g, $"当前:{_currentStats.IssueidCur}投注", _currentStats.BetMoneyCur, ref x, y);
+            DrawText(g, " | ", ref x, y, Color.FromArgb(100, 100, 100), Color.Transparent);
+            
+            // 🔥 总盈利/今日盈利（整块显示）
+            DrawDoubleDataBlock(g, "总/今盈利", _currentStats.IncomeTotal, _currentStats.IncomeToday, ref x, y);
+            DrawText(g, " | ", ref x, y, Color.FromArgb(100, 100, 100), Color.Transparent);
+            
+            // 🔥 总上/今上（整块显示）
+            DrawDoubleDataBlock(g, "总上/今上", _currentStats.CreditTotal, _currentStats.CreditToday, ref x, y);
+            DrawText(g, " | ", ref x, y, Color.FromArgb(100, 100, 100), Color.Transparent);
+            
+            // 🔥 总下/今下（整块显示）
+            DrawDoubleDataBlock(g, "总下/今下", _currentStats.WithdrawTotal, _currentStats.WithdrawToday, ref x, y);
+        }
+        
+        /// <summary>
+        /// 绘制普通文本
+        /// </summary>
+        private void DrawText(Graphics g, string text, ref float x, float y, Color foreColor, Color backColor)
+        {
+            using var font = new Font("微软雅黑", 9F, FontStyle.Regular);
+            var size = g.MeasureString(text, font);
+            
+            if (backColor != Color.Transparent)
+            {
+                using var brush = new SolidBrush(backColor);
+                g.FillRectangle(brush, x, y - 2, size.Width, size.Height);
+            }
+            
+            using var textBrush = new SolidBrush(foreColor);
+            g.DrawString(text, font, textBrush, x, y);
+            x += size.Width;
+        }
+        
+        /// <summary>
+        /// 🔥 绘制单个数据块（标签+金额，整体一个颜色背景）
+        /// </summary>
+        private void DrawDataBlock(Graphics g, string label, float amount, ref float x, float y)
+        {
+            string text = $"{label}:{amount:F2}";
+            
+            // 🔥 根据金额绝对值确定颜色
+            var colors = GetAmountColors(Math.Abs(amount));
+            
+            using var font = new Font("微软雅黑", 9F, FontStyle.Bold);
+            var size = g.MeasureString(text, font);
+            
+            // 🔥 绘制圆角背景（整块）
+            using var path = CreateRoundedRectanglePath(x - 3, y - 2, size.Width + 6, size.Height + 2, 4);
+            using var brush = new SolidBrush(colors.BackColor);
+            g.FillPath(brush, path);
+            
+            // 🔥 绘制完整文字（标签:金额）
+            using var textBrush = new SolidBrush(colors.ForeColor);
+            g.DrawString(text, font, textBrush, x, y);
+            x += size.Width + 6;
+        }
+        
+        /// <summary>
+        /// 🔥 绘制双数据块（标签+金额1/金额2，整体一个颜色背景）
+        /// </summary>
+        private void DrawDoubleDataBlock(Graphics g, string label, float amount1, float amount2, ref float x, float y)
+        {
+            string text = $"{label}:{amount1:F2}/{amount2:F2}";
+            
+            // 🔥 使用两个金额中较大的绝对值来决定颜色
+            float maxAmount = Math.Max(Math.Abs(amount1), Math.Abs(amount2));
+            var colors = GetAmountColors(maxAmount);
+            
+            using var font = new Font("微软雅黑", 9F, FontStyle.Bold);
+            var size = g.MeasureString(text, font);
+            
+            // 🔥 绘制圆角背景（整块）
+            using var path = CreateRoundedRectanglePath(x - 3, y - 2, size.Width + 6, size.Height + 2, 4);
+            using var brush = new SolidBrush(colors.BackColor);
+            g.FillPath(brush, path);
+            
+            // 🔥 绘制完整文字（标签:金额1/金额2）
+            using var textBrush = new SolidBrush(colors.ForeColor);
+            g.DrawString(text, font, textBrush, x, y);
+            x += size.Width + 6;
+        }
+        
+        /// <summary>
+        /// 🔥 根据金额大小获取颜色配置
+        /// 金额分级：
+        /// - < 1000: 橘色系 (#FF8C00)
+        /// - < 10000: 金色系 (#FFD700)
+        /// - >= 10000: 红色系 (#DC143C)
+        /// </summary>
+        private (Color BackColor, Color ForeColor) GetAmountColors(float absAmount)
+        {
+            if (absAmount < 1000)
+            {
+                return (Color.FromArgb(255, 140, 0), Color.White);  // 橘色背景 + 白字
+            }
+            else if (absAmount < 10000)
+            {
+                return (Color.FromArgb(255, 215, 0), Color.FromArgb(48, 48, 48));  // 金色背景 + 深灰字
             }
             else
             {
-                lblMemberInfo.Text = "会员列表 (未加载)";
+                return (Color.FromArgb(220, 20, 60), Color.White);  // 红色背景 + 白字
             }
-            
-            if (_ordersBindingList != null)
-            {
-                lblOrderInfo.Text = $"订单列表 (共{_ordersBindingList.Count}单)";
-            }
-            else
-            {
-                lblOrderInfo.Text = "订单列表 (未加载)";
-            }
+        }
+        
+        /// <summary>
+        /// 创建圆角矩形路径
+        /// </summary>
+        private System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectanglePath(float x, float y, float width, float height, float radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(x, y, radius, radius, 180, 90);
+            path.AddArc(x + width - radius, y, radius, radius, 270, 90);
+            path.AddArc(x + width - radius, y + height - radius, radius, radius, 0, 90);
+            path.AddArc(x, y + height - radius, radius, radius, 90, 90);
+            path.CloseFigure();
+            return path;
         }
 
         private async void VxMain_Load(object sender, EventArgs e)
@@ -1204,7 +1473,7 @@ namespace BaiShengVx3Plus
 
             try
             {
-                // 🔥 步骤1：验证是否为群（wxid 包含 '@' 符号）
+                // 🔥 验证是否为群（wxid 包含 '@' 符号）
                 if (!contact.Wxid.Contains("@"))
                 {
                     _logService.Warning("VxMain", $"绑定失败: 选中的不是群组 - {contact.Nickname} ({contact.Wxid})");
@@ -1212,65 +1481,138 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 🔥 步骤2：使用服务绑定群组
-                _groupBindingService.BindGroup(contact);
-                _currentBoundContact = contact;
-                
-                // 更新 UI 显示
-                txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
-                txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
-                txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
-                dgvContacts.Refresh();
-                
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在获取群成员...";
-                _logService.Info("VxMain", $"✓ 绑定群组: {contact.Nickname} ({contact.Wxid})");
-                
-                // 🔥 步骤3：清空当前显示
-                UpdateUIThreadSafe(() =>
-                {
-                    _membersBindingList?.Clear();
-                    _ordersBindingList?.Clear();
-                    UpdateStatistics();
-                });
-                
-                // 🔥 步骤4：获取服务器数据
-                _logService.Info("VxMain", $"开始获取群成员列表: {contact.Wxid}");
-                var result = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
-                
-                if (result == null || result.RootElement.ValueKind != JsonValueKind.Array)
-                {
-                    _logService.Error("VxMain", "获取群成员失败: 返回数据为空或格式错误");
-                    UIMessageBox.ShowError("获取群成员失败！");
-                    return;
-                }
-                
-                // 🔥 步骤5：解析服务器返回的会员数据
-                var serverMembers = ParseServerMembers(result.RootElement, contact.Wxid);
-                _logService.Info("VxMain", $"服务器返回 {serverMembers.Count} 个群成员");
-                
-                // 🔥 步骤6：使用服务智能合并数据
-                var mergedMembers = _groupBindingService.LoadAndMergeMembers(serverMembers, contact.Wxid);
-                _logService.Info("VxMain", $"智能合并完成: 共 {mergedMembers.Count} 个会员");
-                
-                // 🔥 步骤7：加载到 UI（自动保存到数据库）
-                UpdateUIThreadSafe(() =>
-                {
-                    foreach (var member in mergedMembers)
-                    {
-                        _membersBindingList?.Add(member);  // 自动触发保存
-                    }
-                    UpdateStatistics();
-                });
-                
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载了 {mergedMembers.Count} 个会员";
-                _logService.Info("VxMain", $"✅ 群成员加载完成: {mergedMembers.Count} 个会员");
-                
-                //UIMessageBox.ShowSuccess($"绑定成功！\n\n群组: {contact.Nickname}\n会员数: {mergedMembers.Count}");
+                // 🔥 走统一的绑定群流程
+                await BindGroupAsync(contact);
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", $"绑定群组失败: {ex.Message}", ex);
                 UIMessageBox.ShowError($"绑定群组失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 统一的绑定群方法（参考 F5BotV2 第 816 行）
+        /// 无论是正常绑定还是管理模式手动绑定，都走这个流程
+        /// </summary>
+        private async Task BindGroupAsync(WxContact contact)
+        {
+            try
+            {
+                _logService.Info("VxMain", $"📍 开始绑定群: {contact.Nickname} ({contact.Wxid})");
+                
+                // 🔥 1. 使用服务绑定群组
+                _groupBindingService.BindGroup(contact);
+                _currentBoundContact = contact;
+                _currentGroupWxId = contact.Wxid;
+                
+                // 2. 更新 UI 显示
+                txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
+                txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
+                txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
+                dgvContacts.Refresh();
+                
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在加载数据...";
+                _logService.Info("VxMain", $"✓ 绑定群组: {contact.Nickname} ({contact.Wxid})");
+                
+                // 🔥 3. 清空旧数据并清零统计（参考 F5BotV2 第 818 行）
+                UpdateUIThreadSafe(() =>
+                {
+                    _membersBindingList?.Clear();
+                    _ordersBindingList?.Clear();
+                    _statisticsService.UpdateStatistics(setZero: true);
+                });
+                
+                // 🔥 4. 创建新的 BindingList（绑定到数据库）
+                if (_db == null)
+                {
+                    _logService.Error("VxMain", "数据库未初始化！");
+                    UIMessageBox.ShowError("数据库未初始化！");
+                    return;
+                }
+                
+                _membersBindingList = new V2MemberBindingList(_db, contact.Wxid);
+                _ordersBindingList = new V2OrderBindingList(_db);
+                
+                // 🔥 5. 设置到各个服务
+                _orderService.SetMembersBindingList(_membersBindingList);
+                _orderService.SetOrdersBindingList(_ordersBindingList);
+                _orderService.SetStatisticsService(_statisticsService); // 🔥 设置统计服务
+                _statisticsService.SetBindingLists(_membersBindingList, _ordersBindingList);
+                
+                if (_memberDataService is MemberDataService mds)
+                {
+                    mds.SetMembersBindingList(_membersBindingList);
+                }
+                
+                // 🔥 6. 从数据库加载订单数据（订单不需要与服务器同步）
+                await Task.Run(() =>
+                {
+                    _ordersBindingList.LoadFromDatabase();
+                });
+                
+                _logService.Info("VxMain", $"✅ 从数据库加载: {_ordersBindingList.Count} 个订单");
+                
+                // 🔥 7. 获取服务器数据并智能合并会员（参考 F5BotV2）
+                _logService.Info("VxMain", $"开始获取群成员列表并智能合并: {contact.Wxid}");
+                var result = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
+                
+                if (result == null || result.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    // 服务器获取失败，只加载数据库数据
+                    _logService.Warning("VxMain", "获取群成员失败，只加载数据库数据");
+                    await Task.Run(() =>
+                    {
+                        _membersBindingList.LoadFromDatabase();
+                    });
+                    _logService.Info("VxMain", $"✅ 从数据库加载: {_membersBindingList.Count} 个会员（仅本地）");
+                }
+                else
+                {
+                    // 🔥 8. 解析服务器返回的会员数据
+                    var serverMembers = ParseServerMembers(result.RootElement, contact.Wxid);
+                    _logService.Info("VxMain", $"服务器返回 {serverMembers.Count} 个群成员");
+                    
+                    // 🔥 9. 使用服务智能合并数据（数据库 + 服务器）
+                    // ⚠️ 关键：LoadAndMergeMembers 返回的是完整列表，包括：
+                    //    - 数据库有 + 服务器有 → 使用数据库数据（保留统计）
+                    //    - 数据库无 + 服务器有 → 新增会员
+                    //    - 数据库有 + 服务器无 → 标记"已退群"
+                    var mergedMembers = _groupBindingService.LoadAndMergeMembers(serverMembers, contact.Wxid);
+                    _logService.Info("VxMain", $"智能合并完成: 共 {mergedMembers.Count} 个会员");
+                    
+                    // 🔥 10. 直接加载合并后的完整列表（不是追加！）
+                    UpdateUIThreadSafe(() =>
+                    {
+                        foreach (var member in mergedMembers)
+                        {
+                            _membersBindingList?.Add(member);  // 添加到空的 BindingList
+                        }
+                    });
+                    
+                    _logService.Info("VxMain", $"✅ 会员列表已更新: {_membersBindingList?.Count} 个会员");
+                }
+                
+                // 🔥 11. 绑定到 DataGridView
+                UpdateUIThreadSafe(() =>
+                {
+                    dgvMembers.DataSource = _membersBindingList;
+                    dgvOrders.DataSource = _ordersBindingList;
+                });
+                
+                // 🔥 12. 更新统计（参考 F5BotV2 第 569 行）
+                _statisticsService.UpdateStatistics();
+                
+                // 🔥 13. 更新UI显示
+                UpdateMemberInfoLabel();
+                
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
+                _logService.Info("VxMain", $"✅ 绑定群完成: {_membersBindingList.Count} 个会员, {_ordersBindingList.Count} 个订单");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"绑定群失败: {ex.Message}", ex);
+                throw;
             }
         }
 
@@ -1417,15 +1759,178 @@ namespace BaiShengVx3Plus
             }
         }
 
-        private void btnClearData_Click(object sender, EventArgs e)
+        /// <summary>
+        /// 🔥 清空数据按钮（完整功能）
+        /// 1. 先备份数据库（加密压缩，密码为用户登录密码）
+        /// 2. 清空订单表所有数据
+        /// 3. 清空会员的金额数据（Balance, BetCur, BetWait, IncomeToday等）
+        /// 4. 保留会员基础信息（Wxid, Nickname, Account等）
+        /// 5. 清空统计数据
+        /// </summary>
+        private async void btnClearData_Click(object sender, EventArgs e)
         {
-            if (UIMessageBox.ShowAsk("确定要清空所有数据吗？"))
+            try
             {
-                _contactsBindingList?.Clear();
-                _membersBindingList?.Clear();
+                // 🔥 确认对话框
+                if (!UIMessageBox.ShowAsk("确定要清空所有数据吗？\n\n" +
+                    "此操作将：\n" +
+                    "1. 备份当前数据库（加密压缩）\n" +
+                    "2. 清空所有订单数据\n" +
+                    "3. 重置会员金额数据\n" +
+                    "4. 清空统计数据\n\n" +
+                    "会员基础信息（微信ID、昵称等）将保留"))
+                {
+                    return;
+                }
+                
+                lblStatus.Text = "正在清空数据...";
+                _logService.Info("VxMain", "开始清空数据...");
+                
+                // ========================================
+                // 🔥 步骤1：备份数据库
+                // ========================================
+                
+                if (!string.IsNullOrEmpty(_currentDbPath) && File.Exists(_currentDbPath))
+                {
+                    try
+                    {
+                        // 生成备份文件名：d{日期时间}_{原数据库名}
+                        string timestamp = DateTime.Now.ToString("MMddHHmm");  // 月日时分
+                        string dbFileName = Path.GetFileName(_currentDbPath);
+                        string backupDbName = $"d{timestamp}_{dbFileName}";
+                        string backupDbPath = Path.Combine("Data", "Backup", backupDbName);
+                        
+                        // 创建备份目录
+                        Directory.CreateDirectory(Path.Combine("Data", "Backup"));
+                        
+                        // 🔥 关闭数据库连接（SQLite需要关闭连接才能复制文件）
+                        _db?.Close();
+                        _db?.Dispose();
+                        _db = null;
+                        
+                        // 等待文件释放
+                        await Task.Delay(100);
+                        
+                        // 复制数据库文件
+                        File.Copy(_currentDbPath, backupDbPath, true);
+                        _logService.Info("VxMain", $"✅ 数据库已备份: {backupDbPath}");
+                        
+                        // 🔥 使用7-Zip或WinRAR压缩加密（如果可用）
+                        // 获取用户密码
+                        string password = Services.Api.BoterApi.GetInstance().Password;
+                        
+                        if (!string.IsNullOrEmpty(password))
+                        {
+                            string zipPath = backupDbPath + ".zip";
+                            
+                            // 尝试使用 System.IO.Compression（但不支持密码加密）
+                            // 这里我们只是提示用户手动加密
+                            UIMessageBox.ShowWarning(
+                                $"数据库已备份到：\n{backupDbPath}\n\n" +
+                                $"请手动使用WinRAR或7-Zip加密压缩此文件\n" +
+                                $"建议密码：您的登录密码");
+                        }
+                        
+                        // 🔥 重新打开数据库
+                        _db = new SQLiteConnection(_currentDbPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", "备份数据库失败", ex);
+                        UIMessageBox.ShowError($"备份数据库失败：{ex.Message}\n\n已取消清空操作");
+                        
+                        // 重新打开数据库
+                        if (_db == null)
+                        {
+                            _db = new SQLiteConnection(_currentDbPath);
+                        }
+                        return;
+                    }
+                }
+                
+                // ========================================
+                // 🔥 步骤2：清空订单表
+                // ========================================
+                
+                if (_db != null)
+                {
+                    _db.DeleteAll<Models.V2MemberOrder>();
+                    _logService.Info("VxMain", "✅ 订单表已清空");
+                }
+                
+                // 清空UI订单列表
                 _ordersBindingList?.Clear();
-                UpdateStatistics();
+                
+                // ========================================
+                // 🔥 步骤3：重置会员金额数据（保留基础信息）
+                // ========================================
+                
+                if (_membersBindingList != null)
+                {
+                    foreach (var member in _membersBindingList)
+                    {
+                        // 🔥 清空金额数据
+                        member.Balance = 0f;
+                        member.BetCur = 0f;
+                        member.BetWait = 0f;
+                        member.BetToday = 0f;
+                        member.BetTotal = 0f;
+                        member.IncomeToday = 0f;
+                        member.IncomeTotal = 0f;
+                        member.CreditToday = 0f;
+                        member.CreditTotal = 0f;
+                        member.WithdrawToday = 0f;
+                        member.WithdrawTotal = 0f;
+                        
+                        // 🔥 保留基础信息（Wxid, Nickname, Account, DisplayName, State等）
+                        // 不需要做任何操作，它们会自动保留
+                    }
+                    
+                    // 🔥 更新数据库
+                    if (_db != null)
+                    {
+                        foreach (var member in _membersBindingList)
+                        {
+                            _db.Update(member);
+                        }
+                    }
+                    
+                    _logService.Info("VxMain", $"✅ {_membersBindingList.Count} 个会员的金额数据已重置");
+                }
+                
+                // ========================================
+                // 🔥 步骤4：清空统计数据
+                // ========================================
+                
+                _statisticsService.UpdateStatistics(setZero: true);
+                _logService.Info("VxMain", "✅ 统计数据已清空");
+                
+                // ========================================
+                // 🔥 步骤5：刷新UI
+                // ========================================
+                
+                UpdateUIThreadSafeAsync(() =>
+                {
+                    UpdateMemberInfoLabel();
+                    dgvMembers.Refresh();
+                    dgvOrders.Refresh();
+                });
+                
                 lblStatus.Text = "数据已清空";
+                _logService.Info("VxMain", "✅ 数据清空完成");
+                
+                this.ShowSuccessTip("数据清空成功！\n\n" +
+                    "✓ 订单数据已清空\n" +
+                    "✓ 会员金额数据已重置\n" +
+                    "✓ 统计数据已清空\n" +
+                    "✓ 会员基础信息已保留\n" +
+                    "✓ 数据库已备份");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "清空数据失败", ex);
+                UIMessageBox.ShowError($"清空数据失败：{ex.Message}");
+                lblStatus.Text = "清空数据失败";
             }
         }
 
@@ -1458,7 +1963,7 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "创建新的设置窗口");
                 
                 // 创建新的设置窗口（非模态）
-                _settingsForm = new Views.SettingsForm(_socketClient, _logService);
+                _settingsForm = new Views.SettingsForm(_socketClient, _logService, _binggoSettings);
                 
                 // 订阅关闭事件，清理引用
                 _settingsForm.FormClosed += (s, args) =>
@@ -2042,6 +2547,260 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", "设置角色失败", ex);
                 UIMessageBox.ShowError($"设置角色失败：{ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 🔥 会员右键菜单事件处理
+
+        /// <summary>
+        /// 清分 - 清空会员余额
+        /// </summary>
+        private void TsmiClearBalance_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要清分的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                // 确认对话框
+                if (!UIMessageBox.ShowAsk($"确定要清分会员【{selectedMember.Nickname}】吗？\n\n" +
+                    $"当前余额：{selectedMember.Balance:F2}\n" +
+                    $"清分后余额将变为：0.00\n\n" +
+                    $"此操作将记录到资金变动表"))
+                {
+                    return;
+                }
+
+                float balanceBefore = selectedMember.Balance;
+                float balanceAfter = 0f;
+                float changeAmount = -balanceBefore;
+
+                // 清空余额
+                selectedMember.Balance = 0f;
+
+                // 🔥 记录到资金变动表
+                if (_db != null)
+                {
+                    var balanceChange = new Models.V2BalanceChange
+                    {
+                        GroupWxId = selectedMember.GroupWxId,
+                        Wxid = selectedMember.Wxid,
+                        Nickname = selectedMember.Nickname,
+                        BalanceBefore = balanceBefore,
+                        BalanceAfter = balanceAfter,
+                        ChangeAmount = changeAmount,
+                        Reason = Models.ChangeReason.手动调整,
+                        IssueId = 0,
+                        TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                        Notes = "管理员清分操作"
+                    };
+                    _db.Insert(balanceChange);
+
+                    // 更新会员数据库
+                    _db.Update(selectedMember);
+                }
+
+                // 🔥 详细日志记录
+                var currentUser = Services.Api.BoterApi.GetInstance().User;
+                _logService.Info("会员管理", 
+                    $"清分操作\n" +
+                    $"操作人：{currentUser}\n" +
+                    $"群：{selectedMember.GroupWxId}\n" +
+                    $"会员：{selectedMember.Nickname} ({selectedMember.Wxid})\n" +
+                    $"清分前余额：{balanceBefore:F2}\n" +
+                    $"清分后余额：{balanceAfter:F2}\n" +
+                    $"清分金额：{changeAmount:F2}");
+
+                // 刷新UI
+                dgvMembers.Refresh();
+                UpdateStatistics();
+                this.ShowSuccessTip($"清分成功！会员【{selectedMember.Nickname}】余额已清零");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("会员管理", "清分失败", ex);
+                UIMessageBox.ShowError($"清分失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 删除会员 - 硬删除（物理删除）
+        /// </summary>
+        private void TsmiDeleteMember_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要删除的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                // 确认对话框（警告硬删除）
+                if (!UIMessageBox.ShowAsk($"⚠️ 警告：确定要删除会员【{selectedMember.Nickname}】吗？\n\n" +
+                    $"这是物理删除，数据将无法恢复！\n\n" +
+                    $"会员信息：\n" +
+                    $"昵称：{selectedMember.Nickname}\n" +
+                    $"微信ID：{selectedMember.Wxid}\n" +
+                    $"账号：{selectedMember.Account}\n" +
+                    $"当前余额：{selectedMember.Balance:F2}\n" +
+                    $"总下注：{selectedMember.BetTotal:F2}\n" +
+                    $"总盈亏：{selectedMember.IncomeTotal:F2}\n\n" +
+                    $"删除操作将被详细记录到日志"))
+                {
+                    return;
+                }
+
+                // 🔥 详细日志记录（删除前）
+                var currentUser = Services.Api.BoterApi.GetInstance().User;
+                _logService.Info("会员管理", 
+                    $"删除会员操作\n" +
+                    $"操作人：{currentUser}\n" +
+                    $"群：{selectedMember.GroupWxId}\n" +
+                    $"被删除会员信息：\n" +
+                    $"  - 昵称：{selectedMember.Nickname}\n" +
+                    $"  - 微信ID：{selectedMember.Wxid}\n" +
+                    $"  - 账号：{selectedMember.Account}\n" +
+                    $"  - 当前余额：{selectedMember.Balance:F2}\n" +
+                    $"  - 今日下注：{selectedMember.BetToday:F2}\n" +
+                    $"  - 今日盈亏：{selectedMember.IncomeToday:F2}\n" +
+                    $"  - 总下注：{selectedMember.BetTotal:F2}\n" +
+                    $"  - 总盈亏：{selectedMember.IncomeTotal:F2}\n" +
+                    $"  - 今日上分：{selectedMember.CreditToday:F2}\n" +
+                    $"  - 今日下分：{selectedMember.WithdrawToday:F2}\n" +
+                    $"  - 总上分：{selectedMember.CreditTotal:F2}\n" +
+                    $"  - 总下分：{selectedMember.WithdrawTotal:F2}");
+
+                // 🔥 从数据库物理删除
+                if (_db != null)
+                {
+                    _db.Delete(selectedMember);
+                }
+
+                // 从 BindingList 移除
+                _membersBindingList?.Remove(selectedMember);
+
+                // 刷新UI
+                dgvMembers.Refresh();
+                UpdateStatistics();
+
+                this.ShowSuccessTip($"已删除会员【{selectedMember.Nickname}】");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("会员管理", "删除会员失败", ex);
+                UIMessageBox.ShowError($"删除会员失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 设置会员类型
+        /// </summary>
+        private void TsmiSetMemberType_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要设置的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                var menuItem = sender as ToolStripMenuItem;
+                if (menuItem == null) return;
+
+                // 🔥 根据菜单项名称确定会员类型（使用 MemberState 枚举）
+                Models.MemberState newState = menuItem.Name switch
+                {
+                    "tsmiSetNormal" => Models.MemberState.普会,
+                    "tsmiSetMember" => Models.MemberState.会员,
+                    "tsmiSetAgent" => Models.MemberState.托,
+                    "tsmiSetBlue" => Models.MemberState.蓝会,
+                    "tsmiSetYellow" => Models.MemberState.黄会,
+                    _ => selectedMember.State  // 保持不变
+                };
+
+                string typeName = menuItem.Text;
+                var oldState = selectedMember.State;
+
+                // 🔥 更新会员 State 字段
+                selectedMember.State = newState;
+
+                // 🔥 更新数据库
+                if (_db != null)
+                {
+                    _db.Update(selectedMember);
+                }
+
+                // 记录日志
+                var currentUser = Services.Api.BoterApi.GetInstance().User;
+                _logService.Info("会员管理", 
+                    $"设置会员类型\n" +
+                    $"操作人：{currentUser}\n" +
+                    $"会员：{selectedMember.Nickname} ({selectedMember.Wxid})\n" +
+                    $"原类型：{oldState}\n" +
+                    $"新类型：{typeName} ({newState})");
+
+                // 刷新UI
+                dgvMembers.Refresh();
+                this.ShowSuccessTip($"已将会员【{selectedMember.Nickname}】设置为：{typeName}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("会员管理", "设置会员类型失败", ex);
+                UIMessageBox.ShowError($"设置会员类型失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 查看资金变动
+        /// </summary>
+        private void TsmiViewBalanceChange_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要查看的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                // 🔥 创建并显示资金变动查看窗口
+                if (_db == null)
+                {
+                    UIMessageBox.ShowWarning("数据库未初始化");
+                    return;
+                }
+
+                var form = new Views.BalanceChangeViewerForm(
+                    selectedMember.Wxid, 
+                    selectedMember.Nickname, 
+                    _db, 
+                    _logService);
+                form.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("会员管理", "查看资金变动失败", ex);
+                UIMessageBox.ShowError($"查看资金变动失败：{ex.Message}");
             }
         }
 

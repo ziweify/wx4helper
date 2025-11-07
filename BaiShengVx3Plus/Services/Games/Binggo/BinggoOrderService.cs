@@ -28,6 +28,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private readonly IBinggoLotteryService _lotteryService;
         private readonly BinggoOrderValidator _validator;
         private readonly BinggoGameSettings _settings;
+        private BinggoStatisticsService? _statisticsService; // 🔥 统计服务（可选，通过 SetStatisticsService 设置）
         private SQLiteConnection? _db;
         private V2OrderBindingList? _ordersBindingList;
         private V2MemberBindingList? _membersBindingList;
@@ -42,6 +43,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             _lotteryService = lotteryService;
             _validator = validator;
             _settings = settings;
+        }
+        
+        /// <summary>
+        /// 设置统计服务
+        /// </summary>
+        public void SetStatisticsService(BinggoStatisticsService? statisticsService)
+        {
+            _statisticsService = statisticsService;
         }
         
         /// <summary>
@@ -161,13 +170,23 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"📊 统计更新: {member.Nickname} - 待结算 {member.BetWait:F2} - 今日下注 {member.BetToday:F2}");
                 
-                // 6. 保存订单（通过 BindingList 自动保存）
-                _ordersBindingList?.Add(order);
+                // 6. 保存订单（插入到列表顶部，保持"最新在上"）
+                if (_ordersBindingList != null && _ordersBindingList.Count > 0)
+                {
+                    _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                }
+                else
+                {
+                    _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
+                }
                 
                 _logService.Info("BinggoOrderService", 
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
                 
-                // 6. 生成回复消息（🔥 完全参考 F5BotV2 格式）
+                // 🔥 7. 更新统计（参考 F5BotV2 第 569 行）
+                _statisticsService?.UpdateStatistics();
+                
+                // 8. 生成回复消息（🔥 完全参考 F5BotV2 格式）
                 // 格式：@昵称\r已进仓{注数}\r{投注内容}|扣:{金额}|留:{余额}
                 string replyMessage = $"@{member.Nickname}\r已进仓{order.Nums}\r{betContent.ToReplyString()}|扣:{(int)order.AmountTotal}|留:{(int)member.Balance}";
                 
@@ -226,8 +245,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 4. 立即结算
                 await SettleSingleOrderAsync(order, lotteryData);
                 
-                // 5. 保存订单
-                _ordersBindingList?.Add(order);
+                // 5. 保存订单（插入到列表顶部，保持"最新在上"）
+                if (_ordersBindingList != null && _ordersBindingList.Count > 0)
+                {
+                    _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                }
+                else
+                {
+                    _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
+                }
                 
                 _logService.Info("BinggoOrderService", 
                     $"✅ 补单成功: {member.Nickname} - {betContent} - {amount:F2}元 - 盈利: {order.Profit:F2}");
@@ -292,6 +318,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 _logService.Info("BinggoOrderService", 
                     $"✅ 结算完成: 期号 {issueId}，共 {settledCount} 单，总盈利: {totalProfit:F2}");
+                
+                // 🔥 4. 更新统计（参考 F5BotV2 第 635 行）
+                _statisticsService?.UpdateStatistics();
                 
                 string summary = $"期号: {issueId}\n" +
                                $"订单数: {settledCount}\n" +

@@ -2,6 +2,7 @@ using Sunny.UI;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Models.Games.Binggo;
 
 namespace BaiShengVx3Plus.Views
 {
@@ -12,12 +13,17 @@ namespace BaiShengVx3Plus.Views
     {
         private readonly IWeixinSocketClient _socketClient;
         private readonly ILogService _logService;
+        private readonly BinggoGameSettings _binggoSettings; // 🔥 游戏设置
 
-        public SettingsForm(IWeixinSocketClient socketClient, ILogService logService)
+        public SettingsForm(
+            IWeixinSocketClient socketClient, 
+            ILogService logService,
+            BinggoGameSettings binggoSettings) // 🔥 注入游戏设置
         {
             InitializeComponent();
             _socketClient = socketClient;
             _logService = logService;
+            _binggoSettings = binggoSettings;
             
             // 加载设置
             LoadSettings();
@@ -25,19 +31,40 @@ namespace BaiShengVx3Plus.Views
 
         private void LoadSettings()
         {
-            // 从配置文件或默认值加载设置
+            // Socket 连接设置
             txtHost.Text = "127.0.0.1";
             txtPort.Text = "6328";
             txtReconnectInterval.Text = "5000";
             
+            // 🔥 游戏设置（参考 F5BotV2）
+            LoadGameSettings();
+            
             // 更新连接状态
             UpdateConnectionStatus();
+        }
+        
+        /// <summary>
+        /// 加载游戏设置到 UI
+        /// 🔥 只加载管理模式（其他游戏设置在快速设置面板）
+        /// </summary>
+        private void LoadGameSettings()
+        {
+            // 🔥 管理模式（系统设置）
+            if (chkAdminModeSettings != null)
+            {
+                chkAdminModeSettings.Checked = _binggoSettings.IsAdminMode;
+            }
+            
+            _logService.Info("SettingsForm", "✅ 系统设置已加载");
         }
 
         private void SaveSettings()
         {
             try
             {
+                // 保存游戏设置
+                SaveGameSettings();
+                
                 // TODO: 保存到配置文件
                 _logService.Info("SettingsForm", $"设置已保存: Host={txtHost.Text}, Port={txtPort.Text}");
                 UIMessageBox.ShowSuccess("设置已保存！");
@@ -47,6 +74,22 @@ namespace BaiShengVx3Plus.Views
                 _logService.Error("SettingsForm", "保存设置失败", ex);
                 UIMessageBox.ShowError($"保存失败:\n{ex.Message}");
             }
+        }
+        
+        /// <summary>
+        /// 保存游戏设置
+        /// 🔥 只保存管理模式（其他游戏设置在快速设置面板）
+        /// </summary>
+        private void SaveGameSettings()
+        {
+            // 🔥 管理模式（系统设置）
+            if (chkAdminModeSettings != null)
+            {
+                _binggoSettings.IsAdminMode = chkAdminModeSettings.Checked;
+            }
+            
+            _logService.Info("SettingsForm", 
+                $"✅ 系统设置已保存: 管理模式={_binggoSettings.IsAdminMode}");
         }
 
         private void UpdateConnectionStatus()
