@@ -59,6 +59,7 @@ namespace BaiShengVx3Plus
             txtAutoBetPassword = new Sunny.UI.UITextBox();
             chkAutoBet = new Sunny.UI.UICheckBox();
             btnStartBrowser = new Sunny.UI.UIButton();
+            btnConfigManager = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
             tsmiClearBalance = new ToolStripMenuItem();
             tsmiDeleteMember = new ToolStripMenuItem();
@@ -128,15 +129,15 @@ namespace BaiShengVx3Plus
             // 
             ucBinggoDataCur.BackColor = Color.FromArgb(243, 249, 255);
             ucBinggoDataCur.BorderStyle = BorderStyle.FixedSingle;
-            ucBinggoDataCur.Location = new Point(0, -27);
+            ucBinggoDataCur.Location = new Point(0, 5);
             ucBinggoDataCur.Name = "ucBinggoDataCur";
-            ucBinggoDataCur.Size = new Size(239, 88);
+            ucBinggoDataCur.Size = new Size(239, 85);
             ucBinggoDataCur.TabIndex = 0;
             // 
             // ucBinggoDataLast
             // 
             ucBinggoDataLast.BackColor = Color.FromArgb(255, 248, 225);
-            ucBinggoDataLast.Location = new Point(0, 64);
+            ucBinggoDataLast.Location = new Point(3, 89);
             ucBinggoDataLast.Name = "ucBinggoDataLast";
             ucBinggoDataLast.Size = new Size(239, 107);
             ucBinggoDataLast.TabIndex = 1;
@@ -309,6 +310,7 @@ namespace BaiShengVx3Plus
             // chkAutoBet
             // 
             chkAutoBet.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
+            chkAutoBet.ForeColor = Color.FromArgb(48, 48, 48);
             chkAutoBet.Location = new Point(5, 245);
             chkAutoBet.MinimumSize = new Size(1, 1);
             chkAutoBet.Name = "chkAutoBet";
@@ -323,11 +325,23 @@ namespace BaiShengVx3Plus
             btnStartBrowser.Location = new Point(5, 275);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
-            btnStartBrowser.Size = new Size(225, 30);
+            btnStartBrowser.Size = new Size(110, 30);
             btnStartBrowser.TabIndex = 14;
             btnStartBrowser.Text = "启动浏览器";
             btnStartBrowser.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnStartBrowser.Click += btnStartBrowser_Click;
+            // 
+            // btnConfigManager
+            // 
+            btnConfigManager.Font = new Font("微软雅黑", 9F);
+            btnConfigManager.Location = new Point(120, 275);
+            btnConfigManager.MinimumSize = new Size(1, 1);
+            btnConfigManager.Name = "btnConfigManager";
+            btnConfigManager.Size = new Size(110, 30);
+            btnConfigManager.TabIndex = 15;
+            btnConfigManager.Text = "配置管理";
+            btnConfigManager.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnConfigManager.Click += btnConfigManager_Click;
             // 
             // cmsMembers
             // 
@@ -421,7 +435,7 @@ namespace BaiShengVx3Plus
             // splitContainerMain.Panel2
             // 
             splitContainerMain.Panel2.Controls.Add(pnlRight);
-            splitContainerMain.Size = new Size(1200, 668);
+            splitContainerMain.Size = new Size(1200, 688);
             splitContainerMain.SplitterDistance = 244;
             splitContainerMain.SplitterWidth = 5;
             splitContainerMain.TabIndex = 0;
@@ -438,7 +452,7 @@ namespace BaiShengVx3Plus
             pnlLeft.Margin = new Padding(4, 5, 4, 5);
             pnlLeft.MinimumSize = new Size(1, 1);
             pnlLeft.Name = "pnlLeft";
-            pnlLeft.Size = new Size(244, 668);
+            pnlLeft.Size = new Size(244, 688);
             pnlLeft.TabIndex = 0;
             pnlLeft.Text = null;
             pnlLeft.TextAlignment = ContentAlignment.MiddleCenter;
@@ -460,12 +474,13 @@ namespace BaiShengVx3Plus
             pnl_fastsetting.Controls.Add(txtAutoBetPassword);
             pnl_fastsetting.Controls.Add(chkAutoBet);
             pnl_fastsetting.Controls.Add(btnStartBrowser);
+            pnl_fastsetting.Controls.Add(btnConfigManager);
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            pnl_fastsetting.Location = new Point(4, 425);
+            pnl_fastsetting.Location = new Point(5, 378);
             pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
-            pnl_fastsetting.Size = new Size(237, 400);
+            pnl_fastsetting.Size = new Size(237, 305);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
@@ -475,11 +490,11 @@ namespace BaiShengVx3Plus
             pnl_opendata.Controls.Add(ucBinggoDataLast);
             pnl_opendata.Controls.Add(ucBinggoDataCur);
             pnl_opendata.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            pnl_opendata.Location = new Point(3, 246);
+            pnl_opendata.Location = new Point(3, 174);
             pnl_opendata.Margin = new Padding(4, 5, 4, 5);
             pnl_opendata.MinimumSize = new Size(1, 1);
             pnl_opendata.Name = "pnl_opendata";
-            pnl_opendata.Size = new Size(239, 233);
+            pnl_opendata.Size = new Size(239, 199);
             pnl_opendata.TabIndex = 2;
             pnl_opendata.Text = null;
             pnl_opendata.TextAlignment = ContentAlignment.MiddleCenter;
@@ -528,7 +543,7 @@ namespace BaiShengVx3Plus
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvContacts.Size = new Size(244, 171);
+            dgvContacts.Size = new Size(244, 147);
             dgvContacts.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;
@@ -606,7 +621,7 @@ namespace BaiShengVx3Plus
             pnlRight.Margin = new Padding(4, 5, 4, 5);
             pnlRight.MinimumSize = new Size(1, 1);
             pnlRight.Name = "pnlRight";
-            pnlRight.Size = new Size(951, 668);
+            pnlRight.Size = new Size(951, 688);
             pnlRight.TabIndex = 0;
             pnlRight.Text = null;
             pnlRight.TextAlignment = ContentAlignment.MiddleCenter;
@@ -627,8 +642,8 @@ namespace BaiShengVx3Plus
             // splitContainerRight.Panel2
             // 
             splitContainerRight.Panel2.Controls.Add(pnlOrders);
-            splitContainerRight.Size = new Size(951, 668);
-            splitContainerRight.SplitterDistance = 312;
+            splitContainerRight.Size = new Size(951, 688);
+            splitContainerRight.SplitterDistance = 321;
             splitContainerRight.SplitterWidth = 5;
             splitContainerRight.TabIndex = 0;
             // 
@@ -642,7 +657,7 @@ namespace BaiShengVx3Plus
             pnlMembers.Margin = new Padding(4, 5, 4, 5);
             pnlMembers.MinimumSize = new Size(1, 1);
             pnlMembers.Name = "pnlMembers";
-            pnlMembers.Size = new Size(951, 312);
+            pnlMembers.Size = new Size(951, 321);
             pnlMembers.TabIndex = 0;
             pnlMembers.Text = null;
             pnlMembers.TextAlignment = ContentAlignment.MiddleCenter;
@@ -691,7 +706,7 @@ namespace BaiShengVx3Plus
             dgvMembers.RowTemplate.Height = 29;
             dgvMembers.SelectedIndex = -1;
             dgvMembers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvMembers.Size = new Size(951, 282);
+            dgvMembers.Size = new Size(951, 291);
             dgvMembers.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvMembers.TabIndex = 1;
             dgvMembers.SelectionChanged += dgvMembers_SelectionChanged;
@@ -733,7 +748,7 @@ namespace BaiShengVx3Plus
             pnlOrders.Margin = new Padding(4, 5, 4, 5);
             pnlOrders.MinimumSize = new Size(1, 1);
             pnlOrders.Name = "pnlOrders";
-            pnlOrders.Size = new Size(951, 351);
+            pnlOrders.Size = new Size(951, 362);
             pnlOrders.TabIndex = 0;
             pnlOrders.Text = null;
             pnlOrders.TextAlignment = ContentAlignment.MiddleCenter;
@@ -781,7 +796,7 @@ namespace BaiShengVx3Plus
             dgvOrders.RowTemplate.Height = 29;
             dgvOrders.SelectedIndex = -1;
             dgvOrders.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvOrders.Size = new Size(951, 321);
+            dgvOrders.Size = new Size(951, 332);
             dgvOrders.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvOrders.TabIndex = 1;
             // 
@@ -932,7 +947,7 @@ namespace BaiShengVx3Plus
             statusStrip.Font = new Font("微软雅黑", 10F);
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { lblStatus });
-            statusStrip.Location = new Point(0, 763);
+            statusStrip.Location = new Point(0, 783);
             statusStrip.Name = "statusStrip";
             statusStrip.Size = new Size(1200, 25);
             statusStrip.TabIndex = 2;
@@ -946,7 +961,7 @@ namespace BaiShengVx3Plus
             // VxMain
             // 
             AutoScaleMode = AutoScaleMode.None;
-            ClientSize = new Size(1200, 788);
+            ClientSize = new Size(1200, 808);
             Controls.Add(splitContainerMain);
             Controls.Add(pnlTopButtons);
             Controls.Add(statusStrip);
@@ -1044,5 +1059,6 @@ namespace BaiShengVx3Plus
         private Sunny.UI.UITextBox txtAutoBetPassword;
         private Sunny.UI.UICheckBox chkAutoBet;
         private Sunny.UI.UIButton btnStartBrowser;
+        private Sunny.UI.UIButton btnConfigManager;
     }
 }

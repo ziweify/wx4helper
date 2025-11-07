@@ -3088,6 +3088,26 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
+        /// 打开配置管理器
+        /// </summary>
+        private void btnConfigManager_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var form = new Views.AutoBet.BetConfigManagerForm(_autoBetService, _logService);
+                form.ShowDialog(this);
+                
+                // 刷新默认配置（可能在配置管理器中被修改）
+                LoadAutoBetSettings();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开配置管理器失败", ex);
+                Sunny.UI.UIMessageBox.Show($"打开失败: {ex.Message}", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+            }
+        }
+
+        /// <summary>
         /// 手动启动浏览器按钮
         /// </summary>
         private async void btnStartBrowser_Click(object? sender, EventArgs e)

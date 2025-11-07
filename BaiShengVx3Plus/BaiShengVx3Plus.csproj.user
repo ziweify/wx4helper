@@ -7,6 +7,9 @@
     <Compile Update="UserControls\UcBinggoDataLast.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Views\AutoBet\BetConfigManagerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\BalanceChangeViewerForm.cs">
       <SubType>Form</SubType>
     </Compile>
