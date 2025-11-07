@@ -37,6 +37,8 @@ namespace BaiShengVx3Plus
         private readonly BinggoStatisticsService _statisticsService; // 🔥 统计服务
         private readonly BinggoMessageHandler _binggoMessageHandler;
         private readonly BinggoGameSettings _binggoSettings;
+        private readonly Services.AutoBet.AutoBetService _autoBetService; // 🤖 自动投注服务
+        private readonly Services.AutoBet.AutoBetCoordinator _autoBetCoordinator; // 🤖 自动投注协调器
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
@@ -113,7 +115,9 @@ namespace BaiShengVx3Plus
             IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
             BinggoStatisticsService statisticsService, // 🔥 注入统计服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
-            BinggoGameSettings binggoSettings) // 🎮 注入炳狗游戏配置
+            BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
+            Services.AutoBet.AutoBetService autoBetService, // 🤖 注入自动投注服务
+            Services.AutoBet.AutoBetCoordinator autoBetCoordinator) // 🤖 注入自动投注协调器
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -130,6 +134,8 @@ namespace BaiShengVx3Plus
             _statisticsService = statisticsService; // 🔥 统计服务
             _binggoMessageHandler = binggoMessageHandler;
             _binggoSettings = binggoSettings;
+            _autoBetService = autoBetService; // 🤖 自动投注服务
+            _autoBetCoordinator = autoBetCoordinator; // 🤖 自动投注协调器
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -163,6 +169,7 @@ namespace BaiShengVx3Plus
             InitializeDatabase("default");
 
             InitializeDataBindings();
+            InitializeAutoBetUIEvents();  // 🤖 绑定自动投注事件
         }
 
         /// <summary>
@@ -263,6 +270,7 @@ namespace BaiShengVx3Plus
                 _lotteryService.SetDatabase(_db);
                 _orderService.SetDatabase(_db);
                 _binggoMessageHandler.SetDatabase(_db);  // 🔥 设置消息处理器的数据库（用于上下分申请）
+                _autoBetService.SetDatabase(_db);  // 🤖 设置自动投注服务的数据库
                 
                 // 2. 创建开奖数据 BindingList
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
@@ -368,11 +376,8 @@ namespace BaiShengVx3Plus
                 txtMaxBet.Value = (int)_binggoSettings.MaxBet;
                 
                 // 🔥 管理模式初始化（默认关闭）
-                if (chkAdminMode != null)
-                {
-                    chkAdminMode.Checked = _binggoSettings.IsAdminMode;
-                    UpdateAdminModeUI();
-                }
+                // chkAdminMode 在 Settings 窗口中，不在主窗口
+                UpdateAdminModeUI();
                 
                 _logService.Info("VxMain", "✅ 快速设置面板已初始化");
             }
@@ -397,13 +402,13 @@ namespace BaiShengVx3Plus
         }
         
         /// <summary>
-        /// 管理模式 checkbox 变化事件
+        /// 管理模式 checkbox 变化事件 - 已移到 SettingsForm
         /// </summary>
-        private void ChkAdminMode_CheckedChanged(object? sender, EventArgs e)
-        {
-            _binggoSettings.IsAdminMode = chkAdminMode?.Checked ?? false;
-            UpdateAdminModeUI();
-        }
+        // private void ChkAdminMode_CheckedChanged(object? sender, EventArgs e)
+        // {
+        //     _binggoSettings.IsAdminMode = chkAdminMode?.Checked ?? false;
+        //     UpdateAdminModeUI();
+        // }
         
         /// <summary>
         /// txtCurrentContact 按回车手动绑定（管理模式）
@@ -2934,6 +2939,192 @@ namespace BaiShengVx3Plus
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "加载上下分数据失败", ex);
+            }
+        }
+
+        #endregion
+
+        #region 🤖 自动投注 UI 和逻辑
+
+        /// <summary>
+        /// 初始化自动投注 UI 事件（控件已在 Designer 中创建）
+        /// </summary>
+        private void InitializeAutoBetUIEvents()
+        {
+            try
+            {
+                _logService.Info("VxMain", "🤖 初始化自动投注UI事件绑定...");
+                
+                // 从默认配置加载设置
+                LoadAutoBetSettings();
+                
+                _logService.Info("VxMain", "✅ 自动投注UI事件已绑定");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化自动投注UI事件失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 从默认配置加载自动投注设置
+        /// </summary>
+        private void LoadAutoBetSettings()
+        {
+            try
+            {
+                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                if (defaultConfig != null)
+                {
+                    // 加载平台
+                    var platformIndex = defaultConfig.Platform switch
+                    {
+                        "YunDing28" => 0,
+                        "HaiXia28" => 1,
+                        "HongHai28" => 2,
+                        _ => 0
+                    };
+                    cbxPlatform.SelectedIndex = platformIndex;
+
+                    // 加载账号密码
+                    txtAutoBetUsername.Text = defaultConfig.Username ?? "";
+                    txtAutoBetPassword.Text = defaultConfig.Password ?? "";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "加载自动投注设置失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 保存自动投注设置到默认配置
+        /// </summary>
+        private void SaveAutoBetSettings()
+        {
+            try
+            {
+                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                if (defaultConfig != null)
+                {
+                    // 保存平台
+                    defaultConfig.Platform = cbxPlatform.SelectedIndex switch
+                    {
+                        0 => "YunDing28",
+                        1 => "HaiXia28",
+                        2 => "HongHai28",
+                        _ => "YunDing28"
+                    };
+
+                    // 保存账号密码
+                    defaultConfig.Username = txtAutoBetUsername.Text;
+                    defaultConfig.Password = txtAutoBetPassword.Text;
+
+                    // 保存到数据库
+                    _autoBetService.SaveConfig(defaultConfig);
+
+                    _logService.Info("VxMain", "✅ 自动投注设置已保存");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "保存自动投注设置失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 启用/禁用自动投注开关
+        /// </summary>
+        private async void chkAutoBet_CheckedChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (chkAutoBet.Checked)
+                {
+                    // 先保存设置
+                    SaveAutoBetSettings();
+
+                    // 启动自动投注
+                    _logService.Info("VxMain", "🚀 启动自动投注...");
+                    
+                    var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                    if (defaultConfig != null)
+                    {
+                        var success = await _autoBetCoordinator.StartAsync(defaultConfig.Id);
+                        
+                        if (success)
+                        {
+                            _logService.Info("VxMain", "✅ 自动投注已启动");
+                            Sunny.UI.UIMessageBox.Show("自动投注已启动！", "成功", Sunny.UI.UIStyle.Green, Sunny.UI.UIMessageBoxButtons.OK);
+                        }
+                        else
+                        {
+                            _logService.Error("VxMain", "启动自动投注失败");
+                            chkAutoBet.Checked = false;
+                            Sunny.UI.UIMessageBox.Show("启动自动投注失败，请检查配置！", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                        }
+                    }
+                    else
+                    {
+                        _logService.Error("VxMain", "未找到默认配置");
+                        chkAutoBet.Checked = false;
+                        Sunny.UI.UIMessageBox.Show("未找到默认配置！", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                    }
+                }
+                else
+                {
+                    // 停止自动投注
+                    _logService.Info("VxMain", "⏹️ 停止自动投注...");
+                    _autoBetCoordinator.Stop();
+                    _logService.Info("VxMain", "✅ 自动投注已停止");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "切换自动投注失败", ex);
+                chkAutoBet.Checked = false;
+                Sunny.UI.UIMessageBox.Show($"操作失败: {ex.Message}", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+            }
+        }
+
+        /// <summary>
+        /// 手动启动浏览器按钮
+        /// </summary>
+        private async void btnStartBrowser_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 先保存设置
+                SaveAutoBetSettings();
+
+                _logService.Info("VxMain", "🚀 手动启动浏览器...");
+
+                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                if (defaultConfig != null)
+                {
+                    var success = await _autoBetService.StartBrowser(defaultConfig.Id);
+
+                    if (success)
+                    {
+                        _logService.Info("VxMain", "✅ 浏览器已启动");
+                        Sunny.UI.UIMessageBox.Show("浏览器已启动！", "成功", Sunny.UI.UIStyle.Green, Sunny.UI.UIMessageBoxButtons.OK);
+                    }
+                    else
+                    {
+                        _logService.Error("VxMain", "启动浏览器失败");
+                        Sunny.UI.UIMessageBox.Show("启动浏览器失败！", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                    }
+                }
+                else
+                {
+                    _logService.Error("VxMain", "未找到默认配置");
+                    Sunny.UI.UIMessageBox.Show("未找到默认配置！", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "启动浏览器失败", ex);
+                Sunny.UI.UIMessageBox.Show($"启动失败: {ex.Message}", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
             }
         }
 

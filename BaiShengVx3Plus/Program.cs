@@ -78,6 +78,10 @@ namespace BaiShengVx3Plus
                             services.AddSingleton<IBinggoOrderService, BinggoOrderService>();     // 订单服务
                             services.AddSingleton<BinggoStatisticsService>();  // 🔥 统计服务（唯一更新入口）
 
+                            // 🤖 自动投注服务
+                            services.AddSingleton<Services.AutoBet.AutoBetService>();       // 自动投注管理
+                            services.AddSingleton<Services.AutoBet.AutoBetCoordinator>();   // 自动投注协调器
+
                             // 消息处理
                             services.AddSingleton<MessageDispatcher>();  // 消息分发器（单例）
                             services.AddTransient<IMessageHandler, ChatMessageHandler>();

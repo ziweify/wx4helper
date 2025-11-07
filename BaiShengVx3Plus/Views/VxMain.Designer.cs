@@ -50,6 +50,15 @@ namespace BaiShengVx3Plus
             txtMinBet = new Sunny.UI.UIIntegerUpDown();
             lblMaxBet = new Label();
             txtMaxBet = new Sunny.UI.UIIntegerUpDown();
+            lblAutoBetSeparator = new Label();
+            lblPlatform = new Label();
+            cbxPlatform = new Sunny.UI.UIComboBox();
+            lblAutoBetUsername = new Label();
+            txtAutoBetUsername = new Sunny.UI.UITextBox();
+            lblAutoBetPassword = new Label();
+            txtAutoBetPassword = new Sunny.UI.UITextBox();
+            chkAutoBet = new Sunny.UI.UICheckBox();
+            btnStartBrowser = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
             tsmiClearBalance = new ToolStripMenuItem();
             tsmiDeleteMember = new ToolStripMenuItem();
@@ -119,17 +128,17 @@ namespace BaiShengVx3Plus
             // 
             ucBinggoDataCur.BackColor = Color.FromArgb(243, 249, 255);
             ucBinggoDataCur.BorderStyle = BorderStyle.FixedSingle;
-            ucBinggoDataCur.Location = new Point(0, 0);
+            ucBinggoDataCur.Location = new Point(0, -27);
             ucBinggoDataCur.Name = "ucBinggoDataCur";
-            ucBinggoDataCur.Size = new Size(239, 101);
+            ucBinggoDataCur.Size = new Size(239, 88);
             ucBinggoDataCur.TabIndex = 0;
             // 
             // ucBinggoDataLast
             // 
             ucBinggoDataLast.BackColor = Color.FromArgb(255, 248, 225);
-            ucBinggoDataLast.Location = new Point(0, 108);
+            ucBinggoDataLast.Location = new Point(0, 64);
             ucBinggoDataLast.Name = "ucBinggoDataLast";
-            ucBinggoDataLast.Size = new Size(239, 118);
+            ucBinggoDataLast.Size = new Size(239, 107);
             ucBinggoDataLast.TabIndex = 1;
             // 
             // lblSealSeconds
@@ -207,6 +216,118 @@ namespace BaiShengVx3Plus
             txtMaxBet.TabIndex = 5;
             txtMaxBet.Text = "10000";
             txtMaxBet.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
+            // lblAutoBetSeparator
+            // 
+            lblAutoBetSeparator.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
+            lblAutoBetSeparator.Location = new Point(5, 130);
+            lblAutoBetSeparator.Name = "lblAutoBetSeparator";
+            lblAutoBetSeparator.Size = new Size(225, 20);
+            lblAutoBetSeparator.TabIndex = 6;
+            lblAutoBetSeparator.Text = "━━━ 自动投注 ━━━";
+            lblAutoBetSeparator.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // lblPlatform
+            // 
+            lblPlatform.Font = new Font("微软雅黑", 9F);
+            lblPlatform.Location = new Point(5, 155);
+            lblPlatform.Name = "lblPlatform";
+            lblPlatform.Size = new Size(50, 20);
+            lblPlatform.TabIndex = 7;
+            lblPlatform.Text = "盘口:";
+            lblPlatform.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // cbxPlatform
+            // 
+            cbxPlatform.DataSource = null;
+            cbxPlatform.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
+            cbxPlatform.FillColor = Color.White;
+            cbxPlatform.Font = new Font("微软雅黑", 9F);
+            cbxPlatform.ItemHoverColor = Color.FromArgb(155, 200, 255);
+            cbxPlatform.Items.AddRange(new object[] { "云顶28", "海峡28", "红海28" });
+            cbxPlatform.ItemSelectForeColor = Color.FromArgb(235, 243, 255);
+            cbxPlatform.Location = new Point(60, 153);
+            cbxPlatform.Margin = new Padding(4, 5, 4, 5);
+            cbxPlatform.MinimumSize = new Size(63, 0);
+            cbxPlatform.Name = "cbxPlatform";
+            cbxPlatform.Padding = new Padding(0, 0, 30, 2);
+            cbxPlatform.Size = new Size(170, 25);
+            cbxPlatform.SymbolSize = 24;
+            cbxPlatform.TabIndex = 8;
+            cbxPlatform.TextAlignment = ContentAlignment.MiddleLeft;
+            cbxPlatform.Watermark = "";
+            // 
+            // lblAutoBetUsername
+            // 
+            lblAutoBetUsername.Font = new Font("微软雅黑", 9F);
+            lblAutoBetUsername.Location = new Point(5, 185);
+            lblAutoBetUsername.Name = "lblAutoBetUsername";
+            lblAutoBetUsername.Size = new Size(50, 20);
+            lblAutoBetUsername.TabIndex = 9;
+            lblAutoBetUsername.Text = "账号:";
+            lblAutoBetUsername.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtAutoBetUsername
+            // 
+            txtAutoBetUsername.Font = new Font("微软雅黑", 9F);
+            txtAutoBetUsername.Location = new Point(60, 183);
+            txtAutoBetUsername.Margin = new Padding(4, 5, 4, 5);
+            txtAutoBetUsername.MinimumSize = new Size(1, 16);
+            txtAutoBetUsername.Name = "txtAutoBetUsername";
+            txtAutoBetUsername.Padding = new Padding(5);
+            txtAutoBetUsername.ShowText = false;
+            txtAutoBetUsername.Size = new Size(170, 25);
+            txtAutoBetUsername.TabIndex = 10;
+            txtAutoBetUsername.TextAlignment = ContentAlignment.MiddleLeft;
+            txtAutoBetUsername.Watermark = "投注账号";
+            // 
+            // lblAutoBetPassword
+            // 
+            lblAutoBetPassword.Font = new Font("微软雅黑", 9F);
+            lblAutoBetPassword.Location = new Point(5, 215);
+            lblAutoBetPassword.Name = "lblAutoBetPassword";
+            lblAutoBetPassword.Size = new Size(50, 20);
+            lblAutoBetPassword.TabIndex = 11;
+            lblAutoBetPassword.Text = "密码:";
+            lblAutoBetPassword.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtAutoBetPassword
+            // 
+            txtAutoBetPassword.Font = new Font("微软雅黑", 9F);
+            txtAutoBetPassword.Location = new Point(60, 213);
+            txtAutoBetPassword.Margin = new Padding(4, 5, 4, 5);
+            txtAutoBetPassword.MinimumSize = new Size(1, 16);
+            txtAutoBetPassword.Name = "txtAutoBetPassword";
+            txtAutoBetPassword.Padding = new Padding(5);
+            txtAutoBetPassword.PasswordChar = '*';
+            txtAutoBetPassword.ShowText = false;
+            txtAutoBetPassword.Size = new Size(170, 25);
+            txtAutoBetPassword.TabIndex = 12;
+            txtAutoBetPassword.TextAlignment = ContentAlignment.MiddleLeft;
+            txtAutoBetPassword.Watermark = "投注密码";
+            // 
+            // chkAutoBet
+            // 
+            chkAutoBet.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
+            chkAutoBet.Location = new Point(5, 245);
+            chkAutoBet.MinimumSize = new Size(1, 1);
+            chkAutoBet.Name = "chkAutoBet";
+            chkAutoBet.Size = new Size(225, 25);
+            chkAutoBet.TabIndex = 13;
+            chkAutoBet.Text = "启用自动投注";
+            chkAutoBet.CheckedChanged += chkAutoBet_CheckedChanged;
+            // 
+            // btnStartBrowser
+            // 
+            btnStartBrowser.Font = new Font("微软雅黑", 9F);
+            btnStartBrowser.Location = new Point(5, 275);
+            btnStartBrowser.MinimumSize = new Size(1, 1);
+            btnStartBrowser.Name = "btnStartBrowser";
+            btnStartBrowser.Size = new Size(225, 30);
+            btnStartBrowser.TabIndex = 14;
+            btnStartBrowser.Text = "启动浏览器";
+            btnStartBrowser.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnStartBrowser.Click += btnStartBrowser_Click;
             // 
             // cmsMembers
             // 
@@ -330,12 +451,21 @@ namespace BaiShengVx3Plus
             pnl_fastsetting.Controls.Add(txtMinBet);
             pnl_fastsetting.Controls.Add(lblMaxBet);
             pnl_fastsetting.Controls.Add(txtMaxBet);
+            pnl_fastsetting.Controls.Add(lblAutoBetSeparator);
+            pnl_fastsetting.Controls.Add(lblPlatform);
+            pnl_fastsetting.Controls.Add(cbxPlatform);
+            pnl_fastsetting.Controls.Add(lblAutoBetUsername);
+            pnl_fastsetting.Controls.Add(txtAutoBetUsername);
+            pnl_fastsetting.Controls.Add(lblAutoBetPassword);
+            pnl_fastsetting.Controls.Add(txtAutoBetPassword);
+            pnl_fastsetting.Controls.Add(chkAutoBet);
+            pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            pnl_fastsetting.Location = new Point(4, 484);
+            pnl_fastsetting.Location = new Point(4, 425);
             pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
-            pnl_fastsetting.Size = new Size(237, 179);
+            pnl_fastsetting.Size = new Size(237, 400);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
@@ -398,7 +528,7 @@ namespace BaiShengVx3Plus
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvContacts.Size = new Size(244, 200);
+            dgvContacts.Size = new Size(244, 171);
             dgvContacts.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;
@@ -903,5 +1033,16 @@ namespace BaiShengVx3Plus
         private Sunny.UI.UIIntegerUpDown txtMinBet;
         private System.Windows.Forms.Label lblMaxBet;
         private Sunny.UI.UIIntegerUpDown txtMaxBet;
+        
+        // 🤖 自动投注控件
+        private System.Windows.Forms.Label lblAutoBetSeparator;
+        private System.Windows.Forms.Label lblPlatform;
+        private Sunny.UI.UIComboBox cbxPlatform;
+        private System.Windows.Forms.Label lblAutoBetUsername;
+        private Sunny.UI.UITextBox txtAutoBetUsername;
+        private System.Windows.Forms.Label lblAutoBetPassword;
+        private Sunny.UI.UITextBox txtAutoBetPassword;
+        private Sunny.UI.UICheckBox chkAutoBet;
+        private Sunny.UI.UIButton btnStartBrowser;
     }
 }
