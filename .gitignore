@@ -38,3 +38,5 @@
 /packages
 /BaiShengVx3Plus/.vs/BaiShengVx3Plus/v17
 /BsBrowserClient/bin/Debug/net8.0-windows7.0
+/BaiShengVx3Plus.Shared/obj
+/BaiShengVx3Plus.Shared/bin/Debug/net8.0
