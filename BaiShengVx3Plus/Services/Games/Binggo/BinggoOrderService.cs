@@ -103,6 +103,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 3. 创建订单（完全参考 F5BotV2 的 V2MemberOrder 构造函数）
                 long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
                 
+                // 🔥 记录注前金额和注后金额
+                float betFronMoney = member.Balance;  // 下注前余额
+                float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（暂存）
+                
                 var order = new V2MemberOrder
                 {
                     // 🔥 会员信息
@@ -122,6 +126,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     BetContentStandar = betContent.ToStandardString(),  // 🔥 标准内容："6,大,50"
                     Nums = betContent.Items.Count,  // 🔥 修复：注数
                     AmountTotal = (float)betContent.TotalAmount,  // 🔥 修复：总金额（float类型）
+                    
+                    // 🔥 金额记录（参考 F5BotV2）
+                    BetFronMoney = betFronMoney,   // 注前金额
+                    BetAfterMoney = betAfterMoney, // 注后金额
                     
                     // 🔥 结算信息
                     Profit = 0,  // 未结算
@@ -144,18 +152,24 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         $"扣除余额: {member.Nickname} - {betContent.TotalAmount:F2}，剩余: {member.Balance:F2}");
                 }
                 
-                // 5. 保存订单（通过 BindingList 自动保存）
+                // 🔥 5. 增加待结算金额和统计（参考 F5BotV2 第 546 行）
+                member.BetWait += (float)betContent.TotalAmount;
+                member.BetToday += (float)betContent.TotalAmount;
+                member.BetTotal += (float)betContent.TotalAmount;
+                member.BetCur += (float)betContent.TotalAmount;  // 本期下注
+                
+                _logService.Info("BinggoOrderService", 
+                    $"📊 统计更新: {member.Nickname} - 待结算 {member.BetWait:F2} - 今日下注 {member.BetToday:F2}");
+                
+                // 6. 保存订单（通过 BindingList 自动保存）
                 _ordersBindingList?.Add(order);
                 
                 _logService.Info("BinggoOrderService", 
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
                 
-                // 6. 生成回复消息
-                string replyMessage = $"{_settings.ReplySuccess}\n" +
-                                    $"期号: {issueId}\n" +
-                                    $"内容: {betContent.ToReplyString()}\n" +
-                                    $"金额: {betContent.TotalAmount:F2}\n" +
-                                    $"余额: {member.Balance:F2}";
+                // 6. 生成回复消息（🔥 完全参考 F5BotV2 格式）
+                // 格式：@昵称\r已进仓{注数}\r{投注内容}|扣:{金额}|留:{余额}
+                string replyMessage = $"@{member.Nickname}\r已进仓{order.Nums}\r{betContent.ToReplyString()}|扣:{(int)order.AmountTotal}|留:{(int)member.Balance}";
                 
                 return (true, replyMessage, order);
             }
@@ -295,49 +309,83 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         }
         
         /// <summary>
-        /// 结算单个订单
+        /// 结算单个订单（🔥 完全参考 F5BotV2 的 OnMemberOrderFinish 逻辑）
         /// </summary>
         private async Task SettleSingleOrderAsync(V2MemberOrder order, BinggoLotteryData lotteryData)
         {
             try
             {
-                // 1. 解析下注内容
-                var betContent = BinggoHelper.ParseBetContent(order.BetContent ?? string.Empty, order.IssueId);
+                // 🔥 参考 F5BotV2: 第 599-640 行
+                
+                // 1. 检查订单状态
+                if (order.OrderStatus == OrderStatus.已完成)
+                {
+                    _logService.Info("BinggoOrderService", $"订单已结算，跳过: {order.Id}");
+                    return;
+                }
+                
+                if (order.OrderStatus == OrderStatus.已取消)
+                {
+                    _logService.Info("BinggoOrderService", $"订单已取消，跳过: {order.Id}");
+                    return;
+                }
+                
+                // 2. 解析下注内容（使用 BetContentStandar 字段）
+                var betContent = BinggoHelper.ParseBetContent(order.BetContentStandar ?? string.Empty, order.IssueId);
                 
                 if (betContent.Code != 0)
                 {
                     _logService.Warning("BinggoOrderService", 
-                        $"订单解析失败，无法结算: {order.BetContent}");
+                        $"订单解析失败，无法结算: {order.BetContentStandar}");
                     order.IsSettled = true;
-                    order.Profit = -(float)order.BetAmount; // 视为输
+                    order.Profit = 0; // 解析失败视为输
+                    order.NetProfit = -order.AmountTotal;
+                    order.OrderStatus = OrderStatus.已完成;
                     return;
                 }
                 
-                // 2. 获取赔率（简化：统一赔率）
-                decimal odds = 1.95m;
-                if (_settings.Odds.ContainsKey("大"))
+                // 3. 获取赔率（参考 F5BotV2: _appSetting.wxOdds）
+                float odds = order.Odds > 0 ? order.Odds : 1.97f;
+                
+                // 4. 调用 OpenLottery 计算盈利（参考 F5BotV2: order.OpenLottery(data, odds, zsjs)）
+                float totalWin = 0f; // 总赢金额（包含本金）
+                foreach (var item in betContent.Items)
                 {
-                    odds = (decimal)_settings.Odds["大"];
+                    bool isWin = BinggoHelper.IsWin(item, lotteryData);
+                    if (isWin)
+                    {
+                        // 🔥 参考 F5BotV2: 赢了返回 金额 × 赔率
+                        totalWin += (float)item.TotalAmount * odds;
+                    }
                 }
                 
-                // 3. 计算盈利
-                decimal profit = BinggoHelper.CalculateTotalProfit(betContent, lotteryData, odds, isIntegerSettle: false);
-                
-                // 4. 更新订单
-                order.Profit = (float)profit;
+                // 5. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
+                order.Profit = totalWin;  // 总赢金额（包含本金）
+                order.NetProfit = totalWin - order.AmountTotal;  // 纯利 = 总赢 - 投注额
+                order.OrderStatus = OrderStatus.已完成;
                 order.IsSettled = true;
                 
-                // 5. 更新会员余额
+                _logService.Info("BinggoOrderService", 
+                    $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
+                
+                // 6. 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
                 var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
-                if (member != null)
+                if (member != null && order.OrderType != OrderType.托)  // 🔥 托单不更新会员数据
                 {
-                    // 退还本金 + 盈利
-                    float betAmountFloat = (float)order.BetAmount;
-                    float profitFloat = (float)profit;
-                    member.Balance += betAmountFloat + profitFloat;
+                    // 🔥 关键逻辑（参考 F5BotV2 V2Member.OpenLottery）：
+                    // Balance += order.Profit (加上总赢金额，包含本金)
+                    // IncomeToday += (order.Profit - order.AmountTotal)  (今日盈亏 = 纯利)
+                    // IncomeTotal += (order.Profit - order.AmountTotal)  (总盈亏 = 纯利)
+                    
+                    member.Balance += order.Profit;  // 🔥 加上总赢金额
+                    member.IncomeToday += order.NetProfit;  // 🔥 今日盈亏（纯利）
+                    member.IncomeTotal += order.NetProfit;  // 🔥 总盈亏（纯利）
+                    
+                    // 🔥 扣除待结算金额（参考 F5BotV2 第 633 行: m.BetWait = m.BetWait - order.AmountTotal）
+                    member.BetWait -= order.AmountTotal;
                     
                     _logService.Info("BinggoOrderService", 
-                        $"结算订单: {order.Nickname} - 盈利: {profit:F2}，余额: {member.Balance:F2}");
+                        $"✅ 会员更新: {member.Nickname} - 余额 {member.Balance:F2} - 今日盈亏 {member.IncomeToday:F2} - 待结算 {member.BetWait:F2}");
                 }
                 
                 await Task.CompletedTask;
@@ -345,9 +393,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             catch (Exception ex)
             {
                 _logService.Error("BinggoOrderService", 
-                    $"结算单个订单失败: {ex.Message}", ex);
-                order.IsSettled = true;
-                order.Profit = -(float)order.BetAmount; // 异常视为输
+                    $"订单结算异常: {ex.Message}", ex);
+                throw;
             }
         }
     }

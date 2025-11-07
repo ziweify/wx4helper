@@ -58,6 +58,8 @@ namespace BaiShengVx3Plus.Models
         private int _nums;
         private float _amountTotal;
         private decimal _betAmount;  // 用于开奖服务
+        private float _betFronMoney;  // 注前金额（下注前余额）
+        private float _betAfterMoney; // 注后金额（下注后余额）
         private float _profit;
         private float _netProfit;
         private float _odds;
@@ -89,34 +91,11 @@ namespace BaiShengVx3Plus.Models
         }
 
         [Indexed]
-        [DataGridColumn(HeaderText = "微信ID", Width = 120, Order = 1)]
+        [Browsable(false)]  // 🔥 不显示微信ID（占用空间）
         public string? Wxid
         {
             get => _wxid;
             set => SetField(ref _wxid, value);
-        }
-
-        [Indexed]
-        [DataGridColumn(HeaderText = "期号", Width = 80, Order = 2, 
-                        Alignment = DataGridViewContentAlignment.MiddleCenter)]
-        public int IssueId
-        {
-            get => _issueId;
-            set => SetField(ref _issueId, value);
-        }
-
-        [DataGridColumn(HeaderText = "账号", Width = 100, Order = 3)]
-        public string? Account
-        {
-            get => _account;
-            set => SetField(ref _account, value);
-        }
-
-        [DataGridColumn(HeaderText = "昵称", Width = 100, Order = 4)]
-        public string? Nickname
-        {
-            get => _nickname;
-            set => SetField(ref _nickname, value);
         }
 
         [Browsable(false)]  // 🔥 不在 DataGridView 中显示（时间戳）
@@ -126,25 +105,93 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _timeStampBet, value);
         }
 
+        [DataGridColumn(HeaderText = "账号", Width = 100, Order = 15)]
+        public string? Account
+        {
+            get => _account;
+            set => SetField(ref _account, value);
+        }
+
+        /// <summary>
+        /// 🔥 格式化的时间字符串（仅显示时间，不显示日期）
+        /// 用户要求：仅显示时间，记录日期但不显示，避免占用过多位置
+        /// </summary>
+        [DataGridColumn(HeaderText = "时间", Width = 80, Order = 1, ReadOnly = true)]
+        public string TimeOnly
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_timeString))
+                    return "";
+                
+                try
+                {
+                    // 从 "yyyy-MM-dd HH:mm:ss" 中提取 "HH:mm:ss"
+                    if (_timeString.Length >= 19)
+                    {
+                        return _timeString.Substring(11, 8);  // 提取时间部分
+                    }
+                    return _timeString;
+                }
+                catch
+                {
+                    return _timeString;
+                }
+            }
+        }
+
+        [Indexed]
+        [DataGridColumn(HeaderText = "期号", Width = 85, Order = 2, 
+                        Alignment = DataGridViewContentAlignment.MiddleCenter)]
+        public int IssueId
+        {
+            get => _issueId;
+            set => SetField(ref _issueId, value);
+        }
+
+        [DataGridColumn(HeaderText = "昵称", Width = 100, Order = 3)]
+        public string? Nickname
+        {
+            get => _nickname;
+            set => SetField(ref _nickname, value);
+        }
+
         // ========================================
-        // 🔥 业务订单属性（对应 F5BotV2 + DataGridView 列配置）
+        // 🔥 业务订单属性（按用户要求顺序排列）
+        // 顺序：时间, 期号, 昵称, 原始内容, 标准内容, 注前金额, 注后金额, 单数, 赔率, 总金额, 纯利润, 状态, 类型, 会员
         // ========================================
 
-        [DataGridColumn(HeaderText = "投注内容", Width = 200, Order = 5)]
+        [DataGridColumn(HeaderText = "原始内容", Width = 120, Order = 4)]
         public string? BetContentOriginal
         {
             get => _betContentOriginal;
             set => SetField(ref _betContentOriginal, value);
         }
 
-        [Browsable(false)]  // 🔥 不显示标准内容（给业务逻辑用）
+        [DataGridColumn(HeaderText = "标准内容", Width = 120, Order = 5)]
         public string? BetContentStandar
         {
             get => _betContentStandar;
             set => SetField(ref _betContentStandar, value);
         }
 
-        [DataGridColumn(HeaderText = "注数", Width = 60, Order = 6, 
+        [DataGridColumn(HeaderText = "注前金额", Width = 80, Order = 6, 
+                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
+        public float BetFronMoney
+        {
+            get => _betFronMoney;
+            set => SetField(ref _betFronMoney, value);
+        }
+
+        [DataGridColumn(HeaderText = "注后金额", Width = 80, Order = 7, 
+                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
+        public float BetAfterMoney
+        {
+            get => _betAfterMoney;
+            set => SetField(ref _betAfterMoney, value);
+        }
+
+        [DataGridColumn(HeaderText = "单数", Width = 60, Order = 8, 
                         Alignment = DataGridViewContentAlignment.MiddleRight)]
         public int Nums
         {
@@ -152,31 +199,7 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _nums, value);
         }
 
-        [DataGridColumn(HeaderText = "金额", Width = 80, Order = 7, 
-                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
-        public float AmountTotal
-        {
-            get => _amountTotal;
-            set => SetField(ref _amountTotal, value);
-        }
-
-        [DataGridColumn(HeaderText = "盈利", Width = 80, Order = 8, 
-                        Format = "{0:+0.00;-0.00;0.00}", Alignment = DataGridViewContentAlignment.MiddleRight)]
-        public float Profit
-        {
-            get => _profit;
-            set => SetField(ref _profit, value);
-        }
-
-        [DataGridColumn(HeaderText = "纯利", Width = 80, Order = 9, 
-                        Format = "{0:+0.00;-0.00;0.00}", Alignment = DataGridViewContentAlignment.MiddleRight)]
-        public float NetProfit
-        {
-            get => _netProfit;
-            set => SetField(ref _netProfit, value);
-        }
-
-        [DataGridColumn(HeaderText = "赔率", Width = 60, Order = 10, 
+        [DataGridColumn(HeaderText = "赔率", Width = 60, Order = 9, 
                         Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public float Odds
         {
@@ -184,7 +207,23 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _odds, value);
         }
 
-        [DataGridColumn(HeaderText = "状态", Width = 80, Order = 11, 
+        [DataGridColumn(HeaderText = "总金额", Width = 80, Order = 10, 
+                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
+        public float AmountTotal
+        {
+            get => _amountTotal;
+            set => SetField(ref _amountTotal, value);
+        }
+
+        [DataGridColumn(HeaderText = "纯利润", Width = 80, Order = 11, 
+                        Format = "{0:F2}", Alignment = DataGridViewContentAlignment.MiddleRight)]
+        public float NetProfit
+        {
+            get => _netProfit;
+            set => SetField(ref _netProfit, value);
+        }
+
+        [DataGridColumn(HeaderText = "状态", Width = 70, Order = 12, 
                         Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public OrderStatus OrderStatus
         {
@@ -192,7 +231,7 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _orderStatus, value);
         }
 
-        [DataGridColumn(HeaderText = "类型", Width = 60, Order = 12, 
+        [DataGridColumn(HeaderText = "类型", Width = 60, Order = 13, 
                         Alignment = DataGridViewContentAlignment.MiddleCenter)]
         public OrderType OrderType
         {
@@ -200,18 +239,46 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _orderType, value);
         }
 
-        [DataGridColumn(HeaderText = "时间", Width = 150, Order = 13)]
+        /// <summary>
+        /// 🔥 会员状态（显示会员类型：会员、蓝会等）
+        /// 根据 OrderType 和其他信息推断会员类型
+        /// </summary>
+        [DataGridColumn(HeaderText = "会员", Width = 60, Order = 14, 
+                        Alignment = DataGridViewContentAlignment.MiddleCenter, ReadOnly = true)]
+        public string MemberType
+        {
+            get
+            {
+                // 根据 OrderType 返回会员类型
+                return OrderType switch
+                {
+                    OrderType.托 => "托",
+                    OrderType.盘内 => "会员",
+                    OrderType.盘外 => "蓝会",
+                    _ => "未知"
+                };
+            }
+        }
+
+        [DataGridColumn(HeaderText = "备注", Width = 100, Order = 16)]
+        public string? Notes
+        {
+            get => _notes;
+            set => SetField(ref _notes, value);
+        }
+
+        [Browsable(false)]  // 🔥 不显示完整时间字符串（已有 TimeOnly）
         public string? TimeString
         {
             get => _timeString;
             set => SetField(ref _timeString, value);
         }
 
-        [DataGridColumn(HeaderText = "备注", Width = 100, Order = 14)]
-        public string? Notes
+        [Browsable(false)]  // 🔥 不显示 Profit（盈利），只显示 NetProfit（纯利润）
+        public float Profit
         {
-            get => _notes;
-            set => SetField(ref _notes, value);
+            get => _profit;
+            set => SetField(ref _profit, value);
         }
 
         // ========================================
