@@ -84,6 +84,7 @@ namespace BaiShengVx3Plus
             pnlTopButtons = new Sunny.UI.UIPanel();
             ucUserInfo1 = new BaiShengVx3Plus.Views.UcUserInfo();
             btnClearData = new Sunny.UI.UIButton();
+            btnCreditWithdrawManage = new Sunny.UI.UIButton();  // 🔥 初始化上下分管理按钮
             btnOpenLotteryResult = new Sunny.UI.UIButton();
             btnConnect = new Sunny.UI.UIButton();
             btnLog = new Sunny.UI.UIButton();
@@ -704,6 +705,7 @@ namespace BaiShengVx3Plus
             // 
             pnlTopButtons.Controls.Add(ucUserInfo1);
             pnlTopButtons.Controls.Add(btnClearData);
+            pnlTopButtons.Controls.Add(btnCreditWithdrawManage);  // 🔥 上下分管理按钮
             pnlTopButtons.Controls.Add(btnOpenLotteryResult);
             pnlTopButtons.Controls.Add(btnConnect);
             pnlTopButtons.Controls.Add(btnLog);
@@ -753,6 +755,19 @@ namespace BaiShengVx3Plus
             btnOpenLotteryResult.Text = "开奖结果";
             btnOpenLotteryResult.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnOpenLotteryResult.Click += btnOpenLotteryResult_Click;
+            // 
+            // btnCreditWithdrawManage
+            // 
+            btnCreditWithdrawManage.Cursor = Cursors.Hand;
+            btnCreditWithdrawManage.Font = new Font("微软雅黑", 10F);
+            btnCreditWithdrawManage.Location = new Point(570, 14);
+            btnCreditWithdrawManage.MinimumSize = new Size(1, 1);
+            btnCreditWithdrawManage.Name = "btnCreditWithdrawManage";
+            btnCreditWithdrawManage.Size = new Size(120, 40);
+            btnCreditWithdrawManage.TabIndex = 4;
+            btnCreditWithdrawManage.Text = "上下分管理";
+            btnCreditWithdrawManage.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnCreditWithdrawManage.Click += btnCreditWithdrawManage_Click;
             // 
             // btnConnect
             // 
@@ -880,6 +895,7 @@ namespace BaiShengVx3Plus
         private Sunny.UI.UIButton btnConnect;
         private Sunny.UI.UIButton btnLog;
         private Sunny.UI.UIButton btnOpenLotteryResult;
+        private Sunny.UI.UIButton btnCreditWithdrawManage;  // 🔥 上下分管理按钮
         private Sunny.UI.UIButton btnClearData;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel lblStatus;

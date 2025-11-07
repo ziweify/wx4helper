@@ -261,6 +261,7 @@ namespace BaiShengVx3Plus
                 // 1. 设置数据库连接
                 _lotteryService.SetDatabase(_db);
                 _orderService.SetDatabase(_db);
+                _binggoMessageHandler.SetDatabase(_db);  // 🔥 设置消息处理器的数据库（用于上下分申请）
                 
                 // 2. 创建开奖数据 BindingList
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
@@ -2801,6 +2802,33 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("会员管理", "查看资金变动失败", ex);
                 UIMessageBox.ShowError($"查看资金变动失败：{ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 🔥 上下分管理
+
+        /// <summary>
+        /// 打开上下分管理窗口
+        /// </summary>
+        private void btnCreditWithdrawManage_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_db == null)
+                {
+                    UIMessageBox.ShowWarning("数据库未初始化");
+                    return;
+                }
+                
+                var form = new Views.CreditWithdrawManageForm(_db, _logService, _socketClient);
+                form.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开上下分管理窗口失败", ex);
+                UIMessageBox.ShowError($"打开上下分管理窗口失败：{ex.Message}");
             }
         }
 

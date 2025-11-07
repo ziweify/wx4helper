@@ -106,6 +106,43 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _notes, value);
         }
 
+        // 🔥 新增字段：处理人和处理时间
+        private string? _processedBy;
+        private string? _processedTime;
+
+        [Browsable(false)]
+        public string? ProcessedBy
+        {
+            get => _processedBy;
+            set => SetField(ref _processedBy, value);
+        }
+
+        [Browsable(false)]
+        public string? ProcessedTime
+        {
+            get => _processedTime;
+            set => SetField(ref _processedTime, value);
+        }
+
+        // 🔥 辅助属性：动作文本
+        [Browsable(false)]
+        public string ActionText => Action switch
+        {
+            CreditWithdrawAction.上分 => "上分",
+            CreditWithdrawAction.下分 => "下分",
+            _ => "未知"
+        };
+
+        // 🔥 辅助属性：状态文本
+        [Browsable(false)]
+        public string StatusText => Status switch
+        {
+            CreditWithdrawStatus.等待处理 => "等待处理",
+            CreditWithdrawStatus.已同意 => "已同意",
+            CreditWithdrawStatus.已拒绝 => "已拒绝",
+            _ => "未知"
+        };
+
         // ========================================
         // INotifyPropertyChanged 实现
         // ========================================
@@ -136,8 +173,8 @@ namespace BaiShengVx3Plus.Models
     public enum CreditWithdrawStatus
     {
         等待处理 = 0,
-        同意 = 1,
-        忽略 = 2
+        已同意 = 1,
+        已拒绝 = 2
     }
 }
 

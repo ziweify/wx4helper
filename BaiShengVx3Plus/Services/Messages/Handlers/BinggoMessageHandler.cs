@@ -4,7 +4,9 @@ using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using SQLite;
 
 namespace BaiShengVx3Plus.Services.Messages.Handlers
 {
@@ -23,17 +25,31 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         private readonly IBinggoLotteryService _lotteryService;
         private readonly IBinggoOrderService _orderService;
         private readonly BinggoGameSettings _settings;
+        private readonly SQLiteConnection? _db;  // 🔥 数据库连接（用于上下分申请）
         
         public BinggoMessageHandler(
             ILogService logService,
             IBinggoLotteryService lotteryService,
             IBinggoOrderService orderService,
-            BinggoGameSettings settings)
+            BinggoGameSettings settings,
+            SQLiteConnection? db = null)  // 🔥 可选参数
         {
             _logService = logService;
             _lotteryService = lotteryService;
             _orderService = orderService;
             _settings = settings;
+            _db = db;
+        }
+        
+        /// <summary>
+        /// 设置数据库连接（用于上下分申请）
+        /// </summary>
+        public void SetDatabase(SQLiteConnection db)
+        {
+            _db?.Close();
+            // 使用反射设置私有字段
+            var field = GetType().GetField("_db", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            field?.SetValue(this, db);
         }
         
         /// <summary>
@@ -60,7 +76,25 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return (false, null);
                 }
                 
-                // 3. 简单判断是否可能是下注消息（包含数字和关键词）
+                // 🔥 3. 优先处理查询命令（查、流水、货单）
+                if (IsQueryCommand(messageContent))
+                {
+                    return (true, HandleQueryCommand(member));
+                }
+                
+                // 🔥 4. 处理上分命令
+                if (IsCreditCommand(messageContent))
+                {
+                    return (true, await HandleCreditCommandAsync(member, messageContent));
+                }
+                
+                // 🔥 5. 处理下分命令
+                if (IsWithdrawCommand(messageContent))
+                {
+                    return (true, await HandleWithdrawCommandAsync(member, messageContent));
+                }
+                
+                // 6. 简单判断是否可能是下注消息（包含数字和关键词）
                 if (!LooksLikeBetMessage(messageContent))
                 {
                     return (false, null);
@@ -166,6 +200,185 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             }
             
             return false;
+        }
+        
+        // ========================================
+        // 🔥 命令处理方法
+        // ========================================
+        
+        /// <summary>
+        /// 判断是否是查询命令
+        /// </summary>
+        private bool IsQueryCommand(string message)
+        {
+            return message == "查" || message == "流水" || message == "货单";
+        }
+        
+        /// <summary>
+        /// 处理查询命令
+        /// </summary>
+        private string HandleQueryCommand(V2Member member)
+        {
+            try
+            {
+                // 参考 F5BotV2 (BoterServices.cs 第2174行)
+                string reply = $"@{member.Nickname}\r流~~记录\r";
+                reply += $"今日/本轮进货:{member.BetToday:F2}/{member.BetCur:F2}\r";
+                reply += $"今日上/下:{member.CreditToday:F2}/{member.WithdrawToday:F2}\r";
+                reply += $"今日盈亏:{member.IncomeToday:F2}\r";
+                
+                _logService.Info("BinggoMessageHandler", 
+                    $"查询命令: {member.Nickname} - 今日下注:{member.BetToday:F2}, 盈亏:{member.IncomeToday:F2}");
+                
+                return reply;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoMessageHandler", "处理查询命令失败", ex);
+                return "查询失败，请稍后重试";
+            }
+        }
+        
+        /// <summary>
+        /// 判断是否是上分命令
+        /// </summary>
+        private bool IsCreditCommand(string message)
+        {
+            return Regex.IsMatch(message, @"^上(分)?(\d+)?$");
+        }
+        
+        /// <summary>
+        /// 处理上分命令
+        /// </summary>
+        private async Task<string> HandleCreditCommandAsync(V2Member member, string message)
+        {
+            try
+            {
+                // 解析金额
+                var match = Regex.Match(message, @"^上(分)?(\d+)?$");
+                if (!match.Groups[2].Success)
+                {
+                    return "请输入上分金额，例如：上1000";
+                }
+                
+                float amount = float.Parse(match.Groups[2].Value);
+                
+                if (amount <= 0)
+                {
+                    return "上分金额必须大于0";
+                }
+                
+                // 🔥 创建上分申请
+                if (_db == null)
+                {
+                    _logService.Warning("BinggoMessageHandler", "数据库未初始化，无法创建上分申请");
+                    return "系统错误，请联系管理员";
+                }
+                
+                _db.CreateTable<V2CreditWithdraw>();
+                
+                var request = new V2CreditWithdraw
+                {
+                    GroupWxId = member.GroupWxId,
+                    Wxid = member.Wxid,
+                    Nickname = member.Nickname,
+                    Amount = amount,
+                    Action = CreditWithdrawAction.上分,
+                    Status = CreditWithdrawStatus.等待处理,
+                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    Notes = "会员申请上分"
+                };
+                
+                _db.Insert(request);
+                
+                _logService.Info("BinggoMessageHandler", 
+                    $"上分申请已创建: {member.Nickname} - {amount:F2}");
+                
+                // 🔥 回复格式参考 F5BotV2 (BoterServices.cs 第2605行)
+                string reply = $"@{member.Nickname}\r[{member.Id}]请等待";
+                
+                return reply;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoMessageHandler", "处理上分命令失败", ex);
+                return "上分申请失败，请稍后重试";
+            }
+        }
+        
+        /// <summary>
+        /// 判断是否是下分命令
+        /// </summary>
+        private bool IsWithdrawCommand(string message)
+        {
+            return Regex.IsMatch(message, @"^下(分)?(\d+)?$");
+        }
+        
+        /// <summary>
+        /// 处理下分命令
+        /// </summary>
+        private async Task<string> HandleWithdrawCommandAsync(V2Member member, string message)
+        {
+            try
+            {
+                // 解析金额
+                var match = Regex.Match(message, @"^下(分)?(\d+)?$");
+                if (!match.Groups[2].Success)
+                {
+                    return "请输入下分金额，例如：下500";
+                }
+                
+                float amount = float.Parse(match.Groups[2].Value);
+                
+                if (amount <= 0)
+                {
+                    return "下分金额必须大于0";
+                }
+                
+                // 检查余额
+                if (member.Balance < amount)
+                {
+                    return $"@{member.Nickname}\r余额不足！\r当前余额：{member.Balance:F2}";
+                }
+                
+                // 🔥 创建下分申请
+                if (_db == null)
+                {
+                    _logService.Warning("BinggoMessageHandler", "数据库未初始化，无法创建下分申请");
+                    return "系统错误，请联系管理员";
+                }
+                
+                _db.CreateTable<V2CreditWithdraw>();
+                
+                var request = new V2CreditWithdraw
+                {
+                    GroupWxId = member.GroupWxId,
+                    Wxid = member.Wxid,
+                    Nickname = member.Nickname,
+                    Amount = amount,
+                    Action = CreditWithdrawAction.下分,
+                    Status = CreditWithdrawStatus.等待处理,
+                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    Notes = "会员申请下分"
+                };
+                
+                _db.Insert(request);
+                
+                _logService.Info("BinggoMessageHandler", 
+                    $"下分申请已创建: {member.Nickname} - {amount:F2}");
+                
+                // 🔥 回复格式参考 F5BotV2 (BoterServices.cs 第2605行)
+                string reply = $"@{member.Nickname}\r[{member.Id}]请等待";
+                
+                return reply;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoMessageHandler", "处理下分命令失败", ex);
+                return "下分申请失败，请稍后重试";
+            }
         }
     }
 }
