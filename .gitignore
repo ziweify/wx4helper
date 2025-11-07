@@ -33,3 +33,7 @@
 /BaiShengVx3Plus/x64/Debug
 /LotPlans
 /Build
+/BsBrowserClient/bin/Debug/net8.0-windows
+/BsBrowserClient/obj
+/packages
+/BaiShengVx3Plus/.vs/BaiShengVx3Plus/v17
