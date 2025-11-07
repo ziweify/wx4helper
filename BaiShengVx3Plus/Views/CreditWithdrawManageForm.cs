@@ -18,14 +18,23 @@ namespace BaiShengVx3Plus.Views
         private readonly SQLiteConnection _db;
         private readonly ILogService _logService;
         private readonly IWeixinSocketClient _socketClient;
+        private readonly Core.V2CreditWithdrawBindingList _creditWithdrawsBindingList;  // 🔥 使用 BindingList（统一模式）
+        private readonly Core.V2MemberBindingList _membersBindingList;  // 🔥 会员列表引用
         private List<V2CreditWithdraw> _allRequests = new List<V2CreditWithdraw>();
         private List<V2CreditWithdraw> _filteredRequests = new List<V2CreditWithdraw>();
 
-        public CreditWithdrawManageForm(SQLiteConnection db, ILogService logService, IWeixinSocketClient socketClient)
+        public CreditWithdrawManageForm(
+            SQLiteConnection db, 
+            ILogService logService, 
+            IWeixinSocketClient socketClient,
+            Core.V2CreditWithdrawBindingList creditWithdrawsBindingList,
+            Core.V2MemberBindingList membersBindingList)
         {
             _db = db;
             _logService = logService;
             _socketClient = socketClient;
+            _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 接收 BindingList
+            _membersBindingList = membersBindingList;  // 🔥 接收会员列表
             
             InitializeComponent();
             
@@ -221,9 +230,8 @@ namespace BaiShengVx3Plus.Views
                     return;
                 }
                 
-                // 🔥 查找会员
-                var member = _db.Table<V2Member>()
-                    .FirstOrDefault(m => m.Wxid == request.Wxid && m.GroupWxId == request.GroupWxId);
+                // 🔥 从 BindingList 查找会员（统一模式）
+                var member = _membersBindingList.FirstOrDefault(m => m.Wxid == request.Wxid);
                 
                 if (member == null)
                 {
@@ -282,10 +290,11 @@ namespace BaiShengVx3Plus.Views
                     Notes = $"管理员同意{actionName}申请"
                 };
                 
-                // 🔥 保存到数据库
-                _db.Update(member);
-                _db.Update(request);
+                // 🔥 保存到数据库（🔥 会员和申请的 PropertyChanged 会自动保存，只需手动插入资金变动）
                 _db.Insert(balanceChange);
+                
+                // 🔥 更新会员的上下分统计（自动触发 PropertyChanged）
+                _creditWithdrawsBindingList.UpdateMemberStatistics(_membersBindingList);
                 
                 // 🔥 发送微信通知（参考 F5BotV2 第433行和第478行）
                 string notifyMessage = $"@{member.Nickname}\r[{member.Id}]{actionName}{(int)request.Amount}完成|余:{(int)member.Balance}";
@@ -327,14 +336,11 @@ namespace BaiShengVx3Plus.Views
                     return;
                 }
                 
-                // 🔥 更新申请状态
+                // 🔥 更新申请状态（PropertyChanged 会自动保存到数据库）
                 request.Status = CreditWithdrawStatus.已拒绝;
                 request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
                 request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 request.Notes = "管理员拒绝";
-                
-                // 🔥 保存到数据库
-                _db.Update(request);
                 
                 // 🔥 发送微信通知
                 // 注意：F5BotV2没有拒绝功能的专门消息，这里保持简单提示
@@ -362,19 +368,14 @@ namespace BaiShengVx3Plus.Views
         }
 
         /// <summary>
-        /// 加载数据
+        /// 加载数据（🔥 从 BindingList 加载，统一模式）
         /// </summary>
         private void LoadData()
         {
             try
             {
-                // 🔥 确保表存在
-                _db.CreateTable<V2CreditWithdraw>();
-                
-                // 加载所有申请
-                _allRequests = _db.Table<V2CreditWithdraw>()
-                    .OrderByDescending(r => r.Timestamp)
-                    .ToList();
+                // 🔥 从 BindingList 转换为 List（已自动从数据库加载）
+                _allRequests = _creditWithdrawsBindingList.ToList();
                 
                 _logService.Info("上下分管理", $"加载了 {_allRequests.Count} 条申请记录");
                 

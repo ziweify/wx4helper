@@ -46,6 +46,7 @@ namespace BaiShengVx3Plus
         private BindingList<WxContact> _contactsBindingList;
         private V2MemberBindingList? _membersBindingList;  // 🔥 使用 ORM BindingList
         private V2OrderBindingList? _ordersBindingList;    // 🔥 使用 ORM BindingList
+        private V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList（与会员、订单统一模式）
         private BinggoLotteryDataBindingList? _lotteryDataBindingList; // 🎲 炳狗开奖数据 BindingList
         
         // 设置窗口单实例
@@ -1534,6 +1535,7 @@ namespace BaiShengVx3Plus
                 
                 _membersBindingList = new V2MemberBindingList(_db, contact.Wxid);
                 _ordersBindingList = new V2OrderBindingList(_db);
+                _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);  // 🔥 上下分 BindingList
                 
                 // 🔥 5. 设置到各个服务
                 _orderService.SetMembersBindingList(_membersBindingList);
@@ -1553,6 +1555,14 @@ namespace BaiShengVx3Plus
                 });
                 
                 _logService.Info("VxMain", $"✅ 从数据库加载: {_ordersBindingList.Count} 个订单");
+                
+                // 🔥 6.5. 从数据库加载上下分数据（与订单表统一模式）
+                await Task.Run(() =>
+                {
+                    _creditWithdrawsBindingList.LoadFromDatabase(contact.Wxid);
+                });
+                
+                _logService.Info("VxMain", $"✅ 从数据库加载: {_creditWithdrawsBindingList.Count} 条上下分记录");
                 
                 // 🔥 7. 获取服务器数据并智能合并会员（参考 F5BotV2）
                 _logService.Info("VxMain", $"开始获取群成员列表并智能合并: {contact.Wxid}");
@@ -1594,14 +1604,18 @@ namespace BaiShengVx3Plus
                     _logService.Info("VxMain", $"✅ 会员列表已更新: {_membersBindingList?.Count} 个会员");
                 }
                 
-                // 🔥 11. 绑定到 DataGridView
+                // 🔥 11. 更新会员的上下分统计（从已同意的记录中计算）
+                _creditWithdrawsBindingList.UpdateMemberStatistics(_membersBindingList);
+                _logService.Info("VxMain", "✅ 会员上下分统计已更新");
+                
+                // 🔥 12. 绑定到 DataGridView
                 UpdateUIThreadSafe(() =>
                 {
                     dgvMembers.DataSource = _membersBindingList;
                     dgvOrders.DataSource = _ordersBindingList;
                 });
                 
-                // 🔥 12. 更新统计（参考 F5BotV2 第 569 行）
+                // 🔥 13. 更新统计（参考 F5BotV2 第 569 行）
                 _statisticsService.UpdateStatistics();
                 
                 // 🔥 13. 更新UI显示
@@ -2816,19 +2830,110 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                if (_db == null)
+                if (_db == null || _creditWithdrawsBindingList == null || _membersBindingList == null)
                 {
-                    UIMessageBox.ShowWarning("数据库未初始化");
+                    UIMessageBox.ShowWarning("请先绑定群");
                     return;
                 }
                 
-                var form = new Views.CreditWithdrawManageForm(_db, _logService, _socketClient);
+                // 🔥 传递 BindingList 实例（统一模式）
+                var form = new Views.CreditWithdrawManageForm(
+                    _db, 
+                    _logService, 
+                    _socketClient,
+                    _creditWithdrawsBindingList,
+                    _membersBindingList);
                 form.ShowDialog(this);
+                
+                // 🔥 关闭窗口后刷新统计
+                _statisticsService.UpdateStatistics();
+                UpdateMemberInfoLabel();
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "打开上下分管理窗口失败", ex);
                 UIMessageBox.ShowError($"打开上下分管理窗口失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 加载上下分数据并恢复会员统计
+        /// 参考 F5BotV2 BoterServices.cs 第901-907行
+        /// </summary>
+        private void LoadCreditWithdrawData(string groupWxid)
+        {
+            try
+            {
+                if (_db == null || _membersBindingList == null)
+                {
+                    _logService.Warning("VxMain", "数据库或会员列表未初始化，跳过上下分数据加载");
+                    return;
+                }
+                
+                // 🔥 1. 确保表存在
+                _db.CreateTable<V2CreditWithdraw>();
+                
+                // 🔥 2. 加载该群的所有上下分记录
+                var creditWithdraws = _db.Table<V2CreditWithdraw>()
+                    .Where(cw => cw.GroupWxId == groupWxid)
+                    .OrderBy(cw => cw.Timestamp)
+                    .ToList();
+                
+                _logService.Info("VxMain", $"📊 加载了 {creditWithdraws.Count} 条上下分记录");
+                
+                if (creditWithdraws.Count == 0)
+                {
+                    return;
+                }
+                
+                // 🔥 3. 今日日期（用于判断今日统计）
+                string today = DateTime.Now.ToString("yyyy-MM-dd");
+                
+                // 🔥 4. 遍历所有上下分记录，恢复会员统计
+                // 参考 F5BotV2: 加载时只更新Total统计，Today统计由每日重置逻辑处理
+                foreach (var cw in creditWithdraws)
+                {
+                    // 只处理已同意的记录
+                    if (cw.Status != CreditWithdrawStatus.已同意)
+                    {
+                        continue;
+                    }
+                    
+                    var member = _membersBindingList.FirstOrDefault(m => m.Wxid == cw.Wxid);
+                    if (member == null)
+                    {
+                        _logService.Warning("VxMain", $"上下分记录找不到对应会员: {cw.Wxid}");
+                        continue;
+                    }
+                    
+                    // 🔥 更新Total统计（总计）
+                    if (cw.Action == CreditWithdrawAction.上分)
+                    {
+                        member.CreditTotal += cw.Amount;
+                        
+                        // 如果是今日的，也更新Today统计
+                        if (cw.TimeString.StartsWith(today))
+                        {
+                            member.CreditToday += cw.Amount;
+                        }
+                    }
+                    else if (cw.Action == CreditWithdrawAction.下分)
+                    {
+                        member.WithdrawTotal += cw.Amount;
+                        
+                        // 如果是今日的，也更新Today统计
+                        if (cw.TimeString.StartsWith(today))
+                        {
+                            member.WithdrawToday += cw.Amount;
+                        }
+                    }
+                }
+                
+                _logService.Info("VxMain", $"✅ 上下分数据加载完成，已恢复会员统计");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "加载上下分数据失败", ex);
             }
         }
 
