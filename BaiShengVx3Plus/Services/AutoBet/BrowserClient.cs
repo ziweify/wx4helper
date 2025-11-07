@@ -35,9 +35,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
             try
             {
                 // 1. 启动浏览器进程
-                var browserExePath = Path.Combine(
+                var browserDirectory = Path.Combine(
                     AppDomain.CurrentDomain.BaseDirectory,
-                    "BsBrowserClient.exe");
+                    "BrowserClient");
+                
+                var browserExePath = Path.Combine(browserDirectory, "BsBrowserClient.exe");
                 
                 if (!File.Exists(browserExePath))
                 {
@@ -50,6 +52,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     {
                         FileName = browserExePath,
                         Arguments = $"--config-id {_configId} --port {port} --platform {platform} --url {platformUrl}",
+                        WorkingDirectory = browserDirectory, // 设置工作目录为浏览器所在目录
                         UseShellExecute = false,
                         CreateNoWindow = false // 显示浏览器窗口
                     }

@@ -8,10 +8,22 @@ namespace BsBrowserClient.Models
     public class CommandResponse
     {
         /// <summary>
+        /// 配置 ID（标识是哪个浏览器返回的）
+        /// </summary>
+        [JsonProperty("configId")]
+        public string ConfigId { get; set; } = "";
+        
+        /// <summary>
         /// 是否成功
         /// </summary>
         [JsonProperty("success")]
         public bool Success { get; set; }
+        
+        /// <summary>
+        /// 消息
+        /// </summary>
+        [JsonProperty("message")]
+        public string Message { get; set; } = "";
         
         /// <summary>
         /// 返回数据 (JSON 对象)

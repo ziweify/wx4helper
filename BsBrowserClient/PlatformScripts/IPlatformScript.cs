@@ -1,6 +1,6 @@
-using System.Threading.Tasks;
 using BsBrowserClient.Models;
-//using CefSharp.WinForms;
+using BsBrowserClient.Services;
+using System.Threading.Tasks;
 
 namespace BsBrowserClient.PlatformScripts
 {
@@ -9,21 +9,6 @@ namespace BsBrowserClient.PlatformScripts
     /// </summary>
     public interface IPlatformScript
     {
-        /// <summary>
-        /// 平台名称
-        /// </summary>
-        string PlatformName { get; }
-        
-        /// <summary>
-        /// 平台 URL
-        /// </summary>
-        string PlatformUrl { get; }
-        
-        /// <summary>
-        /// 设置浏览器实例
-        /// </summary>
-        void SetBrowser(object browser); // TODO: ChromiumWebBrowser
-        
         /// <summary>
         /// 登录
         /// </summary>
@@ -35,9 +20,13 @@ namespace BsBrowserClient.PlatformScripts
         Task<decimal> GetBalanceAsync();
         
         /// <summary>
-        /// 投注
+        /// 下注
         /// </summary>
-        Task<CommandResponse> PlaceBetAsync(BetOrder order);
+        Task<(bool success, string orderId)> PlaceBetAsync(BetOrder order);
+        
+        /// <summary>
+        /// 处理响应（拦截到的数据）
+        /// </summary>
+        void HandleResponse(ResponseEventArgs response);
     }
 }
-

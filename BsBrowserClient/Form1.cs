@@ -4,8 +4,8 @@ using System.Windows.Forms;
 using BsBrowserClient.Models;
 using BsBrowserClient.Services;
 using BsBrowserClient.PlatformScripts;
-using CefSharp;
-using CefSharp.WinForms;
+using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 
 namespace BsBrowserClient;
@@ -19,7 +19,8 @@ public partial class Form1 : Form
     
     private SocketServer? _socketServer;
     private IPlatformScript? _platformScript;
-    private ChromiumWebBrowser? _chromiumBrowser;
+    private WebView2? _webView;
+    private WebView2ResourceHandler? _resourceHandler;
     
     public Form1() : this("0", 9527, "YunDing28", "")
     {
@@ -42,12 +43,12 @@ public partial class Form1 : Form
         txtUrl.Text = _platformUrl;
     }
     
-    private void Form1_Load(object sender, EventArgs e)
+    private async void Form1_Load(object sender, EventArgs e)
     {
         try
         {
-            // 初始化 CEF
-            InitializeCef();
+            // 初始化 WebView2
+            await InitializeWebView2Async();
             
             // 初始化平台脚本
             InitializePlatformScript();
@@ -55,295 +56,241 @@ public partial class Form1 : Form
             // 初始化 Socket 服务器
             InitializeSocketServer();
             
-            UpdateStatus("✅ 已就绪", System.Drawing.Color.Green);
+            lblStatus.Text = "✅ 初始化成功";
         }
         catch (Exception ex)
         {
+            lblStatus.Text = $"❌ 初始化失败: {ex.Message}";
             MessageBox.Show($"初始化失败: {ex.Message}", "错误", 
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
     
-    private void InitializeCef()
-    {
-        // TODO: CEF 初始化需要根据实际 API 调整
-        // 目前先创建一个简单的标签页显示URL
-        var lblPlaceholder = new Label
-        {
-            Text = $"CEF 浏览器区域\n平台: {_platform}\nURL: {_platformUrl}\n\n" +
-                   "⚠️ 需要配置 CefSharp 才能显示浏览器",
-            Dock = DockStyle.Fill,
-            TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
-            Font = new System.Drawing.Font("Microsoft YaHei", 12F),
-            BackColor = System.Drawing.Color.WhiteSmoke
-        };
-        pnlBrowser.Controls.Add(lblPlaceholder);
-        
-        // 暂时不初始化 CEF，等解决引用问题后再启用
-        /*
-        if (!Cef.IsInitialized)
-        {
-            var settings = new CefSettings();
-            Cef.Initialize(settings);
-        }
-        
-        _chromiumBrowser = new ChromiumWebBrowser(_platformUrl)
-        {
-            Dock = DockStyle.Fill
-        };
-        pnlBrowser.Controls.Add(_chromiumBrowser);
-        */
-    }
-    
-    private void InitializePlatformScript()
-    {
-        // 创建平台脚本
-        _platformScript = _platform.ToLower() switch
-        {
-            "yunding28" => new YunDing28Script(),
-            _ => new YunDing28Script() // 默认
-        };
-        
-        // 设置浏览器
-        if (_chromiumBrowser != null)
-        {
-            _platformScript.SetBrowser(_chromiumBrowser);
-        }
-    }
-    
-    private void InitializeSocketServer()
-    {
-        _socketServer = new SocketServer(_port);
-        _socketServer.OnLog += SocketServer_OnLog;
-        _socketServer.OnCommandReceived += SocketServer_OnCommandReceived;
-        _socketServer.Start();
-        
-        UpdateStatus($"● Socket 已启动 (端口: {_port})", System.Drawing.Color.Green);
-    }
-    
-    private void SocketServer_OnLog(object? sender, string message)
-    {
-        // 可以输出到日志窗口（如果有）
-        System.Diagnostics.Debug.WriteLine(message);
-    }
-    
-    private async void SocketServer_OnCommandReceived(object? sender, CommandRequest request)
+    /// <summary>
+    /// 初始化 WebView2 浏览器
+    /// </summary>
+    private async Task InitializeWebView2Async()
     {
         try
         {
-            this.Invoke(() => UpdateStatus($"处理命令: {request.Command}", System.Drawing.Color.Blue));
-            
-            CommandResponse? response = null;
-            
-            switch (request.Command.ToLower())
+            // 创建 WebView2 控件
+            _webView = new WebView2
             {
-                case "navigate":
-                    response = await HandleNavigateAsync(request);
-                    break;
-                    
+                Dock = DockStyle.Fill
+            };
+            
+            pnlBrowser.Controls.Add(_webView);
+            
+            // 等待 WebView2 初始化完成
+            await _webView.EnsureCoreWebView2Async(null);
+            
+            // 初始化资源拦截器
+            _resourceHandler = new WebView2ResourceHandler(OnResponseReceived);
+            await _resourceHandler.InitializeAsync(_webView.CoreWebView2);
+            
+            // 启用 DevTools
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+            
+            // 导航到目标 URL
+            _webView.CoreWebView2.Navigate(_platformUrl);
+            txtUrl.Text = _platformUrl;
+            
+            // 绑定导航事件
+            _webView.CoreWebView2.NavigationCompleted += (s, e) =>
+            {
+                txtUrl.Text = _webView.CoreWebView2.Source;
+                lblStatus.Text = e.IsSuccess ? "✅ 页面加载完成" : "❌ 页面加载失败";
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"WebView2 初始化失败: {ex.Message}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// 初始化平台脚本
+    /// </summary>
+    private void InitializePlatformScript()
+    {
+        _platformScript = _platform.ToLower() switch
+        {
+            "yunding28" => new YunDing28Script(_webView!, OnLogMessage),
+            "tongbao" => new TongBaoScript(_webView!, OnLogMessage),
+            "tongbao28" => new TongBaoScript(_webView!, OnLogMessage),
+            "通宝" => new TongBaoScript(_webView!, OnLogMessage),
+            _ => new YunDing28Script(_webView!, OnLogMessage)
+        };
+    }
+    
+    /// <summary>
+    /// 初始化 Socket 服务器
+    /// </summary>
+    private void InitializeSocketServer()
+    {
+        _socketServer = new SocketServer(_port, OnCommandReceived, OnLogMessage);
+        _socketServer.Start();
+        
+        lblPort.Text = $"端口: {_port} ✅";
+    }
+    
+    /// <summary>
+    /// 响应接收回调 - 处理拦截到的数据
+    /// </summary>
+    private void OnResponseReceived(ResponseEventArgs args)
+    {
+        try
+        {
+            // 只处理感兴趣的 URL
+            if (string.IsNullOrEmpty(args.Url))
+                return;
+            
+            // 记录日志
+            OnLogMessage($"[拦截] {args.Url}");
+            
+            if (!string.IsNullOrEmpty(args.PostData))
+            {
+                OnLogMessage($"[POST] {args.PostData.Substring(0, Math.Min(100, args.PostData.Length))}...");
+            }
+            
+            if (!string.IsNullOrEmpty(args.Context))
+            {
+                OnLogMessage($"[Response] Status={args.StatusCode}, Length={args.Context.Length}");
+                
+                // 可以在这里解析响应，提取投注结果等
+                // 例如：如果是投注结果，可以通过 Socket 发送给主程序
+            }
+            
+            // 让平台脚本处理响应
+            _platformScript?.HandleResponse(args);
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 响应处理失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Socket 命令接收回调
+    /// </summary>
+    private async void OnCommandReceived(CommandRequest command)
+    {
+        try
+        {
+            OnLogMessage($"[命令] {command.Command}");
+            
+            var response = new CommandResponse
+            {
+                ConfigId = _configId,
+                Success = false
+            };
+            
+            switch (command.Command.ToLower())
+            {
                 case "login":
-                    response = await HandleLoginAsync(request);
+                    var loginData = command.Data as JObject;
+                    var username = loginData?["username"]?.ToString() ?? "";
+                    var password = loginData?["password"]?.ToString() ?? "";
+                    
+                    response.Success = await _platformScript!.LoginAsync(username, password);
+                    response.Message = response.Success ? "登录成功" : "登录失败";
                     break;
                     
                 case "getbalance":
-                    response = await HandleGetBalanceAsync(request);
+                    var balance = await _platformScript!.GetBalanceAsync();
+                    response.Success = balance >= 0;
+                    response.Data = new { balance };
+                    response.Message = response.Success ? $"余额: {balance}" : "获取余额失败";
                     break;
                     
                 case "placebet":
-                    response = await HandlePlaceBetAsync(request);
-                    break;
+                    var betData = command.Data as JObject;
+                    var betOrder = betData?.ToObject<BetOrder>();
                     
-                case "getstatus":
-                    response = HandleGetStatus();
+                    if (betOrder != null)
+                    {
+                        var (success, orderId) = await _platformScript!.PlaceBetAsync(betOrder);
+                        response.Success = success;
+                        response.Data = new { orderId };
+                        response.Message = success ? $"投注成功: {orderId}" : "投注失败";
+                    }
                     break;
                     
                 default:
-                    response = new CommandResponse
-                    {
-                        Success = false,
-                        ErrorMessage = $"未知命令: {request.Command}"
-                    };
+                    response.Message = $"未知命令: {command.Command}";
                     break;
             }
             
-            // TODO: 需要改进 SocketServer 以支持返回响应
-            // 目前只是处理了命令但没有返回给客户端
-            
-            this.Invoke(() => UpdateStatus("✅ 命令已处理", System.Drawing.Color.Green));
+            // 发送响应
+            _socketServer?.SendResponse(response);
         }
         catch (Exception ex)
         {
-            this.Invoke(() => UpdateStatus($"❌ 错误: {ex.Message}", System.Drawing.Color.Red));
-        }
-    }
-    
-    private async Task<CommandResponse> HandleNavigateAsync(CommandRequest request)
-    {
-        try
-        {
-            var data = request.Data as JObject;
-            var url = data?["url"]?.ToString() ?? "";
+            OnLogMessage($"❌ 命令处理失败: {ex.Message}");
             
-            if (_chromiumBrowser != null)
-            {
-                this.Invoke(() => _chromiumBrowser.Load(url));
-                await Task.Delay(1000);
-                
-                return new CommandResponse
-                {
-                    Success = true,
-                    Data = new { Url = url }
-                };
-            }
-            
-            return new CommandResponse { Success = false, ErrorMessage = "浏览器未初始化" };
-        }
-        catch (Exception ex)
-        {
-            return new CommandResponse { Success = false, ErrorMessage = ex.Message };
-        }
-    }
-    
-    private async Task<CommandResponse> HandleLoginAsync(CommandRequest request)
-    {
-        try
-        {
-            var data = request.Data as JObject;
-            var username = data?["username"]?.ToString() ?? "";
-            var password = data?["password"]?.ToString() ?? "";
-            
-            if (_platformScript != null)
-            {
-                var success = await _platformScript.LoginAsync(username, password);
-                
-                if (success)
-                {
-                    this.Invoke(() => UpdateStatus("✅ 已登录", System.Drawing.Color.Green));
-                }
-                
-                return new CommandResponse
-                {
-                    Success = success,
-                    Data = new { Username = username }
-                };
-            }
-            
-            return new CommandResponse { Success = false, ErrorMessage = "平台脚本未初始化" };
-        }
-        catch (Exception ex)
-        {
-            return new CommandResponse { Success = false, ErrorMessage = ex.Message };
-        }
-    }
-    
-    private async Task<CommandResponse> HandleGetBalanceAsync(CommandRequest request)
-    {
-        try
-        {
-            if (_platformScript != null)
-            {
-                var balance = await _platformScript.GetBalanceAsync();
-                
-                this.Invoke(() => 
-                {
-                    lblBalance.Text = $"余额: ¥{balance:F2}";
-                });
-                
-                return new CommandResponse
-                {
-                    Success = true,
-                    Data = new { Balance = balance }
-                };
-            }
-            
-            return new CommandResponse { Success = false, ErrorMessage = "平台脚本未初始化" };
-        }
-        catch (Exception ex)
-        {
-            return new CommandResponse { Success = false, ErrorMessage = ex.Message };
-        }
-    }
-    
-    private async Task<CommandResponse> HandlePlaceBetAsync(CommandRequest request)
-    {
-        try
-        {
-            var data = request.Data as JObject;
-            var order = data?.ToObject<BetOrder>();
-            
-            if (order == null)
-            {
-                return new CommandResponse { Success = false, ErrorMessage = "订单数据无效" };
-            }
-            
-            if (_platformScript != null)
-            {
-                var response = await _platformScript.PlaceBetAsync(order);
-                return response;
-            }
-            
-            return new CommandResponse { Success = false, ErrorMessage = "平台脚本未初始化" };
-        }
-        catch (Exception ex)
-        {
-            return new CommandResponse { Success = false, ErrorMessage = ex.Message };
-        }
-    }
-    
-    private CommandResponse HandleGetStatus()
-    {
-        return new CommandResponse
-        {
-            Success = true,
-            Data = new
+            var errorResponse = new CommandResponse
             {
                 ConfigId = _configId,
-                Platform = _platform,
-                Port = _port,
-                IsReady = _chromiumBrowser != null && _platformScript != null
-            }
+                Success = false,
+                Message = ex.Message
+            };
+            
+            _socketServer?.SendResponse(errorResponse);
+        }
+    }
+    
+    /// <summary>
+    /// 日志回调
+    /// </summary>
+    private void OnLogMessage(string message)
+    {
+        if (InvokeRequired)
+        {
+            Invoke(() => OnLogMessage(message));
+            return;
+        }
+        
+        // 暂时输出到状态栏和控制台
+        lblStatus.Text = message;
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+    }
+    
+    /// <summary>
+    /// 获取默认 URL
+    /// </summary>
+    private string GetDefaultUrl(string platform)
+    {
+        return platform.ToLower() switch
+        {
+            "yunding28" => "https://yd28.vip",
+            "tongbao" => "https://tbfowenb.fr.cvv66.top/",  // 来自F5BotV2
+            "tongbao28" => "https://tbfowenb.fr.cvv66.top/",
+            "通宝" => "https://tbfowenb.fr.cvv66.top/",
+            _ => "about:blank"
         };
     }
     
+    #region UI 事件处理
+    
     private void btnNavigate_Click(object sender, EventArgs e)
     {
-        var url = txtUrl.Text.Trim();
-        if (!string.IsNullOrEmpty(url) && _chromiumBrowser != null)
+        if (_webView?.CoreWebView2 != null && !string.IsNullOrWhiteSpace(txtUrl.Text))
         {
-            _chromiumBrowser.Load(url);
+            _webView.CoreWebView2.Navigate(txtUrl.Text);
         }
     }
     
     private void btnRefresh_Click(object sender, EventArgs e)
     {
-        // TODO: CEF 刷新功能，等 CEF 启用后实现
-        // _chromiumBrowser?.GetBrowser()?.Reload();
-        MessageBox.Show("刷新功能待实现", "提示");
+        _webView?.CoreWebView2?.Reload();
     }
     
     private void Form1_FormClosing(object sender, FormClosingEventArgs e)
     {
-        // 清理资源
         _socketServer?.Stop();
-        _chromiumBrowser?.Dispose();
-        
-        // 注意：不要在这里关闭 Cef，因为可能有其他实例
-        // Cef.Shutdown();
+        _webView?.Dispose();
     }
     
-    private void UpdateStatus(string text, System.Drawing.Color color)
-    {
-        lblStatus.Text = text;
-        lblStatus.ForeColor = color;
-    }
-    
-    private string GetDefaultUrl(string platform)
-    {
-        return platform.ToLower() switch
-        {
-            "yunding28" => "https://www.yunding28.com",
-            "haixia28" => "https://www.haixia28.com",
-            _ => "about:blank"
-        };
-    }
+    #endregion
 }
+

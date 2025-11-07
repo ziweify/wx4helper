@@ -2958,6 +2958,11 @@ namespace BaiShengVx3Plus
                 // 从默认配置加载设置
                 LoadAutoBetSettings();
                 
+                // 绑定自动保存事件（当控件值改变时自动保存）
+                cbxPlatform.SelectedIndexChanged += (s, e) => SaveAutoBetSettings();
+                txtAutoBetUsername.TextChanged += (s, e) => SaveAutoBetSettings();
+                txtAutoBetPassword.TextChanged += (s, e) => SaveAutoBetSettings();
+                
                 _logService.Info("VxMain", "✅ 自动投注UI事件已绑定");
             }
             catch (Exception ex)
