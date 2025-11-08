@@ -1,7 +1,9 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Contracts.Games;
+using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Models.AutoBet;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
@@ -16,6 +18,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
     {
         private readonly AutoBetService _autoBetService;
         private readonly IBinggoLotteryService _lotteryService;
+        private readonly IBinggoOrderService _orderService;
+        private readonly BetRecordService _betRecordService;
+        private readonly OrderMerger _orderMerger;
+        private readonly BetQueueManager _betQueueManager;
         private readonly ILogService _log;
         
         private bool _isAutoBetEnabled = false;
@@ -26,10 +32,18 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public AutoBetCoordinator(
             AutoBetService autoBetService,
             IBinggoLotteryService lotteryService,
+            IBinggoOrderService orderService,
+            BetRecordService betRecordService,
+            OrderMerger orderMerger,
+            BetQueueManager betQueueManager,
             ILogService log)
         {
             _autoBetService = autoBetService;
             _lotteryService = lotteryService;
+            _orderService = orderService;
+            _betRecordService = betRecordService;
+            _orderMerger = orderMerger;
+            _betQueueManager = betQueueManager;
             _log = log;
         }
         
@@ -102,75 +116,102 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 状态变更事件 - 封盘时推送通知并自动投注
+        /// 状态变更事件 - 封盘时处理订单和推送投注命令
         /// </summary>
         private async void LotteryService_StatusChanged(object? sender, BinggoStatusChangedEventArgs e)
         {
             if (!_isAutoBetEnabled) return;
             
-            // 只在"即将封盘"状态时执行投注
+            // 只在"即将封盘"状态时处理投注
             if (e.NewStatus == BinggoLotteryStatus.即将封盘)
             {
-                _log.Info("AutoBet", $"🎯 触发封盘通知和自动投注: {e.IssueId}");
+                _log.Info("AutoBet", $"🎯 触发封盘事件:{e.IssueId}");
                 
-                // 1. 通过 Socket 推送封盘通知到浏览器
-                int secondsRemaining = _lotteryService.SecondsToSeal;
-                await _autoBetService.NotifySealingAsync(_currentConfigId, e.IssueId.ToString(), secondsRemaining);
-                
-                // 2. 执行自动投注
-                await ExecuteAutoBetAsync(e.IssueId);
-            }
-        }
-        
-        /// <summary>
-        /// 执行自动投注
-        /// </summary>
-        private async Task ExecuteAutoBetAsync(int issueId)
-        {
-            try
-            {
-                // TODO: 这里需要根据实际业务逻辑决定投注内容
-                // 目前先实现一个简单的测试投注
-                
-                var order = new BetOrder
+                try
                 {
-                    IssueId = issueId.ToString(),
-                    PlayType = "大小",
-                    BetContent = "大",
-                    Amount = 1  // 测试金额
-                };
-                
-                _log.Info("AutoBet", $"📤 自动投注: {order.PlayType} {order.BetContent} {order.Amount}元");
-                
-                // 方式1: 通过 Socket 推送投注命令（实时推送）
-                await _autoBetService.SendBetCommandAsync(_currentConfigId, order);
-                
-                // 方式2: 同时加入队列，供 HTTP 接口查询（兜底机制）
-                _autoBetService.QueueBetOrder(_currentConfigId, order);
-                
-                _log.Info("AutoBet", "✅ 投注命令已推送（Socket）并加入队列（HTTP）");
-            }
-            catch (Exception ex)
-            {
-                _log.Error("AutoBet", "执行自动投注异常", ex);
-            }
-        }
-        
-        /// <summary>
-        /// 手动投注
-        /// </summary>
-        public async Task<BetResult> PlaceBetManualAsync(BetOrder order)
-        {
-            if (!_isAutoBetEnabled || _currentConfigId <= 0)
-            {
-                return new BetResult
+                    // 1. 查询待处理订单
+                    var pendingOrders = _orderService.GetPendingOrdersForIssue(e.IssueId);
+                    if (!pendingOrders.Any())
+                    {
+                        _log.Info("AutoBet", $"期号{e.IssueId}没有待投注订单");
+                        return;
+                    }
+                    
+                    _log.Info("AutoBet", $"查询到{pendingOrders.Count()}个待投注订单");
+                    
+                    // 2. 合并订单
+                    var mergeResult = _orderMerger.Merge(pendingOrders);
+                    
+                    if (string.IsNullOrEmpty(mergeResult.BetContentStandard))
+                    {
+                        _log.Warning("AutoBet", "订单合并失败或内容为空");
+                        return;
+                    }
+                    
+                    // 3. 创建投注记录
+                    var betRecord = new BetRecord
+                    {
+                        ConfigId = _currentConfigId,
+                        IssueId = e.IssueId,
+                        Source = BetRecordSource.订单,
+                        OrderIds = string.Join(",", mergeResult.OrderIds),
+                        BetContentStandard = mergeResult.BetContentStandard,
+                        TotalAmount = mergeResult.TotalAmount,
+                        SendTime = DateTime.Now
+                    };
+                    
+                    betRecord = _betRecordService.Create(betRecord);
+                    
+                    // 4. 通过 Socket 发送投注命令到浏览器
+                    _log.Info("AutoBet", $"📤 发送投注命令:期号{e.IssueId} 内容:{mergeResult.BetContentStandard}");
+                    
+                    _betQueueManager.EnqueueBet(betRecord.Id, async () =>
+                    {
+                        // 这里调用 Socket 发送"投注"命令
+                        var result = await _autoBetService.SendBetCommandAsync(
+                            _currentConfigId,
+                            e.IssueId.ToString(),
+                            mergeResult.BetContentStandard
+                        );
+                        
+                        // 根据结果更新订单状态
+                        if (result.Success)
+                        {
+                            // 投注成功，更新订单为"待结算"（盘内）
+                            foreach (var orderId in mergeResult.OrderIds)
+                            {
+                                var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
+                                if (order != null)
+                                {
+                                    order.OrderStatus = OrderStatus.待结算;
+                                    _orderService.UpdateOrder(order);
+                                }
+                            }
+                            _log.Info("AutoBet", $"✅ 投注成功，已更新{mergeResult.OrderIds.Count}个订单为待结算");
+                        }
+                        else
+                        {
+                            // 投注失败，更新订单为"盘外"
+                            foreach (var orderId in mergeResult.OrderIds)
+                            {
+                                var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
+                                if (order != null)
+                                {
+                                    order.OrderStatus = OrderStatus.盘外;
+                                    _orderService.UpdateOrder(order);
+                                }
+                            }
+                            _log.Warning("AutoBet", $"❌ 投注失败，已更新{mergeResult.OrderIds.Count}个订单为盘外");
+                        }
+                        
+                        return result;
+                    });
+                }
+                catch (Exception ex)
                 {
-                    Success = false,
-                    ErrorMessage = "自动投注未启动"
-                };
+                    _log.Error("AutoBet", $"处理封盘事件失败:期号{e.IssueId}", ex);
+                }
             }
-            
-            return await _autoBetService.PlaceBet(_currentConfigId, order);
         }
     }
 }

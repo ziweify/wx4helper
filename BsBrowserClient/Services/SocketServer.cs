@@ -202,6 +202,30 @@ namespace BsBrowserClient.Services
             }
         }
         
+        /// <summary>
+        /// 发送任意数据到 VxMain
+        /// </summary>
+        public async Task SendToVxMain(object data)
+        {
+            try
+            {
+                if (_writer == null)
+                {
+                    _onLog("❌ 无法发送数据：连接未建立");
+                    return;
+                }
+                
+                var json = JsonConvert.SerializeObject(data);
+                await _writer.WriteLineAsync(json);
+                
+                _onLog($"📤 已发送数据到 VxMain");
+            }
+            catch (Exception ex)
+            {
+                _onLog($"❌ 发送数据失败: {ex.Message}");
+            }
+        }
+        
         public void Dispose()
         {
             Stop();

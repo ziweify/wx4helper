@@ -426,6 +426,60 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 throw;
             }
         }
+        
+        /// <summary>
+        /// 获取指定期号的待投注订单（用于自动投注）
+        /// </summary>
+        public IEnumerable<V2MemberOrder> GetPendingOrdersForIssue(int issueId)
+        {
+            if (_db == null) return Enumerable.Empty<V2MemberOrder>();
+            
+            try
+            {
+                var orders = _db.Table<V2MemberOrder>()
+                    .Where(o => o.IssueId == issueId && o.OrderStatus == OrderStatus.待处理)
+                    .ToList();
+                
+                _logService.Info("BinggoOrderService", $"📋 查询待投注订单:期号{issueId} 找到{orders.Count}个");
+                
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoOrderService", $"获取待投注订单失败:期号{issueId}", ex);
+                return Enumerable.Empty<V2MemberOrder>();
+            }
+        }
+        
+        /// <summary>
+        /// 更新订单（用于投注后更新状态）
+        /// </summary>
+        public void UpdateOrder(V2MemberOrder order)
+        {
+            if (_db == null || order == null) return;
+            
+            try
+            {
+                _db.Update(order);
+                
+                // 同步更新 BindingList（如果设置了）
+                if (_ordersBindingList != null)
+                {
+                    var existing = _ordersBindingList.FirstOrDefault(o => o.Id == order.Id);
+                    if (existing != null)
+                    {
+                        // 更新现有项的属性
+                        existing.OrderStatus = order.OrderStatus;
+                    }
+                }
+                
+                _logService.Info("BinggoOrderService", $"✅ 订单已更新:ID={order.Id} 状态={order.OrderStatus}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoOrderService", $"更新订单失败:ID={order.Id}", ex);
+            }
+        }
     }
 }
 

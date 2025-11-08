@@ -28,12 +28,15 @@ namespace BaiShengVx3Plus.Views.AutoBet
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle11 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle13 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle14 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle15 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle16 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle17 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle18 = new DataGridViewCellStyle();
             splitContainer = new Sunny.UI.UISplitContainer();
             pnlLeft = new Sunny.UI.UIPanel();
             dgvConfigs = new Sunny.UI.UIDataGridView();
@@ -43,7 +46,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             btnAdd = new Sunny.UI.UIButton();
             pnlRight = new Sunny.UI.UIPanel();
             tabControl = new Sunny.UI.UITabControl();
-            tabBasic = new System.Windows.Forms.TabPage();
+            tabBasic = new TabPage();
             pnlBasicContent = new Sunny.UI.UIPanel();
             btnTestConnection = new Sunny.UI.UIButton();
             chkShowBrowser = new Sunny.UI.UICheckBox();
@@ -63,22 +66,31 @@ namespace BaiShengVx3Plus.Views.AutoBet
             lblPlatform = new Sunny.UI.UILabel();
             txtConfigName = new Sunny.UI.UITextBox();
             lblConfigName = new Sunny.UI.UILabel();
-            tabAdvanced = new System.Windows.Forms.TabPage();
+            tabAdvanced = new TabPage();
             pnlAdvancedContent = new Sunny.UI.UIPanel();
-            txtBetScript = new Sunny.UI.UITextBox();
-            lblBetScript = new Sunny.UI.UILabel();
+            pnlCommandPanel = new Sunny.UI.UIPanel();
+            lblCommandPanel = new Sunny.UI.UILabel();
+            pnlQuickButtons = new Sunny.UI.UIPanel();
+            btnBetCommand = new Sunny.UI.UIButton();
+            btnGetQuotaCommand = new Sunny.UI.UIButton();
+            btnGetCookieCommand = new Sunny.UI.UIButton();
+            lblCommandInput = new Sunny.UI.UILabel();
+            txtCommand = new Sunny.UI.UITextBox();
+            btnSendCommand = new Sunny.UI.UIButton();
+            lblCommandResult = new Sunny.UI.UILabel();
+            txtCommandResult = new Sunny.UI.UITextBox();
             txtCookies = new Sunny.UI.UITextBox();
             lblCookies = new Sunny.UI.UILabel();
             txtNotes = new Sunny.UI.UITextBox();
             lblNotes = new Sunny.UI.UILabel();
-            tabRecords = new System.Windows.Forms.TabPage();
+            tabRecords = new TabPage();
             pnlRecordsContent = new Sunny.UI.UIPanel();
             dgvRecords = new Sunny.UI.UIDataGridView();
             pnlRecordsTop = new Sunny.UI.UIPanel();
             btnRefreshRecords = new Sunny.UI.UIButton();
-            dtpEndDate = new System.Windows.Forms.DateTimePicker();
+            dtpEndDate = new DateTimePicker();
             lblTo = new Sunny.UI.UILabel();
-            dtpStartDate = new System.Windows.Forms.DateTimePicker();
+            dtpStartDate = new DateTimePicker();
             lblDateRange = new Sunny.UI.UILabel();
             pnlRightTop = new Sunny.UI.UIPanel();
             btnClose = new Sunny.UI.UIButton();
@@ -86,7 +98,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             btnStartBrowser = new Sunny.UI.UIButton();
             btnSave = new Sunny.UI.UIButton();
             lblStatus = new Sunny.UI.UILabel();
-            ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
+            (splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
             splitContainer.SuspendLayout();
@@ -108,10 +120,10 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // 
             // splitContainer
             // 
-            splitContainer.Cursor = System.Windows.Forms.Cursors.VSplit;
-            splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
-            splitContainer.Location = new System.Drawing.Point(0, 0);
-            splitContainer.MinimumSize = new System.Drawing.Size(20, 20);
+            splitContainer.Cursor = Cursors.VSplit;
+            splitContainer.Dock = DockStyle.Fill;
+            splitContainer.Location = new Point(0, 35);
+            splitContainer.MinimumSize = new Size(20, 20);
             splitContainer.Name = "splitContainer";
             // 
             // splitContainer.Panel1
@@ -121,7 +133,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // splitContainer.Panel2
             // 
             splitContainer.Panel2.Controls.Add(pnlRight);
-            splitContainer.Size = new System.Drawing.Size(1400, 800);
+            splitContainer.Size = new Size(1400, 765);
             splitContainer.SplitterDistance = 400;
             splitContainer.SplitterWidth = 6;
             splitContainer.TabIndex = 0;
@@ -130,69 +142,71 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // 
             pnlLeft.Controls.Add(dgvConfigs);
             pnlLeft.Controls.Add(pnlLeftTop);
-            pnlLeft.Dock = System.Windows.Forms.DockStyle.Fill;
-            pnlLeft.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlLeft.Location = new System.Drawing.Point(0, 0);
-            pnlLeft.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlLeft.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlLeft.Dock = DockStyle.Fill;
+            pnlLeft.Font = new Font("微软雅黑", 12F);
+            pnlLeft.Location = new Point(0, 0);
+            pnlLeft.Margin = new Padding(4, 5, 4, 5);
+            pnlLeft.MinimumSize = new Size(1, 1);
             pnlLeft.Name = "pnlLeft";
-            pnlLeft.Size = new System.Drawing.Size(400, 800);
+            pnlLeft.Size = new Size(400, 765);
             pnlLeft.TabIndex = 0;
             pnlLeft.Text = "配置列表";
-            pnlLeft.TextAlignment = System.Drawing.ContentAlignment.TopCenter;
+            pnlLeft.TextAlignment = ContentAlignment.TopCenter;
             // 
             // dgvConfigs
             // 
             dgvConfigs.AllowUserToAddRows = false;
             dgvConfigs.AllowUserToDeleteRows = false;
             dgvConfigs.AllowUserToResizeRows = false;
-            dataGridViewCellStyle1.BackColor = System.Drawing.Color.FromArgb(235, 243, 255);
-            dgvConfigs.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
-            dgvConfigs.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            dgvConfigs.BackgroundColor = System.Drawing.Color.White;
-            dgvConfigs.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.Single;
-            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle2.Font = new System.Drawing.Font("微软雅黑", 12F);
-            dataGridViewCellStyle2.ForeColor = System.Drawing.Color.White;
-            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            dgvConfigs.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle10.BackColor = Color.FromArgb(235, 243, 255);
+            dgvConfigs.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle10;
+            dgvConfigs.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvConfigs.BackgroundColor = Color.White;
+            dgvConfigs.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
+            dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle11.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle11.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle11.ForeColor = Color.White;
+            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle11.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle11.WrapMode = DataGridViewTriState.True;
+            dgvConfigs.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle11;
             dgvConfigs.ColumnHeadersHeight = 32;
-            dgvConfigs.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("微软雅黑", 12F);
-            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.Color.FromArgb(155, 200, 255);
-            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            dgvConfigs.DefaultCellStyle = dataGridViewCellStyle3;
-            dgvConfigs.Dock = System.Windows.Forms.DockStyle.Fill;
+            dgvConfigs.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dataGridViewCellStyle12.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle12.BackColor = SystemColors.Window;
+            dataGridViewCellStyle12.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle12.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle12.SelectionBackColor = Color.FromArgb(155, 200, 255);
+            dataGridViewCellStyle12.SelectionForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle12.WrapMode = DataGridViewTriState.False;
+            dgvConfigs.DefaultCellStyle = dataGridViewCellStyle12;
+            dgvConfigs.Dock = DockStyle.Fill;
             dgvConfigs.EnableHeadersVisualStyles = false;
-            dgvConfigs.Font = new System.Drawing.Font("宋体", 12F);
-            dgvConfigs.GridColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dgvConfigs.Location = new System.Drawing.Point(0, 75);
+            dgvConfigs.Font = new Font("宋体", 12F);
+            dgvConfigs.GridColor = Color.FromArgb(80, 160, 255);
+            dgvConfigs.Location = new Point(0, 40);
             dgvConfigs.MultiSelect = false;
             dgvConfigs.Name = "dgvConfigs";
             dgvConfigs.ReadOnly = true;
-            dgvConfigs.RectColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = System.Drawing.Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle4.Font = new System.Drawing.Font("宋体", 12F);
-            dataGridViewCellStyle4.ForeColor = System.Drawing.Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.Color.White;
-            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            dgvConfigs.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle13.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle13.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle13.Font = new Font("宋体", 12F);
+            dataGridViewCellStyle13.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle13.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle13.SelectionForeColor = Color.White;
+            dataGridViewCellStyle13.WrapMode = DataGridViewTriState.True;
+            dgvConfigs.RowHeadersDefaultCellStyle = dataGridViewCellStyle13;
             dgvConfigs.RowHeadersVisible = false;
             dgvConfigs.RowHeadersWidth = 51;
+            dataGridViewCellStyle14.BackColor = Color.White;
+            dataGridViewCellStyle14.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvConfigs.RowsDefaultCellStyle = dataGridViewCellStyle14;
             dgvConfigs.RowTemplate.Height = 29;
             dgvConfigs.SelectedIndex = -1;
-            dgvConfigs.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            dgvConfigs.Size = new System.Drawing.Size(400, 725);
-            dgvConfigs.StripeOddColor = System.Drawing.Color.FromArgb(235, 243, 255);
+            dgvConfigs.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvConfigs.Size = new Size(400, 725);
+            dgvConfigs.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvConfigs.TabIndex = 1;
             dgvConfigs.SelectionChanged += dgvConfigs_SelectionChanged;
             // 
@@ -201,96 +215,97 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlLeftTop.Controls.Add(btnDelete);
             pnlLeftTop.Controls.Add(btnEdit);
             pnlLeftTop.Controls.Add(btnAdd);
-            pnlLeftTop.Dock = System.Windows.Forms.DockStyle.Top;
-            pnlLeftTop.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlLeftTop.Location = new System.Drawing.Point(0, 35);
-            pnlLeftTop.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlLeftTop.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlLeftTop.Dock = DockStyle.Top;
+            pnlLeftTop.Font = new Font("微软雅黑", 12F);
+            pnlLeftTop.Location = new Point(0, 0);
+            pnlLeftTop.Margin = new Padding(4, 5, 4, 5);
+            pnlLeftTop.MinimumSize = new Size(1, 1);
             pnlLeftTop.Name = "pnlLeftTop";
-            pnlLeftTop.Size = new System.Drawing.Size(400, 40);
+            pnlLeftTop.Size = new Size(400, 40);
             pnlLeftTop.TabIndex = 0;
             pnlLeftTop.Text = null;
-            pnlLeftTop.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            pnlLeftTop.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // btnDelete
             // 
-            btnDelete.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnDelete.Font = new System.Drawing.Font("微软雅黑", 9F);
-            btnDelete.Location = new System.Drawing.Point(220, 5);
-            btnDelete.MinimumSize = new System.Drawing.Size(1, 1);
+            btnDelete.Cursor = Cursors.Hand;
+            btnDelete.Font = new Font("微软雅黑", 9F);
+            btnDelete.Location = new Point(220, 5);
+            btnDelete.MinimumSize = new Size(1, 1);
             btnDelete.Name = "btnDelete";
-            btnDelete.Size = new System.Drawing.Size(100, 30);
+            btnDelete.Size = new Size(100, 30);
             btnDelete.TabIndex = 2;
             btnDelete.Text = "删除";
-            btnDelete.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnDelete.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnDelete.Click += btnDelete_Click;
             // 
             // btnEdit
             // 
-            btnEdit.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnEdit.Font = new System.Drawing.Font("微软雅黑", 9F);
-            btnEdit.Location = new System.Drawing.Point(115, 5);
-            btnEdit.MinimumSize = new System.Drawing.Size(1, 1);
+            btnEdit.Cursor = Cursors.Hand;
+            btnEdit.Font = new Font("微软雅黑", 9F);
+            btnEdit.Location = new Point(115, 5);
+            btnEdit.MinimumSize = new Size(1, 1);
             btnEdit.Name = "btnEdit";
-            btnEdit.Size = new System.Drawing.Size(100, 30);
+            btnEdit.Size = new Size(100, 30);
             btnEdit.TabIndex = 1;
             btnEdit.Text = "编辑";
-            btnEdit.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnEdit.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnEdit.Click += btnEdit_Click;
             // 
             // btnAdd
             // 
-            btnAdd.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnAdd.Font = new System.Drawing.Font("微软雅黑", 9F);
-            btnAdd.Location = new System.Drawing.Point(10, 5);
-            btnAdd.MinimumSize = new System.Drawing.Size(1, 1);
+            btnAdd.Cursor = Cursors.Hand;
+            btnAdd.Font = new Font("微软雅黑", 9F);
+            btnAdd.Location = new Point(10, 5);
+            btnAdd.MinimumSize = new Size(1, 1);
             btnAdd.Name = "btnAdd";
-            btnAdd.Size = new System.Drawing.Size(100, 30);
-
+            btnAdd.Size = new Size(100, 30);
             btnAdd.TabIndex = 0;
             btnAdd.Text = "新增";
-            btnAdd.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnAdd.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnAdd.Click += btnAdd_Click;
             // 
             // pnlRight
             // 
             pnlRight.Controls.Add(tabControl);
             pnlRight.Controls.Add(pnlRightTop);
-            pnlRight.Dock = System.Windows.Forms.DockStyle.Fill;
-            pnlRight.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlRight.Location = new System.Drawing.Point(0, 0);
-            pnlRight.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlRight.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlRight.Dock = DockStyle.Fill;
+            pnlRight.Font = new Font("微软雅黑", 12F);
+            pnlRight.Location = new Point(0, 0);
+            pnlRight.Margin = new Padding(4, 5, 4, 5);
+            pnlRight.MinimumSize = new Size(1, 1);
             pnlRight.Name = "pnlRight";
-            pnlRight.Size = new System.Drawing.Size(994, 800);
+            pnlRight.Size = new Size(994, 765);
             pnlRight.TabIndex = 0;
             pnlRight.Text = "配置详情";
-            pnlRight.TextAlignment = System.Drawing.ContentAlignment.TopCenter;
+            pnlRight.TextAlignment = ContentAlignment.TopCenter;
             // 
             // tabControl
             // 
             tabControl.Controls.Add(tabBasic);
             tabControl.Controls.Add(tabAdvanced);
             tabControl.Controls.Add(tabRecords);
-            tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            tabControl.DrawMode = System.Windows.Forms.TabDrawMode.OwnerDrawFixed;
-            tabControl.Font = new System.Drawing.Font("微软雅黑", 10F);
-            tabControl.ItemSize = new System.Drawing.Size(150, 40);
-            tabControl.Location = new System.Drawing.Point(0, 85);
+            tabControl.Dock = DockStyle.Fill;
+            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabControl.Font = new Font("微软雅黑", 10F);
+            tabControl.ItemSize = new Size(150, 40);
+            tabControl.Location = new Point(0, 50);
             tabControl.MainPage = "";
             tabControl.Name = "tabControl";
             tabControl.SelectedIndex = 0;
-            tabControl.Size = new System.Drawing.Size(994, 715);
-            tabControl.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
+            tabControl.Size = new Size(994, 715);
+            tabControl.SizeMode = TabSizeMode.Fixed;
             tabControl.TabIndex = 1;
+            tabControl.TabUnSelectedForeColor = Color.FromArgb(240, 240, 240);
+            tabControl.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             // 
             // tabBasic
             // 
-            tabBasic.BackColor = System.Drawing.Color.White;
+            tabBasic.BackColor = Color.White;
             tabBasic.Controls.Add(pnlBasicContent);
-            tabBasic.Location = new System.Drawing.Point(0, 40);
+            tabBasic.Location = new Point(0, 40);
             tabBasic.Name = "tabBasic";
-            tabBasic.Size = new System.Drawing.Size(994, 675);
+            tabBasic.Size = new Size(994, 675);
             tabBasic.TabIndex = 0;
             tabBasic.Text = "基本设置";
             // 
@@ -314,355 +329,484 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlBasicContent.Controls.Add(lblPlatform);
             pnlBasicContent.Controls.Add(txtConfigName);
             pnlBasicContent.Controls.Add(lblConfigName);
-            pnlBasicContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            pnlBasicContent.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlBasicContent.Location = new System.Drawing.Point(0, 0);
-            pnlBasicContent.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlBasicContent.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlBasicContent.Dock = DockStyle.Fill;
+            pnlBasicContent.Font = new Font("微软雅黑", 12F);
+            pnlBasicContent.Location = new Point(0, 0);
+            pnlBasicContent.Margin = new Padding(4, 5, 4, 5);
+            pnlBasicContent.MinimumSize = new Size(1, 1);
             pnlBasicContent.Name = "pnlBasicContent";
-            pnlBasicContent.Size = new System.Drawing.Size(994, 675);
+            pnlBasicContent.Size = new Size(994, 675);
             pnlBasicContent.TabIndex = 0;
             pnlBasicContent.Text = null;
-            pnlBasicContent.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            pnlBasicContent.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // btnTestConnection
             // 
-            btnTestConnection.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnTestConnection.Font = new System.Drawing.Font("微软雅黑", 10F);
-            btnTestConnection.Location = new System.Drawing.Point(150, 420);
-            btnTestConnection.MinimumSize = new System.Drawing.Size(1, 1);
+            btnTestConnection.Cursor = Cursors.Hand;
+            btnTestConnection.Font = new Font("微软雅黑", 10F);
+            btnTestConnection.Location = new Point(150, 420);
+            btnTestConnection.MinimumSize = new Size(1, 1);
             btnTestConnection.Name = "btnTestConnection";
-            btnTestConnection.Size = new System.Drawing.Size(150, 35);
-
+            btnTestConnection.Size = new Size(150, 35);
             btnTestConnection.TabIndex = 17;
             btnTestConnection.Text = "测试连接";
-            btnTestConnection.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnTestConnection.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnTestConnection.Click += btnTestConnection_Click;
             // 
             // chkShowBrowser
             // 
-            chkShowBrowser.Cursor = System.Windows.Forms.Cursors.Hand;
-            chkShowBrowser.Font = new System.Drawing.Font("微软雅黑", 10F);
-            chkShowBrowser.Location = new System.Drawing.Point(150, 370);
-            chkShowBrowser.MinimumSize = new System.Drawing.Size(1, 1);
+            chkShowBrowser.Cursor = Cursors.Hand;
+            chkShowBrowser.Font = new Font("微软雅黑", 10F);
+            chkShowBrowser.ForeColor = Color.FromArgb(48, 48, 48);
+            chkShowBrowser.Location = new Point(150, 370);
+            chkShowBrowser.MinimumSize = new Size(1, 1);
             chkShowBrowser.Name = "chkShowBrowser";
-            chkShowBrowser.Size = new System.Drawing.Size(200, 29);
+            chkShowBrowser.Size = new Size(200, 29);
             chkShowBrowser.TabIndex = 16;
             chkShowBrowser.Text = "显示浏览器窗口";
             // 
             // chkAutoLogin
             // 
             chkAutoLogin.Checked = true;
-            chkAutoLogin.Cursor = System.Windows.Forms.Cursors.Hand;
-            chkAutoLogin.Font = new System.Drawing.Font("微软雅黑", 10F);
-            chkAutoLogin.Location = new System.Drawing.Point(380, 335);
-            chkAutoLogin.MinimumSize = new System.Drawing.Size(1, 1);
+            chkAutoLogin.Cursor = Cursors.Hand;
+            chkAutoLogin.Font = new Font("微软雅黑", 10F);
+            chkAutoLogin.ForeColor = Color.FromArgb(48, 48, 48);
+            chkAutoLogin.Location = new Point(380, 335);
+            chkAutoLogin.MinimumSize = new Size(1, 1);
             chkAutoLogin.Name = "chkAutoLogin";
-            chkAutoLogin.Size = new System.Drawing.Size(150, 29);
+            chkAutoLogin.Size = new Size(150, 29);
             chkAutoLogin.TabIndex = 15;
             chkAutoLogin.Text = "自动登录";
             // 
             // chkEnabled
             // 
             chkEnabled.Checked = true;
-            chkEnabled.Cursor = System.Windows.Forms.Cursors.Hand;
-            chkEnabled.Font = new System.Drawing.Font("微软雅黑", 10F);
-            chkEnabled.Location = new System.Drawing.Point(150, 335);
-            chkEnabled.MinimumSize = new System.Drawing.Size(1, 1);
+            chkEnabled.Cursor = Cursors.Hand;
+            chkEnabled.Font = new Font("微软雅黑", 10F);
+            chkEnabled.ForeColor = Color.FromArgb(48, 48, 48);
+            chkEnabled.Location = new Point(150, 335);
+            chkEnabled.MinimumSize = new Size(1, 1);
             chkEnabled.Name = "chkEnabled";
-            chkEnabled.Size = new System.Drawing.Size(150, 29);
+            chkEnabled.Size = new Size(150, 29);
             chkEnabled.TabIndex = 14;
             chkEnabled.Text = "启用此配置";
             // 
             // txtMaxBetAmount
             // 
-            txtMaxBetAmount.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtMaxBetAmount.Location = new System.Drawing.Point(480, 285);
-            txtMaxBetAmount.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtMaxBetAmount.MinimumSize = new System.Drawing.Size(1, 16);
+            txtMaxBetAmount.DoubleValue = 10000D;
+            txtMaxBetAmount.Font = new Font("微软雅黑", 10F);
+            txtMaxBetAmount.IntValue = 10000;
+            txtMaxBetAmount.Location = new Point(480, 285);
+            txtMaxBetAmount.Margin = new Padding(4, 5, 4, 5);
+            txtMaxBetAmount.MinimumSize = new Size(1, 16);
             txtMaxBetAmount.Name = "txtMaxBetAmount";
-            txtMaxBetAmount.Padding = new System.Windows.Forms.Padding(5);
+            txtMaxBetAmount.Padding = new Padding(5);
             txtMaxBetAmount.ShowText = false;
-            txtMaxBetAmount.Size = new System.Drawing.Size(200, 30);
+            txtMaxBetAmount.Size = new Size(200, 30);
             txtMaxBetAmount.TabIndex = 13;
             txtMaxBetAmount.Text = "10000";
-            txtMaxBetAmount.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            txtMaxBetAmount.TextAlignment = ContentAlignment.MiddleLeft;
             txtMaxBetAmount.Watermark = "";
             // 
             // lblMaxBetAmount
             // 
-            lblMaxBetAmount.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblMaxBetAmount.Location = new System.Drawing.Point(370, 285);
+            lblMaxBetAmount.Font = new Font("微软雅黑", 10F);
+            lblMaxBetAmount.ForeColor = Color.FromArgb(48, 48, 48);
+            lblMaxBetAmount.Location = new Point(370, 285);
             lblMaxBetAmount.Name = "lblMaxBetAmount";
-            lblMaxBetAmount.Size = new System.Drawing.Size(100, 30);
+            lblMaxBetAmount.Size = new Size(100, 30);
             lblMaxBetAmount.TabIndex = 12;
             lblMaxBetAmount.Text = "最大金额:";
-            lblMaxBetAmount.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblMaxBetAmount.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtMinBetAmount
             // 
-            txtMinBetAmount.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtMinBetAmount.Location = new System.Drawing.Point(150, 285);
-            txtMinBetAmount.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtMinBetAmount.MinimumSize = new System.Drawing.Size(1, 16);
+            txtMinBetAmount.DoubleValue = 1D;
+            txtMinBetAmount.Font = new Font("微软雅黑", 10F);
+            txtMinBetAmount.IntValue = 1;
+            txtMinBetAmount.Location = new Point(150, 285);
+            txtMinBetAmount.Margin = new Padding(4, 5, 4, 5);
+            txtMinBetAmount.MinimumSize = new Size(1, 16);
             txtMinBetAmount.Name = "txtMinBetAmount";
-            txtMinBetAmount.Padding = new System.Windows.Forms.Padding(5);
+            txtMinBetAmount.Padding = new Padding(5);
             txtMinBetAmount.ShowText = false;
-            txtMinBetAmount.Size = new System.Drawing.Size(200, 30);
+            txtMinBetAmount.Size = new Size(200, 30);
             txtMinBetAmount.TabIndex = 11;
             txtMinBetAmount.Text = "1";
-            txtMinBetAmount.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            txtMinBetAmount.TextAlignment = ContentAlignment.MiddleLeft;
             txtMinBetAmount.Watermark = "";
             // 
             // lblMinBetAmount
             // 
-            lblMinBetAmount.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblMinBetAmount.Location = new System.Drawing.Point(40, 285);
+            lblMinBetAmount.Font = new Font("微软雅黑", 10F);
+            lblMinBetAmount.ForeColor = Color.FromArgb(48, 48, 48);
+            lblMinBetAmount.Location = new Point(40, 285);
             lblMinBetAmount.Name = "lblMinBetAmount";
-            lblMinBetAmount.Size = new System.Drawing.Size(100, 30);
+            lblMinBetAmount.Size = new Size(100, 30);
             lblMinBetAmount.TabIndex = 10;
             lblMinBetAmount.Text = "最小金额:";
-            lblMinBetAmount.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblMinBetAmount.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtPassword
             // 
-            txtPassword.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtPassword.Location = new System.Drawing.Point(150, 235);
-            txtPassword.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtPassword.MinimumSize = new System.Drawing.Size(1, 16);
+            txtPassword.Font = new Font("微软雅黑", 10F);
+            txtPassword.Location = new Point(150, 235);
+            txtPassword.Margin = new Padding(4, 5, 4, 5);
+            txtPassword.MinimumSize = new Size(1, 16);
             txtPassword.Name = "txtPassword";
-            txtPassword.Padding = new System.Windows.Forms.Padding(5);
+            txtPassword.Padding = new Padding(5);
             txtPassword.PasswordChar = '*';
             txtPassword.ShowText = false;
-            txtPassword.Size = new System.Drawing.Size(530, 30);
+            txtPassword.Size = new Size(530, 30);
             txtPassword.TabIndex = 9;
-            txtPassword.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            txtPassword.TextAlignment = ContentAlignment.MiddleLeft;
             txtPassword.Watermark = "投注账号密码";
             // 
             // lblPassword
             // 
-            lblPassword.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblPassword.Location = new System.Drawing.Point(40, 235);
+            lblPassword.Font = new Font("微软雅黑", 10F);
+            lblPassword.ForeColor = Color.FromArgb(48, 48, 48);
+            lblPassword.Location = new Point(40, 235);
             lblPassword.Name = "lblPassword";
-            lblPassword.Size = new System.Drawing.Size(100, 30);
+            lblPassword.Size = new Size(100, 30);
             lblPassword.TabIndex = 8;
             lblPassword.Text = "密码:";
-            lblPassword.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblPassword.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtUsername
             // 
-            txtUsername.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtUsername.Location = new System.Drawing.Point(150, 185);
-            txtUsername.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtUsername.MinimumSize = new System.Drawing.Size(1, 16);
+            txtUsername.Font = new Font("微软雅黑", 10F);
+            txtUsername.Location = new Point(150, 185);
+            txtUsername.Margin = new Padding(4, 5, 4, 5);
+            txtUsername.MinimumSize = new Size(1, 16);
             txtUsername.Name = "txtUsername";
-            txtUsername.Padding = new System.Windows.Forms.Padding(5);
+            txtUsername.Padding = new Padding(5);
             txtUsername.ShowText = false;
-            txtUsername.Size = new System.Drawing.Size(530, 30);
+            txtUsername.Size = new Size(530, 30);
             txtUsername.TabIndex = 7;
-            txtUsername.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            txtUsername.TextAlignment = ContentAlignment.MiddleLeft;
             txtUsername.Watermark = "投注账号";
             // 
             // lblUsername
             // 
-            lblUsername.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblUsername.Location = new System.Drawing.Point(40, 185);
+            lblUsername.Font = new Font("微软雅黑", 10F);
+            lblUsername.ForeColor = Color.FromArgb(48, 48, 48);
+            lblUsername.Location = new Point(40, 185);
             lblUsername.Name = "lblUsername";
-            lblUsername.Size = new System.Drawing.Size(100, 30);
+            lblUsername.Size = new Size(100, 30);
             lblUsername.TabIndex = 6;
             lblUsername.Text = "账号:";
-            lblUsername.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblUsername.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtPlatformUrl
             // 
-            txtPlatformUrl.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtPlatformUrl.Location = new System.Drawing.Point(150, 135);
-            txtPlatformUrl.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtPlatformUrl.MinimumSize = new System.Drawing.Size(1, 16);
+            txtPlatformUrl.Font = new Font("微软雅黑", 10F);
+            txtPlatformUrl.Location = new Point(150, 135);
+            txtPlatformUrl.Margin = new Padding(4, 5, 4, 5);
+            txtPlatformUrl.MinimumSize = new Size(1, 16);
             txtPlatformUrl.Name = "txtPlatformUrl";
-            txtPlatformUrl.Padding = new System.Windows.Forms.Padding(5);
+            txtPlatformUrl.Padding = new Padding(5);
             txtPlatformUrl.ShowText = false;
-            txtPlatformUrl.Size = new System.Drawing.Size(530, 30);
+            txtPlatformUrl.Size = new Size(530, 30);
             txtPlatformUrl.TabIndex = 5;
-            txtPlatformUrl.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            txtPlatformUrl.TextAlignment = ContentAlignment.MiddleLeft;
             txtPlatformUrl.Watermark = "https://www.example.com";
             // 
             // lblPlatformUrl
             // 
-            lblPlatformUrl.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblPlatformUrl.Location = new System.Drawing.Point(40, 135);
+            lblPlatformUrl.Font = new Font("微软雅黑", 10F);
+            lblPlatformUrl.ForeColor = Color.FromArgb(48, 48, 48);
+            lblPlatformUrl.Location = new Point(40, 135);
             lblPlatformUrl.Name = "lblPlatformUrl";
-            lblPlatformUrl.Size = new System.Drawing.Size(100, 30);
+            lblPlatformUrl.Size = new Size(100, 30);
             lblPlatformUrl.TabIndex = 4;
             lblPlatformUrl.Text = "平台URL:";
-            lblPlatformUrl.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblPlatformUrl.TextAlign = ContentAlignment.MiddleRight;
             // 
             // cbxPlatform
             // 
             cbxPlatform.DataSource = null;
             cbxPlatform.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
-            cbxPlatform.FillColor = System.Drawing.Color.White;
-            cbxPlatform.Font = new System.Drawing.Font("微软雅黑", 10F);
-            cbxPlatform.ItemHoverColor = System.Drawing.Color.FromArgb(155, 200, 255);
-            cbxPlatform.Items.AddRange(BaiShengVx3Plus.Shared.Platform.BetPlatformHelper.GetAllPlatformNames());
-            cbxPlatform.ItemSelectForeColor = System.Drawing.Color.FromArgb(235, 243, 255);
-            cbxPlatform.Location = new System.Drawing.Point(150, 85);
-            cbxPlatform.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            cbxPlatform.MinimumSize = new System.Drawing.Size(63, 0);
+            cbxPlatform.FillColor = Color.White;
+            cbxPlatform.Font = new Font("微软雅黑", 10F);
+            cbxPlatform.ItemHoverColor = Color.FromArgb(155, 200, 255);
+            cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
+            cbxPlatform.ItemSelectForeColor = Color.FromArgb(235, 243, 255);
+            cbxPlatform.Location = new Point(150, 85);
+            cbxPlatform.Margin = new Padding(4, 5, 4, 5);
+            cbxPlatform.MinimumSize = new Size(63, 0);
             cbxPlatform.Name = "cbxPlatform";
-            cbxPlatform.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
-            cbxPlatform.Size = new System.Drawing.Size(530, 30);
+            cbxPlatform.Padding = new Padding(0, 0, 30, 2);
+            cbxPlatform.Size = new Size(530, 30);
             cbxPlatform.SymbolSize = 24;
             cbxPlatform.TabIndex = 3;
-            cbxPlatform.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            cbxPlatform.TextAlignment = ContentAlignment.MiddleLeft;
             cbxPlatform.Watermark = "";
             cbxPlatform.SelectedIndexChanged += cbxPlatform_SelectedIndexChanged;
             // 
             // lblPlatform
             // 
-            lblPlatform.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblPlatform.Location = new System.Drawing.Point(40, 85);
+            lblPlatform.Font = new Font("微软雅黑", 10F);
+            lblPlatform.ForeColor = Color.FromArgb(48, 48, 48);
+            lblPlatform.Location = new Point(40, 85);
             lblPlatform.Name = "lblPlatform";
-            lblPlatform.Size = new System.Drawing.Size(100, 30);
+            lblPlatform.Size = new Size(100, 30);
             lblPlatform.TabIndex = 2;
             lblPlatform.Text = "平台:";
-            lblPlatform.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblPlatform.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtConfigName
             // 
-            txtConfigName.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtConfigName.Location = new System.Drawing.Point(150, 35);
-            txtConfigName.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtConfigName.MinimumSize = new System.Drawing.Size(1, 16);
+            txtConfigName.Font = new Font("微软雅黑", 10F);
+            txtConfigName.Location = new Point(150, 35);
+            txtConfigName.Margin = new Padding(4, 5, 4, 5);
+            txtConfigName.MinimumSize = new Size(1, 16);
             txtConfigName.Name = "txtConfigName";
-            txtConfigName.Padding = new System.Windows.Forms.Padding(5);
+            txtConfigName.Padding = new Padding(5);
             txtConfigName.ShowText = false;
-            txtConfigName.Size = new System.Drawing.Size(530, 30);
+            txtConfigName.Size = new Size(530, 30);
             txtConfigName.TabIndex = 1;
-            txtConfigName.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            txtConfigName.TextAlignment = ContentAlignment.MiddleLeft;
             txtConfigName.Watermark = "例如：云�?8-账号1";
             // 
             // lblConfigName
             // 
-            lblConfigName.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblConfigName.Location = new System.Drawing.Point(40, 35);
+            lblConfigName.Font = new Font("微软雅黑", 10F);
+            lblConfigName.ForeColor = Color.FromArgb(48, 48, 48);
+            lblConfigName.Location = new Point(40, 35);
             lblConfigName.Name = "lblConfigName";
-            lblConfigName.Size = new System.Drawing.Size(100, 30);
+            lblConfigName.Size = new Size(100, 30);
             lblConfigName.TabIndex = 0;
             lblConfigName.Text = "配置名称:";
-            lblConfigName.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            lblConfigName.TextAlign = ContentAlignment.MiddleRight;
             // 
             // tabAdvanced
             // 
-            tabAdvanced.BackColor = System.Drawing.Color.White;
+            tabAdvanced.BackColor = Color.White;
             tabAdvanced.Controls.Add(pnlAdvancedContent);
-            tabAdvanced.Location = new System.Drawing.Point(0, 40);
+            tabAdvanced.Location = new Point(0, 40);
             tabAdvanced.Name = "tabAdvanced";
-            tabAdvanced.Size = new System.Drawing.Size(994, 675);
+            tabAdvanced.Size = new Size(994, 675);
             tabAdvanced.TabIndex = 1;
             tabAdvanced.Text = "高级设置";
             // 
             // pnlAdvancedContent
             // 
-            pnlAdvancedContent.Controls.Add(txtBetScript);
-            pnlAdvancedContent.Controls.Add(lblBetScript);
+            pnlAdvancedContent.Controls.Add(pnlCommandPanel);
             pnlAdvancedContent.Controls.Add(txtCookies);
             pnlAdvancedContent.Controls.Add(lblCookies);
             pnlAdvancedContent.Controls.Add(txtNotes);
             pnlAdvancedContent.Controls.Add(lblNotes);
-            pnlAdvancedContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            pnlAdvancedContent.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlAdvancedContent.Location = new System.Drawing.Point(0, 0);
-            pnlAdvancedContent.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlAdvancedContent.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlAdvancedContent.Dock = DockStyle.Fill;
+            pnlAdvancedContent.Font = new Font("微软雅黑", 12F);
+            pnlAdvancedContent.Location = new Point(0, 0);
+            pnlAdvancedContent.Margin = new Padding(4, 5, 4, 5);
+            pnlAdvancedContent.MinimumSize = new Size(1, 1);
             pnlAdvancedContent.Name = "pnlAdvancedContent";
-            pnlAdvancedContent.Size = new System.Drawing.Size(994, 675);
+            pnlAdvancedContent.Size = new Size(994, 675);
             pnlAdvancedContent.TabIndex = 0;
             pnlAdvancedContent.Text = null;
-            pnlAdvancedContent.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            pnlAdvancedContent.TextAlignment = ContentAlignment.MiddleCenter;
             // 
-            // txtBetScript
+            // pnlCommandPanel
             // 
-            txtBetScript.Font = new System.Drawing.Font("微软雅黑", 9F);
-            txtBetScript.Location = new System.Drawing.Point(150, 280);
-            txtBetScript.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtBetScript.MinimumSize = new System.Drawing.Size(1, 16);
-            txtBetScript.Multiline = true;
-            txtBetScript.Name = "txtBetScript";
-            txtBetScript.Padding = new System.Windows.Forms.Padding(5);
-            txtBetScript.ShowText = false;
-            txtBetScript.Size = new System.Drawing.Size(800, 350);
-            txtBetScript.TabIndex = 5;
-            txtBetScript.TextAlignment = System.Drawing.ContentAlignment.TopLeft;
-            txtBetScript.Watermark = "自定义投注脚本（高级）";
+            pnlCommandPanel.Controls.Add(lblCommandPanel);
+            pnlCommandPanel.Controls.Add(pnlQuickButtons);
+            pnlCommandPanel.Controls.Add(lblCommandInput);
+            pnlCommandPanel.Controls.Add(txtCommand);
+            pnlCommandPanel.Controls.Add(btnSendCommand);
+            pnlCommandPanel.Controls.Add(lblCommandResult);
+            pnlCommandPanel.Controls.Add(txtCommandResult);
+            pnlCommandPanel.Location = new Point(40, 280);
+            pnlCommandPanel.Name = "pnlCommandPanel";
+            pnlCommandPanel.Size = new Size(910, 380);
+            pnlCommandPanel.TabIndex = 4;
+            pnlCommandPanel.Text = null;
             // 
-            // lblBetScript
+            // lblCommandPanel
             // 
-            lblBetScript.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblBetScript.Location = new System.Drawing.Point(40, 280);
-            lblBetScript.Name = "lblBetScript";
-            lblBetScript.Size = new System.Drawing.Size(100, 30);
-            lblBetScript.TabIndex = 4;
-            lblBetScript.Text = "投注脚本:";
-            lblBetScript.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            lblCommandPanel.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
+            lblCommandPanel.ForeColor = Color.FromArgb(48, 48, 48);
+            lblCommandPanel.Location = new Point(0, 0);
+            lblCommandPanel.Name = "lblCommandPanel";
+            lblCommandPanel.Size = new Size(150, 30);
+            lblCommandPanel.TabIndex = 0;
+            lblCommandPanel.Text = "发送指令";
+            lblCommandPanel.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // pnlQuickButtons
+            // 
+            pnlQuickButtons.Controls.Add(btnBetCommand);
+            pnlQuickButtons.Controls.Add(btnGetQuotaCommand);
+            pnlQuickButtons.Controls.Add(btnGetCookieCommand);
+            pnlQuickButtons.Location = new Point(0, 35);
+            pnlQuickButtons.Name = "pnlQuickButtons";
+            pnlQuickButtons.Size = new Size(910, 45);
+            pnlQuickButtons.TabIndex = 1;
+            pnlQuickButtons.Text = null;
+            // 
+            // btnBetCommand
+            // 
+            btnBetCommand.Cursor = Cursors.Hand;
+            btnBetCommand.Font = new Font("微软雅黑", 9F);
+            btnBetCommand.Location = new Point(0, 5);
+            btnBetCommand.MinimumSize = new Size(1, 1);
+            btnBetCommand.Name = "btnBetCommand";
+            btnBetCommand.Size = new Size(100, 35);
+            btnBetCommand.TabIndex = 0;
+            btnBetCommand.Text = "投注";
+            btnBetCommand.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnBetCommand.Click += BtnBetCommand_Click;
+            // 
+            // btnGetQuotaCommand
+            // 
+            btnGetQuotaCommand.Cursor = Cursors.Hand;
+            btnGetQuotaCommand.Font = new Font("微软雅黑", 9F);
+            btnGetQuotaCommand.Location = new Point(110, 5);
+            btnGetQuotaCommand.MinimumSize = new Size(1, 1);
+            btnGetQuotaCommand.Name = "btnGetQuotaCommand";
+            btnGetQuotaCommand.Size = new Size(140, 35);
+            btnGetQuotaCommand.TabIndex = 1;
+            btnGetQuotaCommand.Text = "获取盘口额度";
+            btnGetQuotaCommand.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnGetQuotaCommand.Click += BtnGetQuotaCommand_Click;
+            // 
+            // btnGetCookieCommand
+            // 
+            btnGetCookieCommand.Cursor = Cursors.Hand;
+            btnGetCookieCommand.Font = new Font("微软雅黑", 9F);
+            btnGetCookieCommand.Location = new Point(260, 5);
+            btnGetCookieCommand.MinimumSize = new Size(1, 1);
+            btnGetCookieCommand.Name = "btnGetCookieCommand";
+            btnGetCookieCommand.Size = new Size(120, 35);
+            btnGetCookieCommand.TabIndex = 2;
+            btnGetCookieCommand.Text = "获取Cookie";
+            btnGetCookieCommand.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnGetCookieCommand.Click += BtnGetCookieCommand_Click;
+            // 
+            // lblCommandInput
+            // 
+            lblCommandInput.Font = new Font("微软雅黑", 10F);
+            lblCommandInput.ForeColor = Color.FromArgb(48, 48, 48);
+            lblCommandInput.Location = new Point(0, 90);
+            lblCommandInput.Name = "lblCommandInput";
+            lblCommandInput.Size = new Size(150, 25);
+            lblCommandInput.TabIndex = 2;
+            lblCommandInput.Text = "命令输入:";
+            lblCommandInput.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtCommand
+            // 
+            txtCommand.Font = new Font("微软雅黑", 9F);
+            txtCommand.Location = new Point(0, 120);
+            txtCommand.Margin = new Padding(4, 5, 4, 5);
+            txtCommand.MinimumSize = new Size(1, 16);
+            txtCommand.Name = "txtCommand";
+            txtCommand.Padding = new Padding(5);
+            txtCommand.ShowText = false;
+            txtCommand.Size = new Size(710, 30);
+            txtCommand.TabIndex = 3;
+            txtCommand.TextAlignment = ContentAlignment.MiddleLeft;
+            txtCommand.Watermark = "例如: 投注(1234大10) 或 获取盘口额度";
+            // 
+            // btnSendCommand
+            // 
+            btnSendCommand.Cursor = Cursors.Hand;
+            btnSendCommand.Font = new Font("微软雅黑", 9F);
+            btnSendCommand.Location = new Point(720, 120);
+            btnSendCommand.MinimumSize = new Size(1, 1);
+            btnSendCommand.Name = "btnSendCommand";
+            btnSendCommand.Size = new Size(100, 30);
+            btnSendCommand.TabIndex = 4;
+            btnSendCommand.Text = "发送";
+            btnSendCommand.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnSendCommand.Click += BtnSendCommand_Click;
+            // 
+            // lblCommandResult
+            // 
+            lblCommandResult.Font = new Font("微软雅黑", 10F);
+            lblCommandResult.ForeColor = Color.FromArgb(48, 48, 48);
+            lblCommandResult.Location = new Point(0, 165);
+            lblCommandResult.Name = "lblCommandResult";
+            lblCommandResult.Size = new Size(150, 25);
+            lblCommandResult.TabIndex = 5;
+            lblCommandResult.Text = "执行结果:";
+            lblCommandResult.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtCommandResult
+            // 
+            txtCommandResult.Font = new Font("Consolas", 9F);
+            txtCommandResult.Location = new Point(0, 195);
+            txtCommandResult.Margin = new Padding(4, 5, 4, 5);
+            txtCommandResult.MinimumSize = new Size(1, 16);
+            txtCommandResult.Multiline = true;
+            txtCommandResult.Name = "txtCommandResult";
+            txtCommandResult.Padding = new Padding(5);
+            txtCommandResult.ReadOnly = true;
+            txtCommandResult.ShowText = false;
+            txtCommandResult.Size = new Size(820, 180);
+            txtCommandResult.TabIndex = 6;
+            txtCommandResult.TextAlignment = ContentAlignment.TopLeft;
             // 
             // txtCookies
             // 
-            txtCookies.Font = new System.Drawing.Font("微软雅黑", 9F);
-            txtCookies.Location = new System.Drawing.Point(150, 140);
-            txtCookies.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtCookies.MinimumSize = new System.Drawing.Size(1, 16);
+            txtCookies.Font = new Font("微软雅黑", 9F);
+            txtCookies.Location = new Point(150, 140);
+            txtCookies.Margin = new Padding(4, 5, 4, 5);
+            txtCookies.MinimumSize = new Size(1, 16);
             txtCookies.Multiline = true;
             txtCookies.Name = "txtCookies";
-            txtCookies.Padding = new System.Windows.Forms.Padding(5);
+            txtCookies.Padding = new Padding(5);
             txtCookies.ShowText = false;
-            txtCookies.Size = new System.Drawing.Size(800, 120);
+            txtCookies.Size = new Size(800, 120);
             txtCookies.TabIndex = 3;
-            txtCookies.TextAlignment = System.Drawing.ContentAlignment.TopLeft;
+            txtCookies.TextAlignment = ContentAlignment.TopLeft;
             txtCookies.Watermark = "浏览器Cookies（可选，用于免登录）";
             // 
             // lblCookies
             // 
-            lblCookies.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblCookies.Location = new System.Drawing.Point(40, 140);
+            lblCookies.Font = new Font("微软雅黑", 10F);
+            lblCookies.ForeColor = Color.FromArgb(48, 48, 48);
+            lblCookies.Location = new Point(40, 140);
             lblCookies.Name = "lblCookies";
-            lblCookies.Size = new System.Drawing.Size(100, 30);
+            lblCookies.Size = new Size(100, 30);
             lblCookies.TabIndex = 2;
             lblCookies.Text = "Cookies:";
-            lblCookies.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            lblCookies.TextAlign = ContentAlignment.TopRight;
             // 
             // txtNotes
             // 
-            txtNotes.Font = new System.Drawing.Font("微软雅黑", 10F);
-            txtNotes.Location = new System.Drawing.Point(150, 35);
-            txtNotes.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            txtNotes.MinimumSize = new System.Drawing.Size(1, 16);
+            txtNotes.Font = new Font("微软雅黑", 10F);
+            txtNotes.Location = new Point(150, 35);
+            txtNotes.Margin = new Padding(4, 5, 4, 5);
+            txtNotes.MinimumSize = new Size(1, 16);
             txtNotes.Multiline = true;
             txtNotes.Name = "txtNotes";
-            txtNotes.Padding = new System.Windows.Forms.Padding(5);
+            txtNotes.Padding = new Padding(5);
             txtNotes.ShowText = false;
-            txtNotes.Size = new System.Drawing.Size(800, 80);
+            txtNotes.Size = new Size(800, 80);
             txtNotes.TabIndex = 1;
-            txtNotes.TextAlignment = System.Drawing.ContentAlignment.TopLeft;
+            txtNotes.TextAlignment = ContentAlignment.TopLeft;
             txtNotes.Watermark = "备注信息";
             // 
             // lblNotes
             // 
-            lblNotes.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblNotes.Location = new System.Drawing.Point(40, 35);
+            lblNotes.Font = new Font("微软雅黑", 10F);
+            lblNotes.ForeColor = Color.FromArgb(48, 48, 48);
+            lblNotes.Location = new Point(40, 35);
             lblNotes.Name = "lblNotes";
-            lblNotes.Size = new System.Drawing.Size(100, 30);
+            lblNotes.Size = new Size(100, 30);
             lblNotes.TabIndex = 0;
             lblNotes.Text = "备注:";
-            lblNotes.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            lblNotes.TextAlign = ContentAlignment.TopRight;
             // 
             // tabRecords
             // 
-            tabRecords.BackColor = System.Drawing.Color.White;
+            tabRecords.BackColor = Color.White;
             tabRecords.Controls.Add(pnlRecordsContent);
-            tabRecords.Location = new System.Drawing.Point(0, 40);
+            tabRecords.Location = new Point(0, 40);
             tabRecords.Name = "tabRecords";
-            tabRecords.Size = new System.Drawing.Size(994, 675);
+            tabRecords.Size = new Size(994, 675);
             tabRecords.TabIndex = 2;
             tabRecords.Text = "投注记录";
             // 
@@ -670,53 +814,63 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // 
             pnlRecordsContent.Controls.Add(dgvRecords);
             pnlRecordsContent.Controls.Add(pnlRecordsTop);
-            pnlRecordsContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            pnlRecordsContent.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlRecordsContent.Location = new System.Drawing.Point(0, 0);
-            pnlRecordsContent.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlRecordsContent.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlRecordsContent.Dock = DockStyle.Fill;
+            pnlRecordsContent.Font = new Font("微软雅黑", 12F);
+            pnlRecordsContent.Location = new Point(0, 0);
+            pnlRecordsContent.Margin = new Padding(4, 5, 4, 5);
+            pnlRecordsContent.MinimumSize = new Size(1, 1);
             pnlRecordsContent.Name = "pnlRecordsContent";
-            pnlRecordsContent.Size = new System.Drawing.Size(994, 675);
+            pnlRecordsContent.Size = new Size(994, 675);
             pnlRecordsContent.TabIndex = 0;
             pnlRecordsContent.Text = null;
-            pnlRecordsContent.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            pnlRecordsContent.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // dgvRecords
             // 
             dgvRecords.AllowUserToAddRows = false;
             dgvRecords.AllowUserToDeleteRows = false;
             dgvRecords.AllowUserToResizeRows = false;
-            dataGridViewCellStyle5.BackColor = System.Drawing.Color.FromArgb(235, 243, 255);
-            dgvRecords.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle5;
-            dgvRecords.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            dgvRecords.BackgroundColor = System.Drawing.Color.White;
-            dgvRecords.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.Single;
-            dataGridViewCellStyle6.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle6.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle6.Font = new System.Drawing.Font("微软雅黑", 12F);
-            dataGridViewCellStyle6.ForeColor = System.Drawing.Color.White;
-            dataGridViewCellStyle6.SelectionBackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle6.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle6.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            dgvRecords.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle6;
+            dataGridViewCellStyle15.BackColor = Color.FromArgb(235, 243, 255);
+            dgvRecords.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle15;
+            dgvRecords.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvRecords.BackgroundColor = Color.White;
+            dgvRecords.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
+            dataGridViewCellStyle16.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle16.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle16.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle16.ForeColor = Color.White;
+            dataGridViewCellStyle16.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle16.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle16.WrapMode = DataGridViewTriState.True;
+            dgvRecords.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle16;
             dgvRecords.ColumnHeadersHeight = 32;
-            dgvRecords.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            dgvRecords.Dock = System.Windows.Forms.DockStyle.Fill;
+            dgvRecords.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgvRecords.Dock = DockStyle.Fill;
             dgvRecords.EnableHeadersVisualStyles = false;
-            dgvRecords.Font = new System.Drawing.Font("宋体", 12F);
-            dgvRecords.GridColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            dgvRecords.Location = new System.Drawing.Point(0, 45);
+            dgvRecords.Font = new Font("宋体", 12F);
+            dgvRecords.GridColor = Color.FromArgb(80, 160, 255);
+            dgvRecords.Location = new Point(0, 45);
             dgvRecords.MultiSelect = false;
             dgvRecords.Name = "dgvRecords";
             dgvRecords.ReadOnly = true;
-            dgvRecords.RectColor = System.Drawing.Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle17.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle17.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle17.Font = new Font("宋体", 12F);
+            dataGridViewCellStyle17.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle17.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle17.SelectionForeColor = Color.White;
+            dataGridViewCellStyle17.WrapMode = DataGridViewTriState.True;
+            dgvRecords.RowHeadersDefaultCellStyle = dataGridViewCellStyle17;
             dgvRecords.RowHeadersVisible = false;
             dgvRecords.RowHeadersWidth = 51;
+            dataGridViewCellStyle18.BackColor = Color.White;
+            dataGridViewCellStyle18.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvRecords.RowsDefaultCellStyle = dataGridViewCellStyle18;
             dgvRecords.RowTemplate.Height = 29;
             dgvRecords.SelectedIndex = -1;
-            dgvRecords.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            dgvRecords.Size = new System.Drawing.Size(994, 630);
-            dgvRecords.StripeOddColor = System.Drawing.Color.FromArgb(235, 243, 255);
+            dgvRecords.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvRecords.Size = new Size(994, 630);
+            dgvRecords.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvRecords.TabIndex = 1;
             // 
             // pnlRecordsTop
@@ -726,66 +880,67 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlRecordsTop.Controls.Add(lblTo);
             pnlRecordsTop.Controls.Add(dtpStartDate);
             pnlRecordsTop.Controls.Add(lblDateRange);
-            pnlRecordsTop.Dock = System.Windows.Forms.DockStyle.Top;
-            pnlRecordsTop.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlRecordsTop.Location = new System.Drawing.Point(0, 0);
-            pnlRecordsTop.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlRecordsTop.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlRecordsTop.Dock = DockStyle.Top;
+            pnlRecordsTop.Font = new Font("微软雅黑", 12F);
+            pnlRecordsTop.Location = new Point(0, 0);
+            pnlRecordsTop.Margin = new Padding(4, 5, 4, 5);
+            pnlRecordsTop.MinimumSize = new Size(1, 1);
             pnlRecordsTop.Name = "pnlRecordsTop";
-            pnlRecordsTop.Size = new System.Drawing.Size(994, 45);
+            pnlRecordsTop.Size = new Size(994, 45);
             pnlRecordsTop.TabIndex = 0;
             pnlRecordsTop.Text = null;
-            pnlRecordsTop.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            pnlRecordsTop.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // btnRefreshRecords
             // 
-            btnRefreshRecords.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnRefreshRecords.Font = new System.Drawing.Font("微软雅黑", 9F);
-            btnRefreshRecords.Location = new System.Drawing.Point(595, 7);
-            btnRefreshRecords.MinimumSize = new System.Drawing.Size(1, 1);
+            btnRefreshRecords.Cursor = Cursors.Hand;
+            btnRefreshRecords.Font = new Font("微软雅黑", 9F);
+            btnRefreshRecords.Location = new Point(595, 7);
+            btnRefreshRecords.MinimumSize = new Size(1, 1);
             btnRefreshRecords.Name = "btnRefreshRecords";
-            btnRefreshRecords.Size = new System.Drawing.Size(100, 30);
-
+            btnRefreshRecords.Size = new Size(100, 30);
             btnRefreshRecords.TabIndex = 4;
             btnRefreshRecords.Text = "刷新";
-            btnRefreshRecords.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnRefreshRecords.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnRefreshRecords.Click += btnRefreshRecords_Click;
             // 
             // dtpEndDate
             // 
-            dtpEndDate.Font = new System.Drawing.Font("微软雅黑", 9F);
-            dtpEndDate.Location = new System.Drawing.Point(430, 10);
+            dtpEndDate.Font = new Font("微软雅黑", 9F);
+            dtpEndDate.Location = new Point(430, 10);
             dtpEndDate.Name = "dtpEndDate";
-            dtpEndDate.Size = new System.Drawing.Size(150, 27);
+            dtpEndDate.Size = new Size(150, 23);
             dtpEndDate.TabIndex = 3;
             // 
             // lblTo
             // 
-            lblTo.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblTo.Location = new System.Drawing.Point(390, 7);
+            lblTo.Font = new Font("微软雅黑", 10F);
+            lblTo.ForeColor = Color.FromArgb(48, 48, 48);
+            lblTo.Location = new Point(390, 7);
             lblTo.Name = "lblTo";
-            lblTo.Size = new System.Drawing.Size(30, 30);
+            lblTo.Size = new Size(30, 30);
             lblTo.TabIndex = 2;
             lblTo.Text = "至";
-            lblTo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            lblTo.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // dtpStartDate
             // 
-            dtpStartDate.Font = new System.Drawing.Font("微软雅黑", 9F);
-            dtpStartDate.Location = new System.Drawing.Point(230, 10);
+            dtpStartDate.Font = new Font("微软雅黑", 9F);
+            dtpStartDate.Location = new Point(230, 10);
             dtpStartDate.Name = "dtpStartDate";
-            dtpStartDate.Size = new System.Drawing.Size(150, 27);
+            dtpStartDate.Size = new Size(150, 23);
             dtpStartDate.TabIndex = 1;
             // 
             // lblDateRange
             // 
-            lblDateRange.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblDateRange.Location = new System.Drawing.Point(10, 7);
+            lblDateRange.Font = new Font("微软雅黑", 10F);
+            lblDateRange.ForeColor = Color.FromArgb(48, 48, 48);
+            lblDateRange.Location = new Point(10, 7);
             lblDateRange.Name = "lblDateRange";
-            lblDateRange.Size = new System.Drawing.Size(200, 30);
+            lblDateRange.Size = new Size(200, 30);
             lblDateRange.TabIndex = 0;
             lblDateRange.Text = "时间范围:";
-            lblDateRange.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            lblDateRange.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // pnlRightTop
             // 
@@ -794,100 +949,96 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlRightTop.Controls.Add(btnStartBrowser);
             pnlRightTop.Controls.Add(btnSave);
             pnlRightTop.Controls.Add(lblStatus);
-            pnlRightTop.Dock = System.Windows.Forms.DockStyle.Top;
-            pnlRightTop.Font = new System.Drawing.Font("微软雅黑", 12F);
-            pnlRightTop.Location = new System.Drawing.Point(0, 35);
-            pnlRightTop.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            pnlRightTop.MinimumSize = new System.Drawing.Size(1, 1);
+            pnlRightTop.Dock = DockStyle.Top;
+            pnlRightTop.Font = new Font("微软雅黑", 12F);
+            pnlRightTop.Location = new Point(0, 0);
+            pnlRightTop.Margin = new Padding(4, 5, 4, 5);
+            pnlRightTop.MinimumSize = new Size(1, 1);
             pnlRightTop.Name = "pnlRightTop";
-            pnlRightTop.Size = new System.Drawing.Size(994, 50);
+            pnlRightTop.Size = new Size(994, 50);
             pnlRightTop.TabIndex = 0;
             pnlRightTop.Text = null;
-            pnlRightTop.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            pnlRightTop.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // btnClose
             // 
-            btnClose.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnClose.Font = new System.Drawing.Font("微软雅黑", 10F);
-            btnClose.Location = new System.Drawing.Point(870, 10);
-            btnClose.MinimumSize = new System.Drawing.Size(1, 1);
+            btnClose.Cursor = Cursors.Hand;
+            btnClose.Font = new Font("微软雅黑", 10F);
+            btnClose.Location = new Point(870, 10);
+            btnClose.MinimumSize = new Size(1, 1);
             btnClose.Name = "btnClose";
-            btnClose.Size = new System.Drawing.Size(100, 35);
-
+            btnClose.Size = new Size(100, 35);
             btnClose.TabIndex = 4;
             btnClose.Text = "关闭";
-            btnClose.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnClose.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnClose.Click += btnClose_Click;
             // 
             // btnStopBrowser
             // 
-            btnStopBrowser.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnStopBrowser.Font = new System.Drawing.Font("微软雅黑", 10F);
-            btnStopBrowser.Location = new System.Drawing.Point(390, 10);
-            btnStopBrowser.MinimumSize = new System.Drawing.Size(1, 1);
+            btnStopBrowser.Cursor = Cursors.Hand;
+            btnStopBrowser.Font = new Font("微软雅黑", 10F);
+            btnStopBrowser.Location = new Point(390, 10);
+            btnStopBrowser.MinimumSize = new Size(1, 1);
             btnStopBrowser.Name = "btnStopBrowser";
-            btnStopBrowser.Size = new System.Drawing.Size(120, 35);
-
+            btnStopBrowser.Size = new Size(120, 35);
             btnStopBrowser.TabIndex = 3;
             btnStopBrowser.Text = "停止浏览器";
-            btnStopBrowser.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnStopBrowser.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnStopBrowser.Click += btnStopBrowser_Click;
             // 
             // btnStartBrowser
             // 
-            btnStartBrowser.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnStartBrowser.Font = new System.Drawing.Font("微软雅黑", 10F);
-            btnStartBrowser.Location = new System.Drawing.Point(260, 10);
-            btnStartBrowser.MinimumSize = new System.Drawing.Size(1, 1);
+            btnStartBrowser.Cursor = Cursors.Hand;
+            btnStartBrowser.Font = new Font("微软雅黑", 10F);
+            btnStartBrowser.Location = new Point(260, 10);
+            btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
-            btnStartBrowser.Size = new System.Drawing.Size(120, 35);
-
+            btnStartBrowser.Size = new Size(120, 35);
             btnStartBrowser.TabIndex = 2;
             btnStartBrowser.Text = "启动浏览器";
-            btnStartBrowser.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnStartBrowser.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnStartBrowser.Click += btnStartBrowser_Click;
             // 
             // btnSave
             // 
-            btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnSave.Font = new System.Drawing.Font("微软雅黑", 10F);
-            btnSave.Location = new System.Drawing.Point(130, 10);
-            btnSave.MinimumSize = new System.Drawing.Size(1, 1);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.Font = new Font("微软雅黑", 10F);
+            btnSave.Location = new Point(130, 10);
+            btnSave.MinimumSize = new Size(1, 1);
             btnSave.Name = "btnSave";
-            btnSave.Size = new System.Drawing.Size(120, 35);
-
+            btnSave.Size = new Size(120, 35);
             btnSave.TabIndex = 1;
             btnSave.Text = "保存配置";
-            btnSave.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+            btnSave.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnSave.Click += btnSave_Click;
             // 
             // lblStatus
             // 
-            lblStatus.Font = new System.Drawing.Font("微软雅黑", 10F);
-            lblStatus.Location = new System.Drawing.Point(10, 10);
+            lblStatus.Font = new Font("微软雅黑", 10F);
+            lblStatus.ForeColor = Color.FromArgb(48, 48, 48);
+            lblStatus.Location = new Point(10, 10);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new System.Drawing.Size(110, 35);
+            lblStatus.Size = new Size(110, 35);
             lblStatus.TabIndex = 0;
             lblStatus.Text = "状态: 未运行";
-            lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            lblStatus.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // BetConfigManagerForm
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
-            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(1400, 800);
+            AutoScaleMode = AutoScaleMode.None;
+            ClientSize = new Size(1400, 800);
             Controls.Add(splitContainer);
-            Font = new System.Drawing.Font("微软雅黑", 10F);
+            Font = new Font("微软雅黑", 10F);
             Name = "BetConfigManagerForm";
             ShowIcon = false;
             ShowInTaskbar = false;
-            StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            StartPosition = FormStartPosition.CenterParent;
             Text = "自动投注配置管理器";
-            ZoomScaleRect = new System.Drawing.Rectangle(19, 19, 1400, 800);
+            ZoomScaleRect = new Rectangle(19, 19, 1400, 800);
             Load += BetConfigManagerForm_Load;
             splitContainer.Panel1.ResumeLayout(false);
             splitContainer.Panel2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)splitContainer).EndInit();
+            (splitContainer).EndInit();
             splitContainer.ResumeLayout(false);
             pnlLeft.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvConfigs).EndInit();
@@ -939,8 +1090,17 @@ namespace BaiShengVx3Plus.Views.AutoBet
         private Sunny.UI.UILabel lblConfigName;
         private System.Windows.Forms.TabPage tabAdvanced;
         private Sunny.UI.UIPanel pnlAdvancedContent;
-        private Sunny.UI.UITextBox txtBetScript;
-        private Sunny.UI.UILabel lblBetScript;
+        private Sunny.UI.UIPanel pnlCommandPanel;
+        private Sunny.UI.UILabel lblCommandPanel;
+        private Sunny.UI.UIPanel pnlQuickButtons;
+        private Sunny.UI.UIButton btnBetCommand;
+        private Sunny.UI.UIButton btnGetQuotaCommand;
+        private Sunny.UI.UIButton btnGetCookieCommand;
+        private Sunny.UI.UILabel lblCommandInput;
+        private Sunny.UI.UITextBox txtCommand;
+        private Sunny.UI.UIButton btnSendCommand;
+        private Sunny.UI.UILabel lblCommandResult;
+        private Sunny.UI.UITextBox txtCommandResult;
         private Sunny.UI.UITextBox txtCookies;
         private Sunny.UI.UILabel lblCookies;
         private Sunny.UI.UITextBox txtNotes;

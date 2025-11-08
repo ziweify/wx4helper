@@ -92,7 +92,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 if (dgvConfigs.Columns["Password"] != null) dgvConfigs.Columns["Password"].Visible = false;
                 if (dgvConfigs.Columns["PlatformUrl"] != null) dgvConfigs.Columns["PlatformUrl"].Visible = false;
                 if (dgvConfigs.Columns["Cookies"] != null) dgvConfigs.Columns["Cookies"].Visible = false;
-                if (dgvConfigs.Columns["BetScript"] != null) dgvConfigs.Columns["BetScript"].Visible = false;
                 if (dgvConfigs.Columns["Notes"] != null) dgvConfigs.Columns["Notes"].Visible = false;
                 if (dgvConfigs.Columns["MinBetAmount"] != null) dgvConfigs.Columns["MinBetAmount"].Visible = false;
                 if (dgvConfigs.Columns["MaxBetAmount"] != null) dgvConfigs.Columns["MaxBetAmount"].Visible = false;
@@ -159,7 +158,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             chkShowBrowser.Checked = config.ShowBrowser;
             txtNotes.Text = config.Notes;
             txtCookies.Text = config.Cookies;
-            txtBetScript.Text = config.BetScript;
             
             // 默认配置不允许删除
             btnDelete.Enabled = !config.IsDefault;
@@ -182,7 +180,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             chkShowBrowser.Checked = false;
             txtNotes.Text = "";
             txtCookies.Text = "";
-            txtBetScript.Text = "";
             
             btnDelete.Enabled = false;
         }
@@ -343,7 +340,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 _selectedConfig.ShowBrowser = chkShowBrowser.Checked;
                 _selectedConfig.Notes = txtNotes.Text;
                 _selectedConfig.Cookies = txtCookies.Text;
-                _selectedConfig.BetScript = txtBetScript.Text;
                 
                 // 保存到数据库
                 _autoBetService.SaveConfig(_selectedConfig);
@@ -471,6 +467,98 @@ namespace BaiShengVx3Plus.Views.AutoBet
             {
                 txtPlatformUrl.Text = url;
             }
+        }
+
+        #endregion
+
+        #region 命令面板事件
+
+        /// <summary>
+        /// 快捷按钮：投注
+        /// </summary>
+        private void BtnBetCommand_Click(object? sender, EventArgs e)
+        {
+            txtCommand.Text = "投注(1234大10)";
+        }
+
+        /// <summary>
+        /// 快捷按钮：获取盘口额度
+        /// </summary>
+        private void BtnGetQuotaCommand_Click(object? sender, EventArgs e)
+        {
+            txtCommand.Text = "获取盘口额度";
+        }
+
+        /// <summary>
+        /// 快捷按钮：获取Cookie
+        /// </summary>
+        private void BtnGetCookieCommand_Click(object? sender, EventArgs e)
+        {
+            txtCommand.Text = "获取Cookie";
+        }
+
+        /// <summary>
+        /// 发送命令按钮
+        /// </summary>
+        private async void BtnSendCommand_Click(object? sender, EventArgs e)
+        {
+            if (_selectedConfig == null)
+            {
+                AppendCommandResult("❌ 错误:未选择配置");
+                return;
+            }
+
+            var command = txtCommand.Text.Trim();
+            if (string.IsNullOrEmpty(command))
+            {
+                AppendCommandResult("❌ 错误:命令不能为空");
+                return;
+            }
+
+            try
+            {
+                btnSendCommand.Enabled = false;
+                AppendCommandResult($"📤 发送命令:{command}");
+                AppendCommandResult($"   时间:{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+
+                // TODO: 这里需要实现命令发送逻辑
+                // 1. 解析命令（投注、获取额度、获取Cookie）
+                // 2. 如果是投注命令，需要解析投注内容并生成BetRecord
+                // 3. 通过Socket发送到BrowserClient
+                // 4. 等待返回结果
+
+                AppendCommandResult("⚠️ 命令发送功能正在开发中...");
+                AppendCommandResult("");
+
+                _logService.Info("CommandPanel", $"发送命令:配置[{_selectedConfig.ConfigName}] 命令[{command}]");
+            }
+            catch (Exception ex)
+            {
+                AppendCommandResult($"❌ 异常:{ex.Message}");
+                _logService.Error("CommandPanel", "发送命令失败", ex);
+            }
+            finally
+            {
+                btnSendCommand.Enabled = true;
+            }
+        }
+
+        /// <summary>
+        /// 追加命令结果
+        /// </summary>
+        private void AppendCommandResult(string text)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(() => AppendCommandResult(text));
+                return;
+            }
+
+            txtCommandResult.Text += text + Environment.NewLine;
+            
+            // 自动滚动到底部
+            txtCommandResult.SelectionStart = txtCommandResult.Text.Length;
+            txtCommandResult.ScrollToCaret();
         }
 
         #endregion

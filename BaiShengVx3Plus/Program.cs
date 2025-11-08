@@ -79,6 +79,9 @@ namespace BaiShengVx3Plus
                             services.AddSingleton<BinggoStatisticsService>();  // 🔥 统计服务（唯一更新入口）
 
                             // 🤖 自动投注服务
+                            services.AddSingleton<Services.AutoBet.BetRecordService>();     // 投注记录服务
+                            services.AddSingleton<Services.AutoBet.OrderMerger>();          // 订单合并器
+                            services.AddSingleton<Services.AutoBet.BetQueueManager>();      // 投注队列管理器
                             services.AddSingleton<Services.AutoBet.AutoBetService>();       // 自动投注管理
                             services.AddSingleton<Services.AutoBet.AutoBetCoordinator>();   // 自动投注协调器
 

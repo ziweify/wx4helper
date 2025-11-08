@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BsBrowserClient.Models;
@@ -6,6 +8,7 @@ using BsBrowserClient.Services;
 using BsBrowserClient.PlatformScripts;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using BaiShengVx3Plus.Shared.Platform;
 
@@ -97,10 +100,22 @@ public partial class Form1 : Form
             txtUrl.Text = _platformUrl;
             
             // 绑定导航事件
-            _webView.CoreWebView2.NavigationCompleted += (s, e) =>
+            _webView.CoreWebView2.NavigationCompleted += async (s, e) =>
             {
                 txtUrl.Text = _webView.CoreWebView2.Source;
-                lblStatus.Text = e.IsSuccess ? "✅ 页面加载完成" : "❌ 页面加载失败";
+                if (e.IsSuccess)
+                {
+                    lblStatus.Text = "✅ 页面加载完成";
+                    OnLogMessage($"✅ 页面加载完成: {_webView.CoreWebView2.Source}");
+                    
+                    // 触发自动登录
+                    await TryAutoLoginAsync();
+                }
+                else
+                {
+                    lblStatus.Text = "❌ 页面加载失败";
+                    OnLogMessage($"❌ 页面加载失败");
+                }
             };
         }
         catch (Exception ex)
@@ -125,6 +140,103 @@ public partial class Form1 : Form
             BetPlatform.红海 => new YunDing28Script(_webView!, OnLogMessage), // 暂用云顶脚本
             _ => new YunDing28Script(_webView!, OnLogMessage)
         };
+    }
+    
+    private bool _isAutoLoginTriggered = false;
+    
+    /// <summary>
+    /// 尝试自动登录（页面加载完成后触发）
+    /// 参考 F5BotV2 的 LoginAsync 和 FrameLoadEnd 实现
+    /// </summary>
+    private async Task TryAutoLoginAsync()
+    {
+        if (_isAutoLoginTriggered || _platformScript == null)
+            return;
+        
+        try
+        {
+            // 防止重复触发
+            _isAutoLoginTriggered = true;
+            
+            OnLogMessage("🔍 检测页面状态，准备自动登录...");
+            
+            // 延迟一下，确保页面完全加载
+            await Task.Delay(1000);
+            
+            // 从VxMain获取账号密码（通过Socket或HTTP）
+            // 这里先用配置ID从HTTP API获取
+            var username = "";
+            var password = "";
+            
+            try
+            {
+                var httpClient = new System.Net.Http.HttpClient();
+                var response = await httpClient.GetAsync($"http://127.0.0.1:8888/api/config?configId={_configId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    OnLogMessage($"📄 收到配置响应: {json.Substring(0, Math.Min(200, json.Length))}...");
+                    
+                    var config = Newtonsoft.Json.Linq.JObject.Parse(json);
+                    if (config["success"]?.Value<bool>() ?? false)
+                    {
+                        username = config["data"]?["Username"]?.ToString() ?? "";
+                        password = config["data"]?["Password"]?.ToString() ?? "";
+                        
+                        OnLogMessage($"✅ 获取到配置:");
+                        OnLogMessage($"   用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
+                        OnLogMessage($"   密码: {(string.IsNullOrEmpty(password) ? "(空)" : "******")}");
+                    }
+                    else
+                    {
+                        OnLogMessage($"⚠️ API 返回 success=false");
+                    }
+                }
+                else
+                {
+                    OnLogMessage($"⚠️ HTTP 请求失败: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                OnLogMessage($"⚠️ 获取配置异常: {ex.Message}");
+            }
+            
+            // 如果没有账号密码，不自动登录
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                OnLogMessage("⚠️ 未配置账号密码，跳过自动登录");
+                return;
+            }
+            
+            // 调用平台脚本的登录方法
+            OnLogMessage($"🔐 开始自动登录: {username}");
+            var success = await _platformScript.LoginAsync(username, password);
+            
+            if (success)
+            {
+                OnLogMessage("✅ 自动登录成功！");
+                
+                // 通知VxMain登录成功（通过Socket）
+                var message = new
+                {
+                    type = "login_success",
+                    configId = _configId,
+                    username = username,
+                    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                };
+                
+                await _socketServer.SendToVxMain(message);
+            }
+            else
+            {
+                OnLogMessage("⚠️ 自动登录失败或超时，可能需要手动登录");
+            }
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 自动登录异常: {ex.Message}");
+        }
     }
     
     /// <summary>
@@ -195,9 +307,9 @@ public partial class Form1 : Form
                 Success = false
             };
             
-            switch (command.Command.ToLower())
+            switch (command.Command)
             {
-                case "show":
+                case "显示窗口":
                     // 显示窗口
                     if (InvokeRequired)
                     {
@@ -218,7 +330,7 @@ public partial class Form1 : Form
                     response.Message = "窗口已显示";
                     break;
                     
-                case "hide":
+                case "隐藏窗口":
                     // 隐藏窗口
                     if (InvokeRequired)
                     {
@@ -232,7 +344,7 @@ public partial class Form1 : Form
                     response.Message = "窗口已隐藏";
                     break;
                     
-                case "ping":
+                case "心跳检测":
                     // 心跳检测
                     response.Success = true;
                     response.Message = "Pong";
@@ -244,7 +356,21 @@ public partial class Form1 : Form
                     };
                     break;
                     
-                case "login":
+                case "封盘通知":
+                    // 封盘通知 - 拉取订单并投注
+                    var notifyData = command.Data as JObject;
+                    var issueId = notifyData?["issueId"]?.ToString() ?? "";
+                    var secondsRemaining = notifyData?["secondsRemaining"]?.ToObject<int>() ?? 0;
+                    
+                    OnLogMessage($"⏰ 封盘通知:期号{issueId} 剩余{secondsRemaining}秒");
+                    
+                    // 通过 HTTP 拉取订单并投注
+                    var betResult = await FetchOrdersAndBetAsync(issueId);
+                    response.Success = betResult.success;
+                    response.Message = betResult.message;
+                    break;
+                    
+                case "登录":
                     var loginData = command.Data as JObject;
                     var username = loginData?["username"]?.ToString() ?? "";
                     var password = loginData?["password"]?.ToString() ?? "";
@@ -253,28 +379,105 @@ public partial class Form1 : Form
                     response.Message = response.Success ? "登录成功" : "登录失败";
                     break;
                     
-                case "getbalance":
+                case "获取余额":
                     var balance = await _platformScript!.GetBalanceAsync();
                     response.Success = balance >= 0;
                     response.Data = new { balance };
                     response.Message = response.Success ? $"余额: {balance}" : "获取余额失败";
                     break;
                     
-                case "placebet":
+                case "投注":
+                    // 新的投注流程：接收标准投注内容，执行投注，返回详细结果
                     var betData = command.Data as JObject;
-                    var betOrder = betData?.ToObject<BetOrder>();
+                    var betIssueId = betData?["issueId"]?.ToString() ?? "";
+                    var betContent = betData?["betContent"]?.ToString() ?? "";
                     
-                    if (betOrder != null)
+                    OnLogMessage($"📝 收到投注命令:期号{betIssueId} 内容:{betContent}");
+                    
+                    if (string.IsNullOrEmpty(betContent))
                     {
-                        var (success, orderId) = await _platformScript!.PlaceBetAsync(betOrder);
-                        response.Success = success;
-                        response.Data = new { orderId };
-                        response.Message = success ? $"投注成功: {orderId}" : "投注失败";
+                        response.Message = "投注内容为空";
+                        break;
+                    }
+                    
+                    // 记录POST前时间
+                    var postStartTime = DateTime.Now;
+                    
+                    try
+                    {
+                        // 解析投注内容："1大50,2大30,3大60"
+                        var items = betContent.Split(',');
+                        bool allSuccess = true;
+                        string? platformOrderNo = null;
+                        
+                        foreach (var item in items)
+                        {
+                            // 解析每一项投注：1大50
+                            var trimmed = item.Trim();
+                            OnLogMessage($"💰 投注项:{trimmed}");
+                            
+                            // 这里需要调用平台脚本的投注方法
+                            // 参考 F5BotV2，根据不同平台调用对应的投注逻辑
+                            // 暂时使用原有的投注方法
+                            var betOrder = new BetOrder
+                            {
+                                IssueId = betIssueId,
+                                BetContent = trimmed,
+                                Amount = 0  // 金额已包含在内容中
+                            };
+                            
+                            var (itemSuccess, orderId) = await _platformScript!.PlaceBetAsync(betOrder);
+                            
+                            if (itemSuccess)
+                            {
+                                OnLogMessage($"  ✅ 投注成功:{orderId}");
+                                platformOrderNo ??= orderId;  // 保存第一个订单号
+                            }
+                            else
+                            {
+                                OnLogMessage($"  ❌ 投注失败");
+                                allSuccess = false;
+                            }
+                        }
+                        
+                        // 记录POST后时间
+                        var postEndTime = DateTime.Now;
+                        var durationMs = (int)(postEndTime - postStartTime).TotalMilliseconds;
+                        
+                        response.Success = allSuccess;
+                        response.Message = allSuccess ? "投注成功" : "部分投注失败";
+                        response.Data = new
+                        {
+                            postStartTime = postStartTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                            postEndTime = postEndTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                            durationMs = durationMs,
+                            orderNo = platformOrderNo
+                        };
+                        
+                        OnLogMessage($"✅ 投注完成:耗时{durationMs}ms 订单号:{platformOrderNo}");
+                    }
+                    catch (Exception betEx)
+                    {
+                        var postEndTime = DateTime.Now;
+                        var durationMs = (int)(postEndTime - postStartTime).TotalMilliseconds;
+                        
+                        response.Success = false;
+                        response.Message = "投注异常";
+                        response.ErrorMessage = betEx.Message;
+                        response.Data = new
+                        {
+                            postStartTime = postStartTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                            postEndTime = postEndTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                            durationMs = durationMs
+                        };
+                        
+                        OnLogMessage($"❌ 投注异常:{betEx.Message}");
                     }
                     break;
                     
                 default:
                     response.Message = $"未知命令: {command.Command}";
+                    OnLogMessage($"⚠️ 未知命令: {command.Command}");
                     break;
             }
             
@@ -350,6 +553,70 @@ public partial class Form1 : Form
             // 程序退出时才真正清理资源
             _socketServer?.Stop();
             _webView?.Dispose();
+        }
+    }
+    
+    /// <summary>
+    /// 拉取订单并投注
+    /// </summary>
+    private async Task<(bool success, string message)> FetchOrdersAndBetAsync(string issueId)
+    {
+        try
+        {
+            OnLogMessage($"📥 开始拉取订单:期号{issueId}");
+            
+            // 1. 通过 HTTP 拉取订单列表
+            var httpClient = new HttpClient();
+            var response = await httpClient.GetAsync($"http://127.0.0.1:8888/api/order?issueId={issueId}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                OnLogMessage($"❌ 拉取订单失败:HTTP {response.StatusCode}");
+                return (false, $"HTTP请求失败:{response.StatusCode}");
+            }
+            
+            var json = await response.Content.ReadAsStringAsync();
+            OnLogMessage($"📦 收到响应:{json.Substring(0, Math.Min(200, json.Length))}...");
+            
+            var data = JsonConvert.DeserializeObject<JObject>(json);
+            var success = data?["success"]?.ToObject<bool>() ?? false;
+            var count = data?["count"]?.ToObject<int>() ?? 0;
+            
+            if (!success || count == 0)
+            {
+                OnLogMessage($"📭 没有待投注订单:期号{issueId}");
+                return (true, "没有待投注订单");
+            }
+            
+            // 2. 解析订单列表
+            var orders = data?["data"]?.ToObject<List<JObject>>();
+            if (orders == null || orders.Count == 0)
+            {
+                OnLogMessage($"❌ 订单数据解析失败");
+                return (false, "订单数据解析失败");
+            }
+            
+            OnLogMessage($"✅ 获取到 {orders.Count} 个待投注订单");
+            
+            // 3. 调用平台脚本投注
+            // TODO: 需要实现订单合并逻辑，参考 F5BotV2
+            foreach (var order in orders)
+            {
+                var orderType = order["OrderType"]?.ToString() ?? "";
+                var betContent = order["BetContentStandar"]?.ToString() ?? "";
+                var amount = order["Amount"]?.ToObject<float>() ?? 0;
+                var memberName = order["MemberName"]?.ToString() ?? "";
+                
+                OnLogMessage($"📝 订单:{memberName} {orderType} {betContent} {amount}元");
+            }
+            
+            OnLogMessage($"⚠️ 投注功能待实现，需要参考 F5BotV2 实现订单合并和组装");
+            return (true, $"收到{orders.Count}个订单，投注功能待实现");
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 拉取订单异常:{ex.Message}");
+            return (false, $"拉取订单异常:{ex.Message}");
         }
     }
     

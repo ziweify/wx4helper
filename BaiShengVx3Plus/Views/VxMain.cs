@@ -273,8 +273,15 @@ namespace BaiShengVx3Plus
                 _binggoMessageHandler.SetDatabase(_db);  // 🔥 设置消息处理器的数据库（用于上下分申请）
                 _autoBetService.SetDatabase(_db);  // 🤖 设置自动投注服务的数据库
                 
+                // 🤖 初始化投注记录服务数据库
+                var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
+                betRecordService?.SetDatabase(_db);
+                
                 // 🤖 数据库设置完成后，重新加载自动投注设置
                 LoadAutoBetSettings();
+                
+                // 🎚️ 加载开关状态
+                LoadSwitchSettings();
                 
                 // 2. 创建开奖数据 BindingList
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
@@ -2881,6 +2888,7 @@ namespace BaiShengVx3Plus
                 
                 // 🔥 1. 确保表存在
                 _db.CreateTable<V2CreditWithdraw>();
+                _db.CreateTable<Models.AppSettings>(); // ⚙️ 应用设置表
                 
                 // 🔥 2. 加载该群的所有上下分记录
                 var creditWithdraws = _db.Table<V2CreditWithdraw>()
@@ -2964,6 +2972,9 @@ namespace BaiShengVx3Plus
                 // 从默认配置加载设置
                 LoadAutoBetSettings();
                 
+                // 加载应用设置（开关状态）
+                LoadAppSettings();
+                
                 // 绑定自动保存事件（使用防抖机制）
                 // 下拉框：立即保存
                 cbxPlatform.SelectedIndexChanged += (s, e) => SaveAutoBetSettings();
@@ -2977,6 +2988,88 @@ namespace BaiShengVx3Plus
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "初始化自动投注UI事件失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 加载应用设置（从数据库）
+        /// </summary>
+        private void LoadAppSettings()
+        {
+            try
+            {
+                if (_db == null) return;
+                
+                // 加载"收单开关"状态
+                var ordersTaskingSetting = _db.Table<Models.AppSettings>()
+                    .Where(s => s.Key == "OrdersTasking").FirstOrDefault();
+                
+                if (ordersTaskingSetting != null)
+                {
+                    swi_OrdersTasking.Active = ordersTaskingSetting.Value == "true";
+                }
+                else
+                {
+                    // 默认开启收单
+                    swi_OrdersTasking.Active = true;
+                }
+                
+                // 加载"自动投注开关"状态
+                var autoBetSetting = _db.Table<Models.AppSettings>()
+                    .Where(s => s.Key == "AutoOrdersBet").FirstOrDefault();
+                
+                if (autoBetSetting != null)
+                {
+                    swiAutoOrdersBet.Active = autoBetSetting.Value == "true";
+                }
+                else
+                {
+                    // 默认关闭自动投注
+                    swiAutoOrdersBet.Active = false;
+                }
+                
+                _logService.Info("VxMain", $"✅ 应用设置已加载: 收单={swi_OrdersTasking.Active}, 自动投注={swiAutoOrdersBet.Active}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "加载应用设置失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 保存应用设置（到数据库）
+        /// </summary>
+        private void SaveAppSettings(string key, bool value, string description)
+        {
+            try
+            {
+                if (_db == null) return;
+                
+                var setting = _db.Table<Models.AppSettings>()
+                    .Where(s => s.Key == key).FirstOrDefault();
+                
+                if (setting != null)
+                {
+                    setting.Value = value.ToString().ToLower();
+                    setting.UpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    _db.Update(setting);
+                }
+                else
+                {
+                    _db.Insert(new Models.AppSettings
+                    {
+                        Key = key,
+                        Value = value.ToString().ToLower(),
+                        Description = description,
+                        UpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                    });
+                }
+                
+                _logService.Info("VxMain", $"✅ 应用设置已保存: {key}={value}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"保存应用设置失败: {key}", ex);
             }
         }
 
@@ -3041,13 +3134,22 @@ namespace BaiShengVx3Plus
                     defaultConfig.Platform = platform.ToString();
 
                     // 保存账号密码
-                    defaultConfig.Username = txtAutoBetUsername.Text;
-                    defaultConfig.Password = txtAutoBetPassword.Text;
+                    var username = txtAutoBetUsername.Text;
+                    var password = txtAutoBetPassword.Text;
+                    
+                    defaultConfig.Username = username;
+                    defaultConfig.Password = password;
 
                     // 保存到数据库
                     _autoBetService.SaveConfig(defaultConfig);
 
                     _logService.Info("VxMain", "✅ 自动投注设置已保存");
+                    _logService.Info("VxMain", $"   - 用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
+                    _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(password) ? "(空)" : "******")}");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ 未找到默认配置，无法保存设置");
                 }
             }
             catch (Exception ex)
@@ -3057,19 +3159,19 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 启用/禁用自动投注开关
+        /// 启用/禁用自动投注开关（使用 UI开关控件）
         /// </summary>
-        private async void chkAutoBet_CheckedChanged(object? sender, EventArgs e)
+        private async void swiAutoOrdersBet_ValueChanged(object? sender, bool value)
         {
             try
             {
-                if (chkAutoBet.Checked)
+                if (value) // 开启自动投注
                 {
                     // 先保存设置
                     SaveAutoBetSettings();
 
                     // 启动自动投注
-                    _logService.Info("VxMain", "🚀 启动自动投注...");
+                    _logService.Info("VxMain", "🚀 启动自动投注（飞单）...");
                     
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
@@ -3079,38 +3181,118 @@ namespace BaiShengVx3Plus
                         if (success)
                         {
                             _logService.Info("VxMain", "✅ 自动投注已启动");
-                            Sunny.UI.UIMessageBox.Show("自动投注已启动！", "成功", Sunny.UI.UIStyle.Green, Sunny.UI.UIMessageBoxButtons.OK);
+                            this.ShowSuccessTip("自动投注（飞单）已启动！");
                         }
                         else
                         {
                             _logService.Error("VxMain", "启动自动投注失败");
-                            chkAutoBet.Checked = false;
-                            Sunny.UI.UIMessageBox.Show("启动自动投注失败，请检查配置！", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                            swiAutoOrdersBet.Active = false;
+                            this.ShowErrorTip("启动自动投注失败，请检查配置！");
                         }
                     }
                     else
                     {
-                        _logService.Error("VxMain", "未找到默认配置");
-                        chkAutoBet.Checked = false;
-                        Sunny.UI.UIMessageBox.Show("未找到默认配置！", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                        _logService.Warning("VxMain", "未找到默认配置");
+                        swiAutoOrdersBet.Active = false;
+                        this.ShowErrorTip("未找到默认配置！");
                     }
                 }
-                else
+                else // 停止自动投注
                 {
-                    // 停止自动投注
-                    _logService.Info("VxMain", "⏹️ 停止自动投注...");
+                    _logService.Info("VxMain", "⏹️ 停止自动投注（飞单）...");
                     _autoBetCoordinator.Stop();
                     _logService.Info("VxMain", "✅ 自动投注已停止");
                 }
+                
+                // 保存到设置
+                SaveSwitchSettings();
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "切换自动投注失败", ex);
-                chkAutoBet.Checked = false;
-                Sunny.UI.UIMessageBox.Show($"操作失败: {ex.Message}", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+                swiAutoOrdersBet.Active = false;
+                this.ShowErrorTip($"操作失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 启用/禁用订单任务开关（控制是否处理微信消息）
+        /// </summary>
+        private void swi_OrdersTasking_ValueChanged(object? sender, bool value)
+        {
+            try
+            {
+                // 更新消息处理器的全局开关
+                Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = value;
+                
+                if (value)
+                {
+                    _logService.Info("VxMain", "✅ 订单任务已启用（收单中）");
+                    this.ShowSuccessTip("订单任务已启用，开始处理微信消息");
+                }
+                else
+                {
+                    _logService.Info("VxMain", "⏹️ 订单任务已禁用（收单停）");
+                    this.ShowInfoTip("订单任务已禁用，暂停处理微信消息");
+                }
+                
+                // 保存到设置
+                SaveSwitchSettings();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "切换订单任务失败", ex);
             }
         }
 
+        /// <summary>
+        /// 保存开关状态到设置
+        /// </summary>
+        private void SaveSwitchSettings()
+        {
+            try
+            {
+                if (_db == null) return;
+                
+                // 使用 SaveAppSettings 方法保存（更安全）
+                SaveAppSettings("AutoOrdersBet", swiAutoOrdersBet.Active, "自动投注开关");
+                SaveAppSettings("OrdersTasking", swi_OrdersTasking.Active, "订单任务开关");
+                
+                _logService.Info("VxMain", $"✅ 开关状态已保存: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "保存开关状态失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 从设置加载开关状态
+        /// </summary>
+        private void LoadSwitchSettings()
+        {
+            try
+            {
+                if (_db == null) return;
+                
+                // 从设置表加载
+                var autoBetValue = _db.ExecuteScalar<string>("SELECT Value FROM AppSettings WHERE Key = ?", "AutoOrdersBet");
+                var ordersTaskingValue = _db.ExecuteScalar<string>("SELECT Value FROM AppSettings WHERE Key = ?", "OrdersTasking");
+                
+                swiAutoOrdersBet.Active = autoBetValue == "1";
+                swi_OrdersTasking.Active = ordersTaskingValue == "1";
+                
+                // 同步到消息处理器
+                Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = swi_OrdersTasking.Active;
+                
+                _logService.Info("VxMain", $"✅ 开关状态已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "加载开关状态失败", ex);
+            }
+        }
+        
         /// <summary>
         /// 打开配置管理器
         /// </summary>

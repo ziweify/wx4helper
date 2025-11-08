@@ -27,6 +27,11 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         private readonly BinggoGameSettings _settings;
         private readonly SQLiteConnection? _db;  // 🔥 数据库连接（用于上下分申请）
         
+        /// <summary>
+        /// 全局开关：是否启用订单处理（收单开关）
+        /// </summary>
+        public static bool IsOrdersTaskingEnabled { get; set; } = true;
+        
         public BinggoMessageHandler(
             ILogService logService,
             IBinggoLotteryService lotteryService,
@@ -64,6 +69,13 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         {
             try
             {
+                // 0. 检查收单开关（swi_OrdersTasking）
+                if (!IsOrdersTaskingEnabled)
+                {
+                    _logService.Info("MessageHandler", "⏸️ 收单已关闭，忽略消息");
+                    return (false, null);
+                }
+                
                 // 1. 基础检查
                 if (member == null || string.IsNullOrWhiteSpace(messageContent))
                 {

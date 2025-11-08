@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models.AutoBet;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -22,7 +23,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private readonly ILogService _log;
         private readonly Func<int, BetConfig?> _getConfig;
         private readonly Action<BetConfig> _saveConfig;
-        private readonly Func<int, string?, BetOrder?> _getOrder;
+        private readonly IBinggoOrderService _orderService;
         private readonly Action<int, bool, string?, string?> _handleResult;
         
         private bool _isRunning;
@@ -32,13 +33,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
             int port,
             Func<int, BetConfig?> getConfig,
             Action<BetConfig> saveConfig,
-            Func<int, string?, BetOrder?> getOrder,
+            IBinggoOrderService orderService,
             Action<int, bool, string?, string?> handleResult)
         {
             _log = log;
             _getConfig = getConfig;
             _saveConfig = saveConfig;
-            _getOrder = getOrder;
+            _orderService = orderService;
             _handleResult = handleResult;
             
             _listener = new HttpListener();
@@ -178,12 +179,16 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         config.Platform,
                         config.PlatformUrl,
                         config.Username,
+                        config.Password,  // ✅ 添加密码字段
                         cookieData = config.CookieData,
                         cookieUpdateTime = config.CookieUpdateTime
                     }
                 });
                 
                 _log.Info("HTTP", $"✅ 返回配置: {config.ConfigName}");
+                _log.Info("HTTP", $"   - 用户名: {(string.IsNullOrEmpty(config.Username) ? "(空)" : config.Username)}");
+                _log.Info("HTTP", $"   - 密码: {(string.IsNullOrEmpty(config.Password) ? "(空)" : "******")}");
+                _log.Info("HTTP", $"   - 平台: {config.Platform}");
             }
             else
             {
@@ -197,41 +202,62 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// GET /api/order?configId=1&issueId=114062940
-        /// 返回待投注订单
+        /// GET /api/order?issueId=114063155
+        /// 返回指定期号的所有待投注订单列表（已拆分、已解析的标准格式）
         /// </summary>
         private async Task HandleGetOrderAsync(HttpListenerRequest request, HttpListenerResponse response)
         {
-            var configId = int.Parse(request.QueryString["configId"] ?? "0");
-            var issueId = request.QueryString["issueId"];
+            var issueIdStr = request.QueryString["issueId"];
             
-            var order = _getOrder(configId, issueId);
-            
-            if (order != null)
+            if (string.IsNullOrEmpty(issueIdStr) || !int.TryParse(issueIdStr, out var issueId))
             {
+                await RespondJsonAsync(response, 400, new
+                {
+                    success = false,
+                    message = "Invalid IssueId",
+                    issueId = issueIdStr
+                });
+                return;
+            }
+            
+            // 从订单服务获取待投注订单
+            var orders = _orderService.GetPendingOrdersForIssue(issueId);
+            var orderList = orders?.ToList() ?? new List<Models.V2MemberOrder>();
+            
+            if (orderList.Any())
+            {
+                // 转换为 BrowserClient 需要的格式
+                var betOrders = orderList.Select(o => new
+                {
+                    IssueId = o.IssueId,
+                    OrderType = o.OrderType.ToString(),
+                    BetContentOriginal = o.BetContentOriginal,
+                    BetContentStandar = o.BetContentStandar,  // 🔥 已处理好的标准内容（如 "1大10"）
+                    Amount = o.AmountTotal,
+                    MemberName = o.Nickname,
+                    Wxid = o.Wxid
+                }).ToList();
+                
                 await RespondJsonAsync(response, 200, new
                 {
                     success = true,
-                    data = new
-                    {
-                        order.IssueId,
-                        order.PlayType,
-                        order.BetContent,
-                        order.Amount
-                    }
+                    count = betOrders.Count,
+                    data = betOrders
                 });
                 
-                _log.Info("HTTP", $"✅ 返回订单: {order.IssueId} {order.BetContent} {order.Amount}元");
+                _log.Info("HTTP", $"✅ 返回 {betOrders.Count} 个待投注订单: 期号{issueId}");
             }
             else
             {
                 await RespondJsonAsync(response, 200, new
                 {
-                    success = false,
-                    message = "No Pending Order",
-                    configId = configId,
+                    success = true,
+                    count = 0,
+                    message = "No Pending Orders",
                     issueId = issueId
                 });
+                
+                _log.Info("HTTP", $"📭 期号 {issueId} 没有待投注订单");
             }
         }
         

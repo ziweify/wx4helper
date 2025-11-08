@@ -60,6 +60,16 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public void AttachConnection(TcpClient socket)
         {
+            // 先关闭旧的 Socket 连接（如果存在）
+            try
+            {
+                _reader?.Dispose();
+                _writer?.Dispose();
+                _socket?.Close();
+            }
+            catch { /* 忽略关闭旧连接的错误 */ }
+            
+            // 附加新连接
             _socket = socket;
             var stream = _socket.GetStream();
             _reader = new StreamReader(stream, Encoding.UTF8);
@@ -67,7 +77,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 启动浏览器进程并连接
+        /// 启动浏览器进程（浏览器会主动连接到 VxMain 的 Socket 服务器）
         /// </summary>
         public async Task<bool> StartAsync(int port, string platform, string platformUrl)
         {
@@ -99,17 +109,16 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 _process.Start();
                 
-                // 2. 等待一下让浏览器启动
-                await Task.Delay(2000);
+                // 2. 等待进程启动（浏览器会主动连接到 VxMain:19527）
+                await Task.Delay(1000);
                 
-                // 3. 连接 Socket
-                _socket = new TcpClient();
-                await _socket.ConnectAsync("127.0.0.1", port);
+                // 3. 检查进程是否成功启动
+                if (_process.HasExited)
+                {
+                    throw new Exception($"浏览器进程启动失败，退出代码: {_process.ExitCode}");
+                }
                 
-                var stream = _socket.GetStream();
-                _reader = new StreamReader(stream, Encoding.UTF8);
-                _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
-                
+                // ✅ 进程启动成功，Socket 连接由 AutoBetSocketServer.OnBrowserConnected 处理
                 return true;
             }
             catch (Exception)
@@ -190,7 +199,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 发送显示命令
-                var result = await SendCommandAsync("show");
+                var result = await SendCommandAsync("显示窗口");
                 return result.Success;
             }
             catch
@@ -237,7 +246,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     return (false, 0);
                 }
                 
-                var result = await SendCommandAsync("ping");
+                var result = await SendCommandAsync("心跳检测");
                 if (result.Success && result.Data != null)
                 {
                     var data = result.Data as dynamic;

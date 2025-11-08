@@ -68,11 +68,6 @@ namespace BaiShengVx3Plus.Models.AutoBet
         /// </summary>
         public DateTime? CookieUpdateTime { get; set; }
         
-        /// <summary>
-        /// 自定义投注脚本（高级功能）
-        /// </summary>
-        public string? BetScript { get; set; }
-        
         public event PropertyChangedEventHandler? PropertyChanged;
     }
 }

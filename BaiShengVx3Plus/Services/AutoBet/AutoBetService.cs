@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models.AutoBet;
 using SQLite;
 
@@ -15,6 +16,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
     {
         private SQLiteConnection? _db;
         private readonly ILogService _log;
+        private IBinggoOrderService? _orderService;
         
         // 🔥 核心：配置ID → 浏览器客户端
         private readonly Dictionary<int, BrowserClient> _browsers = new();
@@ -28,9 +30,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
         // 待投注订单队列（配置ID → 订单队列）
         private readonly Dictionary<int, Queue<BetOrder>> _orderQueues = new();
         
-        public AutoBetService(ILogService log)
+        public AutoBetService(ILogService log, IBinggoOrderService orderService)
         {
             _log = log;
+            _orderService = orderService;
             
             // 启动 Socket 服务器（端口 19527，用于双向通信）
             _socketServer = new AutoBetSocketServer(log, OnBrowserConnected);
@@ -42,7 +45,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 port: 8888,
                 getConfig: GetConfig,
                 saveConfig: SaveConfig,
-                getOrder: GetPendingOrder,
+                orderService: orderService,
                 handleResult: HandleBetResult
             );
             _httpServer.Start();
@@ -146,15 +149,19 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 创建或更新 BrowserClient（使用已建立的连接）
-                if (_browsers.ContainsKey(configId))
+                if (_browsers.TryGetValue(configId, out var existingBrowser))
                 {
-                    _log.Info("AutoBet", $"更新现有浏览器连接: {config.ConfigName}");
-                    _browsers[configId].Dispose();
+                    _log.Info("AutoBet", $"更新现有浏览器的 Socket 连接: {config.ConfigName}");
+                    // ✅ 只附加新连接，不要 Dispose 整个 BrowserClient（会杀死进程）
+                    existingBrowser.AttachConnection(client);
                 }
-                
-                var browserClient = new BrowserClient(configId);
-                browserClient.AttachConnection(client); // 附加已建立的 Socket 连接
-                _browsers[configId] = browserClient;
+                else
+                {
+                    _log.Info("AutoBet", $"创建新的浏览器客户端: {config.ConfigName}");
+                    var browserClient = new BrowserClient(configId);
+                    browserClient.AttachConnection(client); // 附加已建立的 Socket 连接
+                    _browsers[configId] = browserClient;
+                }
                 
                 // 更新配置状态
                 config.Status = "已连接";
@@ -175,7 +182,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         {
             if (!_browsers.TryGetValue(configId, out var browserClient))
             {
-                _log.Warning("AutoBet", $"浏览器未连接，无法推送封盘通知: 配置{configId}");
+                _log.Warning("AutoBet", $"浏览器未连接，无法推送封盘通知:配置{configId}");
                 return;
             }
             
@@ -188,42 +195,66 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 };
                 
-                await browserClient.SendCommandAsync("sealing_notify", data);
-                _log.Info("AutoBet", $"📢 已推送封盘通知: 配置{configId} 期号{issueId} 剩余{secondsRemaining}秒");
+                await browserClient.SendCommandAsync("封盘通知", data);
+                _log.Info("AutoBet", $"📢 已推送封盘通知:配置{configId} 期号{issueId} 剩余{secondsRemaining}秒");
             }
             catch (Exception ex)
             {
-                _log.Error("AutoBet", $"推送封盘通知失败: 配置{configId}", ex);
+                _log.Error("AutoBet", $"推送封盘通知失败:配置{configId}", ex);
             }
         }
         
         /// <summary>
-        /// 通过 Socket 推送投注命令到指定配置的浏览器
+        /// 通过 Socket 发送投注命令到浏览器，并等待结果
         /// </summary>
-        public async Task SendBetCommandAsync(int configId, BetOrder order)
+        public async Task<BetResult> SendBetCommandAsync(int configId, string issueId, string betContentStandard)
         {
             if (!_browsers.TryGetValue(configId, out var browserClient))
             {
-                _log.Warning("AutoBet", $"浏览器未连接，无法推送投注命令: 配置{configId}");
-                return;
+                _log.Warning("AutoBet", $"浏览器未连接，无法推送投注命令:配置{configId}");
+                return new BetResult
+                {
+                    Success = false,
+                    ErrorMessage = "浏览器未连接"
+                };
             }
             
             try
             {
                 var data = new
                 {
-                    order.IssueId,
-                    order.PlayType,
-                    order.BetContent,
-                    order.Amount
+                    issueId = issueId,
+                    betContent = betContentStandard
                 };
                 
-                await browserClient.SendCommandAsync("place_bet", data);
-                _log.Info("AutoBet", $"📤 已推送投注命令: 配置{configId} {order.IssueId} {order.BetContent} {order.Amount}元");
+                var result = await browserClient.SendCommandAsync("投注", data);
+                
+                _log.Info("AutoBet", $"📥 投注结果:配置{configId} 成功={result.Success}");
+                
+                return new BetResult
+                {
+                    Success = result.Success,
+                    Result = result.Data?.ToString(),
+                    ErrorMessage = result.ErrorMessage,
+                    // 其他字段从 result.Data 解析
+                    PostStartTime = result.Data != null && ((dynamic)result.Data).postStartTime != null ? 
+                        DateTime.Parse(((dynamic)result.Data).postStartTime.ToString()) : null,
+                    PostEndTime = result.Data != null && ((dynamic)result.Data).postEndTime != null ? 
+                        DateTime.Parse(((dynamic)result.Data).postEndTime.ToString()) : null,
+                    DurationMs = result.Data != null && ((dynamic)result.Data).durationMs != null ? 
+                        (int)((dynamic)result.Data).durationMs : null,
+                    OrderNo = result.Data != null && ((dynamic)result.Data).orderNo != null ? 
+                        ((dynamic)result.Data).orderNo.ToString() : null
+                };
             }
             catch (Exception ex)
             {
-                _log.Error("AutoBet", $"推送投注命令失败: 配置{configId}", ex);
+                _log.Error("AutoBet", $"推送投注命令失败:配置{configId}", ex);
+                return new BetResult
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message
+                };
             }
         }
         

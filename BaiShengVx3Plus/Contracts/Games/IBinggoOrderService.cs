@@ -55,5 +55,15 @@ namespace BaiShengVx3Plus.Contracts.Games
         Task<(int settledCount, string summary)> SettleOrdersAsync(
             int issueId,
             BinggoLotteryData? lotteryData);
+        
+        /// <summary>
+        /// 获取指定期号的待投注订单（用于自动投注）
+        /// </summary>
+        IEnumerable<V2MemberOrder> GetPendingOrdersForIssue(int issueId);
+        
+        /// <summary>
+        /// 更新订单（用于投注后更新状态）
+        /// </summary>
+        void UpdateOrder(V2MemberOrder order);
     }
 }
