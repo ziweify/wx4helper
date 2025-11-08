@@ -110,6 +110,9 @@ public partial class Form1 : Form
                     
                     // 触发自动登录
                     await TryAutoLoginAsync();
+                    
+                    // 🔥 获取Cookie并回传到VxMain
+                    await GetAndSendCookieToVxMain();
                 }
                 else
                 {
@@ -236,6 +239,55 @@ public partial class Form1 : Form
         catch (Exception ex)
         {
             OnLogMessage($"❌ 自动登录异常: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 获取Cookie并发送到VxMain
+    /// </summary>
+    private async Task GetAndSendCookieToVxMain()
+    {
+        try
+        {
+            if (_webView?.CoreWebView2 == null)
+            {
+                OnLogMessage("⚠️ WebView2未初始化，无法获取Cookie");
+                return;
+            }
+            
+            // 获取当前页面的所有Cookie
+            var cookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+            
+            if (cookies == null || cookies.Count == 0)
+            {
+                OnLogMessage("ℹ️ 当前页面没有Cookie");
+                return;
+            }
+            
+            // 将Cookie格式化为字符串
+            var cookieDict = new Dictionary<string, string>();
+            foreach (var cookie in cookies)
+            {
+                cookieDict[cookie.Name] = cookie.Value;
+            }
+            
+            // 通知VxMain（通过Socket）
+            var message = new
+            {
+                type = "cookie_update",
+                configId = _configId,
+                url = _webView.CoreWebView2.Source,
+                cookies = cookieDict,
+                timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+            
+            await _socketServer.SendToVxMain(message);
+            
+            OnLogMessage($"📤 Cookie已回传到VxMain:共{cookies.Count}个Cookie");
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 获取Cookie异常: {ex.Message}");
         }
     }
     
@@ -386,6 +438,64 @@ public partial class Form1 : Form
                     response.Message = response.Success ? $"余额: {balance}" : "获取余额失败";
                     break;
                     
+                case "获取Cookie":
+                    // 获取Cookie命令
+                    try
+                    {
+                        if (_webView?.CoreWebView2 == null)
+                        {
+                            response.Message = "WebView2未初始化";
+                            break;
+                        }
+                        
+                        var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+                        var cookieDict = new Dictionary<string, string>();
+                        
+                        foreach (var cookie in allCookies)
+                        {
+                            cookieDict[cookie.Name] = cookie.Value;
+                        }
+                        
+                        response.Success = true;
+                        response.Data = new 
+                        { 
+                            url = _webView.CoreWebView2.Source,
+                            cookies = cookieDict,
+                            count = allCookies.Count
+                        };
+                        response.Message = $"获取成功,共{allCookies.Count}个Cookie";
+                        
+                        OnLogMessage($"📤 获取Cookie完成:共{allCookies.Count}个");
+                    }
+                    catch (Exception cookieEx)
+                    {
+                        response.Success = false;
+                        response.Message = "获取Cookie失败";
+                        response.ErrorMessage = cookieEx.Message;
+                        OnLogMessage($"❌ 获取Cookie失败:{cookieEx.Message}");
+                    }
+                    break;
+                    
+                case "获取盘口额度":
+                    // 获取盘口额度命令
+                    try
+                    {
+                        var quotaBalance = await _platformScript!.GetBalanceAsync();
+                        response.Success = quotaBalance >= 0;
+                        response.Data = new { balance = quotaBalance, quota = quotaBalance };
+                        response.Message = response.Success ? $"盘口额度: {quotaBalance}元" : "获取额度失败";
+                        
+                        OnLogMessage($"📊 盘口额度:{quotaBalance}元");
+                    }
+                    catch (Exception quotaEx)
+                    {
+                        response.Success = false;
+                        response.Message = "获取额度失败";
+                        response.ErrorMessage = quotaEx.Message;
+                        OnLogMessage($"❌ 获取额度失败:{quotaEx.Message}");
+                    }
+                    break;
+                    
                 case "投注":
                     // 新的投注流程：接收标准投注内容，执行投注，返回详细结果
                     var betData = command.Data as JObject;
@@ -405,56 +515,42 @@ public partial class Form1 : Form
                     
                     try
                     {
-                        // 解析投注内容："1大50,2大30,3大60"
-                        var items = betContent.Split(',');
-                        bool allSuccess = true;
-                        string? platformOrderNo = null;
+                        OnLogMessage($"📦 准备投注:期号={betIssueId} 内容={betContent}");
                         
-                        foreach (var item in items)
+                        // 🔥 参考F5BotV2：将所有投注项组装成一个包，一次性POST
+                        // betContent格式："1大10,2大10,3大10,4大10"
+                        // 不需要拆分逐个投注，而是整体发送给平台脚本
+                        // 平台脚本内部会将betContent解析并组装成一个POST请求
+                        
+                        var betOrder = new BetOrder
                         {
-                            // 解析每一项投注：1大50
-                            var trimmed = item.Trim();
-                            OnLogMessage($"💰 投注项:{trimmed}");
-                            
-                            // 这里需要调用平台脚本的投注方法
-                            // 参考 F5BotV2，根据不同平台调用对应的投注逻辑
-                            // 暂时使用原有的投注方法
-                            var betOrder = new BetOrder
-                            {
-                                IssueId = betIssueId,
-                                BetContent = trimmed,
-                                Amount = 0  // 金额已包含在内容中
-                            };
-                            
-                            var (itemSuccess, orderId) = await _platformScript!.PlaceBetAsync(betOrder);
-                            
-                            if (itemSuccess)
-                            {
-                                OnLogMessage($"  ✅ 投注成功:{orderId}");
-                                platformOrderNo ??= orderId;  // 保存第一个订单号
-                            }
-                            else
-                            {
-                                OnLogMessage($"  ❌ 投注失败");
-                                allSuccess = false;
-                            }
-                        }
+                            IssueId = betIssueId,
+                            BetContent = betContent,  // 🔥 完整的投注内容，不拆分
+                            Amount = 0  // 金额已包含在内容中
+                        };
+                        
+                        // 🔥 平台脚本内部会：
+                        //    1. 解析 betContent："1大10,2大10,3大10,4大10"
+                        //    2. 组装成 JSON数组：[{id:1,money:10},{id:2,money:10},...]
+                        //    3. 一次性POST请求到平台
+                        var (success, orderId) = await _platformScript!.PlaceBetAsync(betOrder);
                         
                         // 记录POST后时间
                         var postEndTime = DateTime.Now;
                         var durationMs = (int)(postEndTime - postStartTime).TotalMilliseconds;
                         
-                        response.Success = allSuccess;
-                        response.Message = allSuccess ? "投注成功" : "部分投注失败";
+                        response.Success = success;
+                        response.Message = success ? "投注成功" : "投注失败";
                         response.Data = new
                         {
                             postStartTime = postStartTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                             postEndTime = postEndTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                             durationMs = durationMs,
-                            orderNo = platformOrderNo
+                            orderNo = orderId
                         };
                         
-                        OnLogMessage($"✅ 投注完成:耗时{durationMs}ms 订单号:{platformOrderNo}");
+                        OnLogMessage($"✅ 投注完成:成功={success} 耗时={durationMs}ms 订单号={orderId}");
+                        OnLogMessage($"📊 返回数据:postStartTime={postStartTime:yyyy-MM-dd HH:mm:ss.fff}, postEndTime={postEndTime:yyyy-MM-dd HH:mm:ss.fff}");
                     }
                     catch (Exception betEx)
                     {
@@ -510,9 +606,19 @@ public partial class Form1 : Form
             return;
         }
         
-        // 暂时输出到状态栏和控制台
+        // 输出到状态栏
         lblStatus.Text = message;
-        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+        
+        // 输出到日志文本框
+        var time = DateTime.Now.ToString("HH:mm:ss.fff");
+        txtLog.AppendText($"[{time}] {message}\r\n");
+        
+        // 自动滚动到底部
+        txtLog.SelectionStart = txtLog.Text.Length;
+        txtLog.ScrollToCaret();
+        
+        // 输出到控制台（用于调试）
+        Console.WriteLine($"[{time}] {message}");
     }
     
     /// <summary>
@@ -617,6 +723,141 @@ public partial class Form1 : Form
         {
             OnLogMessage($"❌ 拉取订单异常:{ex.Message}");
             return (false, $"拉取订单异常:{ex.Message}");
+        }
+    }
+    
+    #endregion
+    
+    #region 测试按钮
+    
+    /// <summary>
+    /// 测试Cookie按钮 - 获取并显示当前Cookie
+    /// </summary>
+    private async void btnTestCookie_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            OnLogMessage("🍪 【测试】开始获取Cookie...");
+            
+            if (_webView?.CoreWebView2 == null)
+            {
+                OnLogMessage("❌ WebView2未初始化");
+                return;
+            }
+            
+            // 方法1：通过WebView2 API获取Cookie
+            OnLogMessage("📋 方法1：WebView2 API");
+            var cookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+            OnLogMessage($"   获取到{cookies.Count}个Cookie:");
+            
+            foreach (var cookie in cookies)
+            {
+                OnLogMessage($"   - {cookie.Name}={cookie.Value.Substring(0, Math.Min(20, cookie.Value.Length))}...");
+            }
+            
+            // 方法2：通过JavaScript获取document.cookie
+            OnLogMessage("📋 方法2：JavaScript document.cookie");
+            var script = @"
+                (function() {
+                    return document.cookie;
+                })();
+            ";
+            
+            var jsCookie = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            jsCookie = jsCookie.Trim('"').Replace("\\", "");
+            OnLogMessage($"   document.cookie={jsCookie.Substring(0, Math.Min(100, jsCookie.Length))}...");
+            
+            // 方法3：通过拦截获取的Cookie（显示当前已拦截的参数）
+            OnLogMessage("📋 方法3：拦截到的关键参数");
+            if (_platformScript != null)
+            {
+                var tongBaoScript = _platformScript as PlatformScripts.TongBaoScript;
+                if (tongBaoScript != null)
+                {
+                    // 通过反射获取私有字段（用于测试）
+                    var typeInfo = tongBaoScript.GetType();
+                    var sidField = typeInfo.GetField("_sid", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var uuidField = typeInfo.GetField("_uuid", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var tokenField = typeInfo.GetField("_token", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    
+                    var sid = sidField?.GetValue(tongBaoScript)?.ToString() ?? "";
+                    var uuid = uuidField?.GetValue(tongBaoScript)?.ToString() ?? "";
+                    var token = tokenField?.GetValue(tongBaoScript)?.ToString() ?? "";
+                    
+                    OnLogMessage($"   sid={sid.Substring(0, Math.Min(20, sid.Length))}... ({sid.Length}字符)");
+                    OnLogMessage($"   uuid={uuid}");
+                    OnLogMessage($"   token={token.Substring(0, Math.Min(20, token.Length))}... ({token.Length}字符)");
+                    
+                    if (string.IsNullOrEmpty(sid) || string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(token))
+                    {
+                        OnLogMessage("⚠️ 警告：关键参数未拦截到！请刷新页面或执行操作触发拦截。");
+                    }
+                    else
+                    {
+                        OnLogMessage("✅ 关键参数已拦截，可以进行投注");
+                    }
+                }
+            }
+            
+            OnLogMessage("🍪 【测试】Cookie获取完成");
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 获取Cookie失败:{ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 测试投注按钮 - 固定投注"1大10"
+    /// </summary>
+    private async void btnTestBet_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            OnLogMessage("🎲 【测试】开始投注测试...");
+            OnLogMessage("   固定投注内容:1大10");
+            
+            if (_platformScript == null)
+            {
+                OnLogMessage("❌ 平台脚本未初始化");
+                return;
+            }
+            
+            // 测试投注"1大10"
+            var testBetContent = "1大10";
+            var betOrder = new BetOrder
+            {
+                IssueId = "0",  // 测试用，期号为0
+                BetContent = testBetContent,
+                Amount = 0
+            };
+            
+            OnLogMessage($"📤 调用PlaceBetAsync:内容={testBetContent}");
+            var startTime = DateTime.Now;
+            
+            var (success, orderId) = await _platformScript.PlaceBetAsync(betOrder);
+            
+            var endTime = DateTime.Now;
+            var duration = (int)(endTime - startTime).TotalMilliseconds;
+            
+            if (success)
+            {
+                OnLogMessage($"✅ 【测试】投注成功！");
+                OnLogMessage($"   订单号:{orderId}");
+                OnLogMessage($"   耗时:{duration}ms");
+            }
+            else
+            {
+                OnLogMessage($"❌ 【测试】投注失败");
+                OnLogMessage($"   耗时:{duration}ms");
+            }
+            
+            OnLogMessage("🎲 【测试】投注测试完成");
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 投注测试失败:{ex.Message}");
+            OnLogMessage($"   堆栈:{ex.StackTrace}");
         }
     }
     

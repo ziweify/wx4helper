@@ -167,14 +167,40 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 解析响应
-                dynamic response = JsonConvert.DeserializeObject(responseLine)!;
+                var responseObj = JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>(responseLine);
                 
-                return new BetResult
+                var result = new BetResult
                 {
-                    Success = response.success ?? false,
-                    OrderId = response.data?.orderId?.ToString(),
-                    ErrorMessage = response.errorMessage?.ToString()
+                    Success = responseObj?["success"]?.ToObject<bool>() ?? false,
+                    ErrorMessage = responseObj?["errorMessage"]?.ToString()
                 };
+                
+                // 🔥 解析详细投注结果
+                var responseData = responseObj?["data"];
+                if (responseData != null)
+                {
+                    result.Data = responseData;  // 保存原始数据
+                    
+                    // 解析时间和耗时
+                    var postStartStr = responseData["postStartTime"]?.ToString();
+                    var postEndStr = responseData["postEndTime"]?.ToString();
+                    
+                    if (!string.IsNullOrEmpty(postStartStr) && DateTime.TryParse(postStartStr, out var postStart))
+                    {
+                        result.PostStartTime = postStart;
+                    }
+                    
+                    if (!string.IsNullOrEmpty(postEndStr) && DateTime.TryParse(postEndStr, out var postEnd))
+                    {
+                        result.PostEndTime = postEnd;
+                    }
+                    
+                    result.DurationMs = responseData["durationMs"]?.ToObject<int?>();
+                    result.OrderNo = responseData["orderNo"]?.ToString();
+                    result.OrderId = responseData["orderId"]?.ToString();  // 兼容旧字段
+                }
+                
+                return result;
             }
             catch (Exception ex)
             {

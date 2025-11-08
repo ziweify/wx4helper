@@ -521,16 +521,50 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 AppendCommandResult($"📤 发送命令:{command}");
                 AppendCommandResult($"   时间:{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
 
-                // TODO: 这里需要实现命令发送逻辑
-                // 1. 解析命令（投注、获取额度、获取Cookie）
-                // 2. 如果是投注命令，需要解析投注内容并生成BetRecord
-                // 3. 通过Socket发送到BrowserClient
-                // 4. 等待返回结果
+                // 1. 解析命令
+                var (cmdName, cmdParam) = ParseCommand(command);
+                
+                if (string.IsNullOrEmpty(cmdName))
+                {
+                    AppendCommandResult("❌ 错误:无法解析命令");
+                    return;
+                }
+                
+                AppendCommandResult($"📝 命令:{cmdName}");
+                if (!string.IsNullOrEmpty(cmdParam))
+                {
+                    AppendCommandResult($"   参数:{cmdParam}");
+                }
 
-                AppendCommandResult("⚠️ 命令发送功能正在开发中...");
+                // 2. 通过AutoBetService发送Socket命令
+                var result = await SendCommandToBrowserAsync(cmdName, cmdParam);
+                
+                // 3. 显示结果（格式优化）
+                AppendCommandResult("");
+                AppendCommandResult("==================================================");
+                AppendCommandResult($"✅ 执行结果:成功={result.Success}");
+                AppendCommandResult($"   消息:{result.Message ?? "(无)"}");
+                
+                if (result.Data != null)
+                {
+                    var dataJson = Newtonsoft.Json.JsonConvert.SerializeObject(result.Data, Newtonsoft.Json.Formatting.Indented);
+                    AppendCommandResult($"   返回数据:");
+                    AppendCommandResult(dataJson);
+                }
+                else
+                {
+                    AppendCommandResult($"   返回数据:(无)");
+                }
+                
+                if (!string.IsNullOrEmpty(result.ErrorMessage))
+                {
+                    AppendCommandResult($"   错误信息:{result.ErrorMessage}");
+                }
+                
+                AppendCommandResult("==================================================");
                 AppendCommandResult("");
 
-                _logService.Info("CommandPanel", $"发送命令:配置[{_selectedConfig.ConfigName}] 命令[{command}]");
+                _logService.Info("CommandPanel", $"发送命令:配置[{_selectedConfig.ConfigName}] 命令[{command}] 结果={result.Success}");
             }
             catch (Exception ex)
             {
@@ -560,8 +594,301 @@ namespace BaiShengVx3Plus.Views.AutoBet
             txtCommandResult.SelectionStart = txtCommandResult.Text.Length;
             txtCommandResult.ScrollToCaret();
         }
+        
+        /// <summary>
+        /// 解析命令：支持 "投注(1234大10)" 或 "获取Cookie"
+        /// </summary>
+        private (string cmdName, string cmdParam) ParseCommand(string command)
+        {
+            try
+            {
+                var trimmed = command.Trim();
+                
+                // 检查是否包含括号
+                var openParen = trimmed.IndexOf('(');
+                var closeParen = trimmed.LastIndexOf(')');
+                
+                if (openParen > 0 && closeParen > openParen)
+                {
+                    // 带参数：投注(1234大10)
+                    var cmdName = trimmed.Substring(0, openParen).Trim();
+                    var cmdParam = trimmed.Substring(openParen + 1, closeParen - openParen - 1).Trim();
+                    return (cmdName, cmdParam);
+                }
+                else
+                {
+                    // 无参数：获取Cookie
+                    return (trimmed, "");
+                }
+            }
+            catch
+            {
+                return ("", "");
+            }
+        }
+        
+        /// <summary>
+        /// 发送命令到浏览器客户端
+        /// </summary>
+        private async Task<CommandResponse> SendCommandToBrowserAsync(string cmdName, string cmdParam)
+        {
+            var defaultResponse = new CommandResponse
+            {
+                Success = false,
+                Message = "未实现"
+            };
+            
+            try
+            {
+                if (_selectedConfig == null)
+                {
+                    return new CommandResponse { Success = false, Message = "未选择配置" };
+                }
+                
+                // 通过AutoBetService获取BrowserClient连接
+                var autoBetService = Program.ServiceProvider.GetService(typeof(Services.AutoBet.AutoBetService)) as Services.AutoBet.AutoBetService;
+                if (autoBetService == null)
+                {
+                    return new CommandResponse { Success = false, Message = "AutoBetService未初始化" };
+                }
+                
+                // 根据命令类型调用不同的方法
+                switch (cmdName)
+                {
+                    case "投注":
+                        // 1. 获取当前期号
+                        var lotteryService = Program.ServiceProvider.GetService(typeof(Contracts.Games.IBinggoLotteryService)) 
+                            as Contracts.Games.IBinggoLotteryService;
+                        var currentIssueId = lotteryService?.CurrentIssueId ?? 0;
+                        
+                        if (currentIssueId == 0)
+                        {
+                            _logService.Warning("CommandPanel", "无法获取当前期号，将使用期号0");
+                        }
+                        
+                        // 2. 解析投注内容
+                        var originalContent = cmdParam; // "1234大10"
+                        var standardContent = ParseBetContent(originalContent); // "1大10,2大10,3大10,4大10"
+                        var totalAmount = CalculateTotalAmount(standardContent);
+                        
+                        _logService.Info("CommandPanel", $"投注解析:原始={originalContent} 标准={standardContent} 金额={totalAmount}");
+                        
+                        // 3. 生成BetRecord
+                        var betRecordService = Program.ServiceProvider.GetService(typeof(Services.AutoBet.BetRecordService)) 
+                            as Services.AutoBet.BetRecordService;
+                        
+                        if (betRecordService == null)
+                        {
+                            return new CommandResponse 
+                            { 
+                                Success = false, 
+                                Message = "BetRecordService未初始化" 
+                            };
+                        }
+                        
+                        var betRecord = new Models.AutoBet.BetRecord
+                        {
+                            ConfigId = _selectedConfig.Id,
+                            IssueId = currentIssueId,
+                            Source = Models.AutoBet.BetRecordSource.命令, // 手动命令
+                            OrderIds = "", // 手动投注无关联订单
+                            BetContentStandard = standardContent,
+                            TotalAmount = totalAmount,
+                            SendTime = DateTime.Now
+                        };
+                        
+                        betRecord = betRecordService.Create(betRecord);
+                        _logService.Info("CommandPanel", $"BetRecord已创建:ID={betRecord.Id}");
+                        
+                        // 4. 发送投注命令
+                        var betResult = await autoBetService.SendBetCommandAsync(
+                            _selectedConfig.Id, 
+                            currentIssueId.ToString(), 
+                            standardContent
+                        );
+                        
+                        // 5. 更新BetRecord
+                        betRecord.Success = betResult.Success;
+                        betRecord.PostStartTime = betResult.PostStartTime;
+                        betRecord.PostEndTime = betResult.PostEndTime;
+                        betRecord.DurationMs = betResult.DurationMs;
+                        betRecord.Result = betResult.Result;
+                        betRecord.ErrorMessage = betResult.ErrorMessage;
+                        betRecord.OrderNo = betResult.OrderNo;
+                        betRecordService.Update(betRecord);
+                        
+                        _logService.Info("CommandPanel", $"BetRecord已更新:成功={betRecord.Success}");
+                        
+                        return new CommandResponse
+                        {
+                            Success = betResult.Success,
+                            Message = betResult.ErrorMessage ?? (betResult.Success ? "投注成功" : "投注失败"),
+                            Data = new 
+                            {
+                                betRecordId = betRecord.Id,
+                                issueId = currentIssueId,
+                                originalContent = originalContent,
+                                standardContent = standardContent,
+                                totalAmount = totalAmount,
+                                betResult
+                            },
+                            ErrorMessage = betResult.ErrorMessage
+                        };
+                        
+                    case "获取Cookie":
+                        var cookieResult = await SendSocketCommandAsync(_selectedConfig.Id, "获取Cookie", null);
+                        return cookieResult;
+                        
+                    case "获取盘口额度":
+                        var quotaResult = await SendSocketCommandAsync(_selectedConfig.Id, "获取盘口额度", null);
+                        return quotaResult;
+                        
+                    default:
+                        return new CommandResponse { Success = false, Message = $"未知命令:{cmdName}" };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("CommandPanel", $"发送命令失败:{cmdName}", ex);
+                return new CommandResponse
+                {
+                    Success = false,
+                    Message = "发送失败",
+                    ErrorMessage = ex.Message
+                };
+            }
+        }
+        
+        /// <summary>
+        /// 解析投注内容："1234大10" → "1大10,2大10,3大10,4大10"
+        /// </summary>
+        private string ParseBetContent(string input)
+        {
+            try
+            {
+                var items = new List<string>();
+                
+                // 按空格或逗号分割
+                var parts = input.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries);
+                
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    
+                    // 检查是否包含连续数字（如："1234大20"）
+                    var match = System.Text.RegularExpressions.Regex.Match(
+                        trimmed, 
+                        @"^(\d+)(大|小|单|双)(\d+)$"
+                    );
+                    
+                    if (match.Success)
+                    {
+                        var numbers = match.Groups[1].Value;  // "1234"
+                        var type = match.Groups[2].Value;      // "大"
+                        var amount = match.Groups[3].Value;    // "10"
+                        
+                        // 拆分为单个投注
+                        foreach (var num in numbers)
+                        {
+                            items.Add($"{num}{type}{amount}");
+                        }
+                    }
+                    else
+                    {
+                        // 已经是标准格式或无法解析，直接添加
+                        items.Add(trimmed);
+                    }
+                }
+                
+                return string.Join(",", items);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("CommandPanel", "解析投注内容失败", ex);
+                return input; // 解析失败返回原内容
+            }
+        }
+        
+        /// <summary>
+        /// 计算总金额："1大10,2大20" → 30
+        /// </summary>
+        private decimal CalculateTotalAmount(string standardContent)
+        {
+            try
+            {
+                decimal total = 0;
+                var items = standardContent.Split(',');
+                
+                foreach (var item in items)
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(item, @"(\d+)$");
+                    if (match.Success && decimal.TryParse(match.Groups[1].Value, out var amount))
+                    {
+                        total += amount;
+                    }
+                }
+                
+                return total;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+        
+        /// <summary>
+        /// 发送Socket命令（通用方法）
+        /// </summary>
+        private async Task<CommandResponse> SendSocketCommandAsync(int configId, string command, object? data)
+        {
+            try
+            {
+                var autoBetService = Program.ServiceProvider.GetService(typeof(Services.AutoBet.AutoBetService)) as Services.AutoBet.AutoBetService;
+                if (autoBetService == null)
+                {
+                    return new CommandResponse { Success = false, Message = "AutoBetService未初始化" };
+                }
+                
+                // 通过AutoBetService的BrowserClient发送命令
+                var browserClient = autoBetService.GetBrowserClient(configId);
+                if (browserClient == null)
+                {
+                    return new CommandResponse { Success = false, Message = "浏览器客户端未连接" };
+                }
+                
+                var result = await browserClient.SendCommandAsync(command, data);
+                
+                return new CommandResponse
+                {
+                    Success = result.Success,
+                    Message = result.ErrorMessage ?? (result.Success ? "成功" : "失败"),
+                    Data = result.Data,
+                    ErrorMessage = result.ErrorMessage
+                };
+            }
+            catch (Exception ex)
+            {
+                return new CommandResponse
+                {
+                    Success = false,
+                    Message = "发送命令异常",
+                    ErrorMessage = ex.Message
+                };
+            }
+        }
 
         #endregion
+    }
+    
+    /// <summary>
+    /// 命令响应（临时数据结构）
+    /// </summary>
+    public class CommandResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = "";
+        public object? Data { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }
 

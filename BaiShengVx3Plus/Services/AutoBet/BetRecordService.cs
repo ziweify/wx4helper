@@ -48,6 +48,27 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
+        /// 更新投注记录
+        /// </summary>
+        public void Update(BetRecord record)
+        {
+            if (_db == null) throw new InvalidOperationException("数据库未初始化");
+            
+            record.UpdateTime = DateTime.Now;
+            
+            // 计算耗时
+            if (record.PostStartTime.HasValue && record.PostEndTime.HasValue)
+            {
+                record.DurationMs = (int)(record.PostEndTime.Value - record.PostStartTime.Value).TotalMilliseconds;
+            }
+            
+            _db.Update(record);
+            
+            _log.Info("BetRecordService", 
+                $"✅ 更新投注记录:ID={record.Id} 成功={record.Success} 耗时={record.DurationMs}ms");
+        }
+        
+        /// <summary>
         /// 更新投注记录（投注结果返回后）
         /// </summary>
         public void UpdateResult(int recordId, bool success, string? result, string? errorMessage, 
@@ -68,18 +89,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
             record.PostStartTime = postStartTime;
             record.PostEndTime = postEndTime;
             record.OrderNo = orderNo;
-            record.UpdateTime = DateTime.Now;
             
-            // 计算耗时
-            if (postStartTime.HasValue && postEndTime.HasValue)
-            {
-                record.DurationMs = (int)(postEndTime.Value - postStartTime.Value).TotalMilliseconds;
-            }
-            
-            _db.Update(record);
-            
-            _log.Info("BetRecordService", 
-                $"✅ 更新投注记录:ID={recordId} 成功={success} 耗时={record.DurationMs}ms");
+            Update(record);
         }
         
         /// <summary>

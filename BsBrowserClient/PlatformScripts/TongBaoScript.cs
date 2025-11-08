@@ -199,7 +199,41 @@ namespace BsBrowserClient.PlatformScripts
                     return (false, "");
                 }
                 
-                _logCallback($"🎲 开始投注: {order.BetContent} {order.Amount}");
+                _logCallback($"🎲 开始投注: {order.BetContent}");
+                
+                // 🔥 解析投注内容："1大10,2大10,3大10,4大10"
+                var items = order.BetContent.Split(',');
+                var betList = new List<object>();
+                var userdataList = new List<string>();
+                
+                foreach (var item in items)
+                {
+                    var trimmed = item.Trim();
+                    // 解析：1大10 → 号码=1, 玩法=大, 金额=10
+                    var match = Regex.Match(trimmed, @"^(\d+)(大|小|单|双|尾大|尾小)(\d+)$");
+                    if (match.Success)
+                    {
+                        var number = match.Groups[1].Value;
+                        var playType = match.Groups[2].Value;
+                        var money = int.Parse(match.Groups[3].Value);
+                        
+                        var betId = GetBetId($"{number}{playType}");
+                        betList.Add(new { id = betId, money = money });
+                        userdataList.Add($"{number}{playType}");
+                        
+                        _logCallback($"   解析:{number}{playType} 金额:{money} ID:{betId}");
+                    }
+                    else
+                    {
+                        _logCallback($"   ⚠️ 无法解析:{trimmed}");
+                    }
+                }
+                
+                if (betList.Count == 0)
+                {
+                    _logCallback("❌ 没有有效的投注项");
+                    return (false, "");
+                }
                 
                 // 构造POST数据（参考F5BotV2 Line 358-391）
                 var postData = new StringBuilder();
@@ -209,19 +243,12 @@ namespace BsBrowserClient.PlatformScripts
                 postData.Append($"&pan={_region}");
                 postData.Append($"&shuitype=0");
                 
-                // 构造投注数组
-                // 注意：这里需要根据实际的赔率ID映射来设置 id
-                // 示例：大=1, 小=2, 单=3, 双=4 等
-                var betId = GetBetId(order.BetContent);
-                var bets = new[]
-                {
-                    new { id = betId, money = order.Amount }
-                };
-                
-                var arrbet = JsonConvert.SerializeObject(bets);
+                var arrbet = JsonConvert.SerializeObject(betList);
                 var arrbet_encoded = System.Web.HttpUtility.UrlEncode(arrbet);
-                var userdata = $"{order.BetContent}";
+                var userdata = string.Join(" ", userdataList);
                 var userdata_encoded = System.Web.HttpUtility.UrlEncode(userdata);
+                
+                _logCallback($"📦 投注包:arrbet={arrbet}, userdata={userdata}");
                 
                 postData.Append($"&arrbet={arrbet_encoded}");
                 postData.Append($"&grouplabel=");

@@ -21,6 +21,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         private readonly ILogService _log;
         private readonly Action<int, TcpClient> _onBrowserConnected;
+        private readonly Action<int, JObject>? _onMessageReceived; // 🔥 新增消息处理回调
         
         private TcpListener? _listener;
         private CancellationTokenSource? _cts;
@@ -29,10 +30,14 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         public bool IsRunning { get; private set; }
         
-        public AutoBetSocketServer(ILogService log, Action<int, TcpClient> onBrowserConnected)
+        public AutoBetSocketServer(
+            ILogService log, 
+            Action<int, TcpClient> onBrowserConnected,
+            Action<int, JObject>? onMessageReceived = null) // 🔥 新增参数
         {
             _log = log;
             _onBrowserConnected = onBrowserConnected;
+            _onMessageReceived = onMessageReceived; // 🔥 保存回调
         }
         
         /// <summary>
@@ -199,8 +204,40 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         break;
                     }
                     
-                    // 这里可以处理浏览器主动发送的消息（如状态更新）
                     _log.Info("AutoBetServer", $"📩 [{configId}] {line}");
+                    
+                    // 🔥 解析并处理消息
+                    try
+                    {
+                        var message = JsonConvert.DeserializeObject<JObject>(line);
+                        if (message != null)
+                        {
+                            var messageType = message["type"]?.ToString();
+                            
+                            // 分发消息给处理器
+                            switch (messageType)
+                            {
+                                case "cookie_update":
+                                    _log.Info("AutoBetServer", $"🍪 收到Cookie更新:配置{configId}");
+                                    _onMessageReceived?.Invoke(configId, message);
+                                    break;
+                                    
+                                case "login_success":
+                                    _log.Info("AutoBetServer", $"✅ 收到登录成功通知:配置{configId}");
+                                    _onMessageReceived?.Invoke(configId, message);
+                                    break;
+                                    
+                                default:
+                                    _log.Info("AutoBetServer", $"📨 收到消息:类型={messageType}");
+                                    _onMessageReceived?.Invoke(configId, message);
+                                    break;
+                            }
+                        }
+                    }
+                    catch (Exception parseEx)
+                    {
+                        _log.Error("AutoBetServer", "解析消息失败", parseEx);
+                    }
                 }
             }
             catch (OperationCanceledException)

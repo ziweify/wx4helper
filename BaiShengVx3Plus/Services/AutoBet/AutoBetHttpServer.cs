@@ -180,7 +180,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         config.PlatformUrl,
                         config.Username,
                         config.Password,  // ✅ 添加密码字段
-                        cookieData = config.CookieData,
+                        cookies = config.Cookies,  // 🔥 统一使用Cookies字段
                         cookieUpdateTime = config.CookieUpdateTime
                     }
                 });
@@ -306,7 +306,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             var config = _getConfig(configId);
             if (config != null)
             {
-                config.CookieData = cookieData;
+                config.Cookies = cookieData;  // 🔥 统一使用Cookies字段
                 config.CookieUpdateTime = DateTime.Now;
                 _saveConfig(config);
                 

@@ -36,7 +36,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             _orderService = orderService;
             
             // 启动 Socket 服务器（端口 19527，用于双向通信）
-            _socketServer = new AutoBetSocketServer(log, OnBrowserConnected);
+            _socketServer = new AutoBetSocketServer(log, OnBrowserConnected, OnMessageReceived); // 🔥 添加消息处理回调
             _socketServer.Start();
             
             // 启动 HTTP 服务器（端口 8888，用于数据交互和调试）
@@ -176,6 +176,96 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
+        /// 🔥 消息接收回调（当浏览器通过Socket主动发送消息时）
+        /// </summary>
+        private void OnMessageReceived(int configId, Newtonsoft.Json.Linq.JObject message)
+        {
+            try
+            {
+                var messageType = message["type"]?.ToString();
+                
+                switch (messageType)
+                {
+                    case "cookie_update":
+                        HandleCookieUpdate(configId, message);
+                        break;
+                        
+                    case "login_success":
+                        HandleLoginSuccess(configId, message);
+                        break;
+                        
+                    default:
+                        _log.Info("AutoBet", $"未处理的消息类型:{messageType}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "处理消息失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 处理Cookie更新
+        /// </summary>
+        private void HandleCookieUpdate(int configId, Newtonsoft.Json.Linq.JObject message)
+        {
+            try
+            {
+                var url = message["url"]?.ToString();
+                var cookies = message["cookies"]?.ToObject<Dictionary<string, string>>();
+                
+                if (cookies == null || cookies.Count == 0)
+                {
+                    _log.Warning("AutoBet", $"配置{configId} Cookie为空");
+                    return;
+                }
+                
+                // 转换为Cookie字符串
+                var cookieString = string.Join("; ", cookies.Select(kv => $"{kv.Key}={kv.Value}"));
+                
+                // 更新配置
+                var config = GetConfig(configId);
+                if (config != null)
+                {
+                    config.Cookies = cookieString;  // 🔥 统一使用Cookies字段
+                    config.CookieUpdateTime = DateTime.Now;
+                    SaveConfig(config);
+                    
+                    _log.Info("AutoBet", $"✅ 配置{configId}({config.ConfigName}) Cookie已更新:共{cookies.Count}个");
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", $"更新Cookie失败:配置{configId}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 处理登录成功通知
+        /// </summary>
+        private void HandleLoginSuccess(int configId, Newtonsoft.Json.Linq.JObject message)
+        {
+            try
+            {
+                var username = message["username"]?.ToString();
+                _log.Info("AutoBet", $"✅ 配置{configId} 登录成功:用户{username}");
+                
+                // 更新配置状态
+                var config = GetConfig(configId);
+                if (config != null)
+                {
+                    config.Status = "已登录";
+                    SaveConfig(config);
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "处理登录成功失败", ex);
+            }
+        }
+        
+        /// <summary>
         /// 通过 Socket 推送封盘通知到指定配置的浏览器
         /// </summary>
         public async Task NotifySealingAsync(int configId, string issueId, int secondsRemaining)
@@ -296,6 +386,14 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 // 否则返回队首订单
                 return queue.Peek();
             }
+        }
+        
+        /// <summary>
+        /// 获取浏览器客户端（供命令面板使用）
+        /// </summary>
+        public BrowserClient? GetBrowserClient(int configId)
+        {
+            return _browsers.TryGetValue(configId, out var client) ? client : null;
         }
         
         /// <summary>
