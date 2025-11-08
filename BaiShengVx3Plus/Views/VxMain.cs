@@ -60,9 +60,8 @@ namespace BaiShengVx3Plus
         private Views.SettingsForm? _settingsForm;
         private Views.BinggoLotteryResultForm? _lotteryResultForm;  // 🎲 开奖结果窗口
         
-        // 当前绑定的联系人对象
-        private WxContact? _currentBoundContact;
-        private string _currentGroupWxId = ""; // 🔥 当前绑定的群 wxid
+
+        //private string _currentGroupWxId = ""; // 🔥 当前绑定的群 wxid
         
         // 当前用户信息（用于检测用户切换）
         private WxUserInfo? _currentUserInfo;
@@ -1167,8 +1166,9 @@ namespace BaiShengVx3Plus
             
             if (dgvContacts.Rows[e.RowIndex].DataBoundItem is WxContact contact)
             {
+                var cur = ConfigurationManager.Instance.Configuration.CurrentBoundContact;
                 // 🔥 如果是当前绑定的联系人，用绿色背景
-                if (_currentBoundContact != null && contact.Wxid == _currentBoundContact.Wxid)
+                if (cur != null && contact.Wxid == cur.Wxid)
                 {
                     dgvContacts.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(240, 255, 240); // 浅绿色
                     dgvContacts.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.FromArgb(82, 196, 26);   // 深绿色文字
@@ -1198,7 +1198,8 @@ namespace BaiShengVx3Plus
             // 🔥 检查是否是绑定的行
             if (dgvContacts.Rows[e.RowIndex].DataBoundItem is WxContact contact)
             {
-                isBound = (_currentBoundContact != null && contact.Wxid == _currentBoundContact.Wxid);
+                var cur = ConfigurationManager.Instance.Configuration.CurrentBoundContact;
+                isBound = (cur != null && contact.Wxid == cur.Wxid);
             }
             
             // 🔥 优先级：绑定 > 选中 > Hover
@@ -1610,8 +1611,9 @@ namespace BaiShengVx3Plus
                 
                 // 🔥 1. 使用服务绑定群组
                 _groupBindingService.BindGroup(contact);
-                _currentBoundContact = contact;
-                _currentGroupWxId = contact.Wxid;
+
+                var curContact = ConfigurationManager.Instance.Configuration.CurrentBoundContact;
+                curContact = contact;
                 
                 // 2. 更新 UI 显示
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
@@ -2293,7 +2295,6 @@ namespace BaiShengVx3Plus
                         UpdateUIThreadSafe(() =>
                         {
                             _contactsBindingList.Clear();
-                            _currentBoundContact = null;
                             txtCurrentContact.Text = "未绑定";
                             txtCurrentContact.FillColor = Color.White;
                             txtCurrentContact.RectColor = Color.Silver;
@@ -3199,7 +3200,9 @@ namespace BaiShengVx3Plus
 
                     // 启动自动投注
                     _logService.Info("VxMain", "🚀 启动自动投注（飞单）...");
-                    
+                    if (Services.ConfigurationManager.Instance.Configuration.CurrentBoundContact.Wxid == "")
+                        throw new Exception("没有绑定群！自动投注程序不启动！");
+
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {

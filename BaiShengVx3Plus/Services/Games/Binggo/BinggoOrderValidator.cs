@@ -49,12 +49,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return false;
                 }
                 
-                // 2. 检查是否封盘（只有"开盘中"和"即将封盘"可以下注）
-                if (currentStatus == BinggoLotteryStatus.封盘中 || currentStatus == BinggoLotteryStatus.开奖中)
-                {
-                    errorMessage = "已封盘，请等待下期！";
-                    return false;
-                }
+                //// 2. 检查是否封盘（只有"开盘中"和"即将封盘"可以下注）
+                //// 要在消息监控源头检测, 
+                //if (currentStatus == BinggoLotteryStatus.封盘中 || currentStatus == BinggoLotteryStatus.开奖中)
+                //{
+                //    errorMessage = "已封盘，请等待下期！";
+                //    return false;
+                //}
                 
                 // 3. 检查下注内容是否有效
                 if (betContent.Code != 0 || betContent.Items.Count == 0)

@@ -530,6 +530,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         {
             try
             {
+                
                 var config = GetConfig(configId);
                 if (config == null)
                 {

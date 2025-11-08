@@ -69,6 +69,13 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         {
             try
             {
+                // 0. 检查是否开启收单
+                if(!ConfigurationManager.Instance.Configuration.IsOrdersTaskingEnabled)
+                {
+                    return (false, null);
+                }
+               
+
                 // 1. 基础检查
                 if (member == null || string.IsNullOrWhiteSpace(messageContent))
                 {
