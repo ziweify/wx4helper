@@ -4,6 +4,8 @@ using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -26,6 +28,10 @@ namespace BsBrowserClient.PlatformScripts
         private string _token = "";
         private string _region = "A";  // A,B,C,D盘类型
         private decimal _currentBalance = 0;
+        private string _baseUrl = "";  // 缓存的base URL
+        
+        // 赔率ID映射表：key="平一大", value="5370"
+        private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
         
         // 测试账号（来自F5BotV2注释）
         // 账号: wwww11
@@ -104,6 +110,13 @@ namespace BsBrowserClient.PlatformScripts
                     
                     if (!string.IsNullOrEmpty(_sid) && !string.IsNullOrEmpty(_uuid))
                     {
+                        // 🔥 缓存base URL（从WebView2获取，避免在投注时跨线程访问）
+                        var currentUrl = _webView.CoreWebView2?.Source ?? "";
+                        if (!string.IsNullOrEmpty(currentUrl))
+                        {
+                            _baseUrl = new Uri(currentUrl).GetLeftPart(UriPartial.Authority);
+                        }
+                        
                         _logCallback($"✅ 登录成功！UUID: {_uuid}, SID: {_sid.Substring(0, 10)}...");
                         return true;
                     }
@@ -217,11 +230,33 @@ namespace BsBrowserClient.PlatformScripts
                         var playType = match.Groups[2].Value;
                         var money = int.Parse(match.Groups[3].Value);
                         
-                        var betId = GetBetId($"{number}{playType}");
-                        betList.Add(new { id = betId, money = money });
-                        userdataList.Add($"{number}{playType}");
+                        // 🔥 从赔率映射表中获取ID
+                        var betIdStr = GetBetId(number, playType);
                         
-                        _logCallback($"   解析:{number}{playType} 金额:{money} ID:{betId}");
+                        // 输出调试信息
+                        _logCallback($"   🔍 查找ID: number={number}, playType={playType}, betIdStr={betIdStr}, 映射表数量={_oddsMap.Count}");
+                        
+                        var betId = int.TryParse(betIdStr, out var id) ? id : 0;
+                        betList.Add(new { id = betId, money = money });
+                        
+                        // userdata 需要显示完整的名称，如："平一大"
+                        var carName = number switch
+                        {
+                            "1" => "平一",
+                            "2" => "平二",
+                            "3" => "平三",
+                            "4" => "平四",
+                            "5" => "平五",
+                            "6" => "平六",
+                            "7" => "平七",
+                            "8" => "平八",
+                            "9" => "平九",
+                            "10" => "平十",
+                            _ => number
+                        };
+                        userdataList.Add($"{carName}{playType}");
+                        
+                        _logCallback($"   解析:{carName}{playType} 金额:{money} ID:{betId}");
                     }
                     else
                     {
@@ -235,41 +270,58 @@ namespace BsBrowserClient.PlatformScripts
                     return (false, "");
                 }
                 
-                // 构造POST数据（参考F5BotV2 Line 358-391）
+                // 构造POST数据（完全按照F5BotV2 Line 358-391的方式）
+                // 🔥 手动编码，手动拼接字符串，不让HttpClient自动处理！
+                
+                var arrbet = JsonConvert.SerializeObject(betList);
+                var arrbet_encoded = WebUtility.UrlEncode(arrbet);
+                
+                var userdata = string.Join(" ", userdataList) + " ";
+                var userdata_encoded = WebUtility.UrlEncode(userdata);
+                
+                _logCallback($"📦 投注包:arrbet={arrbet}, userdata={userdata.Trim()}");
+                _logCallback($"   uuid={_uuid}, sid={_sid.Substring(0, Math.Min(10, _sid.Length))}..., region={_region}");
+                
+                // 🔥 完全按照F5BotV2的方式拼接POST字符串
                 var postData = new StringBuilder();
                 postData.Append($"uuid={_uuid}");
                 postData.Append($"&sid={_sid}");
                 postData.Append($"&roomeng=twbingo");
                 postData.Append($"&pan={_region}");
                 postData.Append($"&shuitype=0");
-                
-                var arrbet = JsonConvert.SerializeObject(betList);
-                var arrbet_encoded = System.Web.HttpUtility.UrlEncode(arrbet);
-                var userdata = string.Join(" ", userdataList);
-                var userdata_encoded = System.Web.HttpUtility.UrlEncode(userdata);
-                
-                _logCallback($"📦 投注包:arrbet={arrbet}, userdata={userdata}");
-                
                 postData.Append($"&arrbet={arrbet_encoded}");
                 postData.Append($"&grouplabel=");
                 postData.Append($"&userdata={userdata_encoded}");
+                postData.Append($"&kuaiyidata=");
                 postData.Append($"&token={_token}");
                 postData.Append($"&timestamp={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
                 
-                // 获取当前URL的域名（因为通宝域名会变化）
-                var currentUrl = _webView.CoreWebView2.Source;
-                var baseUrl = new Uri(currentUrl).GetLeftPart(UriPartial.Authority);
+                var fullPostData = postData.ToString();
+                
+                // 🔥 使用缓存的base URL（避免跨线程访问WebView2）
+                if (string.IsNullOrEmpty(_baseUrl))
+                {
+                    _logCallback("❌ 未获取到base URL，可能未登录");
+                    return (false, "");
+                }
                 
                 // 发送POST请求（参考F5BotV2 Line 408-420）
-                var url = $"{baseUrl}/frcomgame/createmainorder";
-                var content = new StringContent(postData.ToString(), Encoding.UTF8, "application/x-www-form-urlencoded");
+                var url = $"{_baseUrl}/frcomgame/createmainorder";
                 
                 _logCallback($"📤 发送投注请求: {url}");
+                _logCallback($"📋 POST数据（完整）:");
+                _logCallback($"   {fullPostData}");
+                
+                // 🔥 使用ByteArrayContent直接发送字节，避免HttpClient的任何自动处理
+                var bytes = Encoding.UTF8.GetBytes(fullPostData);
+                var content = new ByteArrayContent(bytes);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
                 
                 var response = await _httpClient.PostAsync(url, content);
                 var responseText = await response.Content.ReadAsStringAsync();
                 
-                _logCallback($"📥 投注响应: {responseText.Substring(0, Math.Min(100, responseText.Length))}...");
+                _logCallback($"📥 投注响应（完整）:");
+                _logCallback($"   {responseText}");
                 
                 // 解析响应（参考F5BotV2 Line 430-441）
                 var json = JObject.Parse(responseText);
@@ -284,7 +336,8 @@ namespace BsBrowserClient.PlatformScripts
                 else
                 {
                     var msg = json["msg"]?.ToString() ?? "未知错误";
-                    _logCallback($"❌ 投注失败: {msg}");
+                    var errcode = json["errcode"]?.ToString() ?? "";
+                    _logCallback($"❌ 投注失败: {msg} (errcode={errcode})");
                     return (false, "");
                 }
             }
@@ -337,7 +390,7 @@ namespace BsBrowserClient.PlatformScripts
                     }
                 }
                 
-                // 2. 拦截 getcommongroupodds - 获取盘口类型（A/B/C/D）
+                // 2. 拦截 getcommongroupodds - 获取盘口类型（A/B/C/D）和赔率ID
                 // 参考 F5BotV2 Line 103-107
                 else if (response.Url.Contains("/getcommongroupodds"))
                 {
@@ -349,6 +402,51 @@ namespace BsBrowserClient.PlatformScripts
                         {
                             _region = region;
                             _logCallback($"📊 盘口类型: {_region}");
+                        }
+                    }
+                    
+                    // 解析响应数据，获取赔率ID
+                    if (!string.IsNullOrEmpty(response.Context))
+                    {
+                        try
+                        {
+                            var json = JObject.Parse(response.Context);
+                            var msg = json["msg"]; // 🔥 正确的字段是msg，不是datas！
+                            if (msg != null && msg.Type == JTokenType.Array)
+                            {
+                                _oddsMap.Clear();
+                                int count = 0;
+                                
+                                // ResultID从5370开始，对应"平一大"
+                                // 5370=平一大, 5371=平一小, 5372=平一单, 5373=平一双...
+                                var resultArray = msg.ToArray();
+                                foreach (var item in resultArray)
+                                {
+                                    var resultId = item["ResultID"]?.ToString(); // 🔥 字段是ResultID
+                                    if (!string.IsNullOrEmpty(resultId))
+                                    {
+                                        // 根据ResultID推算name
+                                        var id = int.Parse(resultId);
+                                        string name = GetNameFromResultId(id);
+                                        if (!string.IsNullOrEmpty(name))
+                                        {
+                                            _oddsMap[name] = resultId;
+                                            count++;
+                                        }
+                                    }
+                                }
+                                _logCallback($"✅ 赔率ID已更新，共{_oddsMap.Count}项");
+                            }
+                            else
+                            {
+                                _logCallback($"⚠️ 响应中没有找到msg数组");
+                                _logCallback($"   响应内容: {response.Context.Substring(0, Math.Min(200, response.Context.Length))}...");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logCallback($"⚠️ 解析赔率数据失败: {ex.Message}");
+                            _logCallback($"   响应内容: {response.Context.Substring(0, Math.Min(200, response.Context.Length))}...");
                         }
                     }
                 }
@@ -388,28 +486,82 @@ namespace BsBrowserClient.PlatformScripts
         }
         
         /// <summary>
-        /// 根据投注内容获取对应的ID
-        /// 注意：实际ID需要从赔率接口中获取
-        /// 这里提供一个简化的映射
+        /// 根据ResultID推算名称
+        /// ResultID规律: 5370开始，每个号码有6个玩法（大小单双尾大尾小）
+        /// 5370=平一大, 5371=平一小, 5372=平一单, 5373=平一双, 5374=平一尾大, 5375=平一尾小
+        /// 5376=平二大, 5377=平二小...
         /// </summary>
-        private int GetBetId(string betContent)
+        private string GetNameFromResultId(int resultId)
         {
-            // 这个映射需要根据实际的赔率接口返回的数据来调整
-            // F5BotV2 中是从 _Odds.GetOdds() 获取的
-            return betContent.ToLower() switch
+            if (resultId < 5364) return "";
+            
+            int offset = resultId - 5364;
+            int carIndex = offset / 6;  // 每个号码6个玩法
+            int playIndex = offset % 6;
+            
+            if (carIndex >= 10) return ""; // 只有1-10号
+            
+            string carName = carIndex switch
             {
-                "大" => 1,
-                "小" => 2,
-                "单" => 3,
-                "双" => 4,
-                "大单" => 5,
-                "大双" => 6,
-                "小单" => 7,
-                "小双" => 8,
-                "极大" => 9,
-                "极小" => 10,
-                _ => 1 // 默认值
+                0 => "平一",
+                1 => "平二",
+                2 => "平三",
+                3 => "平四",
+                4 => "平五",
+                5 => "平六",
+                6 => "平七",
+                7 => "平八",
+                8 => "平九",
+                9 => "平十",
+                _ => ""
             };
+            
+            string playName = playIndex switch
+            {
+                0 => "大",
+                1 => "小",
+                2 => "单",
+                3 => "双",
+                4 => "尾大",
+                5 => "尾小",
+                _ => ""
+            };
+            
+            return $"{carName}{playName}";
+        }
+        
+        /// <summary>
+        /// 根据投注内容获取对应的ID
+        /// 从拦截的赔率数据中查找
+        /// </summary>
+        private string GetBetId(string number, string playType)
+        {
+            // 组合成赔率名称，如："平一大"
+            // number: "1" → "平一", "2" → "平二", ...
+            var carName = number switch
+            {
+                "1" => "平一",
+                "2" => "平二",
+                "3" => "平三",
+                "4" => "平四",
+                "5" => "平五",
+                "6" => "平六",
+                "7" => "平七",
+                "8" => "平八",
+                "9" => "平九",
+                "10" => "平十",
+                _ => "平一"
+            };
+            
+            var oddsName = $"{carName}{playType}"; // 如："平一大"
+            
+            if (_oddsMap.TryGetValue(oddsName, out var id))
+            {
+                return id;
+            }
+            
+            _logCallback($"⚠️ 未找到赔率ID: {oddsName}，使用默认值0");
+            return "0";
         }
     }
 }

@@ -527,6 +527,10 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 if (string.IsNullOrEmpty(cmdName))
                 {
                     AppendCommandResult("❌ 错误:无法解析命令");
+                    AppendCommandResult("💡 命令格式:");
+                    AppendCommandResult("   • 投注: 投注(1234大10)");
+                    AppendCommandResult("   • 获取额度: 获取盘口额度");
+                    AppendCommandResult("   • 获取Cookie: 获取Cookie");
                     return;
                 }
                 
@@ -617,7 +621,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 }
                 else
                 {
-                    // 无参数：获取Cookie
+                    // 无参数命令：获取Cookie, 获取盘口额度
                     return (trimmed, "");
                 }
             }
@@ -701,11 +705,17 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         _logService.Info("CommandPanel", $"BetRecord已创建:ID={betRecord.Id}");
                         
                         // 4. 发送投注命令
+                        _logService.Info("CommandPanel", $"准备发送投注命令:ConfigId={_selectedConfig.Id}, IssueId={currentIssueId}, Content={standardContent}");
+                        AppendCommandResult($"⏳ 正在发送投注命令到浏览器...");
+                        
                         var betResult = await autoBetService.SendBetCommandAsync(
                             _selectedConfig.Id, 
                             currentIssueId.ToString(), 
                             standardContent
                         );
+                        
+                        _logService.Info("CommandPanel", $"投注命令返回:Success={betResult.Success}, Error={betResult.ErrorMessage}");
+                        AppendCommandResult($"✅ 浏览器已返回结果");
                         
                         // 5. 更新BetRecord
                         betRecord.Success = betResult.Success;

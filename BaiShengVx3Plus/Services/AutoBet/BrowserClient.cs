@@ -72,8 +72,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
             // 附加新连接
             _socket = socket;
             var stream = _socket.GetStream();
-            _reader = new StreamReader(stream, Encoding.UTF8);
-            _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+            // 🔥 使用不带BOM的UTF8编码（new UTF8Encoding(false)）
+            var utf8NoBom = new System.Text.UTF8Encoding(false);
+            _reader = new StreamReader(stream, utf8NoBom);
+            _writer = new StreamWriter(stream, utf8NoBom) { AutoFlush = true };
         }
         
         /// <summary>
@@ -153,10 +155,34 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 // 发送 JSON
                 var json = JsonConvert.SerializeObject(request);
-                await _writer!.WriteLineAsync(json);
+                Console.WriteLine($"[BrowserClient] 发送命令:{command} ConfigId:{_configId}");
+                Console.WriteLine($"[BrowserClient] 发送数据:{json.Substring(0, Math.Min(200, json.Length))}...");
                 
-                // 接收响应
-                var responseLine = await _reader!.ReadLineAsync();
+                await _writer!.WriteLineAsync(json);
+                await _writer.FlushAsync();  // 🔥 确保数据立即发送
+                
+                Console.WriteLine($"[BrowserClient] 等待响应... Socket连接: {_socket?.Connected}, Reader存在: {_reader != null}");
+                
+                // 🔥 添加30秒超时
+                string? responseLine = null;
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+                
+                try
+                {
+                    responseLine = await _reader!.ReadLineAsync(cts.Token);
+                    Console.WriteLine($"[BrowserClient] 收到响应:{responseLine?.Substring(0, Math.Min(200, responseLine?.Length ?? 0))}...");
+                }
+                catch (TaskCanceledException)
+                {
+                    Console.WriteLine($"[BrowserClient] ⏱️ 超时！30秒未收到响应");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[BrowserClient] ❌ ReadLineAsync异常: {ex.Message}");
+                    throw;
+                }
+                
                 if (string.IsNullOrEmpty(responseLine))
                 {
                     return new BetResult
@@ -308,8 +334,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 await _socket.ConnectAsync("127.0.0.1", port);
                 
                 var stream = _socket.GetStream();
-                _reader = new StreamReader(stream, Encoding.UTF8);
-                _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+                // 🔥 使用不带BOM的UTF8编码
+                var utf8NoBom = new System.Text.UTF8Encoding(false);
+                _reader = new StreamReader(stream, utf8NoBom);
+                _writer = new StreamWriter(stream, utf8NoBom) { AutoFlush = true };
                 
                 return true;
             }

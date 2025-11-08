@@ -51,20 +51,30 @@ public partial class Form1 : Form
     {
         try
         {
+            // 初始化日志系统（优先初始化，以便记录后续日志）
+            InitializeLogSystem();
+            
+            OnLogMessage("🚀 正在初始化 BrowserClient...");
+            
             // 初始化 WebView2
             await InitializeWebView2Async();
+            OnLogMessage("✅ WebView2 初始化完成");
             
             // 初始化平台脚本
             InitializePlatformScript();
+            OnLogMessage($"✅ 平台脚本初始化完成: {_platform}");
             
             // 初始化 Socket 服务器
             InitializeSocketServer();
+            OnLogMessage($"✅ Socket服务器启动: 端口{_port}", LogType.Socket);
             
             lblStatus.Text = "✅ 初始化成功";
+            OnLogMessage("🎉 BrowserClient 初始化成功");
         }
         catch (Exception ex)
         {
             lblStatus.Text = $"❌ 初始化失败: {ex.Message}";
+            OnLogMessage($"❌ 初始化失败: {ex.Message}");
             MessageBox.Show($"初始化失败: {ex.Message}", "错误", 
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -135,13 +145,16 @@ public partial class Form1 : Form
         // 使用共享库统一转换
         var platform = BetPlatformHelper.Parse(_platform);
         
+        // 创建一个兼容的日志回调（平台脚本的日志都视为投注类型）
+        Action<string> betLogCallback = (msg) => OnLogMessage(msg, LogType.Bet);
+        
         _platformScript = platform switch
         {
-            BetPlatform.云顶 => new YunDing28Script(_webView!, OnLogMessage),
-            BetPlatform.通宝 => new TongBaoScript(_webView!, OnLogMessage),
-            BetPlatform.海峡 => new YunDing28Script(_webView!, OnLogMessage), // 暂用云顶脚本
-            BetPlatform.红海 => new YunDing28Script(_webView!, OnLogMessage), // 暂用云顶脚本
-            _ => new YunDing28Script(_webView!, OnLogMessage)
+            BetPlatform.云顶 => new YunDing28Script(_webView!, betLogCallback),
+            BetPlatform.通宝 => new TongBaoScript(_webView!, betLogCallback),
+            BetPlatform.海峡 => new YunDing28Script(_webView!, betLogCallback), // 暂用云顶脚本
+            BetPlatform.红海 => new YunDing28Script(_webView!, betLogCallback), // 暂用云顶脚本
+            _ => new YunDing28Script(_webView!, betLogCallback)
         };
     }
     
@@ -302,7 +315,10 @@ public partial class Form1 : Form
             configIdInt = 0;
         }
         
-        _socketServer = new SocketServer(configIdInt, OnCommandReceived, OnLogMessage);
+        // 创建一个兼容的日志回调（Socket服务器的日志视为Socket类型）
+        Action<string> socketLogCallback = (msg) => OnLogMessage(msg, LogType.Socket);
+        
+        _socketServer = new SocketServer(configIdInt, OnCommandReceived, socketLogCallback);
         _socketServer.Start();
         
         lblPort.Text = $"配置: {_configId} | 平台: {_platform}";
@@ -319,8 +335,8 @@ public partial class Form1 : Form
             if (string.IsNullOrEmpty(args.Url))
                 return;
             
-            // 记录日志
-            OnLogMessage($"[拦截] {args.Url}");
+            // 记录日志（HTTP拦截）
+            OnLogMessage($"拦截:{args.Url}", LogType.Http);
             
             if (!string.IsNullOrEmpty(args.PostData))
             {
@@ -351,7 +367,7 @@ public partial class Form1 : Form
     {
         try
         {
-            OnLogMessage($"[命令] {command.Command}");
+            OnLogMessage($"收到命令:{command.Command}", LogType.Socket);
             
             var response = new CommandResponse
             {
@@ -502,7 +518,7 @@ public partial class Form1 : Form
                     var betIssueId = betData?["issueId"]?.ToString() ?? "";
                     var betContent = betData?["betContent"]?.ToString() ?? "";
                     
-                    OnLogMessage($"📝 收到投注命令:期号{betIssueId} 内容:{betContent}");
+                    OnLogMessage($"📝 收到投注命令:期号{betIssueId} 内容:{betContent}", LogType.Bet);
                     
                     if (string.IsNullOrEmpty(betContent))
                     {
@@ -515,7 +531,7 @@ public partial class Form1 : Form
                     
                     try
                     {
-                        OnLogMessage($"📦 准备投注:期号={betIssueId} 内容={betContent}");
+                        OnLogMessage($"📦 准备投注:期号={betIssueId} 内容={betContent}", LogType.Bet);
                         
                         // 🔥 参考F5BotV2：将所有投注项组装成一个包，一次性POST
                         // betContent格式："1大10,2大10,3大10,4大10"
@@ -549,7 +565,7 @@ public partial class Form1 : Form
                             orderNo = orderId
                         };
                         
-                        OnLogMessage($"✅ 投注完成:成功={success} 耗时={durationMs}ms 订单号={orderId}");
+                        OnLogMessage($"✅ 投注完成:成功={success} 耗时={durationMs}ms 订单号={orderId}", LogType.Bet);
                         OnLogMessage($"📊 返回数据:postStartTime={postStartTime:yyyy-MM-dd HH:mm:ss.fff}, postEndTime={postEndTime:yyyy-MM-dd HH:mm:ss.fff}");
                     }
                     catch (Exception betEx)
@@ -598,27 +614,221 @@ public partial class Form1 : Form
     /// <summary>
     /// 日志回调
     /// </summary>
-    private void OnLogMessage(string message)
+    /// <summary>
+    /// 日志缓冲区（高性能循环队列）
+    /// </summary>
+    private readonly Queue<string> _logBuffer = new Queue<string>();
+    private const int MAX_LOG_LINES = 1000;  // 最大保留1000行日志
+    private bool _isUserScrolling = false;   // 用户是否在查看历史
+    private System.Windows.Forms.Timer? _logTimer;  // 日志批量更新定时器
+    
+    /// <summary>
+    /// 初始化日志系统
+    /// </summary>
+    private void InitializeLogSystem()
     {
-        if (InvokeRequired)
+        // 创建日志更新定时器（每100ms批量更新一次，避免频繁UI刷新）
+        _logTimer = new System.Windows.Forms.Timer();
+        _logTimer.Interval = 100;  // 100ms
+        _logTimer.Tick += LogTimer_Tick;
+        _logTimer.Start();
+        
+        // 监听滚动条事件
+        txtLog.VScroll += TxtLog_VScroll;
+        txtLog.MouseWheel += TxtLog_MouseWheel;
+    }
+    
+    /// <summary>
+    /// 日志定时器 - 批量更新UI
+    /// </summary>
+    private void LogTimer_Tick(object? sender, EventArgs e)
+    {
+        int bufferCount = 0;
+        lock (_logBuffer)
         {
-            Invoke(() => OnLogMessage(message));
+            bufferCount = _logBuffer.Count;
+        }
+        
+        if (bufferCount == 0)
+        {
+            // 更新日志状态（显示当前状态）
+            UpdateLogStatus();
             return;
         }
         
+        // 批量处理日志
+        var logs = new List<string>();
+        lock (_logBuffer)
+        {
+            while (_logBuffer.Count > 0 && logs.Count < 50)  // 每次最多处理50条
+            {
+                logs.Add(_logBuffer.Dequeue());
+            }
+        }
+        
+        if (logs.Count == 0) return;
+        
+        // 检查是否需要自动滚动
+        bool shouldAutoScroll = !_isUserScrolling && IsScrollAtBottom();
+        
+        // 批量添加日志
+        txtLog.SuspendLayout();
+        try
+        {
+            foreach (var log in logs)
+            {
+                txtLog.AppendText(log);
+            }
+            
+            // 限制日志行数（保持性能）
+            int lineCount = txtLog.Lines.Length;
+            if (lineCount > MAX_LOG_LINES)
+            {
+                // 删除前面的旧日志
+                int removeLines = lineCount - MAX_LOG_LINES;
+                int removePos = 0;
+                for (int i = 0; i < removeLines; i++)
+                {
+                    removePos = txtLog.Text.IndexOf('\n', removePos) + 1;
+                }
+                txtLog.Text = txtLog.Text.Substring(removePos);
+            }
+            
+            // 自动滚动到底部
+            if (shouldAutoScroll)
+            {
+                txtLog.SelectionStart = txtLog.Text.Length;
+                txtLog.ScrollToCaret();
+            }
+        }
+        finally
+        {
+            txtLog.ResumeLayout();
+        }
+        
+        // 更新日志状态
+        UpdateLogStatus();
+    }
+    
+    /// <summary>
+    /// 更新日志状态显示
+    /// </summary>
+    private void UpdateLogStatus()
+    {
+        int bufferCount = 0;
+        lock (_logBuffer)
+        {
+            bufferCount = _logBuffer.Count;
+        }
+        
+        int lineCount = txtLog.Lines.Length;
+        string autoScrollStatus = _isUserScrolling ? "关" : "开";
+        
+        lblLogStatus.Text = $"📊 日志: {lineCount}行 | 缓冲: {bufferCount} | 自动滚动: {autoScrollStatus}";
+    }
+    
+    /// <summary>
+    /// 检查滚动条是否在底部
+    /// </summary>
+    private bool IsScrollAtBottom()
+    {
+        if (txtLog.Lines.Length == 0) return true;
+        
+        // 获取可见行数
+        int visibleLines = txtLog.Height / txtLog.Font.Height;
+        int totalLines = txtLog.Lines.Length;
+        
+        // 获取第一个可见字符的行号
+        int firstVisibleLine = txtLog.GetLineFromCharIndex(txtLog.GetCharIndexFromPosition(new Point(0, 0)));
+        
+        // 如果底部可见，则认为在底部
+        return (firstVisibleLine + visibleLines >= totalLines - 2);
+    }
+    
+    /// <summary>
+    /// 滚动条滚动事件
+    /// </summary>
+    private void TxtLog_VScroll(object? sender, EventArgs e)
+    {
+        // 用户手动滚动，标记为正在查看历史
+        _isUserScrolling = !IsScrollAtBottom();
+    }
+    
+    /// <summary>
+    /// 鼠标滚轮事件
+    /// </summary>
+    private void TxtLog_MouseWheel(object? sender, MouseEventArgs e)
+    {
+        // 用户使用滚轮，标记为正在查看历史
+        _isUserScrolling = !IsScrollAtBottom();
+    }
+    
+    /// <summary>
+    /// 日志回调（高性能版本）
+    /// </summary>
+    /// <summary>
+    /// 日志类型枚举
+    /// </summary>
+    private enum LogType
+    {
+        Socket,   // Socket通信
+        Bet,      // 投注相关
+        Http,     // HTTP拦截
+        System    // 系统消息
+    }
+    
+    /// <summary>
+    /// 写入日志（带类型过滤）
+    /// </summary>
+    private void OnLogMessage(string message, LogType type = LogType.System)
+    {
+        // 根据复选框状态过滤日志
+        bool shouldLog = type switch
+        {
+            LogType.Socket => chkLogSocket?.Checked ?? true,
+            LogType.Bet => chkLogBet?.Checked ?? true,
+            LogType.Http => chkLogHttp?.Checked ?? false,
+            LogType.System => chkLogSystem?.Checked ?? true,
+            _ => true
+        };
+        
+        if (!shouldLog) return;
+        
         // 输出到状态栏
-        lblStatus.Text = message;
+        if (InvokeRequired)
+        {
+            BeginInvoke(() => lblStatus.Text = message);
+        }
+        else
+        {
+            lblStatus.Text = message;
+        }
         
-        // 输出到日志文本框
+        // 添加到日志缓冲区（异步处理，不阻塞）
         var time = DateTime.Now.ToString("HH:mm:ss.fff");
-        txtLog.AppendText($"[{time}] {message}\r\n");
+        var typeIcon = type switch
+        {
+            LogType.Socket => "🔌",
+            LogType.Bet => "🎲",
+            LogType.Http => "🌐",
+            LogType.System => "⚙️",
+            _ => "📝"
+        };
+        var logLine = $"[{time}] {typeIcon} {message}\r\n";
         
-        // 自动滚动到底部
-        txtLog.SelectionStart = txtLog.Text.Length;
-        txtLog.ScrollToCaret();
+        lock (_logBuffer)
+        {
+            _logBuffer.Enqueue(logLine);
+            
+            // 如果缓冲区过大，丢弃旧日志（防止内存溢出）
+            while (_logBuffer.Count > MAX_LOG_LINES * 2)
+            {
+                _logBuffer.Dequeue();
+            }
+        }
         
         // 输出到控制台（用于调试）
-        Console.WriteLine($"[{time}] {message}");
+        Console.WriteLine($"[{time}] [{type}] {message}");
     }
     
     /// <summary>
@@ -647,12 +857,45 @@ public partial class Form1 : Form
     
     private void Form1_FormClosing(object sender, FormClosingEventArgs e)
     {
-        // 拦截关闭事件，改为隐藏窗口
+        // 拦截用户点击关闭按钮的事件
         if (e.CloseReason == CloseReason.UserClosing)
         {
-            e.Cancel = true; // 取消关闭
-            this.Hide();     // 隐藏窗口
-            OnLogMessage($"窗口已隐藏（进程仍在运行）");
+            // 弹出确认对话框
+            var result = MessageBox.Show(
+                "请选择操作：\n\n" +
+                "• 是(Y)：关闭浏览器（进程退出）\n" +
+                "• 否(N)：最小化到任务栏\n" +
+                "• 取消：继续使用",
+                "关闭确认 - BsBrowser",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2  // 默认选择"否"(最小化)
+            );
+            
+            switch (result)
+            {
+                case DialogResult.Yes:
+                    // 用户选择关闭：允许关闭，清理资源
+                    OnLogMessage($"用户选择关闭浏览器，进程即将退出");
+                    _socketServer?.Stop();
+                    _webView?.Dispose();
+                    // 不取消关闭事件，允许窗口关闭
+                    break;
+                    
+                case DialogResult.No:
+                    // 用户选择最小化：取消关闭，隐藏窗口
+                    e.Cancel = true;
+                    this.WindowState = FormWindowState.Minimized;
+                    OnLogMessage($"窗口已最小化（进程仍在运行）");
+                    break;
+                    
+                case DialogResult.Cancel:
+                default:
+                    // 用户选择取消：取消关闭，保持窗口显示
+                    e.Cancel = true;
+                    OnLogMessage($"取消关闭");
+                    break;
+            }
         }
         else
         {
@@ -823,6 +1066,16 @@ public partial class Form1 : Form
                 return;
             }
             
+            // 先获取余额，确认已登录
+            OnLogMessage("📊 检查登录状态和余额...");
+            var balance = await _platformScript.GetBalanceAsync();
+            if (balance < 0)
+            {
+                OnLogMessage("❌ 未登录或获取余额失败，无法投注");
+                return;
+            }
+            OnLogMessage($"✅ 当前余额: ¥{balance}");
+            
             // 测试投注"1大10"
             var testBetContent = "1大10";
             var betOrder = new BetOrder
@@ -850,6 +1103,10 @@ public partial class Form1 : Form
             {
                 OnLogMessage($"❌ 【测试】投注失败");
                 OnLogMessage($"   耗时:{duration}ms");
+                OnLogMessage($"💡 提示:错误\"单笔下注范围0~0\"通常表示:");
+                OnLogMessage($"   1. 当前没有开盘（未到投注时间）");
+                OnLogMessage($"   2. 这个玩法被禁用或限制");
+                OnLogMessage($"   3. 需要等待下一期开盘后再投注");
             }
             
             OnLogMessage("🎲 【测试】投注测试完成");
@@ -858,6 +1115,68 @@ public partial class Form1 : Form
         {
             OnLogMessage($"❌ 投注测试失败:{ex.Message}");
             OnLogMessage($"   堆栈:{ex.StackTrace}");
+        }
+    }
+    
+    /// <summary>
+    /// 清空日志按钮
+    /// </summary>
+    private void btnClearLog_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            // 清空日志缓冲区
+            lock (_logBuffer)
+            {
+                _logBuffer.Clear();
+            }
+            
+            // 清空日志文本框
+            txtLog.Clear();
+            
+            // 更新状态
+            UpdateLogStatus();
+            
+            OnLogMessage("🗑️ 日志已清空");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"清空日志失败: {ex.Message}", "错误", 
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+    
+    /// <summary>
+    /// 保存日志按钮
+    /// </summary>
+    private void btnSaveLog_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            // 生成日志文件名
+            var fileName = $"BrowserClient_Log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+            var saveDialog = new SaveFileDialog
+            {
+                FileName = fileName,
+                Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
+                Title = "保存日志"
+            };
+            
+            if (saveDialog.ShowDialog() == DialogResult.OK)
+            {
+                // 保存日志
+                System.IO.File.WriteAllText(saveDialog.FileName, txtLog.Text, System.Text.Encoding.UTF8);
+                
+                OnLogMessage($"💾 日志已保存: {saveDialog.FileName}");
+                MessageBox.Show($"日志已成功保存到:\n{saveDialog.FileName}", "保存成功", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 保存日志失败: {ex.Message}");
+            MessageBox.Show($"保存日志失败: {ex.Message}", "错误", 
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
     

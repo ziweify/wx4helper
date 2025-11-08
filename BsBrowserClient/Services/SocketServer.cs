@@ -93,8 +93,10 @@ namespace BsBrowserClient.Services
                     _onLog("✅ 已连接到 VxMain");
                     
                     var stream = _client.GetStream();
-                    _reader = new StreamReader(stream, Encoding.UTF8);
-                    _writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+                    // 🔥 使用不带BOM的UTF8编码
+                    var utf8NoBom = new System.Text.UTF8Encoding(false);
+                    _reader = new StreamReader(stream, utf8NoBom);
+                    _writer = new StreamWriter(stream, utf8NoBom) { AutoFlush = true };
                     
                     // 2. 发送握手消息（包含配置ID）
                     var handshake = new
@@ -158,6 +160,9 @@ namespace BsBrowserClient.Services
                         break;
                     }
                     
+                    // 🔥 移除BOM字符（UTF-8 BOM: 0xEF 0xBB 0xBF）
+                    line = line.Trim('\uFEFF', '\u200B');  // \uFEFF是BOM，\u200B是零宽空格
+                    
                     _onLog($"📩 收到命令: {line.Substring(0, Math.Min(50, line.Length))}...");
                     
                     // 解析命令
@@ -193,6 +198,7 @@ namespace BsBrowserClient.Services
                 
                 var json = JsonConvert.SerializeObject(response);
                 _writer.WriteLine(json);
+                _writer.Flush();  // 🔥 立即刷新缓冲区，确保数据发送
                 
                 _onLog($"📤 已发送响应: {response.Message}");
             }

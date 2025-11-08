@@ -107,7 +107,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 _db.Execute("DELETE FROM AutoBetConfigs WHERE Id = ?", id);
                 
                 // 删除相关的投注记录（可选）
-                _db.Execute("DELETE FROM BetOrderRecords WHERE ConfigId = ?", id);
+                _db.Execute("DELETE FROM BetRecord WHERE ConfigId = ?", id);
                 
                 _log.Info("AutoBet", $"配置已删除: {config.ConfigName}");
             }
