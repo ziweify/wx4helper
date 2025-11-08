@@ -65,6 +65,7 @@ namespace BaiShengVx3Plus.Models
         private float _odds;
         private OrderStatus _orderStatus;
         private OrderType _orderType;
+        private MemberState _memberState;  // 🔥 会员等级快照（订单创建时的会员状态）
         private string? _timeString;
         private string? _notes;
         private bool _isSettled;  // 是否已结算
@@ -240,26 +241,15 @@ namespace BaiShengVx3Plus.Models
         }
 
         /// <summary>
-        /// 🔥 会员状态（显示会员类型：会员、蓝会等）
-        /// 根据 OrderType 和其他信息推断会员类型
+        /// 🔥 会员等级快照（订单创建时的会员状态）
+        /// 用于扩展业务规则：按会员等级做差异化处理
         /// </summary>
-        [DataGridColumn(HeaderText = "会员", Width = 60, Order = 14, 
-                        Alignment = DataGridViewContentAlignment.MiddleCenter, ReadOnly = true)]
-        public string MemberType
+        [DataGridColumn(HeaderText = "会员等级", Width = 70, Order = 14, 
+                        Alignment = DataGridViewContentAlignment.MiddleCenter)]
+        public MemberState MemberState
         {
-            get
-            {
-                // 根据 OrderType 返回会员类型
-                return OrderType switch
-                {
-                    OrderType.普会 => "普会",
-                    OrderType.盘内 => "会员",
-                    OrderType.盘外 => "蓝会",
-                    OrderType.托 => "托",
-                    OrderType.黄会 => "黄会",
-                    _ => "未知"
-                };
-            }
+            get => _memberState;
+            set => SetField(ref _memberState, value);
         }
 
         [DataGridColumn(HeaderText = "备注", Width = 100, Order = 16)]
