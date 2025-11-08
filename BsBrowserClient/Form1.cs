@@ -318,7 +318,14 @@ public partial class Form1 : Form
         // 创建一个兼容的日志回调（Socket服务器的日志视为Socket类型）
         Action<string> socketLogCallback = (msg) => OnLogMessage(msg, LogType.Socket);
         
-        _socketServer = new SocketServer(configIdInt, OnCommandReceived, socketLogCallback);
+        // 🔥 包装异步方法为同步调用（使用 .Wait()）
+        void CommandReceivedWrapper(CommandRequest cmd)
+        {
+            // 同步等待异步方法完成，确保响应在返回前发送
+            OnCommandReceivedAsync(cmd).Wait();
+        }
+        
+        _socketServer = new SocketServer(configIdInt, CommandReceivedWrapper, socketLogCallback);
         _socketServer.Start();
         
         lblPort.Text = $"配置: {_configId} | 平台: {_platform}";
@@ -363,7 +370,7 @@ public partial class Form1 : Form
     /// <summary>
     /// Socket 命令接收回调
     /// </summary>
-    private async void OnCommandReceived(CommandRequest command)
+    private async Task OnCommandReceivedAsync(CommandRequest command)
     {
         try
         {

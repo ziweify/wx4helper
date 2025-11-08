@@ -34,5 +34,8 @@
     <Compile Update="Views\VxMain.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\WeChatVersionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

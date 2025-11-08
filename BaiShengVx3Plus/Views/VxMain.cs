@@ -865,6 +865,16 @@ namespace BaiShengVx3Plus
                 // 🎮 初始化快速设置面板
                 InitializeFastSettings();
                 
+                // 🔥 检查微信版本（在连接前）
+                if (!await CheckWeChatVersionAsync())
+                {
+                    // 版本不匹配且用户未安装，退出程序
+                    _logService.Warning("VxMain", "微信版本不匹配，程序退出");
+                    lblStatus.Text = "微信版本不匹配";
+                    Application.Exit();
+                    return;
+                }
+                
                 // 🔥 统一使用 WeChatService 进行连接和初始化
                 // forceRestart = false，会先尝试快速连接，失败才启动/注入
                 _logService.Info("VxMain", "程序启动，开始自动连接和初始化...");
@@ -2012,6 +2022,57 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", "打开设置窗口失败", ex);
                 UIMessageBox.ShowError($"打开设置窗口失败:\n{ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 微信版本检测
+
+        /// <summary>
+        /// 检查微信版本是否符合要求
+        /// </summary>
+        private async Task<bool> CheckWeChatVersionAsync()
+        {
+            try
+            {
+                _logService.Info("VxMain", "正在检查微信版本...");
+                
+                var (isValid, currentVersion) = Services.WeChatVersionChecker.CheckVersion();
+                
+                if (isValid)
+                {
+                    _logService.Info("VxMain", $"✅ 微信版本检测通过: {currentVersion}");
+                    return true;
+                }
+                
+                // 版本不匹配，显示对话框
+                _logService.Warning("VxMain", $"⚠️ 微信版本不匹配: 当前={currentVersion}, 需要={Services.WeChatVersionChecker.GetRequiredVersion()}");
+                
+                var dialog = new Views.WeChatVersionDialog(currentVersion, Services.WeChatVersionChecker.GetRequiredVersion());
+                var result = await Task.Run(() => dialog.ShowDialog(this));
+                
+                if (result == DialogResult.OK && dialog.InstallationSuccess)
+                {
+                    _logService.Info("VxMain", "✅ 微信安装成功，继续启动");
+                    return true;
+                }
+                
+                // 用户取消或安装失败
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "检查微信版本时出错", ex);
+                
+                // 出错时询问用户是否继续
+                var result = UIMessageBox.Show(
+                    $"检查微信版本时出错:\n{ex.Message}\n\n是否继续启动？（可能无法正常工作）",
+                    "警告",
+                    UIStyle.Orange,
+                    UIMessageBoxButtons.OKCancel);
+                
+                return result == DialogResult.OK;
             }
         }
 

@@ -169,6 +169,10 @@ namespace BsBrowserClient.Services
                     var command = JsonConvert.DeserializeObject<CommandRequest>(line);
                     if (command != null)
                     {
+                        // 🔥 同步调用命令处理器，等待响应发送完成后再读取下一条
+                        // 这样可以避免：
+                        // 1. 读取位置错乱（响应被误读为命令）
+                        // 2. 响应丢失（ReadLineAsync 吞掉了响应）
                         _onCommandReceived(command);
                     }
                 }
