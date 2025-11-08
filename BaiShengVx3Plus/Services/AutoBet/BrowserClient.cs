@@ -30,6 +30,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private StreamReader? _reader;
         private StreamWriter? _writer;
         
+        // 🔥 响应等待机制
+        private readonly Dictionary<string, TaskCompletionSource<Newtonsoft.Json.Linq.JObject>> _pendingResponses = new();
+        private readonly object _responseLock = new();
+        
         public bool IsConnected => _socket != null && _socket.Connected;
         
         /// <summary>
@@ -53,6 +57,43 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public BrowserClient(int configId)
         {
             _configId = configId;
+        }
+        
+        /// <summary>
+        /// 处理来自 AutoBetSocketServer 的响应消息
+        /// </summary>
+        public void OnMessageReceived(Newtonsoft.Json.Linq.JObject message)
+        {
+            try
+            {
+                // 检查是否是命令响应
+                var success = message["success"]?.ToObject<bool>();
+                var configId = message["configId"]?.ToString();
+                
+                if (success != null && configId == _configId.ToString())
+                {
+                    // 这是一个命令响应
+                    var requestId = $"cmd_{_configId}";  // 简化版：每个配置同时只有一个pending命令
+                    
+                    lock (_responseLock)
+                    {
+                        if (_pendingResponses.TryGetValue(requestId, out var tcs))
+                        {
+                            _pendingResponses.Remove(requestId);
+                            tcs.SetResult(message);
+                            Console.WriteLine($"[BrowserClient] 响应已分发到等待的命令");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[BrowserClient] 收到响应，但没有等待的命令");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserClient] OnMessageReceived 错误: {ex.Message}");
+            }
         }
         
         /// <summary>
@@ -131,7 +172,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 发送命令并等待响应
+        /// 发送命令并等待响应（通过 AutoBetSocketServer 的回调机制）
         /// </summary>
         public async Task<BetResult> SendCommandAsync(string command, object? data = null)
         {
@@ -153,6 +194,15 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     data = data
                 };
                 
+                // 创建响应等待任务
+                var requestId = $"cmd_{_configId}";
+                var tcs = new TaskCompletionSource<Newtonsoft.Json.Linq.JObject>();
+                
+                lock (_responseLock)
+                {
+                    _pendingResponses[requestId] = tcs;
+                }
+                
                 // 发送 JSON
                 var json = JsonConvert.SerializeObject(request);
                 Console.WriteLine($"[BrowserClient] 发送命令:{command} ConfigId:{_configId}");
@@ -161,29 +211,44 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 await _writer!.WriteLineAsync(json);
                 await _writer.FlushAsync();  // 🔥 确保数据立即发送
                 
-                Console.WriteLine($"[BrowserClient] 等待响应... Socket连接: {_socket?.Connected}, Reader存在: {_reader != null}");
+                Console.WriteLine($"[BrowserClient] 等待响应... Socket连接: {_socket?.Connected}");
                 
-                // 🔥 添加30秒超时
-                string? responseLine = null;
+                // 🔥 等待响应（通过回调触发）
+                Newtonsoft.Json.Linq.JObject? responseObj = null;
                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
                 
                 try
                 {
-                    responseLine = await _reader!.ReadLineAsync(cts.Token);
-                    Console.WriteLine($"[BrowserClient] 收到响应:{responseLine?.Substring(0, Math.Min(200, responseLine?.Length ?? 0))}...");
+                    // 等待 OnMessageReceived 设置结果
+                    responseObj = await tcs.Task.WaitAsync(cts.Token);
+                    Console.WriteLine($"[BrowserClient] 收到响应（通过回调）");
                 }
                 catch (TaskCanceledException)
                 {
                     Console.WriteLine($"[BrowserClient] ⏱️ 超时！30秒未收到响应");
+                    
+                    // 清理
+                    lock (_responseLock)
+                    {
+                        _pendingResponses.Remove(requestId);
+                    }
+                    
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[BrowserClient] ❌ ReadLineAsync异常: {ex.Message}");
+                    Console.WriteLine($"[BrowserClient] ❌ 等待响应异常: {ex.Message}");
+                    
+                    // 清理
+                    lock (_responseLock)
+                    {
+                        _pendingResponses.Remove(requestId);
+                    }
+                    
                     throw;
                 }
                 
-                if (string.IsNullOrEmpty(responseLine))
+                if (responseObj == null)
                 {
                     return new BetResult
                     {
@@ -193,16 +258,14 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 解析响应
-                var responseObj = JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>(responseLine);
-                
                 var result = new BetResult
                 {
-                    Success = responseObj?["success"]?.ToObject<bool>() ?? false,
-                    ErrorMessage = responseObj?["errorMessage"]?.ToString()
+                    Success = responseObj["success"]?.ToObject<bool>() ?? false,
+                    ErrorMessage = responseObj["errorMessage"]?.ToString()
                 };
                 
                 // 🔥 解析详细投注结果
-                var responseData = responseObj?["data"];
+                var responseData = responseObj["data"];
                 if (responseData != null)
                 {
                     result.Data = responseData;  // 保存原始数据

@@ -177,11 +177,20 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         /// <summary>
         /// 🔥 消息接收回调（当浏览器通过Socket主动发送消息时）
+        /// 包括：命令响应、Cookie更新、登录成功通知等
         /// </summary>
         private void OnMessageReceived(int configId, Newtonsoft.Json.Linq.JObject message)
         {
             try
             {
+                // 🔥 首先，将所有消息分发给对应的 BrowserClient
+                //    这样 BrowserClient.SendCommandAsync 可以通过回调接收响应
+                if (_browsers.TryGetValue(configId, out var browserClient))
+                {
+                    browserClient.OnMessageReceived(message);
+                }
+                
+                // 然后，处理特定类型的消息（Cookie更新、登录成功等）
                 var messageType = message["type"]?.ToString();
                 
                 switch (messageType)

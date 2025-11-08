@@ -194,7 +194,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 // 4. 通知 AutoBetService 有新连接
                 _onBrowserConnected(configId, client);
                 
-                // 5. 持续读取命令（保持连接）
+                // 5. 持续读取消息（包括主动通知和命令响应）
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     var line = await reader.ReadLineAsync(cancellationToken);
@@ -204,34 +204,16 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         break;
                     }
                     
-                    _log.Info("AutoBetServer", $"📩 [{configId}] {line}");
+                    _log.Info("AutoBetServer", $"📩 [{configId}] {line.Substring(0, Math.Min(100, line.Length))}...");
                     
-                    // 🔥 解析并处理消息
+                    // 🔥 解析并分发所有消息
                     try
                     {
                         var message = JsonConvert.DeserializeObject<JObject>(line);
                         if (message != null)
                         {
-                            var messageType = message["type"]?.ToString();
-                            
-                            // 分发消息给处理器
-                            switch (messageType)
-                            {
-                                case "cookie_update":
-                                    _log.Info("AutoBetServer", $"🍪 收到Cookie更新:配置{configId}");
-                                    _onMessageReceived?.Invoke(configId, message);
-                                    break;
-                                    
-                                case "login_success":
-                                    _log.Info("AutoBetServer", $"✅ 收到登录成功通知:配置{configId}");
-                                    _onMessageReceived?.Invoke(configId, message);
-                                    break;
-                                    
-                                default:
-                                    _log.Info("AutoBetServer", $"📨 收到消息:类型={messageType}");
-                                    _onMessageReceived?.Invoke(configId, message);
-                                    break;
-                            }
+                            // 所有消息都通过回调分发
+                            _onMessageReceived?.Invoke(configId, message);
                         }
                     }
                     catch (Exception parseEx)
