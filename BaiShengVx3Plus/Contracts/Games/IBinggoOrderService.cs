@@ -62,6 +62,11 @@ namespace BaiShengVx3Plus.Contracts.Games
         IEnumerable<V2MemberOrder> GetPendingOrdersForIssue(int issueId);
         
         /// <summary>
+        /// 获取指定会员、指定期号的待处理订单（用于取消命令）
+        /// </summary>
+        IEnumerable<V2MemberOrder> GetPendingOrdersForMemberAndIssue(string wxid, int issueId);
+        
+        /// <summary>
         /// 更新订单（用于投注后更新状态）
         /// </summary>
         void UpdateOrder(V2MemberOrder order);

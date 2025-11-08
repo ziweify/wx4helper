@@ -65,9 +65,10 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 }
                 
                 // 2. 🔥 检查收单开关（必须先检查！）
+                _logService.Debug("ChatMessageHandler", $"🔍 检查收单开关: IsOrdersTaskingEnabled = {BinggoMessageHandler.IsOrdersTaskingEnabled}");
                 if (!BinggoMessageHandler.IsOrdersTaskingEnabled)
                 {
-                    _logService.Debug("ChatMessageHandler", "⏸️ 收单已关闭，忽略群消息");
+                    _logService.Info("ChatMessageHandler", "⏸️ 收单已关闭，忽略群消息");
                     return;
                 }
                 

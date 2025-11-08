@@ -26,6 +26,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         private bool _isAutoBetEnabled = false;
         private int _currentConfigId = -1;
+        private BinggoLotteryStatus _lastStatus = BinggoLotteryStatus.等待中;  // 🔥 记录上次状态，防止重复触发
+        private bool _hasProcessedCurrentIssue = false;  // 🔥 记录当前期号是否已处理投注
         
         public bool IsEnabled => _isAutoBetEnabled;
         
@@ -111,6 +113,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
             
             _log.Info("AutoBet", $"🔔 新一期开始: {e.NewIssueId}");
             
+            // 🔥 新一期开始，重置状态和投注标记
+            _lastStatus = BinggoLotteryStatus.等待中;
+            _hasProcessedCurrentIssue = false;
+            _log.Info("AutoBet", $"🔓 已重置状态和投注标记，允许新期号投注");
+            
             // TODO: 可以在这里做一些准备工作
             // 例如：检查浏览器状态、刷新余额等
         }
@@ -121,8 +128,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private async void LotteryService_StatusChanged(object? sender, BinggoStatusChangedEventArgs e)
         {
             _log.Info("AutoBet", $"📢 状态变更事件触发: {e.OldStatus} → {e.NewStatus}, 期号:{e.IssueId}");
-            _log.Info("AutoBet", $"   自动投注启用: {_isAutoBetEnabled}");
-            _log.Info("AutoBet", $"   当前配置ID: {_currentConfigId}");
             
             if (!_isAutoBetEnabled)
             {
@@ -130,10 +135,33 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 return;
             }
             
-            // 只在"即将封盘"状态时处理投注
+            // 🔥 防止重复投注：双重检查
+            // 1. 检查状态是否真正变化（从非"即将封盘"变为"即将封盘"）
+            // 2. 检查当前期号是否已经处理过投注
             if (e.NewStatus == BinggoLotteryStatus.即将封盘)
             {
+                // 如果已经处理过当前期号，直接跳过
+                if (_hasProcessedCurrentIssue)
+                {
+                    _log.Warning("AutoBet", $"⚠️ 期号{e.IssueId}已处理过投注，跳过重复处理");
+                    return;
+                }
+                
+                // 只在第一次进入"即将封盘"状态时处理
+                if (_lastStatus == BinggoLotteryStatus.即将封盘)
+                {
+                    _log.Warning("AutoBet", $"⚠️ 已经在'即将封盘'状态，跳过重复触发（30秒/15秒提醒）");
+                    return;
+                }
+                
+                _log.Info("AutoBet", $"   上次状态: {_lastStatus}");
+                _log.Info("AutoBet", $"   当前状态: {e.NewStatus}");
+                _log.Info("AutoBet", $"   配置ID: {_currentConfigId}");
                 _log.Info("AutoBet", $"🎯 触发封盘事件: 期号={e.IssueId}");
+                
+                // 🔥 更新状态标记
+                _lastStatus = e.NewStatus;
+                _hasProcessedCurrentIssue = true;  // 标记已处理
                 
                 try
                 {
@@ -218,40 +246,40 @@ namespace BaiShengVx3Plus.Services.AutoBet
                             _log.Warning("AutoBet", $"   错误信息: {result.ErrorMessage}");
                         }
                         
-                        // 根据结果更新订单状态
+                        // 🔥 根据POST结果更新订单状态（参考F5BotV2逻辑）
                         if (result.Success)
                         {
-                            _log.Info("AutoBet", $"✅ 投注成功，开始更新订单状态...");
+                            _log.Info("AutoBet", $"✅ POST成功，更新订单状态为【盘内+待结算】");
                             
-                            // 投注成功，更新订单为"盘内 + 待结算"
+                            // POST成功 → 盘内 + 待结算（等待开奖后计算盈利）
                             foreach (var orderId in mergeResult.OrderIds)
                             {
                                 var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
                                 if (order != null)
                                 {
-                                    order.OrderType = OrderType.盘内;  // 🔥 进盘成功
-                                    order.OrderStatus = OrderStatus.待结算;
+                                    order.OrderStatus = OrderStatus.待结算;  // 等待开奖结算
+                                    order.OrderType = OrderType.盘内;      // 成功进入网盘
                                     _orderService.UpdateOrder(order);
                                 }
                             }
-                            _log.Info("AutoBet", $"✅ 已更新{mergeResult.OrderIds.Count}个订单为【盘内+待结算】状态");
+                            _log.Info("AutoBet", $"✅ 已更新{mergeResult.OrderIds.Count}个订单为【盘内+待结算】");
                         }
                         else
                         {
-                            _log.Warning("AutoBet", $"❌ 投注失败，开始更新订单状态...");
+                            _log.Warning("AutoBet", $"❌ POST失败，更新订单状态为【盘外+待结算】");
                             
-                            // 投注失败，更新订单为"盘外"并标记为"已完成"
+                            // POST失败 → 盘外 + 待结算（开奖后仍需处理，如退款）
                             foreach (var orderId in mergeResult.OrderIds)
                             {
                                 var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
                                 if (order != null)
                                 {
-                                    order.OrderType = OrderType.盘外;  // 设置为盘外
-                                    order.OrderStatus = OrderStatus.已完成;  // 标记完成（不需要结算）
+                                    order.OrderStatus = OrderStatus.待结算;  // 仍需开奖后处理
+                                    order.OrderType = OrderType.盘外;      // 未进入网盘
                                     _orderService.UpdateOrder(order);
                                 }
                             }
-                            _log.Warning("AutoBet", $"❌ 已更新{mergeResult.OrderIds.Count}个订单为【盘外已完成】状态");
+                            _log.Info("AutoBet", $"✅ 已更新{mergeResult.OrderIds.Count}个订单为【盘外+待结算】");
                         }
                         
                         return result;
@@ -260,6 +288,15 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 catch (Exception ex)
                 {
                     _log.Error("AutoBet", $"处理封盘事件失败:期号{e.IssueId}", ex);
+                }
+            }
+            else
+            {
+                // 🔥 其他状态变更时，仅更新状态标记（不触发投注）
+                if (_lastStatus != e.NewStatus)
+                {
+                    _log.Debug("AutoBet", $"状态变更: {_lastStatus} → {e.NewStatus}");
+                    _lastStatus = e.NewStatus;
                 }
             }
         }

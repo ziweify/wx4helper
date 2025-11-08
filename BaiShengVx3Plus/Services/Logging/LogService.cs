@@ -89,7 +89,15 @@ namespace BaiShengVx3Plus.Services.Logging
 
         public IReadOnlyList<LogEntry> GetRecentLogs(int count = 100)
         {
-            return _memoryLogs.TakeLast(count).ToList();
+            // 🔥 优化：使用 ToArray 再反向取，比 TakeLast 快
+            var array = _memoryLogs.ToArray();
+            if (array.Length <= count)
+                return array;
+            
+            // 只返回最后 count 个
+            var result = new LogEntry[count];
+            Array.Copy(array, array.Length - count, result, 0, count);
+            return result;
         }
 
         public IReadOnlyList<LogEntry> GetAllMemoryLogs()

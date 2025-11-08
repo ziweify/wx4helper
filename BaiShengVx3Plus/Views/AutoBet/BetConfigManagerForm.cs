@@ -245,6 +245,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         {
                             dgvRecords.Columns["SendTime"].HeaderText = "发送时间";
                             dgvRecords.Columns["SendTime"].Width = 150;
+                            dgvRecords.Columns["SendTime"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm:ss";
                         }
                         
                         // 隐藏不需要的列

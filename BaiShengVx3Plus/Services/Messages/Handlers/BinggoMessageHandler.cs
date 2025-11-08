@@ -99,7 +99,13 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return (true, await HandleWithdrawCommandAsync(member, messageContent));
                 }
                 
-                // 6. 简单判断是否可能是下注消息（包含数字和关键词）
+                // 🔥 6. 处理取消命令（取消当期待处理订单）
+                if (IsCancelCommand(messageContent))
+                {
+                    return (true, await HandleCancelCommandAsync(member));
+                }
+                
+                // 7. 简单判断是否可能是下注消息（包含数字和关键词）
                 if (!LooksLikeBetMessage(messageContent))
                 {
                     return (false, null);
@@ -376,6 +382,68 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             {
                 _logService.Error("BinggoMessageHandler", "处理下分命令失败", ex);
                 return "下分申请失败，请稍后重试";
+            }
+        }
+        
+        /// <summary>
+        /// 判断是否为取消命令
+        /// </summary>
+        private bool IsCancelCommand(string message)
+        {
+            message = message.Trim();
+            return message == "取消" || message == "qx";
+        }
+        
+        /// <summary>
+        /// 处理取消命令
+        /// 🔥 限制：只能取消当期、封盘前的待处理订单
+        /// </summary>
+        private async Task<string> HandleCancelCommandAsync(V2Member member)
+        {
+            try
+            {
+                // 1. 获取当前期号和状态
+                int currentIssueId = _lotteryService.CurrentIssueId;
+                var currentStatus = _lotteryService.CurrentStatus;
+                
+                if (currentIssueId == 0)
+                {
+                    return "系统初始化中，请稍后...";
+                }
+                
+                // 2. 🔥 检查是否已封盘（只能在封盘前取消）
+                if (currentStatus == BinggoLotteryStatus.封盘中 || currentStatus == BinggoLotteryStatus.开奖中)
+                {
+                    return $"@{member.Nickname}\r已封盘，无法取消订单";
+                }
+                
+                // 3. 查找当期该会员的待处理订单
+                var pendingOrders = _orderService.GetPendingOrdersForMemberAndIssue(member.Wxid, currentIssueId);
+                
+                if (pendingOrders == null || !pendingOrders.Any())
+                {
+                    return $"@{member.Nickname}\r当前期号无待处理订单";
+                }
+                
+                // 4. 取消所有待处理订单
+                int canceledCount = 0;
+                foreach (var order in pendingOrders)
+                {
+                    order.OrderStatus = OrderStatus.已取消;
+                    _orderService.UpdateOrder(order);
+                    canceledCount++;
+                }
+                
+                _logService.Info("BinggoMessageHandler", 
+                    $"✅ 取消订单: {member.Nickname} - 期号:{currentIssueId} - 取消{canceledCount}个订单");
+                
+                // 5. 回复消息
+                return $"@{member.Nickname}\r已取消{canceledCount}个订单";
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoMessageHandler", "处理取消命令失败", ex);
+                return "取消订单失败，请联系管理员";
             }
         }
     }

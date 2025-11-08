@@ -143,20 +143,60 @@ namespace BaiShengVx3Plus.Views
             }
         }
 
-        private void LoadRecentLogs()
+        private async void LoadRecentLogs()
         {
             try
             {
+                // 🔥 异步加载，不阻塞UI线程
+                var logs = await Task.Run(() => _logService.GetRecentLogs(100));
+                
                 // 🔥 暂停绘制，提升性能
                 dgvLogs.SuspendLayout();
                 dgvLogs.Rows.Clear();
                 
-                // 🔥 只加载最近100条，避免卡顿
-                var logs = _logService.GetRecentLogs(100);
-                
+                // 🔥 批量添加，而不是逐条添加
+                var rows = new List<object[]>();
                 foreach (var log in logs)
                 {
-                    AddLogToGrid(log);
+                    rows.Add(new object[]
+                    {
+                        log.FormattedTime,
+                        log.LevelName,
+                        log.Source,
+                        log.Message,
+                        log.ThreadId
+                    });
+                }
+                
+                // 一次性添加所有行
+                foreach (var rowData in rows)
+                {
+                    var index = dgvLogs.Rows.Add(rowData);
+                    
+                    // 根据级别设置行颜色
+                    var log = logs[index];
+                    var row = dgvLogs.Rows[index];
+                    switch (log.Level)
+                    {
+                        case LogLevel.Error:
+                        case LogLevel.Fatal:
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(255, 230, 230);
+                            row.DefaultCellStyle.ForeColor = Color.DarkRed;
+                            break;
+                        case LogLevel.Warning:
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(255, 250, 230);
+                            row.DefaultCellStyle.ForeColor = Color.DarkOrange;
+                            break;
+                        case LogLevel.Debug:
+                            row.DefaultCellStyle.ForeColor = Color.Gray;
+                            break;
+                    }
+                }
+                
+                // 滚动到底部
+                if (dgvLogs.Rows.Count > 0)
+                {
+                    dgvLogs.FirstDisplayedScrollingRowIndex = dgvLogs.Rows.Count - 1;
                 }
             }
             catch (Exception ex)

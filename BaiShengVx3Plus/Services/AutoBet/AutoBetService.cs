@@ -117,18 +117,75 @@ namespace BaiShengVx3Plus.Services.AutoBet
         {
             if (_db == null) return;
             
-            if (!_db.Table<BetConfig>().Any(c => c.IsDefault))
+            var defaultConfig = _db.Table<BetConfig>().FirstOrDefault(c => c.IsDefault);
+            
+            if (defaultConfig == null)
             {
+                // 🔥 不存在默认配置，创建新的
                 _db.Insert(new BetConfig
                 {
                     ConfigName = "默认配置",
-                    Platform = "YunDing28",
-                    PlatformUrl = "https://www.yunding28.com",
+                    Platform = "通宝",
+                    PlatformUrl = "https://yb666.fr.win2000.cc",
                     IsDefault = true,
                     IsEnabled = true
                 });
-                _log.Info("AutoBet", "✅ 已创建默认配置");
+                _log.Info("AutoBet", "✅ 已创建默认配置（通宝平台）");
             }
+            else
+            {
+                // 🔥 默认配置存在，检查并修复平台和URL的匹配
+                _log.Info("AutoBet", $"检查默认配置: 平台={defaultConfig.Platform}, URL={defaultConfig.PlatformUrl}");
+                
+                bool needUpdate = false;
+                string correctUrl = GetCorrectPlatformUrl(defaultConfig.Platform);
+                
+                // 如果URL不匹配平台，自动修正
+                if (!string.IsNullOrEmpty(correctUrl) && defaultConfig.PlatformUrl != correctUrl)
+                {
+                    _log.Warning("AutoBet", $"⚠️ 检测到平台URL不匹配:");
+                    _log.Warning("AutoBet", $"   平台: {defaultConfig.Platform}");
+                    _log.Warning("AutoBet", $"   当前URL: {defaultConfig.PlatformUrl}");
+                    _log.Warning("AutoBet", $"   正确URL: {correctUrl}");
+                    
+                    defaultConfig.PlatformUrl = correctUrl;
+                    needUpdate = true;
+                }
+                
+                // 兼容旧的平台名称（YunDing28 → 云顶）
+                if (defaultConfig.Platform == "YunDing28")
+                {
+                    defaultConfig.Platform = "云顶";
+                    defaultConfig.PlatformUrl = "https://www.yunding28.com";
+                    needUpdate = true;
+                    _log.Warning("AutoBet", "检测到旧的平台名称YunDing28，已更新为'云顶'");
+                }
+                
+                if (needUpdate)
+                {
+                    _db.Update(defaultConfig);
+                    _log.Info("AutoBet", $"✅ 已修复默认配置: {defaultConfig.Platform} - {defaultConfig.PlatformUrl}");
+                }
+                else
+                {
+                    _log.Info("AutoBet", $"✅ 默认配置正确: {defaultConfig.Platform} - {defaultConfig.PlatformUrl}");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 根据平台名称获取正确的URL
+        /// </summary>
+        private string GetCorrectPlatformUrl(string platform)
+        {
+            return platform switch
+            {
+                "通宝" or "TongBao" => "https://yb666.fr.win2000.cc",
+                "云顶" or "YunDing" or "YunDing28" => "https://www.yunding28.com",
+                "海峡" or "HaiXia" => "https://www.haixia28.com",
+                "红海" or "HongHai" => "https://www.honghai28.com",
+                _ => ""
+            };
         }
         
         /// <summary>

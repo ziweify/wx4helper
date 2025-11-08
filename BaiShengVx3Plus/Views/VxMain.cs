@@ -52,6 +52,10 @@ namespace BaiShengVx3Plus
         private V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList（与会员、订单统一模式）
         private BinggoLotteryDataBindingList? _lotteryDataBindingList; // 🎲 炳狗开奖数据 BindingList
         
+        // 🔥 封盘提醒标记（防止重复发送）
+        private bool _reminded30Seconds = false;
+        private bool _reminded15Seconds = false;
+        
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
         private Views.BinggoLotteryResultForm? _lotteryResultForm;  // 🎲 开奖结果窗口
@@ -280,8 +284,8 @@ namespace BaiShengVx3Plus
                 // 🤖 数据库设置完成后，重新加载自动投注设置
                 LoadAutoBetSettings();
                 
-                // 🎚️ 加载开关状态
-                LoadSwitchSettings();
+                // 🎚️ 加载应用配置（从 appsettings.json）
+                LoadAppConfiguration();
                 
                 // 2. 创建开奖数据 BindingList
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
@@ -567,7 +571,23 @@ namespace BaiShengVx3Plus
             UpdateUIThreadSafeAsync(() =>
             {
                 _logService.Info("VxMain", $"🔄 状态变更: {e.NewStatus} - {e.Message}");
-                // TODO: 更新 UI 状态显示
+                
+                // 🔥 发送封盘提醒消息到群（30秒/15秒提醒）
+                if (e.NewStatus == BinggoLotteryStatus.即将封盘 && !string.IsNullOrEmpty(e.Message))
+                {
+                    // 🔥 30秒提醒（只发送一次）
+                    if (e.Message.Contains("30 秒") && !_reminded30Seconds)
+                    {
+                        _reminded30Seconds = true;
+                        SendSealingNoticeToCurrentGroup(e.IssueId, e.Message);
+                    }
+                    // 🔥 15秒提醒（只发送一次）
+                    else if (e.Message.Contains("15 秒") && !_reminded15Seconds)
+                    {
+                        _reminded15Seconds = true;
+                        SendSealingNoticeToCurrentGroup(e.IssueId, e.Message);
+                    }
+                }
             });
         }
         
@@ -581,11 +601,70 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"📅 期号变更: {e.OldIssueId} → {e.NewIssueId}");
                 
+                // 🔥 重置封盘提醒标记
+                _reminded30Seconds = false;
+                _reminded15Seconds = false;
+                
                 // 🔥 设置当前期号（会自动重新计算本期下注）
                 _statisticsService.SetCurrentIssueId(e.NewIssueId);
                 
                 // TODO: 可选 - 发送开盘通知到微信群
             });
+        }
+        
+        /// <summary>
+        /// 发送封盘提醒消息到当前绑定的群
+        /// 🔥 参考 F5BotV2: "{期号后3位} 还剩30秒" 或 "{期号后3位} 还剩15秒"
+        /// </summary>
+        private async void SendSealingNoticeToCurrentGroup(int issueId, string message)
+        {
+            try
+            {
+                // 获取当前绑定的群ID
+                string? currentGroupWxId = GetCurrentGroupWxId();
+                if (string.IsNullOrEmpty(currentGroupWxId))
+                {
+                    _logService.Debug("VxMain", "未绑定群组，跳过发送封盘提醒");
+                    return;
+                }
+                
+                // 🔥 格式化消息：期号后3位 + 提醒文本
+                // 例如：114063287 → "287 还剩30秒"
+                int issueShort = issueId % 1000;
+                string noticeMessage = message.Contains("30 秒") 
+                    ? $"{issueShort} 还剩30秒" 
+                    : $"{issueShort} 还剩15秒";
+                
+                _logService.Info("VxMain", $"📢 发送封盘提醒: {currentGroupWxId} - {noticeMessage}");
+                
+                // 发送消息到群
+                var response = await _socketClient.SendAsync<object>("SendMessage", currentGroupWxId, noticeMessage);
+                
+                if (response != null)
+                {
+                    _logService.Info("VxMain", "✅ 封盘提醒已发送");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ 封盘提醒发送失败（无响应）");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "发送封盘提醒失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 获取当前绑定的群ID
+        /// </summary>
+        private string? GetCurrentGroupWxId()
+        {
+            if (_contactsBindingList == null || _contactsBindingList.Count == 0)
+                return null;
+            
+            var selectedContact = dgvContacts.CurrentRow?.DataBoundItem as WxContact;
+            return selectedContact?.Wxid;
         }
         
         private void InitializeDataBindings()
@@ -2898,7 +2977,6 @@ namespace BaiShengVx3Plus
                 
                 // 🔥 1. 确保表存在
                 _db.CreateTable<V2CreditWithdraw>();
-                _db.CreateTable<Models.AppSettings>(); // ⚙️ 应用设置表
                 
                 // 🔥 2. 加载该群的所有上下分记录
                 var creditWithdraws = _db.Table<V2CreditWithdraw>()
@@ -2983,8 +3061,9 @@ namespace BaiShengVx3Plus
                 LoadAutoBetSettings();
                 
                 // 加载应用设置（开关状态）
-                LoadAppSettings();
-                
+                swi_OrdersTasking.DataBindings.Add(new Binding("Active", ConfigurationManager.Instance.Configuration, "IsOrdersTaskingEnabled"));
+                swiAutoOrdersBet.DataBindings.Add(new Binding("Active", ConfigurationManager.Instance.Configuration, "IsAutoBetEnabled"));
+
                 // 绑定自动保存事件（使用防抖机制）
                 // 下拉框：立即保存
                 cbxPlatform.SelectedIndexChanged += (s, e) => SaveAutoBetSettings();
@@ -3001,89 +3080,8 @@ namespace BaiShengVx3Plus
             }
         }
         
-        /// <summary>
-        /// 加载应用设置（从数据库）
-        /// </summary>
-        private void LoadAppSettings()
-        {
-            try
-            {
-                if (_db == null) return;
-                
-                // 加载"收单开关"状态
-                var ordersTaskingSetting = _db.Table<Models.AppSettings>()
-                    .Where(s => s.Key == "OrdersTasking").FirstOrDefault();
-                
-                if (ordersTaskingSetting != null)
-                {
-                    swi_OrdersTasking.Active = ordersTaskingSetting.Value == "true";
-                }
-                else
-                {
-                    // 默认开启收单
-                    swi_OrdersTasking.Active = true;
-                }
-                
-                // 加载"自动投注开关"状态
-                var autoBetSetting = _db.Table<Models.AppSettings>()
-                    .Where(s => s.Key == "AutoOrdersBet").FirstOrDefault();
-                
-                if (autoBetSetting != null)
-                {
-                    swiAutoOrdersBet.Active = autoBetSetting.Value == "true";
-                }
-                else
-                {
-                    // 默认关闭自动投注
-                    swiAutoOrdersBet.Active = false;
-                }
-                
-                _logService.Info("VxMain", $"✅ 应用设置已加载: 收单={swi_OrdersTasking.Active}, 自动投注={swiAutoOrdersBet.Active}");
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", "加载应用设置失败", ex);
-            }
-        }
-        
-        /// <summary>
-        /// 保存应用设置（到数据库）
-        /// </summary>
-        private void SaveAppSettings(string key, bool value, string description)
-        {
-            try
-            {
-                if (_db == null) return;
-                
-                var setting = _db.Table<Models.AppSettings>()
-                    .Where(s => s.Key == key).FirstOrDefault();
-                
-                var valueStr = value ? "1" : "0";  // 统一用 1/0 存储
-                
-                if (setting != null)
-                {
-                    setting.Value = valueStr;
-                    setting.UpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    _db.Update(setting);
-                }
-                else
-                {
-                    _db.Insert(new Models.AppSettings
-                    {
-                        Key = key,
-                        Value = valueStr,
-                        Description = description,
-                        UpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                    });
-                }
-                
-                _logService.Info("VxMain", $"✅ 应用设置已保存: {key}={value}");
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", $"保存应用设置失败: {key}", ex);
-            }
-        }
+     
+
 
         /// <summary>
         /// 防抖保存设置（用户停止输入1秒后才保存）
@@ -3144,6 +3142,16 @@ namespace BaiShengVx3Plus
                     // 保存平台（使用共享库统一转换）
                     var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
                     defaultConfig.Platform = platform.ToString();
+                    
+                    // 🔥 同时更新平台URL（根据平台自动设置）
+                    defaultConfig.PlatformUrl = platform switch
+                    {
+                        BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
+                        BetPlatform.云顶 => "https://www.yunding28.com",
+                        BetPlatform.海峡 => "https://www.haixia28.com",
+                        BetPlatform.红海 => "https://www.honghai28.com",
+                        _ => defaultConfig.PlatformUrl // 保持原值
+                    };
 
                     // 保存账号密码
                     var username = txtAutoBetUsername.Text;
@@ -3156,6 +3164,8 @@ namespace BaiShengVx3Plus
                     _autoBetService.SaveConfig(defaultConfig);
 
                     _logService.Info("VxMain", "✅ 自动投注设置已保存");
+                    _logService.Info("VxMain", $"   - 平台: {platform}");
+                    _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
                     _logService.Info("VxMain", $"   - 用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
                     _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(password) ? "(空)" : "******")}");
                 }
@@ -3177,6 +3187,11 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                _logService.Info("VxMain", $"🎚️ 飞单开关触发: {value}");
+                
+                // 🔥 更新配置管理器（会自动保存到文件）
+                Services.ConfigurationManager.Instance.Configuration.IsAutoBetEnabled = value;
+                
                 if (value) // 开启自动投注
                 {
                     // 先保存设置
@@ -3215,9 +3230,6 @@ namespace BaiShengVx3Plus
                     _autoBetCoordinator.Stop();
                     _logService.Info("VxMain", "✅ 自动投注已停止");
                 }
-                
-                // 保存到设置
-                SaveSwitchSettings();
             }
             catch (Exception ex)
             {
@@ -3234,8 +3246,14 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                _logService.Info("VxMain", $"🎚️ 收单开关触发: {value}");
+                
+                // 🔥 更新配置管理器（会自动保存到文件）
+                Services.ConfigurationManager.Instance.Configuration.IsOrdersTaskingEnabled = value;
+                
                 // 更新消息处理器的全局开关
                 Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = value;
+                _logService.Info("VxMain", $"✅ 已同步到 BinggoMessageHandler.IsOrdersTaskingEnabled = {value}");
                 
                 if (value)
                 {
@@ -3247,9 +3265,6 @@ namespace BaiShengVx3Plus
                     _logService.Info("VxMain", "⏹️ 订单任务已禁用（收单停）");
                     this.ShowInfoTip("订单任务已禁用，暂停处理微信消息");
                 }
-                
-                // 保存到设置
-                SaveSwitchSettings();
             }
             catch (Exception ex)
             {
@@ -3258,49 +3273,32 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 保存开关状态到设置
+        /// 加载应用配置（从 appsettings.json）
         /// </summary>
-        private void SaveSwitchSettings()
+        private void LoadAppConfiguration()
         {
             try
             {
-                if (_db == null) return;
+                _logService.Info("VxMain", "📖 开始加载应用配置...");
                 
-                // 使用 SaveAppSettings 方法保存（更安全）
-                SaveAppSettings("AutoOrdersBet", swiAutoOrdersBet.Active, "自动投注开关");
-                SaveAppSettings("OrdersTasking", swi_OrdersTasking.Active, "订单任务开关");
+                // 从配置管理器获取配置
+                var config = Services.ConfigurationManager.Instance.Configuration;
                 
-                _logService.Info("VxMain", $"✅ 开关状态已保存: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
+                _logService.Info("VxMain", $"📖 从配置文件读取: 飞单={config.IsAutoBetEnabled}, 收单={config.IsOrdersTaskingEnabled}");
+                
+                // 设置UI开关状态（不会触发 ValueChanged 事件，因为UI还没初始化完成）
+                swiAutoOrdersBet.Active = config.IsAutoBetEnabled;
+                swi_OrdersTasking.Active = config.IsOrdersTaskingEnabled;
+                
+                // 🔥 手动同步到消息处理器（因为UI设置不会触发事件）
+                Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = config.IsOrdersTaskingEnabled;
+                _logService.Info("VxMain", $"✅ 已同步到 BinggoMessageHandler.IsOrdersTaskingEnabled = {Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled}");
+                
+                _logService.Info("VxMain", $"✅ 应用配置已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", "保存开关状态失败", ex);
-            }
-        }
-        
-        /// <summary>
-        /// 从设置加载开关状态
-        /// </summary>
-        private void LoadSwitchSettings()
-        {
-            try
-            {
-                if (_db == null) return;
-                
-                var autoBetValue = _db.ExecuteScalar<string>("SELECT Value FROM AppSettings WHERE Key = ?", "AutoOrdersBet");
-                var ordersTaskingValue = _db.ExecuteScalar<string>("SELECT Value FROM AppSettings WHERE Key = ?", "OrdersTasking");
-                
-                swiAutoOrdersBet.Active = autoBetValue == "1";
-                swi_OrdersTasking.Active = ordersTaskingValue == "1";
-                
-                // 同步到消息处理器
-                Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = swi_OrdersTasking.Active;
-                
-                _logService.Info("VxMain", $"✅ 开关状态已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", "加载开关状态失败", ex);
+                _logService.Error("VxMain", "加载应用配置失败", ex);
             }
         }
         

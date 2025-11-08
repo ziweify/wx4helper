@@ -448,7 +448,32 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", $"获取待投注订单失败:期号{issueId}", ex);
+                _logService.Error("BinggoOrderService", 
+                    $"查询待投注订单失败: {ex.Message}", ex);
+                return Enumerable.Empty<V2MemberOrder>();
+            }
+        }
+        
+        /// <summary>
+        /// 获取指定会员、指定期号的待处理订单（用于取消命令）
+        /// </summary>
+        public IEnumerable<V2MemberOrder> GetPendingOrdersForMemberAndIssue(string wxid, int issueId)
+        {
+            if (_db == null) return Enumerable.Empty<V2MemberOrder>();
+            
+            try
+            {
+                var orders = _db.Table<V2MemberOrder>()
+                    .Where(o => o.Wxid == wxid && o.IssueId == issueId && o.OrderStatus == OrderStatus.待处理)
+                    .ToList();
+                
+                _logService.Info("BinggoOrderService", $"📋 查询待处理订单:会员{wxid} 期号{issueId} 找到{orders.Count}个");
+                
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoOrderService", $"查询待处理订单失败:会员{wxid} 期号{issueId}", ex);
                 return Enumerable.Empty<V2MemberOrder>();
             }
         }
