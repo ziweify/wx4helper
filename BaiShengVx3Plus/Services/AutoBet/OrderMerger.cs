@@ -124,52 +124,58 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 return items;
             }
             
-            // BetContentStandar 格式：1大20 或 1大
-            // 需要提取：号码、玩法、金额
+            // 🔥 BetContentStandar 格式：1大20,3大20,4大20（逗号分隔多个投注项）
+            // 每个投注项格式：号码 + 玩法 + 金额
             
             try
             {
-                var content = betContentStandar.Trim();
+                // 🔥 先按逗号分割
+                var parts = betContentStandar.Split(',', StringSplitOptions.RemoveEmptyEntries);
                 
-                // 尝试解析格式："1大20" 或 "1大"
-                // 提取数字和汉字
-                var number = "";
-                var playType = "";
-                var amountStr = "";
-                
-                foreach (var ch in content)
+                foreach (var part in parts)
                 {
-                    if (char.IsDigit(ch))
+                    var content = part.Trim();
+                    if (string.IsNullOrEmpty(content)) continue;
+                    
+                    // 解析单个投注项："1大20"
+                    // 提取：号码、玩法、金额
+                    var number = "";
+                    var playType = "";
+                    var amountStr = "";
+                    
+                    foreach (var ch in content)
                     {
-                        if (string.IsNullOrEmpty(playType))
+                        if (char.IsDigit(ch))
                         {
-                            // 还没有玩法，说明是号码
-                            number += ch;
+                            if (string.IsNullOrEmpty(playType))
+                            {
+                                // 还没有玩法，说明是号码
+                                number += ch;
+                            }
+                            else
+                            {
+                                // 已经有玩法了，说明是金额
+                                amountStr += ch;
+                            }
                         }
-                        else
+                        else if (char.IsLetter(ch) || ch >= 0x4E00 && ch <= 0x9FA5)  // 汉字范围
                         {
-                            // 已经有玩法了，说明是金额
-                            amountStr += ch;
+                            playType += ch;
                         }
                     }
-                    else if (char.IsLetter(ch) || ch >= 0x4E00 && ch <= 0x9FA5)  // 汉字范围
+                    
+                    // 解析金额
+                    decimal itemAmount = string.IsNullOrEmpty(amountStr) ? 0 : decimal.Parse(amountStr);
+                    
+                    if (!string.IsNullOrEmpty(number) && !string.IsNullOrEmpty(playType) && itemAmount > 0)
                     {
-                        playType += ch;
+                        items.Add(new BetItem
+                        {
+                            Number = number,
+                            PlayType = playType,
+                            Amount = itemAmount
+                        });
                     }
-                }
-                
-                // 如果没有解析出金额，使用订单总金额
-                decimal itemAmount = string.IsNullOrEmpty(amountStr) ? 
-                    (decimal)amount : decimal.Parse(amountStr);
-                
-                if (!string.IsNullOrEmpty(number) && !string.IsNullOrEmpty(playType))
-                {
-                    items.Add(new BetItem
-                    {
-                        Number = number,
-                        PlayType = playType,
-                        Amount = itemAmount
-                    });
                 }
             }
             catch (Exception ex)

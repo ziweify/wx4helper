@@ -180,9 +180,23 @@ namespace BsBrowserClient.Services
                 {
                     break;
                 }
+                catch (System.IO.IOException ioEx) when (ioEx.InnerException is System.Net.Sockets.SocketException)
+                {
+                    // 连接被远程主机强制关闭，正常退出循环
+                    _onLog("⚠️ 连接已断开（远程主机关闭）");
+                    break;
+                }
+                catch (System.IO.IOException ioEx)
+                {
+                    // 其他 IO 异常，也认为连接断开
+                    _onLog($"⚠️ 连接异常: {ioEx.Message}");
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _onLog($"❌ 命令处理错误: {ex.Message}");
+                    // 其他异常，休息一下避免快速循环
+                    await Task.Delay(100, cancellationToken);
                 }
             }
         }

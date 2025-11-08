@@ -138,6 +138,21 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
+        /// 获取指定配置和日期范围的投注记录
+        /// </summary>
+        public List<BetRecord> GetByConfigAndDateRange(int configId, DateTime startDate, DateTime endDate)
+        {
+            if (_db == null) return new List<BetRecord>();
+            
+            return _db.Table<BetRecord>()
+                .Where(r => r.ConfigId == configId && 
+                           r.CreateTime >= startDate && 
+                           r.CreateTime <= endDate)
+                .OrderByDescending(r => r.CreateTime)
+                .ToList();
+        }
+        
+        /// <summary>
         /// 检查是否存在待处理的投注（用于防重复）
         /// </summary>
         public bool HasPendingBet(int configId, int issueId)

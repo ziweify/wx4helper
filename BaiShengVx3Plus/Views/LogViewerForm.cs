@@ -147,8 +147,12 @@ namespace BaiShengVx3Plus.Views
         {
             try
             {
+                // 🔥 暂停绘制，提升性能
+                dgvLogs.SuspendLayout();
                 dgvLogs.Rows.Clear();
-                var logs = _logService.GetRecentLogs(500);
+                
+                // 🔥 只加载最近100条，避免卡顿
+                var logs = _logService.GetRecentLogs(100);
                 
                 foreach (var log in logs)
                 {
@@ -158,6 +162,11 @@ namespace BaiShengVx3Plus.Views
             catch (Exception ex)
             {
                 UIMessageBox.ShowError($"加载日志失败: {ex.Message}");
+            }
+            finally
+            {
+                // 🔥 恢复绘制
+                dgvLogs.ResumeLayout();
             }
         }
 

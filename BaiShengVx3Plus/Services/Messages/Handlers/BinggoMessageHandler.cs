@@ -69,13 +69,6 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         {
             try
             {
-                // 0. 检查收单开关（swi_OrdersTasking）
-                if (!IsOrdersTaskingEnabled)
-                {
-                    _logService.Info("MessageHandler", "⏸️ 收单已关闭，忽略消息");
-                    return (false, null);
-                }
-                
                 // 1. 基础检查
                 if (member == null || string.IsNullOrWhiteSpace(messageContent))
                 {
@@ -125,15 +118,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return (true, "系统初始化中，请稍后...");
                 }
                 
-                // 5. 检查是否封盘
-                if (currentStatus != BinggoLotteryStatus.开盘中)
-                {
-                    _logService.Info("BinggoMessageHandler", 
-                        $"当前状态: {currentStatus}，不接受下注");
-                    return (true, _settings.ReplySealed);
-                }
-                
-                // 6. 调用订单服务创建订单
+                // 5. 调用订单服务创建订单
+                // 🔥 封盘检查统一由 BinggoOrderValidator 处理，避免逻辑重复
                 var (success, message, order) = await _orderService.CreateOrderAsync(
                     member,
                     messageContent,

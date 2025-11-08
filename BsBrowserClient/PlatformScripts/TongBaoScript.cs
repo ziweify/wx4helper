@@ -56,6 +56,49 @@ namespace BsBrowserClient.PlatformScripts
             {
                 _logCallback($"🔐 开始登录通宝: {username}");
                 
+                // 🔥 先检查是否在登录页，如果不是则尝试导航到登录页
+                var checkLoginPageScript = @"
+                    (function() {
+                        try {
+                            // 检查是否有登录表单
+                            const usernameInput = document.querySelector('input[name=""username""]') ||
+                                                  document.querySelector('input[type=""text""]');
+                            const passwordInput = document.querySelector('input[name=""password""]') ||
+                                                  document.querySelector('input[type=""password""]');
+                            
+                            if (usernameInput && passwordInput) {
+                                return { isLoginPage: true };
+                            }
+                            
+                            // 没有登录表单，尝试找到登录按钮或链接
+                            const loginBtn = document.querySelector('a[href*=""login""]') ||
+                                           document.querySelector('button:contains(""登录"")') ||
+                                           document.querySelector('[class*=""login""]') ||
+                                           Array.from(document.querySelectorAll('a')).find(a => a.textContent.includes('登录'));
+                            
+                            if (loginBtn) {
+                                loginBtn.click();
+                                return { isLoginPage: false, clickedLogin: true };
+                            }
+                            
+                            return { isLoginPage: false, clickedLogin: false };
+                        } catch (error) {
+                            return { isLoginPage: false, error: error.message };
+                        }
+                    })();
+                ";
+                
+                var checkResult = await _webView.CoreWebView2.ExecuteScriptAsync(checkLoginPageScript);
+                var checkJson = JObject.Parse(checkResult);
+                var isLoginPage = checkJson["isLoginPage"]?.Value<bool>() ?? false;
+                
+                // 如果不在登录页，且点击了登录按钮，等待页面跳转
+                if (!isLoginPage && (checkJson["clickedLogin"]?.Value<bool>() ?? false))
+                {
+                    _logCallback("🔄 已点击登录按钮，等待跳转到登录页...");
+                    await Task.Delay(1500);  // 等待SPA路由切换
+                }
+                
                 // 方法1：辅助填充表单，用户手动点击登录
                 // F5BotV2 也是手动登录，因为通宝有验证码
                 var script = $@"
@@ -81,7 +124,7 @@ namespace BsBrowserClient.PlatformScripts
                                 
                                 return {{ success: true, message: '表单已填充，请输入验证码并点击登录' }};
                             }} else {{
-                                return {{ success: false, message: '找不到登录表单' }};
+                                return {{ success: false, message: '当前页面不是登录页，请手动点击【登录】按钮' }};
                             }}
                         }} catch (error) {{
                             return {{ success: false, message: error.message }};

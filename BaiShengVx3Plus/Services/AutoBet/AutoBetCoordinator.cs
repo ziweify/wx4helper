@@ -120,24 +120,34 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         private async void LotteryService_StatusChanged(object? sender, BinggoStatusChangedEventArgs e)
         {
-            if (!_isAutoBetEnabled) return;
+            _log.Info("AutoBet", $"📢 状态变更事件触发: {e.OldStatus} → {e.NewStatus}, 期号:{e.IssueId}");
+            _log.Info("AutoBet", $"   自动投注启用: {_isAutoBetEnabled}");
+            _log.Info("AutoBet", $"   当前配置ID: {_currentConfigId}");
+            
+            if (!_isAutoBetEnabled)
+            {
+                _log.Warning("AutoBet", "⚠️ 自动投注未启用，跳过处理");
+                return;
+            }
             
             // 只在"即将封盘"状态时处理投注
             if (e.NewStatus == BinggoLotteryStatus.即将封盘)
             {
-                _log.Info("AutoBet", $"🎯 触发封盘事件:{e.IssueId}");
+                _log.Info("AutoBet", $"🎯 触发封盘事件: 期号={e.IssueId}");
                 
                 try
                 {
                     // 1. 查询待处理订单
+                    _log.Info("AutoBet", $"📋 开始查询待投注订单...");
                     var pendingOrders = _orderService.GetPendingOrdersForIssue(e.IssueId);
+                    
                     if (!pendingOrders.Any())
                     {
-                        _log.Info("AutoBet", $"期号{e.IssueId}没有待投注订单");
+                        _log.Warning("AutoBet", $"⚠️ 期号{e.IssueId}没有待投注订单");
                         return;
                     }
                     
-                    _log.Info("AutoBet", $"查询到{pendingOrders.Count()}个待投注订单");
+                    _log.Info("AutoBet", $"✅ 查询到{pendingOrders.Count()}个待投注订单");
                     
                     // 2. 扩展业务规则：按会员等级处理订单（示例）
                     // 例如：蓝会会员金额>500，多打到配置B
@@ -155,15 +165,22 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     //}
                     
                     // 3. 合并订单
+                    _log.Info("AutoBet", $"📦 开始合并订单...");
                     var mergeResult = _orderMerger.Merge(pendingOrders);
                     
                     if (string.IsNullOrEmpty(mergeResult.BetContentStandard))
                     {
-                        _log.Warning("AutoBet", "订单合并失败或内容为空");
+                        _log.Warning("AutoBet", "⚠️ 订单合并失败或内容为空");
                         return;
                     }
                     
+                    _log.Info("AutoBet", $"✅ 订单合并完成:");
+                    _log.Info("AutoBet", $"   订单数量: {mergeResult.OrderIds.Count}个");
+                    _log.Info("AutoBet", $"   合并内容: {mergeResult.BetContentStandard}");
+                    _log.Info("AutoBet", $"   总金额: {mergeResult.TotalAmount:F2}元");
+                    
                     // 4. 创建投注记录
+                    _log.Info("AutoBet", $"📋 创建投注记录...");
                     var betRecord = new BetRecord
                     {
                         ConfigId = _currentConfigId,
@@ -176,12 +193,18 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     };
                     
                     betRecord = _betRecordService.Create(betRecord);
+                    _log.Info("AutoBet", $"✅ 投注记录已创建: ID={betRecord.Id}");
                     
                     // 5. 通过 Socket 发送投注命令到浏览器
-                    _log.Info("AutoBet", $"📤 发送投注命令:期号{e.IssueId} 内容:{mergeResult.BetContentStandard}");
+                    _log.Info("AutoBet", $"📤 发送投注命令到浏览器客户端:");
+                    _log.Info("AutoBet", $"   配置ID: {_currentConfigId}");
+                    _log.Info("AutoBet", $"   期号: {e.IssueId}");
+                    _log.Info("AutoBet", $"   内容: {mergeResult.BetContentStandard}");
                     
                     _betQueueManager.EnqueueBet(betRecord.Id, async () =>
                     {
+                        _log.Info("AutoBet", $"🚀 开始执行投注...");
+                        
                         // 这里调用 Socket 发送"投注"命令
                         var result = await _autoBetService.SendBetCommandAsync(
                             _currentConfigId,
@@ -189,23 +212,34 @@ namespace BaiShengVx3Plus.Services.AutoBet
                             mergeResult.BetContentStandard
                         );
                         
+                        _log.Info("AutoBet", $"📥 投注命令返回: Success={result.Success}");
+                        if (!string.IsNullOrEmpty(result.ErrorMessage))
+                        {
+                            _log.Warning("AutoBet", $"   错误信息: {result.ErrorMessage}");
+                        }
+                        
                         // 根据结果更新订单状态
                         if (result.Success)
                         {
-                            // 投注成功，更新订单为"待结算"（盘内）
+                            _log.Info("AutoBet", $"✅ 投注成功，开始更新订单状态...");
+                            
+                            // 投注成功，更新订单为"盘内 + 待结算"
                             foreach (var orderId in mergeResult.OrderIds)
                             {
                                 var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
                                 if (order != null)
                                 {
+                                    order.OrderType = OrderType.盘内;  // 🔥 进盘成功
                                     order.OrderStatus = OrderStatus.待结算;
                                     _orderService.UpdateOrder(order);
                                 }
                             }
-                            _log.Info("AutoBet", $"✅ 投注成功，已更新{mergeResult.OrderIds.Count}个订单为待结算");
+                            _log.Info("AutoBet", $"✅ 已更新{mergeResult.OrderIds.Count}个订单为【盘内+待结算】状态");
                         }
                         else
                         {
+                            _log.Warning("AutoBet", $"❌ 投注失败，开始更新订单状态...");
+                            
                             // 投注失败，更新订单为"盘外"并标记为"已完成"
                             foreach (var orderId in mergeResult.OrderIds)
                             {
@@ -217,7 +251,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                                     _orderService.UpdateOrder(order);
                                 }
                             }
-                            _log.Warning("AutoBet", $"❌ 投注失败，已更新{mergeResult.OrderIds.Count}个订单为盘外已完成");
+                            _log.Warning("AutoBet", $"❌ 已更新{mergeResult.OrderIds.Count}个订单为【盘外已完成】状态");
                         }
                         
                         return result;

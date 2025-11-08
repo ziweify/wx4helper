@@ -312,7 +312,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1264, 810);
+            ClientSize = new Size(1264, 860);
             Controls.Add(splitContainer);
             Controls.Add(pnlTop);
             Controls.Add(statusStrip1);

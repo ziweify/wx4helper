@@ -176,8 +176,27 @@ public partial class Form1 : Form
             
             OnLogMessage("🔍 检测页面状态，准备自动登录...");
             
-            // 延迟一下，确保页面完全加载
-            await Task.Delay(1000);
+            // 🔥 等待页面完全加载（包括 JavaScript 执行完成）
+            await Task.Delay(2000);  // 增加到2秒
+            
+            // 🔥 额外等待 DOMContentLoaded
+            try
+            {
+                await _webView!.CoreWebView2.ExecuteScriptAsync(@"
+                    new Promise((resolve) => {
+                        if (document.readyState === 'complete') {
+                            resolve();
+                        } else {
+                            window.addEventListener('load', resolve);
+                        }
+                    });
+                ");
+                OnLogMessage("✅ 页面DOM已完全加载");
+            }
+            catch
+            {
+                OnLogMessage("⚠️ DOM检测失败，继续尝试登录");
+            }
             
             // 从VxMain获取账号密码（通过Socket或HTTP）
             // 这里先用配置ID从HTTP API获取

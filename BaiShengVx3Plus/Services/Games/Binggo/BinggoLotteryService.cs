@@ -178,7 +178,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         /// <summary>
         /// 处理期号变更（新版 - 异步）
-        /// 🔥 完全参考 F5BotV2 的逻辑：期号变更时同时设置当期和上期数据
+        /// 🔥 重要：只维护当前期号的状态，上期数据只是异步加载显示
         /// </summary>
         private async Task HandleIssueChangeAsync(int oldIssueId, int newIssueId)
         {
@@ -186,8 +186,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Info("BinggoLotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
                 
-                // 🔥 参考 F5BotV2: 同时创建当期和上期数据对象
-                // 1. 创建上期数据（用于 UcBinggoDataLast 显示）
+                // 🔥 创建上期数据（用于 UcBinggoDataLast 显示）
                 var dataLast = new BinggoLotteryData
                 {
                     IssueId = oldIssueId,
@@ -440,23 +439,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             var oldStatus = _currentStatus;
             
-            // 检查封盘
-            if (_secondsToSeal <= 0 && _currentStatus == BinggoLotteryStatus.开盘中)
-            {
-                _currentStatus = BinggoLotteryStatus.封盘中;
-                _logService.Info("BinggoLotteryService", $"🔒 封盘: 期号 {_currentIssueId}");
-                
-                StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
-                {
-                    OldStatus = oldStatus,
-                    NewStatus = BinggoLotteryStatus.封盘中,
-                    IssueId = _currentIssueId,
-                    Data = data
-                });
-            }
-            
-            // 检查开奖
-            if (data.IsOpened && _currentStatus != BinggoLotteryStatus.开奖中)
+            // 🔥 检查开奖（只在当前期号第一次开奖时触发）
+            // 注意：只检查 data.IssueId == _currentIssueId，避免旧期数据误触发
+            if (data.IsOpened && data.IssueId == _currentIssueId && _currentStatus != BinggoLotteryStatus.开奖中)
             {
                 _currentStatus = BinggoLotteryStatus.开奖中;
                 _logService.Info("BinggoLotteryService", $"🎲 开奖: {data.ToLotteryString()}");
@@ -476,6 +461,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 {
                     LotteryData = data
                 });
+                
+                // 🔥 开奖后，立即加载下一期数据（触发期号变更）
+                _logService.Info("BinggoLotteryService", $"📡 开奖后自动查询下一期...");
             }
         }
         

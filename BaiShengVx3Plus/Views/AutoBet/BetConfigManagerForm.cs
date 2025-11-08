@@ -194,15 +194,83 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 var startDate = dtpStartDate.Value.Date;
                 var endDate = dtpEndDate.Value.Date.AddDays(1).AddSeconds(-1);
                 
-                // TODO: 从数据库加载投注记录
-                // var records = _autoBetService.GetBetRecords(configId, startDate, endDate);
-                // dgvRecords.DataSource = records;
+                // 从数据库加载投注记录
+                var betRecordService = Program.ServiceProvider.GetService(typeof(Services.AutoBet.BetRecordService)) 
+                    as Services.AutoBet.BetRecordService;
                 
-                dgvRecords.DataSource = null;
+                if (betRecordService != null)
+                {
+                    var records = betRecordService.GetByConfigAndDateRange(configId, startDate, endDate);
+                    dgvRecords.DataSource = records;
+                    
+                    // 配置列显示
+                    if (dgvRecords.Columns.Count > 0)
+                    {
+                        if (dgvRecords.Columns["Id"] != null)
+                        {
+                            dgvRecords.Columns["Id"].HeaderText = "ID";
+                            dgvRecords.Columns["Id"].Width = 50;
+                        }
+                        if (dgvRecords.Columns["IssueId"] != null)
+                        {
+                            dgvRecords.Columns["IssueId"].HeaderText = "期号";
+                            dgvRecords.Columns["IssueId"].Width = 100;
+                        }
+                        if (dgvRecords.Columns["Source"] != null)
+                        {
+                            dgvRecords.Columns["Source"].HeaderText = "来源";
+                            dgvRecords.Columns["Source"].Width = 60;
+                        }
+                        if (dgvRecords.Columns["BetContentStandard"] != null)
+                        {
+                            dgvRecords.Columns["BetContentStandard"].HeaderText = "投注内容";
+                            dgvRecords.Columns["BetContentStandard"].Width = 200;
+                        }
+                        if (dgvRecords.Columns["TotalAmount"] != null)
+                        {
+                            dgvRecords.Columns["TotalAmount"].HeaderText = "金额";
+                            dgvRecords.Columns["TotalAmount"].Width = 80;
+                        }
+                        if (dgvRecords.Columns["Success"] != null)
+                        {
+                            dgvRecords.Columns["Success"].HeaderText = "成功";
+                            dgvRecords.Columns["Success"].Width = 60;
+                        }
+                        if (dgvRecords.Columns["DurationMs"] != null)
+                        {
+                            dgvRecords.Columns["DurationMs"].HeaderText = "耗时(ms)";
+                            dgvRecords.Columns["DurationMs"].Width = 80;
+                        }
+                        if (dgvRecords.Columns["SendTime"] != null)
+                        {
+                            dgvRecords.Columns["SendTime"].HeaderText = "发送时间";
+                            dgvRecords.Columns["SendTime"].Width = 150;
+                        }
+                        
+                        // 隐藏不需要的列
+                        if (dgvRecords.Columns["ConfigId"] != null) dgvRecords.Columns["ConfigId"].Visible = false;
+                        if (dgvRecords.Columns["OrderIds"] != null) dgvRecords.Columns["OrderIds"].Visible = false;
+                        if (dgvRecords.Columns["PostStartTime"] != null) dgvRecords.Columns["PostStartTime"].Visible = false;
+                        if (dgvRecords.Columns["PostEndTime"] != null) dgvRecords.Columns["PostEndTime"].Visible = false;
+                        if (dgvRecords.Columns["Result"] != null) dgvRecords.Columns["Result"].Visible = false;
+                        if (dgvRecords.Columns["ErrorMessage"] != null) dgvRecords.Columns["ErrorMessage"].Visible = false;
+                        if (dgvRecords.Columns["OrderNo"] != null) dgvRecords.Columns["OrderNo"].Visible = false;
+                        if (dgvRecords.Columns["CreateTime"] != null) dgvRecords.Columns["CreateTime"].Visible = false;
+                        if (dgvRecords.Columns["UpdateTime"] != null) dgvRecords.Columns["UpdateTime"].Visible = false;
+                    }
+                    
+                    _logService.Info("ConfigManager", $"已加载{records.Count}条投注记录");
+                }
+                else
+                {
+                    dgvRecords.DataSource = null;
+                    _logService.Warning("ConfigManager", "BetRecordService未初始化");
+                }
             }
             catch (Exception ex)
             {
                 _logService.Error("ConfigManager", "加载投注记录失败", ex);
+                dgvRecords.DataSource = null;
             }
         }
 
@@ -728,6 +796,16 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         betRecordService.Update(betRecord);
                         
                         _logService.Info("CommandPanel", $"BetRecord已更新:成功={betRecord.Success}");
+                        
+                        // 🔥 刷新投注记录列表
+                        if (InvokeRequired)
+                        {
+                            Invoke(() => LoadConfigRecords(_selectedConfig.Id));
+                        }
+                        else
+                        {
+                            LoadConfigRecords(_selectedConfig.Id);
+                        }
                         
                         return new CommandResponse
                         {

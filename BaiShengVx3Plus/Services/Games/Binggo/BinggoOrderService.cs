@@ -144,8 +144,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     Profit = 0,  // 未结算
                     NetProfit = 0,  // 未结算
                     Odds = 1.97f,  // 🔥 修复：赔率（参考 F5BotV2 默认值）
-                    OrderStatus = OrderStatus.待结算,
-                    OrderType = OrderType.盘内,
+                    OrderStatus = OrderStatus.待处理,  // 🔥 初始状态为待处理，等待自动投注
+                    OrderType = OrderType.待定,  // 🔥 初始类型为待定，投注后才确定盘内/盘外
                     MemberState = member.State,  // 🔥 记录会员等级快照（订单创建时的会员状态）
                     IsSettled = false,
                     

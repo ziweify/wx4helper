@@ -64,7 +64,14 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return;
                 }
                 
-                // 2. 获取发送者会员信息（从 dgvMembers 中查找）
+                // 2. 🔥 检查收单开关（必须先检查！）
+                if (!BinggoMessageHandler.IsOrdersTaskingEnabled)
+                {
+                    _logService.Debug("ChatMessageHandler", "⏸️ 收单已关闭，忽略群消息");
+                    return;
+                }
+                
+                // 3. 获取发送者会员信息（从 dgvMembers 中查找）
                 var member = GetMemberByWxid(message.Sender);
                 if (member == null)
                 {
@@ -72,7 +79,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return;
                 }
                 
-                // 3. 调用炳狗消息处理器
+                // 4. 调用炳狗消息处理器
                 var (handled, replyMessage) = await _binggoMessageHandler.HandleMessageAsync(
                     member, 
                     message.Content);

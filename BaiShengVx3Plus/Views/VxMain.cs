@@ -3058,9 +3058,11 @@ namespace BaiShengVx3Plus
                 var setting = _db.Table<Models.AppSettings>()
                     .Where(s => s.Key == key).FirstOrDefault();
                 
+                var valueStr = value ? "1" : "0";  // 统一用 1/0 存储
+                
                 if (setting != null)
                 {
-                    setting.Value = value.ToString().ToLower();
+                    setting.Value = valueStr;
                     setting.UpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     _db.Update(setting);
                 }
@@ -3069,7 +3071,7 @@ namespace BaiShengVx3Plus
                     _db.Insert(new Models.AppSettings
                     {
                         Key = key,
-                        Value = value.ToString().ToLower(),
+                        Value = valueStr,
                         Description = description,
                         UpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                     });
@@ -3285,7 +3287,6 @@ namespace BaiShengVx3Plus
             {
                 if (_db == null) return;
                 
-                // 从设置表加载
                 var autoBetValue = _db.ExecuteScalar<string>("SELECT Value FROM AppSettings WHERE Key = ?", "AutoOrdersBet");
                 var ordersTaskingValue = _db.ExecuteScalar<string>("SELECT Value FROM AppSettings WHERE Key = ?", "OrdersTasking");
                 
