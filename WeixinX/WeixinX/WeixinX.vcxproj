@@ -166,7 +166,7 @@
       <AdditionalDependencies>ws2_32.lib;librabbitmq.4.lib;jsoncpp_static.lib;libMinHook.x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(TargetPath) $(SolutionDir)bin\release\net8.0-windows /Y</Command>
+      <Command>copy $(TargetPath) $(SolutionDir)BaiShengVx3Plus\bin\release\net8.0-windows /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

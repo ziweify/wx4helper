@@ -150,7 +150,7 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(TargetPath) $(SolutionDir)bin\$(Configuration)\net8.0-windows /Y</Command>
+      <Command>copy $(TargetPath) $(SolutionDir)BaiShengVx3Plus\bin\$(Configuration)\net8.0-windows /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
