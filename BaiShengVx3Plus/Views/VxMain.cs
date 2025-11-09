@@ -3207,8 +3207,8 @@ namespace BaiShengVx3Plus
 
                     // 启动自动投注
                     _logService.Info("VxMain", "🚀 启动自动投注（飞单）...");
-                    if (_groupBindingService.CurrentBoundGroup == null)
-                        throw new Exception("没有绑定群！自动投注程序不启动！");
+                    //if (_groupBindingService.CurrentBoundGroup == null)
+                    //    throw new Exception("没有绑定群！自动投注程序不启动！");
 
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
