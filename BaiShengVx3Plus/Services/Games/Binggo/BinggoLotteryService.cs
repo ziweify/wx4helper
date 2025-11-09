@@ -388,6 +388,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             IssueId = openedData.IssueId,
                             Message = "开奖完成，等待下一期"
                         });
+                        
+                        // 🔥 开奖完成后，检查是否需要发送下一期的开盘提示
+                        // 只有在结算、发送中~名单、留~名单完成后，才发送下一期的"线下开始"
+                        // 参考 F5BotV2：开奖后状态变为"等待中"，然后在状态循环中变为"开盘中"时发送
+                        // 这里不立即发送，让状态循环自然触发
                     }
                                 }
                                 else
@@ -625,8 +630,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 步骤1: 如果不强制刷新，先查本地数据库
                 if (!forceRefresh && _db != null)
                 {
+                    // 🔥 IsOpened 是计算属性（[Ignore]），不能在 SQLite 查询中直接使用
+                    // 先查询 LotteryData 不为空的记录，然后在内存中过滤 IsOpened
                     var local = _db.Table<BinggoLotteryData>()
-                        .FirstOrDefault(d => d.IssueId == issueId && d.IsOpened);
+                        .Where(d => d.IssueId == issueId && !string.IsNullOrEmpty(d.LotteryData))
+                        .ToList()
+                        .FirstOrDefault(d => d.IsOpened);
                     
                     if (local != null)
                     {
@@ -802,12 +811,26 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoLotteryService", $"🎲 开奖处理: {issueId} - {data.ToLotteryString()}");
                 
                 // 🔥 1. 获取当期所有订单（参考 F5BotV2 第 1420 行）
-                var orders = _ordersBindingList?
+                // 🔥 查询条件：期号匹配，且不是已取消/未知状态，且不是托单
+                var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
+                _logService.Info("BinggoLotteryService", $"📋 订单列表总数: {allOrders.Count}");
+                
+                var orders = allOrders
                     .Where(o => o.IssueId == issueId 
                         && o.OrderStatus != OrderStatus.已取消 
                         && o.OrderStatus != OrderStatus.未知
                         && o.OrderType != OrderType.托)  // 托单不显示
                     .ToList();
+                
+                _logService.Info("BinggoLotteryService", $"📋 期号 {issueId} 的待结算订单数: {orders.Count}");
+                if (orders.Count > 0)
+                {
+                    foreach (var o in orders)
+                    {
+                        _logService.Info("BinggoLotteryService", 
+                            $"  订单ID={o.Id}, 状态={o.OrderStatus}, 类型={o.OrderType}, 期号={o.IssueId}, 金额={o.AmountTotal}");
+                    }
+                }
                 
                 // 🔥 2. 结算订单并统计（参考 F5BotV2 第 1429-1450 行）
                 var ordersReports = new Dictionary<string, (string nickname, float balance, float totalAmount, float profit)>();
@@ -1144,7 +1167,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 {
                     _logService.Info("BinggoLotteryService", 
                         $"❌ 封盘状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
-                    return (true, "已封盘，请等待下期！", null);
+                    // 🔥 格式完全按照 F5BotV2 第2425行：{m.nickname}\r时间未到!不收货!
+                    return (true, $"{member.Nickname}\r时间未到!不收货!", null);
                 }
                 
                 // 🔥 调用订单服务创建订单

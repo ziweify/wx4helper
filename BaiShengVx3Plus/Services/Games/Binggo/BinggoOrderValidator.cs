@@ -89,7 +89,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 {
                     if ((decimal)member.Balance < totalAmount)
                     {
-                        errorMessage = $"余额不足！当前余额: {member.Balance:F2}，需要: {totalAmount:F2}";
+                        // 🔥 格式完全按照 F5BotV2 第194行 Reply_余额不足 = "客官你的荷包是否不足!"
+                        // 注意：这里只返回错误标识，实际消息格式在 BinggoOrderService 中处理
+                        errorMessage = "余额不足";
                         return false;
                     }
                 }

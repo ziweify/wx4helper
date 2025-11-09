@@ -106,6 +106,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 {
                     _logService.Warning("BinggoOrderService", 
                         $"验证下注失败: {errorMessage}");
+                    
+                    // 🔥 余额不足消息格式完全按照 F5BotV2 第2430行：@{m.nickname} {Reply_余额不足}
+                    // Reply_余额不足 = "客官你的荷包是否不足!"（F5BotV2 第194行）
+                    if (errorMessage == "余额不足")
+                    {
+                        return (false, $"@{member.Nickname} 客官你的荷包是否不足!", null);
+                    }
+                    
                     return (false, errorMessage, null);
                 }
                 
@@ -189,7 +197,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 8. 生成回复消息（🔥 完全参考 F5BotV2 格式）
                 // 格式：@昵称\r已进仓{注数}\r{投注内容}|扣:{金额}|留:{余额}
-                string replyMessage = $"@{member.Nickname}\r已进仓{order.Nums}\r{betContent.ToReplyString()}|扣:{(int)order.AmountTotal}|留:{(int)member.Balance}";
+                // 🔥 F5BotV2 第2413行：扣:{member_order.AmountTotal}（不使用 (int) 转换）
+                string replyMessage = $"@{member.Nickname}\r已进仓{order.Nums}\r{betContent.ToReplyString()}|扣:{order.AmountTotal}|留:{(int)member.Balance}";
                 
                 return (true, replyMessage, order);
             }
@@ -403,7 +412,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
                 
-                // 6. 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
+                // 🔥 6. 显式更新订单到数据库（确保状态保存）
+                // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder
+                UpdateOrder(order);
+                
+                // 7. 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
                 var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
                 if (member != null && order.OrderType != OrderType.托)  // 🔥 托单不更新会员数据
                 {
@@ -499,13 +512,17 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     var existing = _ordersBindingList.FirstOrDefault(o => o.Id == order.Id);
                     if (existing != null)
                     {
-                        // 🔥 更新所有属性（包括 OrderStatus 和 OrderType）
+                        // 🔥 更新所有属性（包括 OrderStatus、OrderType、Profit、NetProfit、IsSettled）
                         existing.OrderStatus = order.OrderStatus;
                         existing.OrderType = order.OrderType;
+                        existing.Profit = order.Profit;
+                        existing.NetProfit = order.NetProfit;
+                        existing.IsSettled = order.IsSettled;
                     }
                 }
                 
-                _logService.Info("BinggoOrderService", $"✅ 订单已更新:ID={order.Id} 状态={order.OrderStatus} 类型={order.OrderType}");
+                _logService.Info("BinggoOrderService", 
+                    $"✅ 订单已更新:ID={order.Id} 状态={order.OrderStatus} 类型={order.OrderType} 总赢={order.Profit:F2} 纯利={order.NetProfit:F2}");
             }
             catch (Exception ex)
             {
