@@ -2194,22 +2194,25 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 处理联系人数据更新事件
         /// </summary>
-        private async void ContactDataService_ContactsUpdated(object? sender, ContactsUpdatedEventArgs e)
+        private void ContactDataService_ContactsUpdated(object? sender, ContactsUpdatedEventArgs e)
         {
             try
             {
-                _logService.Info("VxMain", $"📇 联系人数据已更新，共 {e.Contacts?.Count ?? 0} 个");
+                _logService.Info("VxMain", $"📇 收到联系人数据更新事件，共 {e.Contacts?.Count ?? 0} 个，来源: {e.Source}");
 
-                // 🔥 切换到 UI 线程更新
+                // 🔥 切换到 UI 线程更新（使用 BeginInvoke 确保异步执行，不阻塞）
                 if (InvokeRequired)
                 {
-                    await Task.Factory.StartNew(() =>
+                    _logService.Info("VxMain", "🔄 切换到 UI 线程更新联系人列表");
+                    BeginInvoke(new Action(() => 
                     {
-                        Invoke(new Action(() => UpdateContactsList(e.Contacts ?? new List<WxContact>())));
-                    });
+                        _logService.Info("VxMain", "✅ 已在 UI 线程，开始更新联系人列表");
+                        UpdateContactsList(e.Contacts ?? new List<WxContact>());
+                    }));
                 }
                 else
                 {
+                    _logService.Info("VxMain", "✅ 已在 UI 线程，直接更新联系人列表");
                     UpdateContactsList(e.Contacts ?? new List<WxContact>());
                 }
             }

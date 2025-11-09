@@ -62,6 +62,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private bool _reminded30Seconds = false;
         private bool _reminded15Seconds = false;
         
+        // 🔥 开盘消息发送标志（防止同一期号重复发送"线下开始"消息）
+        private int _lastOpeningIssueId = 0;
+        
         // 🔥 开奖队列（参考 F5BotV2 的 itemUpdata）
         // 期号变更时，上期要开奖的期号进入队列，后台线程永远拿最新一条消息来开奖（处理卡奖情况）
         private readonly ConcurrentDictionary<int, BinggoLotteryData> _lotteryQueue = new ConcurrentDictionary<int, BinggoLotteryData>();
@@ -269,6 +272,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             try
             {
                 _logService.Info("BinggoLotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
+                
+                // 🔥 期号变更时，重置开盘消息发送标志（新期号可以发送"线下开始"消息）
+                _lastOpeningIssueId = 0;
                 
                 // 🔥 创建上期数据（用于 UcBinggoDataLast 显示）
                 var dataLast = new BinggoLotteryData
@@ -1240,6 +1246,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             try
             {
+                // 🔥 防止同一期号重复发送"线下开始"消息
+                if (_lastOpeningIssueId == issueId)
+                {
+                    _logService.Warning("BinggoLotteryService", $"⚠️ 期号 {issueId} 的'线下开始'消息已发送过，跳过重复发送");
+                    return;
+                }
+                
                 _logService.Info("BinggoLotteryService", $"📢 开盘处理: 期号 {issueId}");
                 
                 // 🔥 重置提醒标志（参考 F5BotV2 第1157-1158行）
@@ -1259,6 +1272,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
                     if (response != null)
                     {
+                        // 🔥 标记该期号已发送过"线下开始"消息
+                        _lastOpeningIssueId = issueId;
                         _logService.Info("BinggoLotteryService", $"✅ 开盘提示已发送: {message}");
                     }
                 }

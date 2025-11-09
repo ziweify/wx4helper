@@ -96,7 +96,15 @@ namespace BaiShengVx3Plus.Models
         public CreditWithdrawStatus Status
         {
             get => _status;
-            set => SetField(ref _status, value);
+            set
+            {
+                if (SetField(ref _status, value))
+                {
+                    // 🔥 状态变化时，通知 ActionText 也变化（因为 ActionText 依赖于 Status）
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActionText)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
+                }
+            }
         }
 
         [DataGridColumn(HeaderText = "备注", Width = 200, Order = 6)]
@@ -124,14 +132,32 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _processedTime, value);
         }
 
-        // 🔥 辅助属性：动作文本
+        // 🔥 辅助属性：动作文本（显示动作和处理结果）
         [Browsable(false)]
-        public string ActionText => Action switch
+        public string ActionText
         {
-            CreditWithdrawAction.上分 => "上分",
-            CreditWithdrawAction.下分 => "下分",
-            _ => "未知"
-        };
+            get
+            {
+                string actionText = Action switch
+                {
+                    CreditWithdrawAction.上分 => "上分",
+                    CreditWithdrawAction.下分 => "下分",
+                    _ => "未知"
+                };
+                
+                // 🔥 如果已处理，显示处理结果
+                if (Status == CreditWithdrawStatus.已同意)
+                {
+                    return $"{actionText}-已同意";
+                }
+                else if (Status == CreditWithdrawStatus.已拒绝)
+                {
+                    return $"{actionText}-已拒绝";
+                }
+                
+                return actionText;
+            }
+        }
 
         // 🔥 辅助属性：状态文本
         [Browsable(false)]
@@ -149,11 +175,12 @@ namespace BaiShengVx3Plus.Models
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return;
+            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return true;
         }
     }
 

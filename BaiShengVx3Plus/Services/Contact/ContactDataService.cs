@@ -46,12 +46,14 @@ namespace BaiShengVx3Plus.Services.Contact
                 _logService.Info("ContactDataService", $"✓ 解析到 {contacts.Count} 个联系人");
 
                 // 2. 触发事件通知 UI（不再保存到数据库，由 UI 层决定如何使用）
+                _logService.Info("ContactDataService", $"📢 准备触发 ContactsUpdated 事件，联系人数量: {contacts.Count}");
                 ContactsUpdated?.Invoke(this, new ContactsUpdatedEventArgs
                 {
                     Contacts = contacts,
                     UpdateTime = DateTime.Now,
                     Source = "Process"
                 });
+                _logService.Info("ContactDataService", $"✅ ContactsUpdated 事件已触发");
 
                 return Task.FromResult(contacts);
             }

@@ -202,19 +202,28 @@ namespace BaiShengVx3Plus.Views
 
         /// <summary>
         /// 单元格点击事件（处理按钮点击）
+        /// 🔥 只有点击按钮列时才处理，其他列（备注、申请时间、金额等）直接返回，不弹框
         /// </summary>
         private void DgvRequests_CellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0 || e.RowIndex >= _bindingSource.Count)
                 return;
             
+            // 🔥 只有点击按钮列时才处理
+            if (dgvRequests.Columns[e.ColumnIndex].Name != "btnAgree" && 
+                dgvRequests.Columns[e.ColumnIndex].Name != "btnReject")
+            {
+                // 点击其他列（备注、申请时间、金额等），直接返回，不弹框
+                return;
+            }
+            
             var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
             if (request == null) return;
             
-            // 只有"等待处理"状态才能操作
+            // 🔥 只有"等待处理"状态才能操作（已处理的不弹框，直接返回）
             if (request.Status != CreditWithdrawStatus.等待处理)
             {
-                UIMessageBox.ShowWarning("该申请已处理，无法再次操作");
+                // 不弹框，直接返回（提升用户体验）
                 return;
             }
             
@@ -283,10 +292,16 @@ namespace BaiShengVx3Plus.Views
                     member.WithdrawTotal += request.Amount;
                 }
                 
-                // 🔥 更新申请状态
+                // 🔥 更新申请状态（会自动触发 PropertyChanged，通知 ActionText 和 StatusText 更新）
                 request.Status = CreditWithdrawStatus.已同意;
                 request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
                 request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                
+                // 🔥 刷新 DataGridView 的 ActionText 列（因为它是计算属性）
+                if (dgvRequests.Columns["ActionText"] != null)
+                {
+                    dgvRequests.InvalidateColumn(dgvRequests.Columns["ActionText"].Index);
+                }
                 
                 // 🔥 记录到资金变动表
                 var balanceChange = new V2BalanceChange
@@ -350,11 +365,17 @@ namespace BaiShengVx3Plus.Views
                     return;
                 }
                 
-                // 🔥 更新申请状态（PropertyChanged 会自动保存到数据库）
+                // 🔥 更新申请状态（PropertyChanged 会自动保存到数据库，并通知 ActionText 和 StatusText 更新）
                 request.Status = CreditWithdrawStatus.已拒绝;
                 request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
                 request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 request.Notes = "管理员拒绝";
+                
+                // 🔥 刷新 DataGridView 的 ActionText 列（因为它是计算属性）
+                if (dgvRequests.Columns["ActionText"] != null)
+                {
+                    dgvRequests.InvalidateColumn(dgvRequests.Columns["ActionText"].Index);
+                }
                 
                 // 🔥 发送微信通知
                 // 注意：F5BotV2没有拒绝功能的专门消息，这里保持简单提示
