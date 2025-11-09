@@ -52,9 +52,7 @@ namespace BaiShengVx3Plus
         private V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList（与会员、订单统一模式）
         private BinggoLotteryDataBindingList? _lotteryDataBindingList; // 🎲 炳狗开奖数据 BindingList
         
-        // 🔥 封盘提醒标记（防止重复发送）
-        private bool _reminded30Seconds = false;
-        private bool _reminded15Seconds = false;
+        // 🔥 封盘提醒标记已移至 BinggoLotteryService 内部管理
         
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
@@ -273,7 +271,7 @@ namespace BaiShengVx3Plus
                 // 1. 设置数据库连接
                 _lotteryService.SetDatabase(_db);
                 _orderService.SetDatabase(_db);
-                _binggoMessageHandler.SetDatabase(_db);  // 🔥 设置消息处理器的数据库（用于上下分申请）
+                // 🔥 上下分数据库已通过 SetDatabaseForCreditWithdraw 设置
                 _autoBetService.SetDatabase(_db);  // 🤖 设置自动投注服务的数据库
                 
                 // 🤖 初始化投注记录服务数据库
@@ -308,6 +306,9 @@ namespace BaiShengVx3Plus
                         _ordersBindingList,
                         _membersBindingList
                     );
+                    
+                    // 🔥 设置数据库连接（用于上下分申请）
+                    lotteryServiceImpl.SetDatabaseForCreditWithdraw(_db);
                 }
                 
                 // 6. 订阅开奖事件（UI 更新，业务逻辑已在服务中处理）
@@ -566,7 +567,8 @@ namespace BaiShengVx3Plus
         }
         
         /// <summary>
-        /// 状态变更事件处理
+        /// 状态变更事件处理（UI 更新）
+        /// 🔥 业务逻辑（封盘提醒、封盘消息等）已在 BinggoLotteryService 中统一处理
         /// </summary>
         private void OnLotteryStatusChanged(object? sender, BinggoStatusChangedEventArgs e)
         {
@@ -574,22 +576,8 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"🔄 状态变更: {e.NewStatus} - {e.Message}");
                 
-                // 🔥 发送封盘提醒消息到群（30秒/15秒提醒）
-                if (e.NewStatus == BinggoLotteryStatus.即将封盘 && !string.IsNullOrEmpty(e.Message))
-                {
-                    // 🔥 30秒提醒（只发送一次）
-                    if (e.Message.Contains("30 秒") && !_reminded30Seconds)
-                    {
-                        _reminded30Seconds = true;
-                        SendSealingNoticeToCurrentGroup(e.IssueId, e.Message);
-                    }
-                    // 🔥 15秒提醒（只发送一次）
-                    else if (e.Message.Contains("15 秒") && !_reminded15Seconds)
-                    {
-                        _reminded15Seconds = true;
-                        SendSealingNoticeToCurrentGroup(e.IssueId, e.Message);
-                    }
-                }
+                // 🔥 业务逻辑（封盘提醒、封盘消息）已在 BinggoLotteryService 中统一处理
+                // 这里只需要更新 UI（如果需要的话）
             });
         }
         
@@ -603,9 +591,7 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"📅 期号变更: {e.OldIssueId} → {e.NewIssueId}");
                 
-                // 🔥 重置封盘提醒标记
-                _reminded30Seconds = false;
-                _reminded15Seconds = false;
+                // 🔥 封盘提醒标记已在 BinggoLotteryService 内部管理
                 
                 // 🔥 设置当前期号（会自动重新计算本期下注）
                 _statisticsService.SetCurrentIssueId(e.NewIssueId);
@@ -614,48 +600,7 @@ namespace BaiShengVx3Plus
             });
         }
         
-        /// <summary>
-        /// 发送封盘提醒消息到当前绑定的群
-        /// 🔥 参考 F5BotV2: "{期号后3位} 还剩30秒" 或 "{期号后3位} 还剩15秒"
-        /// </summary>
-        private async void SendSealingNoticeToCurrentGroup(int issueId, string message)
-        {
-            try
-            {
-                // 获取当前绑定的群ID
-                string? currentGroupWxId = GetCurrentGroupWxId();
-                if (string.IsNullOrEmpty(currentGroupWxId))
-                {
-                    _logService.Debug("VxMain", "未绑定群组，跳过发送封盘提醒");
-                    return;
-                }
-                
-                // 🔥 格式化消息：期号后3位 + 提醒文本
-                // 例如：114063287 → "287 还剩30秒"
-                int issueShort = issueId % 1000;
-                string noticeMessage = message.Contains("30 秒") 
-                    ? $"{issueShort} 还剩30秒" 
-                    : $"{issueShort} 还剩15秒";
-                
-                _logService.Info("VxMain", $"📢 发送封盘提醒: {currentGroupWxId} - {noticeMessage}");
-                
-                // 发送消息到群
-                var response = await _socketClient.SendAsync<object>("SendMessage", currentGroupWxId, noticeMessage);
-                
-                if (response != null)
-                {
-                    _logService.Info("VxMain", "✅ 封盘提醒已发送");
-                }
-                else
-                {
-                    _logService.Warning("VxMain", "⚠️ 封盘提醒发送失败（无响应）");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", "发送封盘提醒失败", ex);
-            }
-        }
+        // 🔥 封盘提醒和封盘消息已移至 BinggoLotteryService 内部处理
         
         /// <summary>
         /// 获取当前绑定的群ID

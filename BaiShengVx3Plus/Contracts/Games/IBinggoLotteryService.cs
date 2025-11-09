@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
 using BaiShengVx3Plus.Core;
@@ -98,6 +99,17 @@ namespace BaiShengVx3Plus.Contracts.Games
         /// 设置 BindingList 用于自动 UI 更新
         /// </summary>
         void SetBindingList(BinggoLotteryDataBindingList? bindingList);
+        
+        /// <summary>
+        /// 🔥 处理所有微信消息（统一入口：查、上分、下分、取消、投注）
+        /// 所有炳狗相关的业务逻辑都通过这个方法处理
+        /// </summary>
+        /// <param name="member">会员</param>
+        /// <param name="messageContent">消息内容</param>
+        /// <returns>(是否已处理, 回复消息, 订单对象)</returns>
+        Task<(bool handled, string? replyMessage, V2MemberOrder? order)> ProcessMessageAsync(
+            V2Member member,
+            string messageContent);
         
         // ========================================
         // 🔥 事件
