@@ -304,7 +304,8 @@ namespace BaiShengVx3Plus
                         _groupBindingService,
                         _socketClient,
                         _ordersBindingList,
-                        _membersBindingList
+                        _membersBindingList,
+                        _creditWithdrawsBindingList  // 🔥 传递上下分 BindingList
                     );
                     
                     // 🔥 设置数据库连接（用于上下分申请）
@@ -1584,7 +1585,7 @@ namespace BaiShengVx3Plus
                 _ordersBindingList = new V2OrderBindingList(_db);
                 _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);  // 🔥 上下分 BindingList
                 
-                // 🔥 5. 设置到各个服务
+                // 🔥 5. 设置到各个服务（更新引用，确保所有服务使用同一个 BindingList 实例）
                 _orderService.SetMembersBindingList(_membersBindingList);
                 _orderService.SetOrdersBindingList(_ordersBindingList);
                 _orderService.SetStatisticsService(_statisticsService); // 🔥 设置统计服务
@@ -1593,6 +1594,19 @@ namespace BaiShengVx3Plus
                 if (_memberDataService is MemberDataService mds)
                 {
                     mds.SetMembersBindingList(_membersBindingList);
+                }
+                
+                // 🔥 5.5. 更新开奖服务的 BindingList 引用（重要！）
+                if (_lotteryService is BinggoLotteryService lotteryServiceImpl)
+                {
+                    lotteryServiceImpl.SetBusinessDependencies(
+                        _orderService,
+                        _groupBindingService,
+                        _socketClient,
+                        _ordersBindingList,
+                        _membersBindingList,
+                        _creditWithdrawsBindingList  // 🔥 更新上下分 BindingList 引用
+                    );
                 }
                 
                 // 🔥 6. 从数据库加载订单数据（订单不需要与服务器同步）
@@ -2184,26 +2198,19 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                _logService.Info("VxMain", $"📇 联系人数据已更新，共 {e.Contacts.Count} 个");
+                _logService.Info("VxMain", $"📇 联系人数据已更新，共 {e.Contacts?.Count ?? 0} 个");
 
-                // 🔥 使用异步方式切换到 UI 线程，避免阻塞
-                await Task.Run(() =>
-                {
-                    // 在后台线程处理数据（如果需要）
-                    _logService.Info("VxMain", "准备更新联系人列表到 UI");
-                });
-
-                // 切换到 UI 线程更新
+                // 🔥 切换到 UI 线程更新
                 if (InvokeRequired)
                 {
                     await Task.Factory.StartNew(() =>
                     {
-                        Invoke(new Action(() => UpdateContactsList(e.Contacts)));
+                        Invoke(new Action(() => UpdateContactsList(e.Contacts ?? new List<WxContact>())));
                     });
                 }
                 else
                 {
-                    UpdateContactsList(e.Contacts);
+                    UpdateContactsList(e.Contacts ?? new List<WxContact>());
                 }
             }
             catch (Exception ex)
@@ -2256,6 +2263,13 @@ namespace BaiShengVx3Plus
                             : $"📂 初始化数据库: business_{e.UserInfo.Wxid}.db");
                     
                     InitializeDatabase(e.UserInfo.Wxid);
+                    
+                    // 🔥 用户切换后，重新加载联系人列表
+                    if (isUserChanged)
+                    {
+                        _logService.Info("VxMain", "🔄 用户切换，重新加载联系人列表");
+                        _ = RefreshContactsAsync();
+                    }
                 }
                 else
                 {
@@ -2341,17 +2355,35 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                if (contacts == null || contacts.Count == 0)
+                {
+                    _logService.Warning("VxMain", "⚠️ 联系人列表为空，清空现有数据");
+                    _contactsBindingList.Clear();
+                    lblStatus.Text = "⚠️ 联系人列表为空";
+                    return;
+                }
+
                 // 清空现有数据
                 _contactsBindingList.Clear();
 
                 // 添加新数据
                 foreach (var contact in contacts)
                 {
-                    _contactsBindingList.Add(contact);
+                    if (contact != null && !string.IsNullOrEmpty(contact.Wxid))
+                    {
+                        _contactsBindingList.Add(contact);
+                    }
                 }
 
-                lblStatus.Text = $"✓ 已更新 {contacts.Count} 个联系人";
-                _logService.Info("VxMain", $"联系人列表已更新到 UI");
+                lblStatus.Text = $"✓ 已更新 {_contactsBindingList.Count} 个联系人";
+                _logService.Info("VxMain", $"✅ 联系人列表已更新到 UI: {_contactsBindingList.Count} 个联系人");
+                
+                // 🔥 确保 DataGridView 正确绑定
+                if (dgvContacts.DataSource != _contactsBindingList)
+                {
+                    _logService.Warning("VxMain", "⚠️ dgvContacts.DataSource 未绑定，重新绑定");
+                    dgvContacts.DataSource = _contactsBindingList;
+                }
             }
             catch (Exception ex)
             {
@@ -2869,8 +2901,11 @@ namespace BaiShengVx3Plus
 
         #region 🔥 上下分管理
 
+        // 🔥 上下分管理窗口单实例（非模态）
+        private Views.CreditWithdrawManageForm? _creditWithdrawManageForm;
+
         /// <summary>
-        /// 打开上下分管理窗口
+        /// 打开上下分管理窗口（非模态，参考 F5BotV2）
         /// </summary>
         private void btnCreditWithdrawManage_Click(object sender, EventArgs e)
         {
@@ -2882,18 +2917,53 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 🔥 传递 BindingList 实例（统一模式）
-                var form = new Views.CreditWithdrawManageForm(
+                // 🔥 检查窗口是否已打开（参考设置窗口的逻辑）
+                if (_creditWithdrawManageForm != null && !_creditWithdrawManageForm.IsDisposed)
+                {
+                    // 窗口已打开，激活并显示到前台
+                    _logService.Info("VxMain", "上下分管理窗口已打开，激活到前台");
+                    
+                    // 如果窗口最小化，先恢复
+                    if (_creditWithdrawManageForm.WindowState == FormWindowState.Minimized)
+                    {
+                        _creditWithdrawManageForm.WindowState = FormWindowState.Normal;
+                    }
+                    
+                    // 激活窗口并显示到最前面
+                    _creditWithdrawManageForm.Activate();
+                    _creditWithdrawManageForm.BringToFront();
+                    _creditWithdrawManageForm.Focus();
+                    
+                    lblStatus.Text = "上下分管理窗口已激活";
+                    return;
+                }
+                
+                lblStatus.Text = "打开上下分管理窗口...";
+                _logService.Info("VxMain", "创建新的上下分管理窗口");
+                
+                // 🔥 创建新的上下分管理窗口（非模态）
+                _creditWithdrawManageForm = new Views.CreditWithdrawManageForm(
                     _db, 
                     _logService, 
                     _socketClient,
                     _creditWithdrawsBindingList,
                     _membersBindingList);
-                form.ShowDialog(this);
                 
-                // 🔥 关闭窗口后刷新统计
-                _statisticsService.UpdateStatistics();
-                UpdateMemberInfoLabel();
+                // 🔥 订阅关闭事件，清理引用并刷新统计
+                _creditWithdrawManageForm.FormClosed += (s, args) =>
+                {
+                    _logService.Info("VxMain", "上下分管理窗口已关闭");
+                    _creditWithdrawManageForm = null;
+                    lblStatus.Text = "上下分管理窗口已关闭";
+                    
+                    // 🔥 关闭窗口后刷新统计
+                    _statisticsService.UpdateStatistics();
+                    UpdateMemberInfoLabel();
+                };
+                
+                // 🔥 显示为非模态窗口（可以同时操作其他窗口）
+                _creditWithdrawManageForm.Show(this);
+                lblStatus.Text = "上下分管理窗口已打开";
             }
             catch (Exception ex)
             {

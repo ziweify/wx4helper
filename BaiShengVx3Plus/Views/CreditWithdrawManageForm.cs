@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using BaiShengVx3Plus.Contracts;
@@ -20,8 +21,7 @@ namespace BaiShengVx3Plus.Views
         private readonly IWeixinSocketClient _socketClient;
         private readonly Core.V2CreditWithdrawBindingList _creditWithdrawsBindingList;  // 🔥 使用 BindingList（统一模式）
         private readonly Core.V2MemberBindingList _membersBindingList;  // 🔥 会员列表引用
-        private List<V2CreditWithdraw> _allRequests = new List<V2CreditWithdraw>();
-        private List<V2CreditWithdraw> _filteredRequests = new List<V2CreditWithdraw>();
+        private BindingSource _bindingSource;  // 🔥 使用 BindingSource 处理过滤和自动更新
 
         public CreditWithdrawManageForm(
             SQLiteConnection db, 
@@ -38,14 +38,26 @@ namespace BaiShengVx3Plus.Views
             
             InitializeComponent();
             
+            // 🔥 创建 BindingSource 并绑定到 BindingList（标准做法）
+            _bindingSource = new BindingSource
+            {
+                DataSource = _creditWithdrawsBindingList  // 🔥 直接绑定到 BindingList，自动更新
+            };
+            
             // 初始化下拉框
             InitializeComboBox();
             
             // 配置DataGridView
             ConfigureDataGridView();
             
-            // 加载数据
-            LoadData();
+            // 🔥 直接绑定到 BindingSource（自动更新，无需手动刷新）
+            dgvRequests.DataSource = _bindingSource;
+            
+            // 🔥 应用默认筛选（等待处理）
+            ApplyFilter();
+            
+            // 🔥 更新统计信息
+            UpdateStats();
         }
 
         /// <summary>
@@ -170,9 +182,10 @@ namespace BaiShengVx3Plus.Views
             if (dgvRequests.Columns[e.ColumnIndex].Name == "btnAgree" || 
                 dgvRequests.Columns[e.ColumnIndex].Name == "btnReject")
             {
-                if (e.RowIndex >= 0 && e.RowIndex < _filteredRequests.Count)
+                if (e.RowIndex >= 0 && e.RowIndex < _bindingSource.Count)
                 {
-                    var request = _filteredRequests[e.RowIndex];
+                    var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+                    if (request == null) return;
                     
                     // 只有"等待处理"状态才显示按钮
                     if (request.Status != CreditWithdrawStatus.等待处理)
@@ -192,10 +205,11 @@ namespace BaiShengVx3Plus.Views
         /// </summary>
         private void DgvRequests_CellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.RowIndex >= _filteredRequests.Count)
+            if (e.RowIndex < 0 || e.RowIndex >= _bindingSource.Count)
                 return;
             
-            var request = _filteredRequests[e.RowIndex];
+            var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+            if (request == null) return;
             
             // 只有"等待处理"状态才能操作
             if (request.Status != CreditWithdrawStatus.等待处理)
@@ -310,8 +324,8 @@ namespace BaiShengVx3Plus.Views
                     $"变动后：{balanceAfter:F2}\n" +
                     $"处理人：{request.ProcessedBy}");
                 
-                // 刷新列表
-                LoadData();
+                // 🔥 更新统计（BindingList 变化会自动更新 DataGridView，无需手动刷新）
+                UpdateStats();
                 
                 this.ShowSuccessTip($"已同意{actionName}申请");
             }
@@ -355,8 +369,8 @@ namespace BaiShengVx3Plus.Views
                     $"金额：{request.Amount:F2}\n" +
                     $"处理人：{request.ProcessedBy}");
                 
-                // 刷新列表
-                LoadData();
+                // 🔥 更新统计（BindingList 变化会自动更新 DataGridView，无需手动刷新）
+                UpdateStats();
                 
                 this.ShowSuccessTip($"已拒绝{actionName}申请");
             }
@@ -368,85 +382,53 @@ namespace BaiShengVx3Plus.Views
         }
 
         /// <summary>
-        /// 加载数据（🔥 从 BindingList 加载，统一模式）
-        /// </summary>
-        private void LoadData()
-        {
-            try
-            {
-                // 🔥 从 BindingList 转换为 List（已自动从数据库加载）
-                _allRequests = _creditWithdrawsBindingList.ToList();
-                
-                _logService.Info("上下分管理", $"加载了 {_allRequests.Count} 条申请记录");
-                
-                ApplyFilter();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("上下分管理", "加载数据失败", ex);
-                UIMessageBox.ShowError($"加载数据失败：{ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 应用筛选
+        /// 应用筛选（使用 BindingSource.Filter，标准做法）
+        /// 🔥 当 BindingList 变化时，DataGridView 会自动更新，无需手动刷新
         /// </summary>
         private void ApplyFilter()
         {
             int statusIndex = cmbStatus.SelectedIndex;
             
-            _filteredRequests = _allRequests.Where(r =>
+            if (statusIndex > 0)
             {
-                // 状态筛选
-                if (statusIndex > 0)
+                CreditWithdrawStatus targetStatus = statusIndex switch
                 {
-                    CreditWithdrawStatus targetStatus = statusIndex switch
-                    {
-                        1 => CreditWithdrawStatus.等待处理,
-                        2 => CreditWithdrawStatus.已同意,
-                        3 => CreditWithdrawStatus.已拒绝,
-                        _ => CreditWithdrawStatus.等待处理
-                    };
-                    
-                    if (r.Status != targetStatus)
-                    {
-                        return false;
-                    }
-                }
+                    1 => CreditWithdrawStatus.等待处理,
+                    2 => CreditWithdrawStatus.已同意,
+                    3 => CreditWithdrawStatus.已拒绝,
+                    _ => CreditWithdrawStatus.等待处理
+                };
                 
-                return true;
-            }).ToList();
-            
-            RefreshGrid();
-        }
-
-        /// <summary>
-        /// 刷新DataGridView
-        /// </summary>
-        private void RefreshGrid()
-        {
-            dgvRequests.DataSource = null;
-            dgvRequests.DataSource = _filteredRequests;
+                // 🔥 使用 BindingSource.Filter 进行筛选（标准做法）
+                // 注意：对于枚举类型，需要转换为整数进行比较
+                _bindingSource.Filter = $"Convert(Status, 'System.Int32') = {(int)targetStatus}";
+            }
+            else
+            {
+                // 显示全部
+                _bindingSource.Filter = null;
+            }
             
             UpdateStats();
         }
 
         /// <summary>
-        /// 更新统计信息
+        /// 更新统计信息（从 BindingList 直接统计）
         /// </summary>
         private void UpdateStats()
         {
-            int pendingCount = _allRequests.Count(r => r.Status == CreditWithdrawStatus.等待处理);
+            // 🔥 直接从 BindingList 统计（线程安全）
+            int pendingCount = _creditWithdrawsBindingList.Count(r => r.Status == CreditWithdrawStatus.等待处理);
             
             // 今日上分和下分（已同意的）
             string today = DateTime.Now.ToString("yyyy-MM-dd");
-            float todayCredit = _allRequests
+            float todayCredit = _creditWithdrawsBindingList
                 .Where(r => r.Status == CreditWithdrawStatus.已同意 && 
                            r.Action == CreditWithdrawAction.上分 &&
                            r.TimeString.StartsWith(today))
                 .Sum(r => r.Amount);
             
-            float todayWithdraw = _allRequests
+            float todayWithdraw = _creditWithdrawsBindingList
                 .Where(r => r.Status == CreditWithdrawStatus.已同意 && 
                            r.Action == CreditWithdrawAction.下分 &&
                            r.TimeString.StartsWith(today))
@@ -464,11 +446,12 @@ namespace BaiShengVx3Plus.Views
         }
 
         /// <summary>
-        /// 刷新按钮点击
+        /// 刷新按钮点击（重新应用筛选和更新统计）
         /// </summary>
         private void BtnRefresh_Click(object sender, EventArgs e)
         {
-            LoadData();
+            ApplyFilter();
+            UpdateStats();
         }
     }
 }

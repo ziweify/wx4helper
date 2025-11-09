@@ -49,6 +49,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private IWeixinSocketClient? _socketClient;
         private Core.V2OrderBindingList? _ordersBindingList;
         private Core.V2MemberBindingList? _membersBindingList;
+        private Core.V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList
         
         private System.Threading.Timer? _timer;
         private int _currentIssueId;
@@ -95,13 +96,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             IGroupBindingService? groupBindingService,
             IWeixinSocketClient? socketClient,
             Core.V2OrderBindingList? ordersBindingList,
-            Core.V2MemberBindingList? membersBindingList)
+            Core.V2MemberBindingList? membersBindingList,
+            Core.V2CreditWithdrawBindingList? creditWithdrawsBindingList)/*= null*/
         {
             _orderService = orderService;
             _groupBindingService = groupBindingService;
             _socketClient = socketClient;
             _ordersBindingList = ordersBindingList;
             _membersBindingList = membersBindingList;
+            _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 设置上下分 BindingList
             _logService.Info("BinggoLotteryService", "✅ 业务依赖已设置");
         }
         
@@ -1026,12 +1029,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 2. 处理上分/下分命令 - 参考 F5BotV2 第2564行
-                string regexStr = "(上|下){1}(\\d*)(分*){1}";
+                string regexStr = "(上|下){1}(\\d+)(分*){1}";  // 🔥 修复：使用 \\d+ 而不是 \\d*，确保至少有一个数字
                 if (Regex.IsMatch(msg, regexStr, RegexOptions.IgnoreCase))
                 {
                     var match = Regex.Match(msg, regexStr, RegexOptions.IgnoreCase);
                     string st1 = match.Groups[1].Value;  // 上/下
                     string st2 = match.Groups[2].Value;  // 金额
+                    
+                    _logService.Info("BinggoLotteryService", 
+                        $"解析上下分命令: 原始消息='{msg}', 动作='{st1}', 金额字符串='{st2}'");
                     
                     int money = 0;
                     try
@@ -1040,13 +1046,18 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                     catch
                     {
+                        _logService.Warning("BinggoLotteryService", $"金额解析失败: '{st2}'");
                         return (true, "请输入正确的金额，例如：上1000 或 下500", null);
                     }
                     
                     if (money <= 0)
                     {
+                        _logService.Warning("BinggoLotteryService", $"金额必须大于0: {money}");
                         return (true, "金额必须大于0", null);
                     }
+                    
+                    _logService.Info("BinggoLotteryService", 
+                        $"✅ 上下分命令解析成功: 动作={st1}, 金额={money}");
                     
                     // 判断是上分还是下分
                     bool isCredit = st1 == "上";
@@ -1072,7 +1083,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         GroupWxId = member.GroupWxId,
                         Wxid = member.Wxid,
                         Nickname = member.Nickname,
-                        Amount = money,
+                        Amount = money,  // 🔥 使用解析出的金额
                         Action = isCredit ? CreditWithdrawAction.上分 : CreditWithdrawAction.下分,
                         Status = CreditWithdrawStatus.等待处理,
                         TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -1080,10 +1091,23 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         Notes = $"会员申请{(isCredit ? "上分" : "下分")}"
                     };
                     
-                    _db.Insert(request);
-                    
                     _logService.Info("BinggoLotteryService", 
-                        $"{(isCredit ? "上分" : "下分")}申请已创建: {member.Nickname} - {money}");
+                        $"创建上下分申请: 会员={member.Nickname}, 动作={(isCredit ? "上分" : "下分")}, 金额={money}");
+                    
+                    // 🔥 添加到 BindingList（会自动保存到数据库，并触发 UI 更新）
+                    if (_creditWithdrawsBindingList != null)
+                    {
+                        _creditWithdrawsBindingList.Add(request);
+                        _logService.Info("BinggoLotteryService", 
+                            $"{(isCredit ? "上分" : "下分")}申请已创建并添加到 BindingList: {member.Nickname} - {money}");
+                    }
+                    else
+                    {
+                        // 如果没有 BindingList，直接保存到数据库（兼容旧逻辑）
+                        _db.Insert(request);
+                        _logService.Warning("BinggoLotteryService", 
+                            $"上下分 BindingList 未设置，直接保存到数据库: {member.Nickname} - {money}");
+                    }
                     
                     // 🔥 回复格式 - 参考 F5BotV2 第2605行：@{m.nickname}\r[{m.id}]请等待
                     string reply = $"@{member.Nickname}\r[{member.Id}]请等待";

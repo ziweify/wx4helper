@@ -94,6 +94,12 @@ namespace BaiShengVx3Plus.Core
         /// </summary>
         public void LoadFromDatabase(string? groupWxid = null)
         {
+            // 🔥 先清空现有数据（避免重复加载）
+            while (Count > 0)
+            {
+                base.RemoveItem(0);
+            }
+            
             var query = _db.Table<V2CreditWithdraw>().OrderByDescending(c => c.Timestamp);
             
             // 如果指定了群ID，只加载该群的数据
