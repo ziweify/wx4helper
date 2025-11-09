@@ -809,75 +809,69 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         && o.OrderType != OrderType.托)  // 托单不显示
                     .ToList();
                 
-                //if (orders == null || orders.Count == 0)
-                //{
-                //    _logService.Info("BinggoLotteryService", $"期号 {issueId} 没有订单，跳过处理");
-                //    return;
-                //}
-                
-                if(orders != null)
+                // 🔥 2. 结算订单并统计（参考 F5BotV2 第 1429-1450 行）
+                var ordersReports = new Dictionary<string, (string nickname, float balance, float totalAmount, float profit)>();
+
+                if (orders != null && _orderService != null)
                 {
-
-                    // 🔥 2. 结算订单并统计（参考 F5BotV2 第 1429-1450 行）
-                    var ordersReports = new Dictionary<string, (string nickname, float balance, float totalAmount, float profit)>();
-
-                    if (_orderService != null)
+                    foreach (var order in orders)
                     {
-                        foreach (var order in orders)
+                        // 结算单个订单
+                        await _orderService.SettleSingleOrderAsync(order, data);
+
+                        // 统计输赢数据，整合显示给会员看的（参考 F5BotV2 第 1436-1449 行）
+                        var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
+                        if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
+
+                        // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
+                        string nickname = order.Nickname ?? member.Nickname ?? member.DisplayName ?? "未知";
+
+                        if (!ordersReports.ContainsKey(order.Wxid))
                         {
-                            // 结算单个订单
-                            await _orderService.SettleSingleOrderAsync(order, data);
-
-                            // 统计输赢数据，整合显示给会员看的（参考 F5BotV2 第 1436-1449 行）
-                            var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
-                            if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
-
-                            // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
-                            string nickname = order.Nickname ?? member.Nickname ?? member.DisplayName ?? "未知";
-
-                            if (!ordersReports.ContainsKey(order.Wxid))
-                            {
-                                ordersReports[order.Wxid] = (
-                                    nickname,
-                                    member.Balance,
-                                    order.AmountTotal,
-                                    order.Profit
-                                );
-                            }
-                            else
-                            {
-                                var existing = ordersReports[order.Wxid];
-                                ordersReports[order.Wxid] = (
-                                    existing.nickname,
-                                    existing.balance,
-                                    existing.totalAmount + order.AmountTotal,
-                                    existing.profit + order.Profit
-                                );
-                            }
+                            ordersReports[order.Wxid] = (
+                                nickname,
+                                member.Balance,
+                                order.AmountTotal,
+                                order.Profit
+                            );
                         }
+                        else
+                        {
+                            var existing = ordersReports[order.Wxid];
+                            ordersReports[order.Wxid] = (
+                                existing.nickname,
+                                existing.balance,
+                                existing.totalAmount + order.AmountTotal,
+                                existing.profit + order.Profit
+                            );
+                        }
+                    }
 
+                    if (orders.Count > 0)
+                    {
                         _logService.Info("BinggoLotteryService", $"✅ 结算完成: {orders.Count} 单");
                     }
+                }
 
-                    // 🔥 转换为列表格式（用于发送消息）
-                    var ordersReportsList = ordersReports.Select(kvp => (
-                        wxid: kvp.Key,
-                        nickname: kvp.Value.nickname,
-                        balance: kvp.Value.balance,
-                        totalAmount: kvp.Value.totalAmount,
-                        profit: kvp.Value.profit
-                    )).ToList();
+                // 🔥 转换为列表格式（用于发送消息）
+                var ordersReportsList = ordersReports.Select(kvp => (
+                    wxid: kvp.Key,
+                    nickname: kvp.Value.nickname,
+                    balance: kvp.Value.balance,
+                    totalAmount: kvp.Value.totalAmount,
+                    profit: kvp.Value.profit
+                )).ToList();
 
-                    // 🔥 3. 发送中奖名单和留分名单到微信群（参考 F5BotV2 第 1415-1474 行）
-                    string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
-                    if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
-                    {
-                        await SendSettlementMessagesAsync(data, groupWxId, issueidLite, ordersReportsList);
-                    }
-                    else
-                    {
-                        _logService.Info("BinggoLotteryService", "未绑定群或微信未登录，跳过发送结算消息");
-                    }
+                // 🔥 3. 发送中奖名单和留分名单到微信群（参考 F5BotV2 第 1415-1474 行）
+                // 🔥 重要：无论是否有订单，都要发送这两个名单（参考 F5BotV2 第 1462、1474 行）
+                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
+                {
+                    await SendSettlementMessagesAsync(data, groupWxId, issueidLite, ordersReportsList);
+                }
+                else
+                {
+                    _logService.Info("BinggoLotteryService", "未绑定群或微信未登录，跳过发送结算消息");
                 }
 
                 
@@ -899,6 +893,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 🔥 发送结算消息到微信群（参考 F5BotV2: On已开奖）
         /// 格式：第{issueid_lite}队\r{开奖号码}\r----中~名单----\r{会员名}[余额] 纯利\r
+        /// 🔥 重要：无论是否有订单，都要发送这两个名单（参考 F5BotV2 第 1462、1474 行）
         /// </summary>
         private async Task SendSettlementMessagesAsync(
             BinggoLotteryData lotteryData, 
@@ -910,24 +905,22 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 int issueId = lotteryData.IssueId;
                 
-                if (ordersReports == null || ordersReports.Count == 0)
-                {
-                    _logService.Info("BinggoLotteryService", $"期号 {issueId} 没有已结算订单，跳过发送消息");
-                    return;
-                }
-                
                 // 🔥 发送中奖名单（参考 F5BotV2 第 1415-1462 行）
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----中~名单----\r{会员名}[余额] 纯利\r
+                // 🔥 重要：即使没有订单，也要发送中奖名单（只是没有会员数据）
                 var winningMessage = new System.Text.StringBuilder();
                 winningMessage.Append($"第{issueidLite}队\r");
                 winningMessage.Append($"{lotteryData.ToLotteryString()}\r");
                 winningMessage.Append($"----中~名单----\r");
                 
-                foreach (var report in ordersReports)
+                if (ordersReports != null && ordersReports.Count > 0)
                 {
-                    // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
-                    float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
-                    winningMessage.Append($"{report.nickname}[{(int)report.balance}] {(int)netProfit}\r");
+                    foreach (var report in ordersReports)
+                    {
+                        // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
+                        float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
+                        winningMessage.Append($"{report.nickname}[{(int)report.balance}] {(int)netProfit}\r");
+                    }
                 }
                 
                 _logService.Info("BinggoLotteryService", $"📤 发送中奖名单到群: {groupWxId}");
@@ -939,6 +932,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 🔥 发送留分名单（参考 F5BotV2 第 1464-1474 行）
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----留~名单----\r{会员名} 余额\r
+                // 🔥 重要：无论是否有订单，都要发送留分名单
                 var balanceMessage = new System.Text.StringBuilder();
                 balanceMessage.Append($"第{issueidLite}队\r");
                 balanceMessage.Append($"{lotteryData.ToLotteryString()}\r");
