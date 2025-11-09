@@ -256,48 +256,12 @@ namespace BaiShengVx3Plus.Services.WeChat
 
                     var contactsDoc = await _socketClient.SendAsync<JsonDocument>("GetContacts", 30000);
                     
-                    // 🔥 检查是否有错误响应
+                    // ✅ SendAsync 已处理 error 和 result，直接使用
                     if (contactsDoc != null)
                     {
-                        // 检查是否是错误响应
-                        if (contactsDoc.RootElement.TryGetProperty("error", out var errorElement))
-                        {
-                            string errorMsg = errorElement.GetString() ?? "";
-                            
-                            // 🔥 如果是数据库句柄未找到，等待后重试
-                            if (errorMsg.Contains("contact.db handle not found") || 
-                                errorMsg.Contains("handle is null"))
-                            {
-                                _logService.Warning("WeChatService", 
-                                    $"数据库句柄未初始化 (尝试 {attempt + 1}/{maxRetries})，等待 {retryInterval}ms 后重试...");
-                                
-                                attempt++;
-                                if (attempt < maxRetries)
-                                {
-                                    await Task.Delay(retryInterval, cancellationToken);
-                                    continue;
-                                }
-                                else
-                                {
-                                    _logService.Error("WeChatService", "获取联系人失败：数据库句柄未初始化（超过最大重试次数）");
-                                    // 🔥 即使失败，也触发事件通知UI（空列表）
-                                    await _contactDataService.ProcessContactsAsync(contactsDoc.RootElement);
-                                    return new List<WxContact>();
-                                }
-                            }
-                            else
-                            {
-                                _logService.Error("WeChatService", $"获取联系人失败: {errorMsg}");
-                                // 🔥 即使失败，也触发事件通知UI（空列表）
-                                await _contactDataService.ProcessContactsAsync(contactsDoc.RootElement);
-                                return new List<WxContact>();
-                            }
-                        }
-                        
-                        // 🔥 成功获取数据
-                        _logService.Info("WeChatService", $"✅ 获取到联系人数据，开始处理...");
+                        _logService.Debug("WeChatService", $"收到数据类型: {contactsDoc.RootElement.ValueKind}");
                         var contacts = await _contactDataService.ProcessContactsAsync(contactsDoc.RootElement);
-                        _logService.Info("WeChatService", $"✓ 联系人刷新成功，返回 {contacts.Count} 个联系人，事件已触发");
+                        _logService.Info("WeChatService", $"✓ 联系人刷新成功，返回 {contacts.Count} 个");
                         return contacts;
                     }
 
@@ -359,16 +323,10 @@ namespace BaiShengVx3Plus.Services.WeChat
                 var contactsDoc = await _socketClient.SendAsync<JsonDocument>("GetContacts", 30000);
                 if (contactsDoc != null)
                 {
-                    // 🔥 检查是否有错误响应
-                    if (contactsDoc.RootElement.TryGetProperty("error", out var errorElement))
-                    {
-                        string errorMsg = errorElement.GetString() ?? "";
-                        _logService.Warning("WeChatService", $"获取联系人失败: {errorMsg}");
-                        return new List<WxContact>();
-                    }
-                    
+                    // ✅ SendAsync 已处理 error 和 result，直接使用
+                    _logService.Debug("WeChatService", $"收到数据类型: {contactsDoc.RootElement.ValueKind}");
                     var contacts = await _contactDataService.ProcessContactsAsync(contactsDoc.RootElement);
-                    _logService.Info("WeChatService", $"✓ 联系人刷新成功，返回 {contacts.Count} 个联系人");
+                    _logService.Info("WeChatService", $"✓ 联系人刷新成功，返回 {contacts.Count} 个");
                     return contacts;
                 }
 

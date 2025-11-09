@@ -2330,23 +2330,17 @@ namespace BaiShengVx3Plus
                 lblStatus.Text = "正在获取联系人...";
 
                 // 主动请求联系人数据
-                var contactsData = await _socketClient.SendAsync<JsonDocument>("GetContacts", 10000);
-
-                if (contactsData != null)
-                {
-                    // 统一调用 ContactDataService 处理
-                    await _contactDataService.ProcessContactsAsync(contactsData.RootElement);
-                    _logService.Info("VxMain", "✓ 联系人获取成功");
-                }
-                else
-                {
-                    _logService.Warning("VxMain", "获取联系人失败");
-                    lblStatus.Text = "获取联系人失败";
-                }
+                // ✅ 调用 WeChatService（业务逻辑层）
+                // UI 层不应该直接操作 SocketClient
+                var contacts = await _wechatService.RefreshContactsAsync();
+                
+                // UI 只负责显示结果
+                lblStatus.Text = $"已获取 {contacts.Count} 个联系人";
+                _logService.Info("VxMain", $"联系人刷新完成，共 {contacts.Count} 个");
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", "刷新联系人失败", ex);
+                _logService.Error("VxMain", $"刷新联系人失败: {ex.Message}", ex);
                 lblStatus.Text = "刷新失败";
             }
         }
@@ -2402,105 +2396,105 @@ namespace BaiShengVx3Plus
             await RefreshContactsAsync();
         }
 
-        /// <summary>
-        /// 加载群成员数据到 dgvMembers
-        /// </summary>
-        /// <param name="groupMembersJson">GetGroupContacts 返回的 JSON 数据</param>
-        /// <param name="groupWxid">群微信 ID</param>
-        private Task LoadGroupMembersToDataGridAsync(JsonElement groupMembersJson, string groupWxid)
-        {
-            try
-            {
-                _logService.Info("VxMain", $"开始解析群成员数据，群ID: {groupWxid}");
+        ///// <summary>
+        ///// 加载群成员数据到 dgvMembers
+        ///// </summary>
+        ///// <param name="groupMembersJson">GetGroupContacts 返回的 JSON 数据</param>
+        ///// <param name="groupWxid">群微信 ID</param>
+        //private Task LoadGroupMembersToDataGridAsync(JsonElement groupMembersJson, string groupWxid)
+        //{
+        //    try
+        //    {
+        //        _logService.Info("VxMain", $"开始解析群成员数据，群ID: {groupWxid}");
 
-                // 🔥 确保 _membersBindingList 已初始化
-                if (_membersBindingList == null)
-                {
-                    _logService.Warning("VxMain", "会员列表未初始化，跳过加载");
-                    return Task.CompletedTask;
-                }
+        //        // 🔥 确保 _membersBindingList 已初始化
+        //        if (_membersBindingList == null)
+        //        {
+        //            _logService.Warning("VxMain", "会员列表未初始化，跳过加载");
+        //            return Task.CompletedTask;
+        //        }
 
-                // 清空当前 dgvMembers 数据
-                _membersBindingList.Clear();
+        //        // 清空当前 dgvMembers 数据
+        //        _membersBindingList.Clear();
 
-                int count = 0;
-                foreach (var memberElement in groupMembersJson.EnumerateArray())
-                {
-                    try
-                    {
-                        // 解析群成员数据
-                        string memberWxid = memberElement.TryGetProperty("member_wxid", out var mwxid) 
-                            ? mwxid.GetString() ?? "" : "";
-                        string memberNickname = memberElement.TryGetProperty("member_nickname", out var mnick) 
-                            ? mnick.GetString() ?? "" : "";
-                        string memberAlias = memberElement.TryGetProperty("member_alias", out var malias) 
-                            ? malias.GetString() ?? "" : "";
-                        string memberRemark = memberElement.TryGetProperty("member_remark", out var mremark) 
-                            ? mremark.GetString() ?? "" : "";
+        //        int count = 0;
+        //        foreach (var memberElement in groupMembersJson.EnumerateArray())
+        //        {
+        //            try
+        //            {
+        //                // 解析群成员数据
+        //                string memberWxid = memberElement.TryGetProperty("member_wxid", out var mwxid) 
+        //                    ? mwxid.GetString() ?? "" : "";
+        //                string memberNickname = memberElement.TryGetProperty("member_nickname", out var mnick) 
+        //                    ? mnick.GetString() ?? "" : "";
+        //                string memberAlias = memberElement.TryGetProperty("member_alias", out var malias) 
+        //                    ? malias.GetString() ?? "" : "";
+        //                string memberRemark = memberElement.TryGetProperty("member_remark", out var mremark) 
+        //                    ? mremark.GetString() ?? "" : "";
 
-                        // 跳过无效数据
-                        if (string.IsNullOrEmpty(memberWxid))
-                        {
-                            _logService.Warning("VxMain", "跳过无效的群成员数据：member_wxid 为空");
-                            continue;
-                        }
+        //                // 跳过无效数据
+        //                if (string.IsNullOrEmpty(memberWxid))
+        //                {
+        //                    _logService.Warning("VxMain", "跳过无效的群成员数据：member_wxid 为空");
+        //                    continue;
+        //                }
 
-                        // 创建 V2Member 对象
-                        var member = new V2Member
-                        {
-                            GroupWxId = groupWxid,  // 🔥 设置群ID
-                            Wxid = memberWxid,
-                            Nickname = memberNickname,
-                            Account = memberAlias,
-                            DisplayName = string.IsNullOrEmpty(memberRemark) ? memberNickname : memberRemark,
+        //                // 创建 V2Member 对象
+        //                var member = new V2Member
+        //                {
+        //                    GroupWxId = groupWxid,  // 🔥 设置群ID
+        //                    Wxid = memberWxid,
+        //                    Nickname = memberNickname,
+        //                    Account = memberAlias,
+        //                    DisplayName = string.IsNullOrEmpty(memberRemark) ? memberNickname : memberRemark,
                             
-                            // 初始化业务字段为默认值
-                            Balance = 0,
-                            State = MemberState.会员,
-                            BetCur = 0,
-                            BetWait = 0,
-                            IncomeToday = 0,
-                            CreditToday = 0,
-                            BetToday = 0,
-                            WithdrawToday = 0,
-                            BetTotal = 0,
-                            CreditTotal = 0,
-                            WithdrawTotal = 0,
-                            IncomeTotal = 0
-                        };
+        //                    // 初始化业务字段为默认值
+        //                    Balance = 0,
+        //                    State = MemberState.会员,
+        //                    BetCur = 0,
+        //                    BetWait = 0,
+        //                    IncomeToday = 0,
+        //                    CreditToday = 0,
+        //                    BetToday = 0,
+        //                    WithdrawToday = 0,
+        //                    BetTotal = 0,
+        //                    CreditTotal = 0,
+        //                    WithdrawTotal = 0,
+        //                    IncomeTotal = 0
+        //                };
 
-                        // 🔥 添加到 BindingList，ItemAdded 事件会自动保存到数据库
-                        _membersBindingList.Add(member);
-                        count++;
+        //                // 🔥 添加到 BindingList，ItemAdded 事件会自动保存到数据库
+        //                _membersBindingList.Add(member);
+        //                count++;
 
-                        _logService.Debug("VxMain", $"添加群成员: {memberNickname} ({memberWxid})");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logService.Error("VxMain", $"解析单个群成员失败: {ex.Message}");
-                    }
-                }
+        //                _logService.Debug("VxMain", $"添加群成员: {memberNickname} ({memberWxid})");
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logService.Error("VxMain", $"解析单个群成员失败: {ex.Message}");
+        //            }
+        //        }
 
-                _logService.Info("VxMain", $"✓ 群成员加载完成，共 {count} 个成员");
+        //        _logService.Info("VxMain", $"✓ 群成员加载完成，共 {count} 个成员");
 
-                // 刷新 UI
-                if (dgvMembers.InvokeRequired)
-                {
-                    dgvMembers.Invoke(new Action(() => dgvMembers.Refresh()));
-                }
-                else
-                {
-                    dgvMembers.Refresh();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", $"加载群成员到 DataGrid 失败: {ex.Message}");
-                throw;
-            }
+        //        // 刷新 UI
+        //        if (dgvMembers.InvokeRequired)
+        //        {
+        //            dgvMembers.Invoke(new Action(() => dgvMembers.Refresh()));
+        //        }
+        //        else
+        //        {
+        //            dgvMembers.Refresh();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logService.Error("VxMain", $"加载群成员到 DataGrid 失败: {ex.Message}");
+        //        throw;
+        //    }
             
-            return Task.CompletedTask;
-        }
+        //    return Task.CompletedTask;
+        //}
 
         /// <summary>
         /// 窗口关闭时断开 Socket 连接并关闭子窗口
