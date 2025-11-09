@@ -13,11 +13,22 @@ namespace BaiShengVx3Plus.Helpers
     /// 1. 解析下注文本
     /// 2. 判断中奖逻辑
     /// 3. 计算盈利
+    /// 4. 期号相关计算
     /// 
     /// 参考: F5BotV2/Boter/BoterBetContent.cs
     /// </summary>
     public static class BinggoHelper
     {
+        /// <summary>
+        /// 🔥 获取期号的日索引（参考 F5BotV2: BinGouHelper.getNumber）
+        /// 返回当天是第几期（1-203）
+        /// </summary>
+        public static int GetDayIndex(int issueId)
+        {
+            // 参考 F5BotV2: BinGouHelper.getNumber
+            // 使用 BinggoTimeHelper 的 GetIssueNumber 方法
+            return BinggoTimeHelper.GetIssueNumber(issueId);
+        }
         /// <summary>
         /// 解析下注内容
         /// 

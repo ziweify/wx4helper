@@ -297,7 +297,20 @@ namespace BaiShengVx3Plus
                 _orderService.SetOrdersBindingList(_ordersBindingList);
                 _orderService.SetMembersBindingList(_membersBindingList);
                 
-                // 5. 订阅开奖事件（自动结算）
+                // 🔥 5. 设置开奖服务的业务依赖（用于结算和发送微信消息）
+                // 参考 F5BotV2：所有开奖相关逻辑统一在 BinggoLotteryService 中处理
+                if (_lotteryService is BinggoLotteryService lotteryServiceImpl)
+                {
+                    lotteryServiceImpl.SetBusinessDependencies(
+                        _orderService,
+                        _groupBindingService,
+                        _socketClient,
+                        _ordersBindingList,
+                        _membersBindingList
+                    );
+                }
+                
+                // 6. 订阅开奖事件（UI 更新，业务逻辑已在服务中处理）
                 _lotteryService.LotteryOpened += OnLotteryOpened;
                 _lotteryService.StatusChanged += OnLotteryStatusChanged;
                 _lotteryService.IssueChanged += OnLotteryIssueChanged;
@@ -533,28 +546,18 @@ namespace BaiShengVx3Plus
         }
         
         /// <summary>
-        /// 开奖事件处理（自动结算）
+        /// 开奖事件处理（UI 更新）
+        /// 🔥 业务逻辑（结算、发送微信消息等）已在 BinggoLotteryService 中统一处理
         /// </summary>
-        private async void OnLotteryOpened(object? sender, BinggoLotteryOpenedEventArgs e)
+        private void OnLotteryOpened(object? sender, BinggoLotteryOpenedEventArgs e)
         {
             try
             {
                 _logService.Info("VxMain", 
                     $"🎲 开奖: {e.LotteryData.ToLotteryString()}");
                 
-                // 自动结算订单
-                var (settledCount, summary) = await _orderService.SettleOrdersAsync(
-                    e.LotteryData.IssueId, 
-                    e.LotteryData);
-                
-                _logService.Info("VxMain", 
-                    $"✅ 结算完成: {settledCount} 单");
-                
-                // TODO: 可选 - 发送结算通知到微信群
-                // if (_binggoSettings.AutoSendSettlementNotice)
-                // {
-                //     await SendWeChatMessageAsync(summary);
-                // }
+                // 🔥 业务逻辑（结算、发送微信消息、清空投注金额）已在 BinggoLotteryService.OnLotteryOpenedAsync 中处理
+                // 这里只需要更新 UI（如果需要的话）
             }
             catch (Exception ex)
             {
@@ -659,11 +662,7 @@ namespace BaiShengVx3Plus
         /// </summary>
         private string? GetCurrentGroupWxId()
         {
-            if (_contactsBindingList == null || _contactsBindingList.Count == 0)
-                return null;
-            
-            var selectedContact = dgvContacts.CurrentRow?.DataBoundItem as WxContact;
-            return selectedContact?.Wxid;
+            return _groupBindingService.CurrentBoundGroup?.Wxid;
         }
         
         private void InitializeDataBindings()

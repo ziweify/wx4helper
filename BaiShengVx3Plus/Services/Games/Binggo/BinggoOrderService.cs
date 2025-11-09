@@ -295,10 +295,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (0, "开奖数据未找到");
                 }
                 
-                // 2. 查询待结算的订单（状态为待结算，且未结算）
+                // 2. 查询当期所有订单（参考 F5BotV2: 排除已取消和未知状态）
                 var unsetledOrders = _ordersBindingList?
                     .Where(o => o.IssueId == issueId 
-                        && o.OrderStatus == OrderStatus.待结算 
+                        && o.OrderStatus != OrderStatus.已取消 
+                        && o.OrderStatus != OrderStatus.未知
                         && !o.IsSettled)
                     .ToList();
                 
@@ -326,6 +327,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 4. 更新统计（参考 F5BotV2 第 635 行）
                 _statisticsService?.UpdateStatistics();
                 
+                // 🔥 5. 返回结算后的订单列表（用于生成中奖名单）
                 string summary = $"期号: {issueId}\n" +
                                $"订单数: {settledCount}\n" +
                                $"总盈利: {totalProfit:F2}\n" +
@@ -344,7 +346,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 结算单个订单（🔥 完全参考 F5BotV2 的 OnMemberOrderFinish 逻辑）
         /// </summary>
-        private async Task SettleSingleOrderAsync(V2MemberOrder order, BinggoLotteryData lotteryData)
+        public async Task SettleSingleOrderAsync(V2MemberOrder order, BinggoLotteryData lotteryData)
         {
             try
             {
@@ -497,12 +499,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     var existing = _ordersBindingList.FirstOrDefault(o => o.Id == order.Id);
                     if (existing != null)
                     {
-                        // 更新现有项的属性
+                        // 🔥 更新所有属性（包括 OrderStatus 和 OrderType）
                         existing.OrderStatus = order.OrderStatus;
+                        existing.OrderType = order.OrderType;
                     }
                 }
                 
-                _logService.Info("BinggoOrderService", $"✅ 订单已更新:ID={order.Id} 状态={order.OrderStatus}");
+                _logService.Info("BinggoOrderService", $"✅ 订单已更新:ID={order.Id} 状态={order.OrderStatus} 类型={order.OrderType}");
             }
             catch (Exception ex)
             {

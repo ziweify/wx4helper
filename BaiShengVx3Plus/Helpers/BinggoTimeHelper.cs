@@ -154,7 +154,7 @@ namespace BaiShengVx3Plus.Helpers
         /// 获取期号在当天是第几期（1-203）
         /// 🔥 完全参考 F5BotV2 的 getNumber 方法
         /// </summary>
-        private static int GetIssueNumber(int issueId)
+        public static int GetIssueNumber(int issueId)
         {
             int result = 0;
             int value = issueId - FIRST_ISSUE_ID;

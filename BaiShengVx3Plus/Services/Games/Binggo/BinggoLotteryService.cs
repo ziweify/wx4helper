@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Contracts.Games;
+using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.Models.Games.Binggo.Events;
 using BaiShengVx3Plus.Core;
@@ -24,12 +25,28 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
     /// 4. 状态变更事件触发
     /// 5. 本地缓存管理（先查本地，没有再请求网络）
     /// </summary>
+    /// <summary>
+    /// 炳狗开奖服务实现
+    /// 
+    /// 🔥 核心设计（参考 F5BotV2 的 BoterServices）：
+    /// 1. 统一管理开奖、结算、发送微信消息等所有逻辑
+    /// 2. 事件驱动：期号变更、状态变更、开奖等事件统一在这里分发
+    /// 3. 封盘、开盘、开奖、结算、期号变更等事件都在这个类中处理
+    /// 4. 高内聚、低耦合，便于复用和维护
+    /// </summary>
     public class BinggoLotteryService : IBinggoLotteryService
     {
         private readonly ILogService _logService;
         private readonly BinggoGameSettings _settings;
         private SQLiteConnection? _db;
         private Core.BinggoLotteryDataBindingList? _bindingList;  // 🔥 UI 数据绑定
+        
+        // 🔥 业务依赖（用于结算和发送微信消息）
+        private IBinggoOrderService? _orderService;
+        private IGroupBindingService? _groupBindingService;
+        private IWeixinSocketClient? _socketClient;
+        private Core.V2OrderBindingList? _ordersBindingList;
+        private Core.V2MemberBindingList? _membersBindingList;
         
         private System.Threading.Timer? _timer;
         private int _currentIssueId;
@@ -66,6 +83,24 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             _logService = logService;
             _settings = settings;
+        }
+        
+        /// <summary>
+        /// 🔥 设置业务依赖（用于结算和发送微信消息）
+        /// </summary>
+        public void SetBusinessDependencies(
+            IBinggoOrderService? orderService,
+            IGroupBindingService? groupBindingService,
+            IWeixinSocketClient? socketClient,
+            Core.V2OrderBindingList? ordersBindingList,
+            Core.V2MemberBindingList? membersBindingList)
+        {
+            _orderService = orderService;
+            _groupBindingService = groupBindingService;
+            _socketClient = socketClient;
+            _ordersBindingList = ordersBindingList;
+            _membersBindingList = membersBindingList;
+            _logService.Info("BinggoLotteryService", "✅ 业务依赖已设置");
         }
         
         /// <summary>
@@ -299,12 +334,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                                         _bindingList?.LoadFromDatabase(100);
                                     }
                                     
-                                    // 🔥 触发开奖事件（参考 F5BotV2: On已开奖(bgData)）
-                                    _logService.Info("BinggoLotteryService", $"🎲 触发开奖事件: {queueIssueId}");
-                                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
-                                    {
-                                        LotteryData = openedData
-                                    });
+                                    // 🔥 处理开奖（参考 F5BotV2: On已开奖(bgData)）
+                                    // 统一在这里处理：结算、发送微信消息、清空投注金额等
+                                    await OnLotteryOpenedAsync(openedData);
                                 }
                                 else
                                 {
@@ -356,13 +388,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 步骤2: 如果本地有完整数据，直接返回
+                // 🔥 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发（参考 F5BotV2）
                 if (data != null && !string.IsNullOrEmpty(data.LotteryData))
                 {
                     _logService.Info("BinggoLotteryService", $"💾 本地已有开奖数据: {issueId}");
-                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
-                    {
-                        LotteryData = data
-                    });
+                    // 如果该期号在队列中，队列检查线程会自动处理并触发开奖事件
                     return;
                 }
                 
@@ -392,11 +422,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             _logService.Info("BinggoLotteryService", $"✅ 开奖数据已保存: {issueId} - {data.ToLotteryString()}");
                         }
                         
-                        // 触发开奖事件
-                        LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
-                        {
-                            LotteryData = data
-                        });
+                        // 🔥 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发（参考 F5BotV2）
+                        // 如果该期号在队列中，队列检查线程会自动处理并触发开奖事件
                         
                         return;  // 成功获取，退出轮询
                     }
@@ -743,6 +770,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         /// <summary>
         /// 🔥 检查并通知上期开奖数据（参考 F5BotV2）
+        /// 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发
         /// </summary>
         private void CheckAndNotifyLastIssue(List<BinggoLotteryData> dataList)
         {
@@ -763,11 +791,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", 
                         $"🎲 发现上期已开奖数据: {lastIssueId} - {lastData.ToLotteryString()}");
                     
-                    // 触发开奖事件，通知 UI 更新
-                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
-                    {
-                        LotteryData = lastData
-                    });
+                    // 🔥 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发（参考 F5BotV2）
+                    // 如果该期号在队列中，队列检查线程会自动处理并触发开奖事件
                 }
                 else
                 {
@@ -778,6 +803,215 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             catch (Exception ex)
             {
                 _logService.Error("BinggoLotteryService", $"检查上期数据异常: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 处理开奖（参考 F5BotV2: On已开奖）
+        /// 统一处理：结算、发送微信消息、清空投注金额等
+        /// </summary>
+        private async Task OnLotteryOpenedAsync(BinggoLotteryData data)
+        {
+            try
+            {
+                int issueId = data.IssueId;
+                int issueidLite = issueId % 1000;  // 期号后3位（参考 F5BotV2: issueid_lite = data.IssueId % 1000）
+                
+                _logService.Info("BinggoLotteryService", $"🎲 开奖处理: {issueId} - {data.ToLotteryString()}");
+                
+                // 🔥 1. 获取当期所有订单（参考 F5BotV2 第 1420 行）
+                var orders = _ordersBindingList?
+                    .Where(o => o.IssueId == issueId 
+                        && o.OrderStatus != OrderStatus.已取消 
+                        && o.OrderStatus != OrderStatus.未知
+                        && o.OrderType != OrderType.托)  // 托单不显示
+                    .ToList();
+                
+                if (orders == null || orders.Count == 0)
+                {
+                    _logService.Info("BinggoLotteryService", $"期号 {issueId} 没有订单，跳过处理");
+                    return;
+                }
+                
+                // 🔥 2. 结算订单并统计（参考 F5BotV2 第 1429-1450 行）
+                var ordersReports = new Dictionary<string, (string nickname, float balance, float totalAmount, float profit)>();
+                
+                if (_orderService != null)
+                {
+                    foreach (var order in orders)
+                    {
+                        // 结算单个订单
+                        await _orderService.SettleSingleOrderAsync(order, data);
+                        
+                        // 统计输赢数据，整合显示给会员看的（参考 F5BotV2 第 1436-1449 行）
+                        var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
+                        if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
+                        
+                        // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
+                        string nickname = order.Nickname ?? member.Nickname ?? member.DisplayName ?? "未知";
+                        
+                        if (!ordersReports.ContainsKey(order.Wxid))
+                        {
+                            ordersReports[order.Wxid] = (
+                                nickname,
+                                member.Balance,
+                                order.AmountTotal,
+                                order.Profit
+                            );
+                        }
+                        else
+                        {
+                            var existing = ordersReports[order.Wxid];
+                            ordersReports[order.Wxid] = (
+                                existing.nickname,
+                                existing.balance,
+                                existing.totalAmount + order.AmountTotal,
+                                existing.profit + order.Profit
+                            );
+                        }
+                    }
+                    
+                    _logService.Info("BinggoLotteryService", $"✅ 结算完成: {orders.Count} 单");
+                }
+                
+                // 🔥 转换为列表格式（用于发送消息）
+                var ordersReportsList = ordersReports.Select(kvp => (
+                    wxid: kvp.Key,
+                    nickname: kvp.Value.nickname,
+                    balance: kvp.Value.balance,
+                    totalAmount: kvp.Value.totalAmount,
+                    profit: kvp.Value.profit
+                )).ToList();
+                
+                // 🔥 3. 发送中奖名单和留分名单到微信群（参考 F5BotV2 第 1415-1474 行）
+                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
+                {
+                    await SendSettlementMessagesAsync(data, groupWxId, issueidLite, ordersReportsList);
+                }
+                else
+                {
+                    _logService.Info("BinggoLotteryService", "未绑定群或微信未登录，跳过发送结算消息");
+                }
+                
+                // 🔥 4. 清空会员表当期投注金额（参考 F5BotV2 第 1477-1480 行）
+                ClearMembersBetCur();
+                
+                // 🔥 5. 触发开奖事件（通知 UI 更新）
+                LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                {
+                    LotteryData = data
+                });
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"开奖处理失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 发送结算消息到微信群（参考 F5BotV2: On已开奖）
+        /// 格式：第{issueid_lite}队\r{开奖号码}\r----中~名单----\r{会员名}[余额] 纯利\r
+        /// </summary>
+        private async Task SendSettlementMessagesAsync(
+            BinggoLotteryData lotteryData, 
+            string groupWxId, 
+            int issueidLite,
+            List<(string wxid, string nickname, float balance, float totalAmount, float profit)> ordersReports)
+        {
+            try
+            {
+                int issueId = lotteryData.IssueId;
+                
+                if (ordersReports == null || ordersReports.Count == 0)
+                {
+                    _logService.Info("BinggoLotteryService", $"期号 {issueId} 没有已结算订单，跳过发送消息");
+                    return;
+                }
+                
+                // 🔥 发送中奖名单（参考 F5BotV2 第 1415-1462 行）
+                // 格式：第{issueid_lite}队\r{开奖号码}\r----中~名单----\r{会员名}[余额] 纯利\r
+                var winningMessage = new System.Text.StringBuilder();
+                winningMessage.Append($"第{issueidLite}队\r");
+                winningMessage.Append($"{lotteryData.ToLotteryString()}\r");
+                winningMessage.Append($"----中~名单----\r");
+                
+                foreach (var report in ordersReports)
+                {
+                    // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
+                    float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
+                    winningMessage.Append($"{report.nickname}[{(int)report.balance}] {(int)netProfit}\r");
+                }
+                
+                _logService.Info("BinggoLotteryService", $"📤 发送中奖名单到群: {groupWxId}");
+                var response1 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, winningMessage.ToString());
+                if (response1 != null)
+                {
+                    _logService.Info("BinggoLotteryService", "✅ 中奖名单已发送");
+                }
+                
+                // 🔥 发送留分名单（参考 F5BotV2 第 1464-1474 行）
+                // 格式：第{issueid_lite}队\r{开奖号码}\r----留~名单----\r{会员名} 余额\r
+                var balanceMessage = new System.Text.StringBuilder();
+                balanceMessage.Append($"第{issueidLite}队\r");
+                balanceMessage.Append($"{lotteryData.ToLotteryString()}\r");
+                balanceMessage.Append($"----留~名单----\r");
+                
+                if (_membersBindingList != null)
+                {
+                    foreach (var member in _membersBindingList)
+                    {
+                        // 🔥 格式完全一致：{nickname} {(int)Balance}\r
+                        if ((int)member.Balance >= 1)  // 余额 >= 1 才显示
+                        {
+                            balanceMessage.Append($"{member.Nickname ?? member.DisplayName ?? "未知"} {(int)member.Balance}\r");
+                        }
+                    }
+                }
+                
+                _logService.Info("BinggoLotteryService", $"📤 发送留分名单到群: {groupWxId}");
+                var response2 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, balanceMessage.ToString());
+                if (response2 != null)
+                {
+                    _logService.Info("BinggoLotteryService", "✅ 留分名单已发送");
+                }
+                
+                // 🔥 检查是否是今日最后一期（参考 F5BotV2 第 1482-1488 行）
+                int dayIndex = Helpers.BinggoHelper.GetDayIndex(issueId);
+                if (dayIndex == 203)
+                {
+                    _logService.Info("BinggoLotteryService", "今日最后一期，发送结束消息");
+                    var endMessage = "各位客官今日份结束咯。\r";
+                    await _socketClient!.SendAsync<object>("SendMessage", groupWxId, endMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"发送结算消息失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 清空会员表当期投注金额（参考 F5BotV2 第 1477-1480 行）
+        /// </summary>
+        private void ClearMembersBetCur()
+        {
+            try
+            {
+                if (_membersBindingList == null) return;
+                
+                int clearedCount = 0;
+                foreach (var member in _membersBindingList)
+                {
+                    member.BetCur = 0;  // 清空当期投注金额
+                    clearedCount++;
+                }
+                
+                _logService.Info("BinggoLotteryService", $"✅ 已清空 {clearedCount} 个会员的当期投注金额");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"清空会员投注金额失败: {ex.Message}", ex);
             }
         }
         
