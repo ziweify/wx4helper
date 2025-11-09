@@ -1166,9 +1166,8 @@ namespace BaiShengVx3Plus
             
             if (dgvContacts.Rows[e.RowIndex].DataBoundItem is WxContact contact)
             {
-                var cur = ConfigurationManager.Instance.Configuration.CurrentBoundContact;
                 // 🔥 如果是当前绑定的联系人，用绿色背景
-                if (cur != null && contact.Wxid == cur.Wxid)
+                if (_groupBindingService.CurrentBoundGroup != null && contact.Wxid == _groupBindingService.CurrentBoundGroup.Wxid)
                 {
                     dgvContacts.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(240, 255, 240); // 浅绿色
                     dgvContacts.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.FromArgb(82, 196, 26);   // 深绿色文字
@@ -1198,7 +1197,7 @@ namespace BaiShengVx3Plus
             // 🔥 检查是否是绑定的行
             if (dgvContacts.Rows[e.RowIndex].DataBoundItem is WxContact contact)
             {
-                var cur = ConfigurationManager.Instance.Configuration.CurrentBoundContact;
+                var cur = _groupBindingService.CurrentBoundGroup;
                 isBound = (cur != null && contact.Wxid == cur.Wxid);
             }
             
@@ -1612,9 +1611,6 @@ namespace BaiShengVx3Plus
                 // 🔥 1. 使用服务绑定群组
                 _groupBindingService.BindGroup(contact);
 
-                var curContact = ConfigurationManager.Instance.Configuration.CurrentBoundContact;
-                curContact = contact;
-                
                 // 2. 更新 UI 显示
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
                 txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
@@ -3200,7 +3196,7 @@ namespace BaiShengVx3Plus
 
                     // 启动自动投注
                     _logService.Info("VxMain", "🚀 启动自动投注（飞单）...");
-                    if (Services.ConfigurationManager.Instance.Configuration.CurrentBoundContact.Wxid == "")
+                    if (_groupBindingService.CurrentBoundGroup == null)
                         throw new Exception("没有绑定群！自动投注程序不启动！");
 
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);

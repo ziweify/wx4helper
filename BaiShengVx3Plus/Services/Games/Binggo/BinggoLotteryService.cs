@@ -562,9 +562,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 如果网络失败，从本地读取
                 if (_db != null)
                 {
+                    // 🔥 修复：IsOpened 是计算属性，SQLite-net 无法转换为 SQL
                     var local = _db.Table<BinggoLotteryData>()
-                        .Where(d => d.IsOpened)
+                        .Where(d => !string.IsNullOrEmpty(d.LotteryData))
                         .OrderByDescending(d => d.IssueId)
+                        .Take(count * 2) // 多取一些，因为可能有些记录 LotteryData 不完整
+                        .ToList()
+                        .Where(d => d.IsOpened) // 在内存中过滤，确保已开奖
                         .Take(count)
                         .ToList();
                     
@@ -587,9 +591,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 {
                     try
                     {
+                        // 🔥 修复：IsOpened 是计算属性，SQLite-net 无法转换为 SQL
                         var local = _db.Table<BinggoLotteryData>()
-                            .Where(d => d.IsOpened)
+                            .Where(d => !string.IsNullOrEmpty(d.LotteryData))
                             .OrderByDescending(d => d.IssueId)
+                            .Take(count * 2) // 多取一些，因为可能有些记录 LotteryData 不完整
+                            .ToList()
+                            .Where(d => d.IsOpened) // 在内存中过滤，确保已开奖
                             .Take(count)
                             .ToList();
                         

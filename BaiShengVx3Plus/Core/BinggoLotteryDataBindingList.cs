@@ -72,9 +72,14 @@ namespace BaiShengVx3Plus.Core
             {
                 try
                 {
+                    // 🔥 修复：IsOpened 是计算属性（[Ignore]），SQLite-net 无法转换为 SQL
+                    // 先查询有开奖数据的记录（LotteryData 不为空），然后在内存中过滤 IsOpened
                     var dataList = _db.Table<BinggoLotteryData>()
-                        .Where(d => d.IsOpened)
+                        .Where(d => !string.IsNullOrEmpty(d.LotteryData))
                         .OrderByDescending(d => d.IssueId)
+                        .Take(limit * 2) // 多取一些，因为可能有些记录 LotteryData 不完整
+                        .ToList()
+                        .Where(d => d.IsOpened) // 在内存中过滤，确保已开奖
                         .Take(limit)
                         .ToList();
                     

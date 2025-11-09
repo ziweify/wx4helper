@@ -10,7 +10,7 @@ namespace BaiShengVx3Plus.Models
     public class AppConfiguration : INotifyPropertyChanged
     {
         public AppConfiguration() {
-            _currentBoundContact = new WxContact();
+            //_currentBoundContact = new WxContact();
         }
 
         private bool _isOrdersTaskingEnabled = false; // 默认关闭收单
@@ -19,8 +19,8 @@ namespace BaiShengVx3Plus.Models
 
 
         // 当前绑定的联系人对象
-        private WxContact? _currentBoundContact;
-        public WxContact CurrentBoundContact { get { return _currentBoundContact; } }
+       //private WxContact? _currentBoundContact;
+       // public WxContact CurrentBoundContact { get { return _currentBoundContact; } }
 
         /// <summary>
         /// 收单开关（是否接收微信下注消息）
