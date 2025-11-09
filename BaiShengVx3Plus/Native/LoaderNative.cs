@@ -15,7 +15,10 @@ namespace BaiShengVx3Plus.Native
         static LoaderNative()
         {
             // 获取固定路径：bin\release\net8.0-windows\Loader.dll
-            var basePath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
+            //var basePath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
+            // 🔥 使用固定路径：bin\release\net8.0-windows\WeixinX.dll
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+
             basePath = Path.GetDirectoryName(basePath); // 回到 bin 目录
             
             if (string.IsNullOrEmpty(basePath))
@@ -23,7 +26,7 @@ namespace BaiShengVx3Plus.Native
                 throw new InvalidOperationException("无法获取应用程序基础路径");
             }
             
-            var dllPath = Path.Combine(basePath, "release", "net8.0-windows", "Loader.dll");
+            var dllPath = Path.Combine(basePath,  "Loader.dll");
             
             Console.WriteLine($"[LoaderNative] 加载 Loader.dll: {dllPath}");
             
