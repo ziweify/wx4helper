@@ -124,6 +124,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         /// <summary>
         /// 状态变更事件 - 封盘时处理订单和推送投注命令
+        /// 🔥 投注时机：在"封盘中"状态时投注（参考 F5BotV2 第1205行 On封盘中 → 第1244行 BetOrder）
         /// </summary>
         private async void LotteryService_StatusChanged(object? sender, BinggoStatusChangedEventArgs e)
         {
@@ -135,10 +136,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 return;
             }
             
-            // 🔥 防止重复投注：双重检查
-            // 1. 检查状态是否真正变化（从非"即将封盘"变为"即将封盘"）
+            // 🔥 投注时机：在"封盘中"状态时投注（参考 F5BotV2 第1205行 On封盘中）
+            // 防止重复投注：双重检查
+            // 1. 检查状态是否真正变化（从非"封盘中"变为"封盘中"）
             // 2. 检查当前期号是否已经处理过投注
-            if (e.NewStatus == BinggoLotteryStatus.即将封盘)
+            if (e.NewStatus == BinggoLotteryStatus.封盘中)
             {
                 // 如果已经处理过当前期号，直接跳过
                 if (_hasProcessedCurrentIssue)
@@ -147,17 +149,17 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     return;
                 }
                 
-                // 只在第一次进入"即将封盘"状态时处理
-                if (_lastStatus == BinggoLotteryStatus.即将封盘)
+                // 只在第一次进入"封盘中"状态时处理
+                if (_lastStatus == BinggoLotteryStatus.封盘中)
                 {
-                    _log.Warning("AutoBet", $"⚠️ 已经在'即将封盘'状态，跳过重复触发（30秒/15秒提醒）");
+                    _log.Warning("AutoBet", $"⚠️ 已经在'封盘中'状态，跳过重复触发");
                     return;
                 }
                 
                 _log.Info("AutoBet", $"   上次状态: {_lastStatus}");
                 _log.Info("AutoBet", $"   当前状态: {e.NewStatus}");
                 _log.Info("AutoBet", $"   配置ID: {_currentConfigId}");
-                _log.Info("AutoBet", $"🎯 触发封盘事件: 期号={e.IssueId}");
+                _log.Info("AutoBet", $"🎯 触发封盘投注: 期号={e.IssueId}");
                 
                 // 🔥 更新状态标记
                 _lastStatus = e.NewStatus;

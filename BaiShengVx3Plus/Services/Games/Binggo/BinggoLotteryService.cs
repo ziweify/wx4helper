@@ -259,6 +259,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 处理期号变更（新版 - 异步）
         /// 🔥 重要：只维护当前期号的状态，上期数据只是异步加载显示
+        /// 参考 F5BotV2 第983行：期号变更时，如果上一期还没开奖，状态设置为"开奖中"
         /// </summary>
         private async Task HandleIssueChangeAsync(int oldIssueId, int newIssueId)
         {
@@ -290,6 +291,25 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 var queueData = new BinggoLotteryData { IssueId = 0 };
                 _lotteryQueue.AddOrUpdate(oldIssueId, queueData, (key, oldValue) => queueData);
                 _logService.Info("BinggoLotteryService", $"📥 期号 {oldIssueId} 已加入开奖队列");
+                
+                // 🔥 期号变更时，如果上一期还没开奖，状态设置为"开奖中"（参考 F5BotV2 第983行 On开奖中）
+                // 检查上一期是否已开奖
+                var lastData = await GetLotteryDataAsync(oldIssueId, forceRefresh: false);
+                if (lastData == null || !lastData.IsOpened)
+                {
+                    // 上一期还没开奖，状态设置为"开奖中"
+                    var oldStatus = _currentStatus;
+                    _currentStatus = BinggoLotteryStatus.开奖中;
+                    _logService.Info("BinggoLotteryService", $"🎲 上一期({oldIssueId})尚未开奖，状态设置为: 开奖中");
+                    
+                    StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                    {
+                        OldStatus = oldStatus,
+                        NewStatus = BinggoLotteryStatus.开奖中,
+                        IssueId = oldIssueId,
+                        Message = "等待上期开奖"
+                    });
+                }
                 
                 // 🔥 异步加载上期开奖数据（作为备用方案）
                 // 当数据到达时，会触发 LotteryOpened 事件，UI 会再次更新
@@ -349,9 +369,26 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                                         _bindingList?.LoadFromDatabase(100);
                                     }
                                     
-                                    // 🔥 处理开奖（参考 F5BotV2: On已开奖(bgData)）
-                                    // 统一在这里处理：结算、发送微信消息、清空投注金额等
-                                    await OnLotteryOpenedAsync(openedData);
+                    // 🔥 处理开奖（参考 F5BotV2: On已开奖(bgData)）
+                    // 统一在这里处理：结算、发送微信消息、清空投注金额等
+                    await OnLotteryOpenedAsync(openedData);
+                    
+                    // 🔥 开奖后，状态变为"等待中"（参考 F5BotV2 第1076行）
+                    // 然后在状态循环中，当满足条件时会变成"开盘中"
+                    if (_currentStatus == BinggoLotteryStatus.开奖中)
+                    {
+                        var oldStatus = _currentStatus;
+                        _currentStatus = BinggoLotteryStatus.等待中;
+                        _logService.Info("BinggoLotteryService", $"✅ 开奖完成，状态从'开奖中'变为'等待中'");
+                        
+                        StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                        {
+                            OldStatus = oldStatus,
+                            NewStatus = BinggoLotteryStatus.等待中,
+                            IssueId = openedData.IssueId,
+                            Message = "开奖完成，等待下一期"
+                        });
+                    }
                                 }
                                 else
                                 {
@@ -473,14 +510,24 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             // 🔥 根据倒计时判断状态（本地计算）
             // ========================================
             
+            // 🔥 如果当前状态是"开奖中"，不能直接变成"开盘中"，必须先变成"等待中"
+            // 只有在"等待中"状态时，才能根据倒计时变成"开盘中"
+            if (oldStatus == BinggoLotteryStatus.开奖中)
+            {
+                // 开奖中状态时，不更新状态，等待开奖完成后再更新
+                return;
+            }
+            
             if (secondsToSeal > 30)
             {
                 // 开盘中（距离封盘超过 30 秒）
                 newStatus = BinggoLotteryStatus.开盘中;
                 
-                // 重置提醒标志（新一期开始）
-                _reminded30Seconds = false;
-                _reminded15Seconds = false;
+                // 🔥 只在第一次进入"开盘中"状态时执行 On开盘中 逻辑（参考 F5BotV2 第1139-1178行）
+                if (oldStatus != BinggoLotteryStatus.开盘中)
+                {
+                    _ = Task.Run(async () => await OnOpeningAsync(_currentIssueId));
+                }
             }
             else if (secondsToSeal > 0)
             {
@@ -1140,6 +1187,46 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Error("BinggoLotteryService", 
                     $"处理消息失败: {ex.Message}", ex);
                 return (true, "系统错误，请稍后重试", null);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 开盘处理（参考 F5BotV2 第1139-1178行 On开盘中）
+        /// 只在状态变为"开盘中"时执行一次
+        /// </summary>
+        private async Task OnOpeningAsync(int issueId)
+        {
+            try
+            {
+                _logService.Info("BinggoLotteryService", $"📢 开盘处理: 期号 {issueId}");
+                
+                // 🔥 重置提醒标志（参考 F5BotV2 第1157-1158行）
+                _reminded30Seconds = false;
+                _reminded15Seconds = false;
+                
+                // 🔥 发送开盘提示消息（参考 F5BotV2 第1159行）
+                // 格式：第{issueid % 1000}队\r{Reply_开盘提示}
+                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
+                {
+                    int issueShort = issueId % 1000;
+                    string message = $"第{issueShort}队\r---------线下开始---------";
+                    
+                    _logService.Info("BinggoLotteryService", $"📢 发送开盘提示: {groupWxId} - {message}");
+                    
+                    var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
+                    if (response != null)
+                    {
+                        _logService.Info("BinggoLotteryService", $"✅ 开盘提示已发送: {message}");
+                    }
+                }
+                
+                // 🔥 TODO: 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
+                // 暂时不实现，等待后续需求
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"开盘处理失败: {ex.Message}", ex);
             }
         }
         
