@@ -295,9 +295,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (0, "开奖数据未找到");
                 }
                 
-                // 2. 查询未结算的订单
+                // 2. 查询待结算的订单（状态为待结算，且未结算）
                 var unsetledOrders = _ordersBindingList?
-                    .Where(o => o.IssueId == issueId && !o.IsSettled)
+                    .Where(o => o.IssueId == issueId 
+                        && o.OrderStatus == OrderStatus.待结算 
+                        && !o.IsSettled)
                     .ToList();
                 
                 if (unsetledOrders == null || unsetledOrders.Count == 0)

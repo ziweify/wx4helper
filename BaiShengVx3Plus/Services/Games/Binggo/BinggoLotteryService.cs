@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -40,6 +41,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         // 🔥 时间提醒标志（防止重复触发，参考 F5BotV2）
         private bool _reminded30Seconds = false;
         private bool _reminded15Seconds = false;
+        
+        // 🔥 开奖队列（参考 F5BotV2 的 itemUpdata）
+        // 期号变更时，上期要开奖的期号进入队列，后台线程永远拿最新一条消息来开奖（处理卡奖情况）
+        private readonly ConcurrentDictionary<int, BinggoLotteryData> _lotteryQueue = new ConcurrentDictionary<int, BinggoLotteryData>();
+        private CancellationTokenSource? _queueCheckCts;
+        private Task? _queueCheckTask;
         
         // 事件
         public event EventHandler<BinggoIssueChangedEventArgs>? IssueChanged;
@@ -101,6 +108,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 dueTime: TimeSpan.FromSeconds(1),
                 period: TimeSpan.FromSeconds(1)
             );
+            
+            // 🔥 启动开奖队列检查线程（参考 F5BotV2）
+            _queueCheckCts = new CancellationTokenSource();
+            _queueCheckTask = Task.Run(() => CheckLotteryQueueAsync(_queueCheckCts.Token), _queueCheckCts.Token);
+            _logService.Info("BinggoLotteryService", "✅ 开奖队列检查线程已启动");
         }
         
         public Task StopAsync()
@@ -109,6 +121,24 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             _isRunning = false;
             _timer?.Dispose();
             _timer = null;
+            
+            // 🔥 停止开奖队列检查线程
+            _queueCheckCts?.Cancel();
+            if (_queueCheckTask != null)
+            {
+                try
+                {
+                    _queueCheckTask.Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    _logService.Warning("BinggoLotteryService", $"停止队列检查线程异常: {ex.Message}");
+                }
+            }
+            _queueCheckCts?.Dispose();
+            _queueCheckCts = null;
+            _queueCheckTask = null;
+            
             return Task.CompletedTask;
         }
         
@@ -205,7 +235,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     LastLotteryData = dataLast  // 上期数据（号码为空，显示为 ✱）
                 });
                 
-                // 🔥 异步加载上期开奖数据
+                // 🔥 期号变更时，上期要开奖的期号进入开奖队列（参考 F5BotV2）
+                // 创建一个空的 BinggoLotteryData 对象，IssueId 为 0 表示还未获取到开奖数据
+                var queueData = new BinggoLotteryData { IssueId = 0 };
+                _lotteryQueue.AddOrUpdate(oldIssueId, queueData, (key, oldValue) => queueData);
+                _logService.Info("BinggoLotteryService", $"📥 期号 {oldIssueId} 已加入开奖队列");
+                
+                // 🔥 异步加载上期开奖数据（作为备用方案）
                 // 当数据到达时，会触发 LotteryOpened 事件，UI 会再次更新
                 await LoadPreviousLotteryDataAsync(oldIssueId);
             }
@@ -213,6 +249,93 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Error("BinggoLotteryService", $"期号变更处理异常: {ex.Message}", ex);
             }
+        }
+        
+        /// <summary>
+        /// 🔥 开奖队列检查线程（参考 F5BotV2 的更新队列线程）
+        /// 永远拿最新一条消息来开奖，处理官方卡奖情况
+        /// </summary>
+        private async Task CheckLotteryQueueAsync(CancellationToken cancellationToken)
+        {
+            _logService.Info("BinggoLotteryService", "🔄 开奖队列检查线程已启动");
+            
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    if (_lotteryQueue.Count > 0)
+                    {
+                        // 🔥 永远拿最新一条消息（参考 F5BotV2: itemUpdata.LastOrDefault()）
+                        var lastItem = _lotteryQueue.OrderByDescending(kvp => kvp.Key).FirstOrDefault();
+                        
+                        if (lastItem.Key > 0 && lastItem.Value != null)
+                        {
+                            int queueIssueId = lastItem.Key;
+                            BinggoLotteryData queueData = lastItem.Value;
+                            
+                            // 🔥 如果队列中的期号和实际获取到的开奖数据的期号不一致，说明还没有获取到开奖数据
+                            // 参考 F5BotV2: if(item.Key != item.Value.IssueId)
+                            if (queueData.IssueId == 0 || queueData.IssueId != queueIssueId || !queueData.IsOpened)
+                            {
+                                _logService.Info("BinggoLotteryService", $"📡 检查开奖队列: 期号 {queueIssueId} 尚未开奖，请求API...");
+                                
+                                // 🔥 调用API获取开奖数据
+                                var api = Services.Api.BoterApi.GetInstance();
+                                var response = await api.GetBgDataAsync(queueIssueId);
+                                
+                                if (response.Code == 0 && response.Data != null && response.Data.IsOpened)
+                                {
+                                    var openedData = response.Data;
+                                    
+                                    _logService.Info("BinggoLotteryService", $"✅ 获取到开奖数据: {queueIssueId} - {openedData.ToLotteryString()}");
+                                    
+                                    // 从队列中移除
+                                    _lotteryQueue.TryRemove(queueIssueId, out _);
+                                    
+                                    // 保存到数据库
+                                    if (_db != null)
+                                    {
+                                        _db.InsertOrReplace(openedData);
+                                        _bindingList?.LoadFromDatabase(100);
+                                    }
+                                    
+                                    // 🔥 触发开奖事件（参考 F5BotV2: On已开奖(bgData)）
+                                    _logService.Info("BinggoLotteryService", $"🎲 触发开奖事件: {queueIssueId}");
+                                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                                    {
+                                        LotteryData = openedData
+                                    });
+                                }
+                                else
+                                {
+                                    _logService.Debug("BinggoLotteryService", $"⏳ 期号 {queueIssueId} 尚未开奖，等待下次检查...");
+                                }
+                            }
+                            else
+                            {
+                                // 已经开奖，从队列中移除
+                                _lotteryQueue.TryRemove(queueIssueId, out _);
+                                _logService.Info("BinggoLotteryService", $"✅ 期号 {queueIssueId} 已开奖，从队列中移除");
+                            }
+                        }
+                    }
+                    
+                    // 每1秒检查一次
+                    await Task.Delay(1000, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logService.Info("BinggoLotteryService", "🛑 开奖队列检查线程已取消");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("BinggoLotteryService", $"开奖队列检查异常: {ex.Message}", ex);
+                    await Task.Delay(1000, cancellationToken); // 异常时等待1秒后继续
+                }
+            }
+            
+            _logService.Info("BinggoLotteryService", "🛑 开奖队列检查线程已退出");
         }
         
         /// <summary>
