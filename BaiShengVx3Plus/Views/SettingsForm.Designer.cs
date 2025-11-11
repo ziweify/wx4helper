@@ -29,14 +29,14 @@ namespace BaiShengVx3Plus.Views
         private void InitializeComponent()
         {
             uiTabControl1 = new Sunny.UI.UITabControl();
+            tabPageSystem = new TabPage();
+            chkAdminModeSettings = new Sunny.UI.UICheckBox();
             tabPageConnection = new TabPage();
-            tabPageSystem = new TabPage(); // 🔥 系统设置选项卡
             uiGroupBox2 = new Sunny.UI.UIGroupBox();
             btnApplyReconnect = new Sunny.UI.UIButton();
             txtReconnectInterval = new Sunny.UI.UITextBox();
             uiLabel5 = new Sunny.UI.UILabel();
             chkAutoReconnect = new Sunny.UI.UICheckBox();
-            chkAdminModeSettings = new Sunny.UI.UICheckBox(); // 🔥 管理模式checkbox
             uiGroupBox1 = new Sunny.UI.UIGroupBox();
             btnRefreshStatus = new Sunny.UI.UIButton();
             lblConnectionStatus = new Sunny.UI.UILabel();
@@ -50,6 +50,7 @@ namespace BaiShengVx3Plus.Views
             uiGroupBox4 = new Sunny.UI.UIGroupBox();
             btnQuickSendImage = new Sunny.UI.UIButton();
             btnQuickSendMessage = new Sunny.UI.UIButton();
+            btnQuickGetGroupContacts = new Sunny.UI.UIButton();
             btnQuickGetContacts = new Sunny.UI.UIButton();
             btnQuickGetUserInfo = new Sunny.UI.UIButton();
             uiGroupBox3 = new Sunny.UI.UIGroupBox();
@@ -61,8 +62,9 @@ namespace BaiShengVx3Plus.Views
             uiLabel3 = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
-            btnQuickGetGroupContacts = new Sunny.UI.UIButton();
+            uiCheckBox1 = new Sunny.UI.UICheckBox();
             uiTabControl1.SuspendLayout();
+            tabPageSystem.SuspendLayout();
             tabPageConnection.SuspendLayout();
             uiGroupBox2.SuspendLayout();
             uiGroupBox1.SuspendLayout();
@@ -73,7 +75,7 @@ namespace BaiShengVx3Plus.Views
             // 
             // uiTabControl1
             // 
-            uiTabControl1.Controls.Add(tabPageSystem); // 🔥 系统设置选项卡
+            uiTabControl1.Controls.Add(tabPageSystem);
             uiTabControl1.Controls.Add(tabPageConnection);
             uiTabControl1.Controls.Add(tabPageTest);
             uiTabControl1.Dock = DockStyle.Top;
@@ -93,6 +95,7 @@ namespace BaiShengVx3Plus.Views
             // tabPageSystem
             // 
             tabPageSystem.BackColor = Color.White;
+            tabPageSystem.Controls.Add(uiCheckBox1);
             tabPageSystem.Controls.Add(chkAdminModeSettings);
             tabPageSystem.Location = new Point(0, 40);
             tabPageSystem.Name = "tabPageSystem";
@@ -103,6 +106,7 @@ namespace BaiShengVx3Plus.Views
             // chkAdminModeSettings
             // 
             chkAdminModeSettings.Font = new Font("微软雅黑", 12F);
+            chkAdminModeSettings.ForeColor = Color.FromArgb(48, 48, 48);
             chkAdminModeSettings.Location = new Point(40, 40);
             chkAdminModeSettings.MinimumSize = new Size(1, 1);
             chkAdminModeSettings.Name = "chkAdminModeSettings";
@@ -118,7 +122,7 @@ namespace BaiShengVx3Plus.Views
             tabPageConnection.Controls.Add(uiGroupBox1);
             tabPageConnection.Location = new Point(0, 40);
             tabPageConnection.Name = "tabPageConnection";
-            tabPageConnection.Size = new Size(800, 470);
+            tabPageConnection.Size = new Size(200, 60);
             tabPageConnection.TabIndex = 0;
             tabPageConnection.Text = "连接设置";
             // 
@@ -327,7 +331,7 @@ namespace BaiShengVx3Plus.Views
             tabPageTest.Controls.Add(uiGroupBox3);
             tabPageTest.Location = new Point(0, 40);
             tabPageTest.Name = "tabPageTest";
-            tabPageTest.Size = new Size(800, 470);
+            tabPageTest.Size = new Size(200, 60);
             tabPageTest.TabIndex = 1;
             tabPageTest.Text = "命令测试";
             // 
@@ -376,6 +380,20 @@ namespace BaiShengVx3Plus.Views
             btnQuickSendMessage.Text = "发送消息";
             btnQuickSendMessage.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnQuickSendMessage.Click += btnQuickCommand_Click;
+            // 
+            // btnQuickGetGroupContacts
+            // 
+            btnQuickGetGroupContacts.Cursor = Cursors.Hand;
+            btnQuickGetGroupContacts.Font = new Font("微软雅黑", 12F);
+            btnQuickGetGroupContacts.Location = new Point(280, 35);
+            btnQuickGetGroupContacts.MinimumSize = new Size(1, 1);
+            btnQuickGetGroupContacts.Name = "btnQuickGetGroupContacts";
+            btnQuickGetGroupContacts.Size = new Size(131, 29);
+            btnQuickGetGroupContacts.TabIndex = 1;
+            btnQuickGetGroupContacts.Tag = "GetGroupContacts()";
+            btnQuickGetGroupContacts.Text = "获取群成员列表";
+            btnQuickGetGroupContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnQuickGetGroupContacts.Click += btnQuickCommand_Click;
             // 
             // btnQuickGetContacts
             // 
@@ -525,19 +543,17 @@ namespace BaiShengVx3Plus.Views
             btnCancel.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnCancel.Click += btnCancel_Click;
             // 
-            // btnQuickGetGroupContacts
+            // uiCheckBox1
             // 
-            btnQuickGetGroupContacts.Cursor = Cursors.Hand;
-            btnQuickGetGroupContacts.Font = new Font("微软雅黑", 12F);
-            btnQuickGetGroupContacts.Location = new Point(280, 35);
-            btnQuickGetGroupContacts.MinimumSize = new Size(1, 1);
-            btnQuickGetGroupContacts.Name = "btnQuickGetGroupContacts";
-            btnQuickGetGroupContacts.Size = new Size(131, 29);
-            btnQuickGetGroupContacts.TabIndex = 1;
-            btnQuickGetGroupContacts.Tag = "GetGroupContacts()";
-            btnQuickGetGroupContacts.Text = "获取群成员列表";
-            btnQuickGetGroupContacts.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            btnQuickGetGroupContacts.Click += btnQuickCommand_Click;
+            uiCheckBox1.Font = new Font("微软雅黑", 12F);
+            uiCheckBox1.ForeColor = Color.FromArgb(48, 48, 48);
+            uiCheckBox1.Location = new Point(40, 76);
+            uiCheckBox1.MinimumSize = new Size(1, 1);
+            uiCheckBox1.Name = "uiCheckBox1";
+            uiCheckBox1.Padding = new Padding(22, 0, 0, 0);
+            uiCheckBox1.Size = new Size(338, 30);
+            uiCheckBox1.TabIndex = 0;
+            uiCheckBox1.Text = "开发模式（允许手动绑定群, 模拟各项数据）";
             // 
             // SettingsForm
             // 
@@ -551,6 +567,7 @@ namespace BaiShengVx3Plus.Views
             Text = "设置";
             ZoomScaleRect = new Rectangle(15, 15, 800, 610);
             uiTabControl1.ResumeLayout(false);
+            tabPageSystem.ResumeLayout(false);
             tabPageConnection.ResumeLayout(false);
             uiGroupBox2.ResumeLayout(false);
             uiGroupBox1.ResumeLayout(false);
@@ -597,6 +614,7 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UIButton btnQuickGetGroupContacts;
         private TabPage tabPageSystem; // 🔥 系统设置选项卡
         private Sunny.UI.UICheckBox chkAdminModeSettings; // 🔥 管理模式checkbox
+        private Sunny.UI.UICheckBox uiCheckBox1;
     }
 }
 
