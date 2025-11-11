@@ -13,6 +13,21 @@ namespace BaiShengVx3Plus.Models
             //_currentBoundContact = new WxContact();
         }
 
+        /// <summary>
+        ///     运行模式
+        /// </summary>
+        public bool _IsRunModeDev;
+        bool IsRunModeDev { get; set; }    //开发模式, 模拟联系人数据,模拟群数据,模拟恢复消息,可以控制界面显示模拟操作相关内容
+        bool IsRunModeAdmin { get; set; }  //管理模式(可以手动输入绑定群
+        bool IsRunModeBoss { get; set; }   //老板模式
+
+        /// <summary>
+        ///     软件模式
+        /// </summary>
+        bool IsSoftModeVx { get; set; }
+        bool IsSoftModeFeitian { get; set; }
+
+        //运行时
         private bool _isOrdersTaskingEnabled = false; // 默认关闭收单
         private bool _isAutoBetEnabled = false; // 默认关闭自动投注
         private int _sealSecondsAhead = 45; // 默认提前45秒封盘

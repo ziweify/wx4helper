@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,7 +12,12 @@ namespace BaiShengVx3Plus.Services.App
     ///     提供整个app的配置数据,配置模式, 界面数据绑定, 初始化, 及保存
     /// </summary>
     public interface IAppConfigureService
+        : INotifyPropertyChanged
     {
+        string BsUserName { get; set; }   //百盛用户名
+        string BsUserPwd { get; set; }    //百盛密码
+
+
         /// <summary>
         ///     运行模式
         /// </summary>
@@ -22,6 +29,26 @@ namespace BaiShengVx3Plus.Services.App
         ///     软件模式
         /// </summary>
         bool IsSoftModeVx { get; set; }
-        bool IsSoftModeFeidan { get; set; }
+        bool IsSoftModeFeitian { get; set; }
+
+        // 属性自动通知
+        event PropertyChangedEventHandler? PropertyChanged;
+
+        void OnPropertyChanged([CallerMemberName] string? propertyName = null);
+        //{
+        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        //}
+
+        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null);
+        //{
+        //    if (Equals(field, value)) return false;
+
+        //    field = value;
+        //    OnPropertyChanged(propertyName);
+        //    return true;
+        //}
+
+        void Load();
+        void Save();
     }
 }
