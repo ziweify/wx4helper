@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models.Games.Binggo;
+using BaiShengVx3Plus.ViewModels;
 
 namespace BaiShengVx3Plus.Views
 {
@@ -14,15 +15,17 @@ namespace BaiShengVx3Plus.Views
         private readonly IWeixinSocketClient _socketClient;
         private readonly ILogService _logService;
         private readonly BinggoGameSettings _binggoSettings; // 🔥 游戏设置
-
+        private readonly SettingViewModel _settingVmodel;       
         public SettingsForm(
             IWeixinSocketClient socketClient, 
             ILogService logService,
+            SettingViewModel setting,
             BinggoGameSettings binggoSettings) // 🔥 注入游戏设置
         {
             InitializeComponent();
             _socketClient = socketClient;
             _logService = logService;
+            _settingVmodel = setting;
             _binggoSettings = binggoSettings;
             
             // 加载设置
@@ -41,6 +44,9 @@ namespace BaiShengVx3Plus.Views
             
             // 更新连接状态
             UpdateConnectionStatus();
+
+            chkRunModeAdminSettings.DataBindings.Add(new Binding("Checked", _settingVmodel, "Is管理模式"));
+            chkRunModelDev.DataBindings.Add(new Binding("Checked", _settingVmodel, "Is开发模式"));
         }
         
         /// <summary>
@@ -50,9 +56,9 @@ namespace BaiShengVx3Plus.Views
         private void LoadGameSettings()
         {
             // 🔥 管理模式（系统设置）
-            if (chkAdminModeSettings != null)
+            if (chkRunModeAdminSettings != null)
             {
-                chkAdminModeSettings.Checked = _binggoSettings.IsAdminMode;
+                chkRunModeAdminSettings.Checked = _binggoSettings.IsAdminMode;
             }
             
             _logService.Info("SettingsForm", "✅ 系统设置已加载");
@@ -83,9 +89,9 @@ namespace BaiShengVx3Plus.Views
         private void SaveGameSettings()
         {
             // 🔥 管理模式（系统设置）
-            if (chkAdminModeSettings != null)
+            if (chkRunModeAdminSettings != null)
             {
-                _binggoSettings.IsAdminMode = chkAdminModeSettings.Checked;
+                _binggoSettings.IsAdminMode = chkRunModeAdminSettings.Checked;
             }
             
             _logService.Info("SettingsForm", 

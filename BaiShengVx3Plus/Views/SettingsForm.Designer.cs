@@ -30,8 +30,9 @@ namespace BaiShengVx3Plus.Views
         {
             uiTabControl1 = new Sunny.UI.UITabControl();
             tabPageSystem = new TabPage();
-            uiCheckBox1 = new Sunny.UI.UICheckBox();
-            chkAdminModeSettings = new Sunny.UI.UICheckBox();
+            grp开发模式选项 = new Sunny.UI.UIGroupBox();
+            chkRunModelDev = new Sunny.UI.UICheckBox();
+            chkRunModeAdminSettings = new Sunny.UI.UICheckBox();
             tabPageConnection = new TabPage();
             uiGroupBox2 = new Sunny.UI.UIGroupBox();
             btnApplyReconnect = new Sunny.UI.UIButton();
@@ -63,7 +64,6 @@ namespace BaiShengVx3Plus.Views
             uiLabel3 = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
-            grp开发模式选项 = new Sunny.UI.UIGroupBox();
             uiTabControl1.SuspendLayout();
             tabPageSystem.SuspendLayout();
             tabPageConnection.SuspendLayout();
@@ -97,37 +97,50 @@ namespace BaiShengVx3Plus.Views
             // 
             tabPageSystem.BackColor = Color.White;
             tabPageSystem.Controls.Add(grp开发模式选项);
-            tabPageSystem.Controls.Add(uiCheckBox1);
-            tabPageSystem.Controls.Add(chkAdminModeSettings);
+            tabPageSystem.Controls.Add(chkRunModelDev);
+            tabPageSystem.Controls.Add(chkRunModeAdminSettings);
             tabPageSystem.Location = new Point(0, 40);
             tabPageSystem.Name = "tabPageSystem";
             tabPageSystem.Size = new Size(800, 470);
             tabPageSystem.TabIndex = 0;
             tabPageSystem.Text = "系统设置";
             // 
-            // uiCheckBox1
+            // grp开发模式选项
             // 
-            uiCheckBox1.Font = new Font("微软雅黑", 12F);
-            uiCheckBox1.ForeColor = Color.FromArgb(48, 48, 48);
-            uiCheckBox1.Location = new Point(40, 76);
-            uiCheckBox1.MinimumSize = new Size(1, 1);
-            uiCheckBox1.Name = "uiCheckBox1";
-            uiCheckBox1.Padding = new Padding(22, 0, 0, 0);
-            uiCheckBox1.Size = new Size(338, 30);
-            uiCheckBox1.TabIndex = 0;
-            uiCheckBox1.Text = "开发模式（允许手动绑定群, 模拟各项数据）";
+            grp开发模式选项.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            grp开发模式选项.Location = new Point(40, 114);
+            grp开发模式选项.Margin = new Padding(4, 5, 4, 5);
+            grp开发模式选项.MinimumSize = new Size(1, 1);
+            grp开发模式选项.Name = "grp开发模式选项";
+            grp开发模式选项.Padding = new Padding(0, 32, 0, 0);
+            grp开发模式选项.Size = new Size(338, 188);
+            grp开发模式选项.TabIndex = 1;
+            grp开发模式选项.Text = "开发模式选项";
+            grp开发模式选项.TextAlignment = ContentAlignment.MiddleLeft;
             // 
-            // chkAdminModeSettings
+            // chkRunModelDev
             // 
-            chkAdminModeSettings.Font = new Font("微软雅黑", 12F);
-            chkAdminModeSettings.ForeColor = Color.FromArgb(48, 48, 48);
-            chkAdminModeSettings.Location = new Point(40, 40);
-            chkAdminModeSettings.MinimumSize = new Size(1, 1);
-            chkAdminModeSettings.Name = "chkAdminModeSettings";
-            chkAdminModeSettings.Padding = new Padding(22, 0, 0, 0);
-            chkAdminModeSettings.Size = new Size(300, 30);
-            chkAdminModeSettings.TabIndex = 0;
-            chkAdminModeSettings.Text = "管理模式（允许手动绑定群）";
+            chkRunModelDev.Font = new Font("微软雅黑", 12F);
+            chkRunModelDev.ForeColor = Color.FromArgb(48, 48, 48);
+            chkRunModelDev.Location = new Point(40, 76);
+            chkRunModelDev.MinimumSize = new Size(1, 1);
+            chkRunModelDev.Name = "chkRunModelDev";
+            chkRunModelDev.Padding = new Padding(22, 0, 0, 0);
+            chkRunModelDev.Size = new Size(338, 30);
+            chkRunModelDev.TabIndex = 0;
+            chkRunModelDev.Text = "开发模式（允许手动绑定群, 模拟各项数据）";
+            // 
+            // chkRunModeAdminSettings
+            // 
+            chkRunModeAdminSettings.Font = new Font("微软雅黑", 12F);
+            chkRunModeAdminSettings.ForeColor = Color.FromArgb(48, 48, 48);
+            chkRunModeAdminSettings.Location = new Point(40, 40);
+            chkRunModeAdminSettings.MinimumSize = new Size(1, 1);
+            chkRunModeAdminSettings.Name = "chkRunModeAdminSettings";
+            chkRunModeAdminSettings.Padding = new Padding(22, 0, 0, 0);
+            chkRunModeAdminSettings.Size = new Size(300, 30);
+            chkRunModeAdminSettings.TabIndex = 0;
+            chkRunModeAdminSettings.Text = "管理模式（允许手动绑定群）";
             // 
             // tabPageConnection
             // 
@@ -557,19 +570,6 @@ namespace BaiShengVx3Plus.Views
             btnCancel.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnCancel.Click += btnCancel_Click;
             // 
-            // grp开发模式选项
-            // 
-            grp开发模式选项.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            grp开发模式选项.Location = new Point(40, 114);
-            grp开发模式选项.Margin = new Padding(4, 5, 4, 5);
-            grp开发模式选项.MinimumSize = new Size(1, 1);
-            grp开发模式选项.Name = "grp开发模式选项";
-            grp开发模式选项.Padding = new Padding(0, 32, 0, 0);
-            grp开发模式选项.Size = new Size(338, 188);
-            grp开发模式选项.TabIndex = 1;
-            grp开发模式选项.Text = "开发模式选项";
-            grp开发模式选项.TextAlignment = ContentAlignment.MiddleLeft;
-            // 
             // SettingsForm
             // 
             AutoScaleMode = AutoScaleMode.None;
@@ -628,8 +628,8 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UIButton btnQuickSendImage;
         private Sunny.UI.UIButton btnQuickGetGroupContacts;
         private TabPage tabPageSystem; // 🔥 系统设置选项卡
-        private Sunny.UI.UICheckBox chkAdminModeSettings; // 🔥 管理模式checkbox
-        private Sunny.UI.UICheckBox uiCheckBox1;
+        private Sunny.UI.UICheckBox chkRunModeAdminSettings; // 🔥 管理模式checkbox
+        private Sunny.UI.UICheckBox chkRunModelDev;
         private Sunny.UI.UIGroupBox grp开发模式选项;
     }
 }

@@ -15,6 +15,17 @@ namespace BaiShengVx3Plus.ViewModels
     {
         private readonly IInsUserService _insUserService;
 
+
+        [ObservableProperty]
+        public bool Is管理模式;
+
+        [ObservableProperty]
+        public bool Is开发模式;
+
+        [ObservableProperty]
+        public bool Is老板模式;
+
+
         [ObservableProperty]
         private User? _currentUser;
 
