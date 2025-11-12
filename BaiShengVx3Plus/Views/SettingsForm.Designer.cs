@@ -64,8 +64,15 @@ namespace BaiShengVx3Plus.Views
             uiLabel3 = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
+            tbxRunDevCurrentMember = new Sunny.UI.UITextBox();
+            uiLabel7 = new Sunny.UI.UILabel();
+            uiLabel8 = new Sunny.UI.UILabel();
+            tbxRunDevSendMessage = new Sunny.UI.UITextBox();
+            btnRunDevSendCommand = new Sunny.UI.UIButton();
+            uiCheckBox1 = new Sunny.UI.UICheckBox();
             uiTabControl1.SuspendLayout();
             tabPageSystem.SuspendLayout();
+            grp开发模式选项.SuspendLayout();
             tabPageConnection.SuspendLayout();
             uiGroupBox2.SuspendLayout();
             uiGroupBox1.SuspendLayout();
@@ -98,6 +105,7 @@ namespace BaiShengVx3Plus.Views
             tabPageSystem.BackColor = Color.White;
             tabPageSystem.Controls.Add(grp开发模式选项);
             tabPageSystem.Controls.Add(chkRunModelDev);
+            tabPageSystem.Controls.Add(uiCheckBox1);
             tabPageSystem.Controls.Add(chkRunModeAdminSettings);
             tabPageSystem.Location = new Point(0, 40);
             tabPageSystem.Name = "tabPageSystem";
@@ -107,13 +115,18 @@ namespace BaiShengVx3Plus.Views
             // 
             // grp开发模式选项
             // 
+            grp开发模式选项.Controls.Add(btnRunDevSendCommand);
+            grp开发模式选项.Controls.Add(uiLabel8);
+            grp开发模式选项.Controls.Add(uiLabel7);
+            grp开发模式选项.Controls.Add(tbxRunDevSendMessage);
+            grp开发模式选项.Controls.Add(tbxRunDevCurrentMember);
             grp开发模式选项.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            grp开发模式选项.Location = new Point(40, 114);
+            grp开发模式选项.Location = new Point(14, 134);
             grp开发模式选项.Margin = new Padding(4, 5, 4, 5);
             grp开发模式选项.MinimumSize = new Size(1, 1);
             grp开发模式选项.Name = "grp开发模式选项";
             grp开发模式选项.Padding = new Padding(0, 32, 0, 0);
-            grp开发模式选项.Size = new Size(338, 188);
+            grp开发模式选项.Size = new Size(338, 331);
             grp开发模式选项.TabIndex = 1;
             grp开发模式选项.Text = "开发模式选项";
             grp开发模式选项.TextAlignment = ContentAlignment.MiddleLeft;
@@ -122,7 +135,7 @@ namespace BaiShengVx3Plus.Views
             // 
             chkRunModelDev.Font = new Font("微软雅黑", 12F);
             chkRunModelDev.ForeColor = Color.FromArgb(48, 48, 48);
-            chkRunModelDev.Location = new Point(40, 76);
+            chkRunModelDev.Location = new Point(14, 96);
             chkRunModelDev.MinimumSize = new Size(1, 1);
             chkRunModelDev.Name = "chkRunModelDev";
             chkRunModelDev.Padding = new Padding(22, 0, 0, 0);
@@ -134,7 +147,7 @@ namespace BaiShengVx3Plus.Views
             // 
             chkRunModeAdminSettings.Font = new Font("微软雅黑", 12F);
             chkRunModeAdminSettings.ForeColor = Color.FromArgb(48, 48, 48);
-            chkRunModeAdminSettings.Location = new Point(40, 40);
+            chkRunModeAdminSettings.Location = new Point(14, 60);
             chkRunModeAdminSettings.MinimumSize = new Size(1, 1);
             chkRunModeAdminSettings.Name = "chkRunModeAdminSettings";
             chkRunModeAdminSettings.Padding = new Padding(22, 0, 0, 0);
@@ -570,6 +583,77 @@ namespace BaiShengVx3Plus.Views
             btnCancel.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnCancel.Click += btnCancel_Click;
             // 
+            // tbxRunDevCurrentMember
+            // 
+            tbxRunDevCurrentMember.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            tbxRunDevCurrentMember.Location = new Point(104, 37);
+            tbxRunDevCurrentMember.Margin = new Padding(4, 5, 4, 5);
+            tbxRunDevCurrentMember.MinimumSize = new Size(1, 16);
+            tbxRunDevCurrentMember.Name = "tbxRunDevCurrentMember";
+            tbxRunDevCurrentMember.Padding = new Padding(5);
+            tbxRunDevCurrentMember.ShowText = false;
+            tbxRunDevCurrentMember.Size = new Size(219, 29);
+            tbxRunDevCurrentMember.TabIndex = 0;
+            tbxRunDevCurrentMember.TextAlignment = ContentAlignment.MiddleLeft;
+            tbxRunDevCurrentMember.Watermark = "";
+            // 
+            // uiLabel7
+            // 
+            uiLabel7.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            uiLabel7.ForeColor = Color.FromArgb(48, 48, 48);
+            uiLabel7.Location = new Point(15, 42);
+            uiLabel7.Name = "uiLabel7";
+            uiLabel7.Size = new Size(82, 23);
+            uiLabel7.TabIndex = 1;
+            uiLabel7.Text = "当前会员";
+            // 
+            // uiLabel8
+            // 
+            uiLabel8.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            uiLabel8.ForeColor = Color.FromArgb(48, 48, 48);
+            uiLabel8.Location = new Point(15, 79);
+            uiLabel8.Name = "uiLabel8";
+            uiLabel8.Size = new Size(82, 23);
+            uiLabel8.TabIndex = 1;
+            uiLabel8.Text = "消息内容";
+            // 
+            // tbxRunDevSendMessage
+            // 
+            tbxRunDevSendMessage.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            tbxRunDevSendMessage.Location = new Point(104, 76);
+            tbxRunDevSendMessage.Margin = new Padding(4, 5, 4, 5);
+            tbxRunDevSendMessage.MinimumSize = new Size(1, 16);
+            tbxRunDevSendMessage.Name = "tbxRunDevSendMessage";
+            tbxRunDevSendMessage.Padding = new Padding(5);
+            tbxRunDevSendMessage.ShowText = false;
+            tbxRunDevSendMessage.Size = new Size(219, 29);
+            tbxRunDevSendMessage.TabIndex = 0;
+            tbxRunDevSendMessage.TextAlignment = ContentAlignment.MiddleLeft;
+            tbxRunDevSendMessage.Watermark = "";
+            // 
+            // btnRunDevSendCommand
+            // 
+            btnRunDevSendCommand.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnRunDevSendCommand.Location = new Point(244, 113);
+            btnRunDevSendCommand.MinimumSize = new Size(1, 1);
+            btnRunDevSendCommand.Name = "btnRunDevSendCommand";
+            btnRunDevSendCommand.Size = new Size(79, 31);
+            btnRunDevSendCommand.TabIndex = 2;
+            btnRunDevSendCommand.Text = "发送";
+            btnRunDevSendCommand.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            // 
+            // uiCheckBox1
+            // 
+            uiCheckBox1.Font = new Font("微软雅黑", 12F);
+            uiCheckBox1.ForeColor = Color.FromArgb(48, 48, 48);
+            uiCheckBox1.Location = new Point(14, 24);
+            uiCheckBox1.MinimumSize = new Size(1, 1);
+            uiCheckBox1.Name = "uiCheckBox1";
+            uiCheckBox1.Padding = new Padding(22, 0, 0, 0);
+            uiCheckBox1.Size = new Size(300, 30);
+            uiCheckBox1.TabIndex = 0;
+            uiCheckBox1.Text = "老板锁";
+            // 
             // SettingsForm
             // 
             AutoScaleMode = AutoScaleMode.None;
@@ -583,6 +667,7 @@ namespace BaiShengVx3Plus.Views
             ZoomScaleRect = new Rectangle(15, 15, 800, 610);
             uiTabControl1.ResumeLayout(false);
             tabPageSystem.ResumeLayout(false);
+            grp开发模式选项.ResumeLayout(false);
             tabPageConnection.ResumeLayout(false);
             uiGroupBox2.ResumeLayout(false);
             uiGroupBox1.ResumeLayout(false);
@@ -631,6 +716,12 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UICheckBox chkRunModeAdminSettings; // 🔥 管理模式checkbox
         private Sunny.UI.UICheckBox chkRunModelDev;
         private Sunny.UI.UIGroupBox grp开发模式选项;
+        private Sunny.UI.UILabel uiLabel7;
+        private Sunny.UI.UITextBox tbxRunDevCurrentMember;
+        private Sunny.UI.UILabel uiLabel8;
+        private Sunny.UI.UITextBox tbxRunDevSendMessage;
+        private Sunny.UI.UIButton btnRunDevSendCommand;
+        private Sunny.UI.UICheckBox uiCheckBox1;
     }
 }
 
