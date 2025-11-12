@@ -20,6 +20,7 @@ namespace BaiShengVx3Plus.Services.WeChat
         private readonly IUserInfoService _userInfoService;
         private readonly IContactDataService _contactDataService;
         private readonly ILogService _logService;
+        private readonly IConfigurationService _configService; // 🔥 配置服务（用于读取系统设置）
 
         private ConnectionState _currentState = ConnectionState.Disconnected;
         private readonly object _stateLock = new object();
@@ -48,13 +49,15 @@ namespace BaiShengVx3Plus.Services.WeChat
             IWeixinSocketClient socketClient,
             IUserInfoService userInfoService,
             IContactDataService contactDataService,
-            ILogService logService)
+            ILogService logService,
+            IConfigurationService configService) // 🔥 注入配置服务
         {
             _loaderService = loaderService;
             _socketClient = socketClient;
             _userInfoService = userInfoService;
             _contactDataService = contactDataService;
             _logService = logService;
+            _configService = configService; // 🔥 存储配置服务引用
         }
 
         /// <summary>
@@ -66,6 +69,12 @@ namespace BaiShengVx3Plus.Services.WeChat
             try
             {
                 _logService.Info("WeChatService", "========== 开始连接和初始化流程 ==========");
+                // ✅ 示例：获取管理模式设置
+                bool isRunModeAdin = _configService.GetIsRunModeAdmin();
+                bool IsRunModeDev = _configService.GetIsRunModeDev();
+                _logService.Info("WeChatService", $"📋 当前运行模式: 管理模式={isRunModeAdin}, 开发模式={IsRunModeDev}");
+                
+
                 UpdateState(ConnectionState.Connecting, "正在连接...");
 
                 bool needsLaunchOrInject = forceRestart;
@@ -115,8 +124,14 @@ namespace BaiShengVx3Plus.Services.WeChat
                 // 3. 获取用户信息（带重试）
                 _logService.Info("WeChatService", "👤 步骤4: 获取用户信息");
                 UpdateState(ConnectionState.FetchingUserInfo, "正在获取用户信息...");
-
-                var userInfo = await RefreshUserInfoAsync(maxRetries: -1, retryInterval: 2000, cancellationToken);
+                
+                // 🔥 传递开发模式参数，用于模拟返回数据
+                WxUserInfo? userInfo = await RefreshUserInfoAsync(
+                    maxRetries: -1, 
+                    retryInterval: 2000, 
+                    cancellationToken, 
+                    isRunModeDev: IsRunModeDev);
+                
                 if (userInfo == null || string.IsNullOrEmpty(userInfo.Wxid))
                 {
                     UpdateState(ConnectionState.Failed, "获取用户信息失败");
@@ -124,22 +139,24 @@ namespace BaiShengVx3Plus.Services.WeChat
                 }
 
                 // 4. 初始化数据库
-                _logService.Info("WeChatService", $"💾 步骤5: 设置当前 wxid: {userInfo.Wxid}");
+                _logService.Info("WeChatService", $"💾 步骤5: 更新用户信息: {userInfo.Wxid}");
                 UpdateState(ConnectionState.InitializingDatabase, "正在初始化...");
 
+                // 🔥 更新用户信息（会自动同步 wxid 到 ContactDataService）
                 // 🔥 数据库初始化由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动处理
-                _contactDataService.SetCurrentWxid(userInfo.Wxid);
+                _userInfoService.UpdateUserInfo(userInfo);
 
                 // 5. 获取联系人（智能选择：快速连接用单次尝试，新启动用重试）
                 _logService.Info("WeChatService", "📇 步骤6: 获取联系人列表");
                 UpdateState(ConnectionState.FetchingContacts, "正在获取联系人列表...");
                 
                 List<WxContact> contacts;
-                
+
                 // 🔥 如果快速连接成功（微信已打开），使用快速重试（最多2次，间隔500ms）
                 // 如果启动/注入了微信，使用重试机制（等待数据库句柄初始化）
-                if (!needsLaunchOrInject)
+                if (needsLaunchOrInject)
                 {
+                    //如果是开发模式
                     _logService.Info("WeChatService", "🚀 快速连接模式：使用快速重试获取联系人（微信已就绪）");
                     // 🔥 快速连接模式下，如果第一次失败，快速重试一次（不等待太久）
                     contacts = await RefreshContactsAsyncWithRetry(
@@ -151,10 +168,23 @@ namespace BaiShengVx3Plus.Services.WeChat
                 {
                     _logService.Info("WeChatService", "⏳ 新启动模式：使用重试机制获取联系人（等待数据库句柄初始化）");
                     // 🔥 等待并重试获取联系人（直到数据库句柄初始化完成）
-                    contacts = await RefreshContactsAsyncWithRetry(
-                        maxRetries: 5,  // 🔥 减少重试次数（从10次减少到5次）
-                        retryInterval: 1000,  // 🔥 减少重试间隔（从2000ms减少到1000ms）
-                        cancellationToken);
+                    if(!IsRunModeDev)
+                    {
+                        contacts = await RefreshContactsAsyncWithRetry(
+                                                maxRetries: 5,  // 🔥 减少重试次数（从10次减少到5次）
+                                                retryInterval: 1000,  // 🔥 减少重试间隔（从2000ms减少到1000ms）
+                                                cancellationToken);
+                    }
+                    else
+                    {
+                        contacts = new List<WxContact>();
+                        contacts.Add(new WxContact() { Wxid = "wxid_111111", Account = "111111", Nickname = "n111111" });
+                        contacts.Add(new WxContact() { Wxid = "wxid_222222", Account = "222222", Nickname = "n222222" });
+                        contacts.Add(new WxContact() { Wxid = "wxid_333333", Account = "333333", Nickname = "n333333" });
+                        contacts.Add(new WxContact() { Wxid = "wxid_444444", Account = "444444", Nickname = "n444444" });
+                        contacts.Add(new WxContact() { Wxid = "wxid_555555", Account = "555555", Nickname = "n555555" });
+                    }
+                    
                 }
                 
                 _logService.Info("WeChatService", $"✓ 联系人获取成功，共 {contacts.Count} 个");
@@ -185,7 +215,8 @@ namespace BaiShengVx3Plus.Services.WeChat
         public async Task<WxUserInfo?> RefreshUserInfoAsync(
             int maxRetries = 10,
             int retryInterval = 2000,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool isRunModeDev = false)
         {
             UpdateState(ConnectionState.FetchingUserInfo, "正在获取用户信息（等待登录）...");
 
@@ -197,6 +228,20 @@ namespace BaiShengVx3Plus.Services.WeChat
                 try
                 {
                     _logService.Info("WeChatService", $"尝试获取用户信息 (尝试 {attempt + 1}{(maxRetries == -1 ? "" : $"/{maxRetries}")})");
+
+                    // 🔥 开发模式：返回模拟数据
+                    if (isRunModeDev)
+                    {
+                        var userInfo = new WxUserInfo()
+                        {
+                            Account = "kaice",
+                            Nickname = "开测",
+                            Mobile = "111111",
+                            Wxid = "wxid_kaice"
+                        };
+                        _logService.Info("WeChatService", $"✓ [开发模式]用户信息获取成功: {userInfo.Nickname} ({userInfo.Wxid})");
+                        return userInfo;
+                    }
 
                     var userInfoDoc = await _socketClient.SendAsync<JsonDocument>("GetUserInfo", 10000);
                     if (userInfoDoc != null)
@@ -218,7 +263,7 @@ namespace BaiShengVx3Plus.Services.WeChat
                                 DbKey = root.TryGetProperty("db_key", out var dbk) ? dbk.GetString() ?? "" : ""
                             };
 
-                            _userInfoService.UpdateUserInfo(userInfo);
+                            // ✅ 只返回用户信息，由调用者决定是否更新（避免重复调用）
                             _logService.Info("WeChatService", $"✓ 用户信息获取成功: {userInfo.Nickname} ({userInfo.Wxid})");
                             return userInfo;
                         }

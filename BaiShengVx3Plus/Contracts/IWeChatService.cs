@@ -36,11 +36,13 @@ namespace BaiShengVx3Plus.Contracts
         /// <param name="maxRetries">最大重试次数，-1表示无限重试</param>
         /// <param name="retryInterval">重试间隔（毫秒）</param>
         /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="isRunModeDev">是否为开发模式（返回模拟数据）</param>
         /// <returns>用户信息，失败返回null</returns>
         Task<WxUserInfo?> RefreshUserInfoAsync(
             int maxRetries = 10, 
             int retryInterval = 2000, 
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            bool isRunModeDev = false);
 
         /// <summary>
         /// 刷新联系人列表
