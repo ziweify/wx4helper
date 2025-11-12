@@ -39,14 +39,32 @@ namespace BaiShengVx3Plus.Views
             txtPort.Text = "6328";
             txtReconnectInterval.Text = "5000";
             
-            // 🔥 游戏设置（参考 F5BotV2）
-            LoadGameSettings();
-            
             // 更新连接状态
             UpdateConnectionStatus();
 
-            chkRunModeAdminSettings.DataBindings.Add(new Binding("Checked", _settingVmodel, "Is管理模式"));
-            chkRunModelDev.DataBindings.Add(new Binding("Checked", _settingVmodel, "Is开发模式"));
+            // ✅ 数据绑定（必须在手动设置值之前建立绑定）
+            chkRunModeAdminSettings.DataBindings.Add(
+                new Binding("Checked", _settingVmodel, "Is管理模式", 
+                    false, // formattingEnabled
+                    DataSourceUpdateMode.OnPropertyChanged)); // 🔥 关键：属性变化时立即更新
+            
+            chkRunModelDev.DataBindings.Add(
+                new Binding("Checked", _settingVmodel, "Is开发模式", 
+                    false, 
+                    DataSourceUpdateMode.OnPropertyChanged)); // 🔥 关键：属性变化时立即更新
+            
+            // 🔍 测试：验证绑定是否生效（初始值）
+            _logService.Info("SettingsForm", $"📋 设置加载: 管理模式={_settingVmodel.Is管理模式}, 开发模式={_settingVmodel.Is开发模式}");
+            _logService.Info("SettingsForm", $"📋 UI显示: 管理模式Checked={chkRunModeAdminSettings.Checked}, 开发模式Checked={chkRunModelDev.Checked}");
+            
+            // 🔍 测试：验证属性变更通知是否工作
+            _settingVmodel.PropertyChanged += (s, e) =>
+            {
+                _logService.Info("SettingsForm", $"🔔 ViewModel 属性变更: {e.PropertyName}");
+            };
+            
+            // 🔥 加载其他游戏设置（但不覆盖已绑定的控件）
+            // LoadGameSettings(); // ❌ 注释掉，避免覆盖数据绑定
         }
         
         /// <summary>

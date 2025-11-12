@@ -97,6 +97,7 @@ namespace BaiShengVx3Plus
                         // 注册ViewModels
                         services.AddTransient<ConfigViewModel>();
                         services.AddTransient<VxMainViewModel>();
+                        services.AddSingleton<ViewModels.SettingViewModel>(); // 🌐 全局单例（任何地方都可能用到）
 
                         // 注册Views
                         services.AddTransient<LoginForm>();

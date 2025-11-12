@@ -25,6 +25,21 @@ namespace BaiShengVx3Plus.Contracts
         /// </summary>
         int GetSealSecondsAhead();
         
+        /// <summary>
+        /// 获取管理模式状态
+        /// </summary>
+        bool GetIsRunModeAdmin();
+        
+        /// <summary>
+        /// 获取开发模式状态
+        /// </summary>
+        bool GetIsRunModeDev();
+        
+        /// <summary>
+        /// 获取老板模式状态
+        /// </summary>
+        bool GetIsRunModeBoss();
+        
         // ========================================
         // 保存配置
         // ========================================
@@ -43,6 +58,21 @@ namespace BaiShengVx3Plus.Contracts
         /// 设置提前封盘秒数
         /// </summary>
         void SetSealSecondsAhead(int value);
+        
+        /// <summary>
+        /// 设置管理模式
+        /// </summary>
+        void SetIsRunModeAdmin(bool value);
+        
+        /// <summary>
+        /// 设置开发模式
+        /// </summary>
+        void SetIsRunModeDev(bool value);
+        
+        /// <summary>
+        /// 设置老板模式
+        /// </summary>
+        void SetIsRunModeBoss(bool value);
         
         // ========================================
         // 配置管理

@@ -31,9 +31,7 @@ namespace BaiShengVx3Plus.Services.App
         bool IsSoftModeVx { get; set; }
         bool IsSoftModeFeitian { get; set; }
 
-        // 属性自动通知
-        event PropertyChangedEventHandler? PropertyChanged;
-
+        // 属性自动通知（INotifyPropertyChanged 已定义 PropertyChanged 事件）
         void OnPropertyChanged([CallerMemberName] string? propertyName = null);
         //{
         //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

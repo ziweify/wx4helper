@@ -43,6 +43,7 @@ namespace BaiShengVx3Plus
         private readonly Services.AutoBet.AutoBetCoordinator _autoBetCoordinator; // 🤖 自动投注协调器
         private readonly IConfigurationService _configService; // 📝 配置服务
         private readonly ViewModels.ConfigViewModel _configViewModel; // 📝 配置 ViewModel（用于数据绑定）
+        private readonly ViewModels.SettingViewModel _settingViewModel; // 🌐 设置 ViewModel（全局单例）
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
@@ -123,7 +124,8 @@ namespace BaiShengVx3Plus
             BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
             Services.AutoBet.AutoBetService autoBetService, // 🤖 注入自动投注服务
             Services.AutoBet.AutoBetCoordinator autoBetCoordinator, // 🤖 注入自动投注协调器
-            IConfigurationService configService) // 📝 注入配置服务
+            IConfigurationService configService, // 📝 注入配置服务
+            ViewModels.SettingViewModel settingViewModel) // 🌐 注入设置 ViewModel（全局单例）
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -144,6 +146,7 @@ namespace BaiShengVx3Plus
             _autoBetCoordinator = autoBetCoordinator; // 🤖 自动投注协调器
             _configService = configService; // 📝 配置服务
             _configViewModel = new ViewModels.ConfigViewModel(configService); // 📝 创建配置 ViewModel
+            _settingViewModel = settingViewModel; // 🌐 设置 ViewModel（全局单例）
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -2045,7 +2048,7 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "创建新的设置窗口");
                 
                 // 创建新的设置窗口（非模态）
-                _settingsForm = new Views.SettingsForm(_socketClient, _logService, _binggoSettings);
+                _settingsForm = new Views.SettingsForm(_socketClient, _logService, _settingViewModel, _binggoSettings);
                 
                 // 订阅关闭事件，清理引用
                 _settingsForm.FormClosed += (s, args) =>

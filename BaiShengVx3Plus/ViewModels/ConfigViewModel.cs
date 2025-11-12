@@ -10,19 +10,17 @@ namespace BaiShengVx3Plus.ViewModels
     /// <summary>
     /// 配置视图模型（专门用于 UI 数据绑定）
     /// 职责：
-    /// 1. 实现 INotifyPropertyChanged（支持 WinForms 数据绑定）
+    /// 1. 继承 ViewModelBase（已实现 INotifyPropertyChanged）
     /// 2. 作为 UI 和 Service 之间的桥梁
     /// 3. UI 绑定到这个 ViewModel，ViewModel 调用 Service
     /// </summary>
     public partial class ConfigViewModel : ViewModelBase
-        , INotifyPropertyChanged
     {
         private readonly IConfigurationService _configService;
         
         // ========================================
         // 构造函数
         // ========================================
-
         
         public ConfigViewModel(IConfigurationService configService)
         {
@@ -36,16 +34,17 @@ namespace BaiShengVx3Plus.ViewModels
         // 可绑定属性（UI 双向绑定到这些属性）
         // ========================================
 
-        public string ErrorMessage;
+        [ObservableProperty]
+        private string _errorMessage = string.Empty;
 
-        public string BsUserName
-        { get; set; }
+        [ObservableProperty]
+        private string _bsUserName = string.Empty;
 
-        public string BsUserPass
-        { get; set; }
+        [ObservableProperty]
+        private string _bsUserPass = string.Empty;
 
-        public bool IsRememberPassword
-        { get; set; }
+        [ObservableProperty]
+        private bool _isRememberPassword;
 
         /// <summary>
         /// 收单开关（UI 双向绑定）
@@ -96,18 +95,7 @@ namespace BaiShengVx3Plus.ViewModels
         }
         
         // ========================================
-        // INotifyPropertyChanged 实现
-        // ========================================
-        
-        public event PropertyChangedEventHandler? PropertyChanged;
-        
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        
-        // ========================================
-        // 事件处理
+        // 事件处理（ViewModelBase 已实现 INotifyPropertyChanged）
         // ========================================
         
         /// <summary>

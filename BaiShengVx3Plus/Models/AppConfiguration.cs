@@ -8,8 +8,8 @@ namespace BaiShengVx3Plus.Models
     /// </summary>
     public class AppConfiguration
     {
-        public string BsUserName { get; set; }   //百盛用户名
-        public string BsUserPwd { get; set; }    //百盛密码
+            public string BsUserName { get; set; } = string.Empty;   //百盛用户名
+            public string BsUserPwd { get; set; } = string.Empty;    //百盛密码
 
 
         /// <summary>

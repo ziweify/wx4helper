@@ -49,6 +49,12 @@ namespace BaiShengVx3Plus.Services.Configuration
         
         public int GetSealSecondsAhead() => _configuration.N封盘提前秒数;
         
+        public bool GetIsRunModeAdmin() => _configuration.IsRunModeAdmin;
+        
+        public bool GetIsRunModeDev() => _configuration.IsRunModeDev;
+        
+        public bool GetIsRunModeBoss() => _configuration.IsRunModeBoss;
+        
         // ========================================
         // 保存配置（公共接口）
         // ========================================
@@ -101,6 +107,57 @@ namespace BaiShengVx3Plus.Services.Configuration
                 
                 // 触发变更事件（使用 ViewModel 的属性名，不是 Model 的属性名）
                 OnConfigurationChanged("SealSecondsAhead", oldValue, value);
+            }
+        }
+        
+        public void SetIsRunModeAdmin(bool value)
+        {
+            if (_configuration.IsRunModeAdmin != value)
+            {
+                var oldValue = _configuration.IsRunModeAdmin;
+                _configuration.IsRunModeAdmin = value;
+                
+                _logService.Info("ConfigurationService", $"管理模式已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+                
+                // 触发变更事件
+                OnConfigurationChanged("IsRunModeAdmin", oldValue, value);
+            }
+        }
+        
+        public void SetIsRunModeDev(bool value)
+        {
+            if (_configuration.IsRunModeDev != value)
+            {
+                var oldValue = _configuration.IsRunModeDev;
+                _configuration.IsRunModeDev = value;
+                
+                _logService.Info("ConfigurationService", $"开发模式已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+                
+                // 触发变更事件
+                OnConfigurationChanged("IsRunModeDev", oldValue, value);
+            }
+        }
+        
+        public void SetIsRunModeBoss(bool value)
+        {
+            if (_configuration.IsRunModeBoss != value)
+            {
+                var oldValue = _configuration.IsRunModeBoss;
+                _configuration.IsRunModeBoss = value;
+                
+                _logService.Info("ConfigurationService", $"老板模式已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+                
+                // 触发变更事件
+                OnConfigurationChanged("IsRunModeBoss", oldValue, value);
             }
         }
         
