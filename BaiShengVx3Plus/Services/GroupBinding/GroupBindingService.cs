@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace BaiShengVx3Plus.Services.GroupBinding
 {
@@ -24,13 +25,17 @@ namespace BaiShengVx3Plus.Services.GroupBinding
     public class GroupBindingService : IGroupBindingService
     {
         private readonly ILogService _logService;
+        private readonly IConfigurationService _configService;
         private SQLiteConnection? _db;
         
         public WxContact? CurrentBoundGroup { get; private set; }
         
-        public GroupBindingService(ILogService logService)
+        public GroupBindingService(
+            ILogService logService,
+            IConfigurationService configService)
         {
             _logService = logService;
+            _configService = configService;
         }
         
         /// <summary>
@@ -249,10 +254,33 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 
                 _logService.Info("GroupBindingService", $"✅ 从数据库加载: {creditWithdrawsBindingList.Count} 条上下分记录");
                 
+                // 🔥 4.5. 获取全局配置（从 IConfigurationService）
+                bool isRunModeDev = _configService.GetIsRunModeDev();
+                _logService.Info("GroupBindingService", $"✅ 全局配置: IsRunModeDev = {isRunModeDev}");
+                
                 // 🔥 5. 获取服务器数据并智能合并会员
                 _logService.Info("GroupBindingService", $"开始获取群成员列表并智能合并: {contact.Wxid}");
                 var serverResult = await socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
                 
+                // 🔥 5.1. 开发模式：使用模拟数据
+                if (_configService.GetIsRunModeDev())
+                {
+                    _logService.Info("GroupBindingService", "🔧 开发模式：使用模拟群成员数据");
+                    
+                    // ✅ 使用匿名对象创建模拟数据（最简洁）
+                    var mockMembers = new[]
+                    {
+                        new { username = "M100", Balance = 100f, wxid = "wxid_m100", nick_name = "nick100" },
+                        new { username = "M200", Balance = 200f, wxid = "wxid_m200", nick_name = "nick200" },
+                        new { username = "M300", Balance = 300f, wxid = "wxid_m300", nick_name = "nick300"},
+                        new { username = "M400", Balance = 400f, wxid = "wxid_m400", nick_name = "nick400" },
+                        new { username = "M500", Balance = 500f, wxid = "wxid_m500", nick_name = "nick500" }
+                    };
+                    
+                    serverResult = JsonDocument.Parse(JsonConvert.SerializeObject(mockMembers));
+                    _logService.Info("GroupBindingService", $"✅ 模拟数据生成成功: {mockMembers.Length} 个会员");
+                }
+
                 if (serverResult == null || serverResult.RootElement.ValueKind != JsonValueKind.Array)
                 {
                     // 服务器获取失败，只加载数据库数据
