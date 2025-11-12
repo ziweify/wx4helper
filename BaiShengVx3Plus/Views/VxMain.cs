@@ -1451,69 +1451,6 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 🔥 解析服务器返回的群成员数据
-        /// 
-        /// GetGroupContacts 返回的字段名：
-        /// - member_wxid
-        /// - member_nickname
-        /// - member_alias
-        /// - member_remark
-        /// </summary>
-        private List<V2Member> ParseServerMembers(JsonElement arrayElement, string groupWxId)
-        {
-            var members = new List<V2Member>();
-            
-            try
-            {
-                foreach (var item in arrayElement.EnumerateArray())
-                {
-                    try
-                    {
-                        // 🔥 解析 GetGroupContacts 返回的字段
-                        string? wxid = item.TryGetProperty("member_wxid", out var wxidProp) ? wxidProp.GetString() : null;
-                        string? nickname = item.TryGetProperty("member_nickname", out var nicknameProp) ? nicknameProp.GetString() : null;
-                        string? alias = item.TryGetProperty("member_alias", out var aliasProp) ? aliasProp.GetString() : null;
-                        string? remark = item.TryGetProperty("member_remark", out var remarkProp) ? remarkProp.GetString() : null;
-                        
-                        // 优先使用备注名，其次昵称
-                        string displayName = !string.IsNullOrEmpty(remark) ? remark : 
-                                           !string.IsNullOrEmpty(nickname) ? nickname : "";
-                        
-                        if (string.IsNullOrEmpty(wxid))
-                        {
-                            _logService.Warning("VxMain", "解析单个会员失败: member_wxid 为空");
-                            continue;
-                        }
-                        
-                        var member = new V2Member
-                        {
-                            GroupWxId = groupWxId,
-                            Wxid = wxid,
-                            Nickname = nickname ?? "",
-                            Account = alias ?? "",           // 微信号
-                            DisplayName = displayName,       // 群昵称/备注
-                            State = MemberState.会员         // 默认状态
-                        };
-                        
-                        members.Add(member);
-                        _logService.Info("VxMain", $"✓ 解析会员: {member.Nickname} ({member.Wxid})");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logService.Warning("VxMain", $"解析单个会员失败: {ex.Message}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("VxMain", $"解析群成员数据失败: {ex.Message}", ex);
-            }
-            
-            _logService.Info("VxMain", $"✅ 解析完成: 共 {members.Count} 个会员");
-            return members;
-        }
-        
-        /// <summary>
         /// 🔥 绑定群组按钮点击事件（现代化、服务化）
         /// 
         /// 核心逻辑：
@@ -1553,8 +1490,12 @@ namespace BaiShengVx3Plus
         }
         
         /// <summary>
-        /// 🔥 统一的绑定群方法（参考 F5BotV2 第 816 行）
-        /// 无论是正常绑定还是管理模式手动绑定，都走这个流程
+        /// 🔥 统一的绑定群方法（重构版：业务逻辑在服务层）
+        /// 
+        /// 职责：
+        /// 1. 调用服务层完成所有业务逻辑
+        /// 2. 只负责 UI 更新和显示
+        /// 3. 保持 View 层精简
         /// </summary>
         private async Task BindGroupAsync(WxContact contact)
         {
@@ -1562,27 +1503,7 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"📍 开始绑定群: {contact.Nickname} ({contact.Wxid})");
                 
-                // 🔥 1. 使用服务绑定群组
-                _groupBindingService.BindGroup(contact);
-
-                // 2. 更新 UI 显示
-                txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
-                txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
-                txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
-                dgvContacts.Refresh();
-                
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在加载数据...";
-                _logService.Info("VxMain", $"✓ 绑定群组: {contact.Nickname} ({contact.Wxid})");
-                
-                // 🔥 3. 清空旧数据并清零统计（参考 F5BotV2 第 818 行）
-                UpdateUIThreadSafe(() =>
-                {
-                    _membersBindingList?.Clear();
-                    _ordersBindingList?.Clear();
-                    _statisticsService.UpdateStatistics(setZero: true);
-                });
-                
-                // 🔥 4. 创建新的 BindingList（绑定到数据库）
+                // 🔥 验证数据库
                 if (_db == null)
                 {
                     _logService.Error("VxMain", "数据库未初始化！");
@@ -1590,113 +1511,63 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                _membersBindingList = new V2MemberBindingList(_db, contact.Wxid);
-                _ordersBindingList = new V2OrderBindingList(_db);
-                _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);  // 🔥 上下分 BindingList
-                
-                // 🔥 5. 设置到各个服务（更新引用，确保所有服务使用同一个 BindingList 实例）
-                _orderService.SetMembersBindingList(_membersBindingList);
-                _orderService.SetOrdersBindingList(_ordersBindingList);
-                _orderService.SetStatisticsService(_statisticsService); // 🔥 设置统计服务
-                _statisticsService.SetBindingLists(_membersBindingList, _ordersBindingList);
-                
-                if (_memberDataService is MemberDataService mds)
+                // 🔥 1. 清空旧数据并清零统计
+                UpdateUIThreadSafe(() =>
                 {
-                    mds.SetMembersBindingList(_membersBindingList);
-                }
-                
-                // 🔥 5.5. 更新开奖服务的 BindingList 引用（重要！）
-                if (_lotteryService is BinggoLotteryService lotteryServiceImpl)
-                {
-                    lotteryServiceImpl.SetBusinessDependencies(
-                        _orderService,
-                        _groupBindingService,
-                        _socketClient,
-                        _ordersBindingList,
-                        _membersBindingList,
-                        _creditWithdrawsBindingList  // 🔥 更新上下分 BindingList 引用
-                    );
-                }
-                
-                // 🔥 6. 从数据库加载订单数据（订单不需要与服务器同步）
-                await Task.Run(() =>
-                {
-                    _ordersBindingList.LoadFromDatabase();
+                    _membersBindingList?.Clear();
+                    _ordersBindingList?.Clear();
+                    _statisticsService.UpdateStatistics(setZero: true);
                 });
                 
-                _logService.Info("VxMain", $"✅ 从数据库加载: {_ordersBindingList.Count} 个订单");
+                // 🔥 2. 更新 UI 状态
+                txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
+                txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
+                txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
+                dgvContacts.Refresh();
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在加载数据...";
                 
-                // 🔥 6.5. 从数据库加载上下分数据（与订单表统一模式）
-                await Task.Run(() =>
+                // 🔥 3. 调用服务层完成所有业务逻辑
+                var result = await _groupBindingService.BindGroupCompleteAsync(
+                    contact,
+                    _db,
+                    _socketClient,
+                    _orderService,
+                    _statisticsService,
+                    _memberDataService,
+                    _lotteryService
+                );
+                
+                // 🔥 4. 处理结果
+                if (!result.Success)
                 {
-                    _creditWithdrawsBindingList.LoadFromDatabase(contact.Wxid);
-                });
-                
-                _logService.Info("VxMain", $"✅ 从数据库加载: {_creditWithdrawsBindingList.Count} 条上下分记录");
-                
-                // 🔥 7. 获取服务器数据并智能合并会员（参考 F5BotV2）
-                _logService.Info("VxMain", $"开始获取群成员列表并智能合并: {contact.Wxid}");
-                var result = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
-                
-                if (result == null || result.RootElement.ValueKind != JsonValueKind.Array)
-                {
-                    // 服务器获取失败，只加载数据库数据
-                    _logService.Warning("VxMain", "获取群成员失败，只加载数据库数据");
-                    await Task.Run(() =>
-                    {
-                        _membersBindingList.LoadFromDatabase();
-                    });
-                    _logService.Info("VxMain", $"✅ 从数据库加载: {_membersBindingList.Count} 个会员（仅本地）");
-                }
-                else
-                {
-                    // 🔥 8. 解析服务器返回的会员数据
-                    var serverMembers = ParseServerMembers(result.RootElement, contact.Wxid);
-                    _logService.Info("VxMain", $"服务器返回 {serverMembers.Count} 个群成员");
-                    
-                    // 🔥 9. 使用服务智能合并数据（数据库 + 服务器）
-                    // ⚠️ 关键：LoadAndMergeMembers 返回的是完整列表，包括：
-                    //    - 数据库有 + 服务器有 → 使用数据库数据（保留统计）
-                    //    - 数据库无 + 服务器有 → 新增会员
-                    //    - 数据库有 + 服务器无 → 标记"已退群"
-                    var mergedMembers = _groupBindingService.LoadAndMergeMembers(serverMembers, contact.Wxid);
-                    _logService.Info("VxMain", $"智能合并完成: 共 {mergedMembers.Count} 个会员");
-                    
-                    // 🔥 10. 直接加载合并后的完整列表（不是追加！）
-                    UpdateUIThreadSafe(() =>
-                    {
-                        foreach (var member in mergedMembers)
-                        {
-                            _membersBindingList?.Add(member);  // 添加到空的 BindingList
-                        }
-                    });
-                    
-                    _logService.Info("VxMain", $"✅ 会员列表已更新: {_membersBindingList?.Count} 个会员");
+                    _logService.Error("VxMain", $"绑定群失败: {result.ErrorMessage}");
+                    UIMessageBox.ShowError($"绑定群失败！\n\n{result.ErrorMessage}");
+                    return;
                 }
                 
-                // 🔥 11. 更新会员的上下分统计（从已同意的记录中计算）
-                _creditWithdrawsBindingList.UpdateMemberStatistics(_membersBindingList);
-                _logService.Info("VxMain", "✅ 会员上下分统计已更新");
+                // 🔥 5. 更新 View 层的 BindingList 引用
+                _membersBindingList = result.MembersBindingList;
+                _ordersBindingList = result.OrdersBindingList;
+                _creditWithdrawsBindingList = result.CreditWithdrawsBindingList;
                 
-                // 🔥 12. 绑定到 DataGridView
+                // 🔥 6. 绑定到 DataGridView（UI 更新）
                 UpdateUIThreadSafe(() =>
                 {
                     dgvMembers.DataSource = _membersBindingList;
                     dgvOrders.DataSource = _ordersBindingList;
                 });
                 
-                // 🔥 13. 更新统计（参考 F5BotV2 第 569 行）
-                _statisticsService.UpdateStatistics();
-                
-                // 🔥 13. 更新UI显示
+                // 🔥 7. 更新 UI 显示
                 UpdateMemberInfoLabel();
-                
                 lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
-                _logService.Info("VxMain", $"✅ 绑定群完成: {_membersBindingList.Count} 个会员, {_ordersBindingList.Count} 个订单");
+                
+                _logService.Info("VxMain", 
+                    $"✅ 绑定群完成: {result.MemberCount} 个会员, {result.OrderCount} 个订单, {result.CreditWithdrawCount} 条上下分记录");
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", $"绑定群失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"绑定群失败！\n\n{ex.Message}");
                 throw;
             }
         }

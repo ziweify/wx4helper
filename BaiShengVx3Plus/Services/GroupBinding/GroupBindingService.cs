@@ -1,6 +1,14 @@
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Core;
+using BaiShengVx3Plus.Services.Games.Binggo;
 using SQLite;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace BaiShengVx3Plus.Services.GroupBinding
 {
@@ -8,9 +16,10 @@ namespace BaiShengVx3Plus.Services.GroupBinding
     /// 群组绑定服务实现
     /// 
     /// 🔥 现代化、精简、易维护的设计：
-    /// 1. 单一职责：只负责群组绑定和成员数据合并
+    /// 1. 单一职责：负责群组绑定和成员数据合并
     /// 2. 智能合并：对比数据库和服务器数据，自动处理新增/退群
-    /// 3. 无副作用：不直接操作 UI，只返回处理后的数据
+    /// 3. 业务逻辑编排：完整的绑定流程（BindGroupCompleteAsync）
+    /// 4. 无副作用：不直接操作 UI，只返回处理后的数据
     /// </summary>
     public class GroupBindingService : IGroupBindingService
     {
@@ -165,6 +174,220 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 _logService.Error("GroupBindingService", "合并群成员数据失败", ex);
                 return serverMembers;
             }
+        }
+        
+        /// <summary>
+        /// 🔥 完整的群组绑定流程（核心业务逻辑）
+        /// 
+        /// 职责：编排所有业务逻辑，返回结果 DTO，View 层只负责 UI 更新
+        /// </summary>
+        public async Task<GroupBindingResult> BindGroupCompleteAsync(
+            WxContact contact,
+            SQLiteConnection db,
+            IWeixinSocketClient socketClient,
+            IBinggoOrderService orderService,
+            BinggoStatisticsService statisticsService,
+            IMemberDataService memberDataService,
+            IBinggoLotteryService lotteryService)
+        {
+            var result = new GroupBindingResult { Group = contact };
+            
+            try
+            {
+                _logService.Info("GroupBindingService", $"📍 开始完整绑定群: {contact.Nickname} ({contact.Wxid})");
+                
+                // 🔥 1. 绑定群组
+                BindGroup(contact);
+                SetDatabase(db);
+                
+                // 🔥 2. 创建 BindingList（绑定到数据库）
+                var membersBindingList = new V2MemberBindingList(db, contact.Wxid);
+                var ordersBindingList = new V2OrderBindingList(db);
+                var creditWithdrawsBindingList = new V2CreditWithdrawBindingList(db);
+                
+                _logService.Info("GroupBindingService", "✅ BindingList 已创建");
+                
+                // 🔥 3. 设置各种服务依赖
+                orderService.SetMembersBindingList(membersBindingList);
+                orderService.SetOrdersBindingList(ordersBindingList);
+                orderService.SetStatisticsService(statisticsService);
+                statisticsService.SetBindingLists(membersBindingList, ordersBindingList);
+                
+                if (memberDataService is MemberDataService mds)
+                {
+                    mds.SetMembersBindingList(membersBindingList);
+                }
+                
+                // 🔥 3.5. 更新开奖服务的 BindingList 引用
+                if (lotteryService is BinggoLotteryService lotteryServiceImpl)
+                {
+                    lotteryServiceImpl.SetBusinessDependencies(
+                        orderService,
+                        this,
+                        socketClient,
+                        ordersBindingList,
+                        membersBindingList,
+                        creditWithdrawsBindingList
+                    );
+                }
+                
+                _logService.Info("GroupBindingService", "✅ 服务依赖已设置");
+                
+                // 🔥 4. 从数据库加载订单数据（订单不需要与服务器同步）
+                await Task.Run(() =>
+                {
+                    ordersBindingList.LoadFromDatabase();
+                });
+                
+                _logService.Info("GroupBindingService", $"✅ 从数据库加载: {ordersBindingList.Count} 个订单");
+                
+                // 🔥 4.5. 从数据库加载上下分数据
+                await Task.Run(() =>
+                {
+                    creditWithdrawsBindingList.LoadFromDatabase(contact.Wxid);
+                });
+                
+                _logService.Info("GroupBindingService", $"✅ 从数据库加载: {creditWithdrawsBindingList.Count} 条上下分记录");
+                
+                // 🔥 5. 获取服务器数据并智能合并会员
+                _logService.Info("GroupBindingService", $"开始获取群成员列表并智能合并: {contact.Wxid}");
+                var serverResult = await socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
+                
+                if (serverResult == null || serverResult.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    // 服务器获取失败，只加载数据库数据
+                    _logService.Warning("GroupBindingService", "获取群成员失败，只加载数据库数据");
+                    await Task.Run(() =>
+                    {
+                        membersBindingList.LoadFromDatabase();
+                    });
+                    _logService.Info("GroupBindingService", $"✅ 从数据库加载: {membersBindingList.Count} 个会员（仅本地）");
+                }
+                else
+                {
+                    // 🔥 6. 解析服务器返回的会员数据
+                    var serverMembers = ParseServerMembers(serverResult.RootElement, contact.Wxid);
+                    _logService.Info("GroupBindingService", $"服务器返回 {serverMembers.Count} 个群成员");
+                    
+                    // 🔥 7. 智能合并数据（数据库 + 服务器）
+                    var mergedMembers = LoadAndMergeMembers(serverMembers, contact.Wxid);
+                    _logService.Info("GroupBindingService", $"智能合并完成: 共 {mergedMembers.Count} 个会员");
+                    
+                    // 🔥 8. 加载合并后的完整列表
+                    foreach (var member in mergedMembers)
+                    {
+                        membersBindingList.Add(member);
+                    }
+                    
+                    _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");
+                }
+                
+                // 🔥 9. 更新会员的上下分统计
+                creditWithdrawsBindingList.UpdateMemberStatistics(membersBindingList);
+                _logService.Info("GroupBindingService", "✅ 会员上下分统计已更新");
+                
+                // 🔥 10. 更新统计
+                statisticsService.UpdateStatistics();
+                _logService.Info("GroupBindingService", "✅ 统计数据已更新");
+                
+                // 🔥 11. 返回结果 DTO
+                result.MembersBindingList = membersBindingList;
+                result.OrdersBindingList = ordersBindingList;
+                result.CreditWithdrawsBindingList = creditWithdrawsBindingList;
+                result.MemberCount = membersBindingList.Count;
+                result.OrderCount = ordersBindingList.Count;
+                result.CreditWithdrawCount = creditWithdrawsBindingList.Count;
+                result.Success = true;
+                
+                _logService.Info("GroupBindingService", 
+                    $"✅ 绑定群完成: {result.MemberCount} 个会员, {result.OrderCount} 个订单, {result.CreditWithdrawCount} 条上下分记录");
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("GroupBindingService", $"绑定群失败: {ex.Message}", ex);
+                result.Success = false;
+                result.ErrorMessage = ex.Message;
+                return result;
+            }
+        }
+        
+        /// <summary>
+        /// 解析服务器返回的会员数据（从 VxMain 移过来）
+        /// </summary>
+        private List<V2Member> ParseServerMembers(JsonElement data, string groupWxId)
+        {
+            var members = new List<V2Member>();
+            
+            try
+            {
+                if (data.ValueKind != JsonValueKind.Array)
+                {
+                    _logService.Warning("GroupBindingService", "服务器返回的数据不是数组");
+                    return members;
+                }
+                
+                foreach (var item in data.EnumerateArray())
+                {
+                    try
+                    {
+                        var member = new V2Member
+                        {
+                            GroupWxId = groupWxId,
+                            State = MemberState.会员
+                        };
+                        
+                        // 解析 wxid
+                        if (item.TryGetProperty("username", out var username))
+                        {
+                            member.Wxid = username.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("wxid", out var wxid))
+                        {
+                            member.Wxid = wxid.GetString() ?? string.Empty;
+                        }
+                        
+                        if (string.IsNullOrEmpty(member.Wxid))
+                            continue;
+                        
+                        // 解析昵称
+                        if (item.TryGetProperty("nick_name", out var nickName))
+                        {
+                            member.Nickname = nickName.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("nickname", out var nickname))
+                        {
+                            member.Nickname = nickname.GetString() ?? string.Empty;
+                        }
+                        
+                        // 解析群昵称
+                        if (item.TryGetProperty("display_name", out var displayName))
+                        {
+                            member.DisplayName = displayName.GetString() ?? string.Empty;
+                        }
+                        
+                        // 解析微信号
+                        if (item.TryGetProperty("alias", out var alias))
+                        {
+                            member.Account = alias.GetString() ?? string.Empty;
+                        }
+                        
+                        members.Add(member);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("GroupBindingService", $"解析单个会员数据失败: {ex.Message}", ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("GroupBindingService", $"解析群成员数据失败: {ex.Message}", ex);
+            }
+            
+            _logService.Info("GroupBindingService", $"✅ 解析完成: 共 {members.Count} 个会员");
+            return members;
         }
     }
 }

@@ -1,4 +1,9 @@
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Services.Games.Binggo;
+using SQLite;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BaiShengVx3Plus.Contracts
 {
@@ -9,6 +14,7 @@ namespace BaiShengVx3Plus.Contracts
     /// 1. 管理当前绑定的群组
     /// 2. 智能加载和合并群成员数据
     /// 3. 检测退群成员并更新状态
+    /// 4. 编排完整的群组绑定流程（业务逻辑层）
     /// </summary>
     public interface IGroupBindingService
     {
@@ -16,6 +22,11 @@ namespace BaiShengVx3Plus.Contracts
         /// 当前绑定的群组
         /// </summary>
         WxContact? CurrentBoundGroup { get; }
+        
+        /// <summary>
+        /// 设置数据库连接
+        /// </summary>
+        void SetDatabase(SQLiteConnection db);
         
         /// <summary>
         /// 绑定群组
@@ -41,6 +52,35 @@ namespace BaiShengVx3Plus.Contracts
         /// <param name="groupWxId">群微信ID</param>
         /// <returns>合并后的会员列表</returns>
         List<V2Member> LoadAndMergeMembers(List<V2Member> serverMembers, string groupWxId);
+        
+        /// <summary>
+        /// 🔥 完整的群组绑定流程（核心业务逻辑）
+        /// 
+        /// 职责：
+        /// 1. 绑定群组
+        /// 2. 创建 BindingList
+        /// 3. 设置各种服务依赖
+        /// 4. 加载数据库数据（订单、上下分）
+        /// 5. 获取服务器数据并智能合并会员
+        /// 6. 更新统计
+        /// 7. 返回结果 DTO
+        /// </summary>
+        /// <param name="contact">要绑定的群组</param>
+        /// <param name="db">数据库连接</param>
+        /// <param name="socketClient">Socket 客户端</param>
+        /// <param name="orderService">订单服务</param>
+        /// <param name="statisticsService">统计服务</param>
+        /// <param name="memberDataService">会员数据服务</param>
+        /// <param name="lotteryService">开奖服务</param>
+        /// <returns>绑定结果</returns>
+        Task<GroupBindingResult> BindGroupCompleteAsync(
+            WxContact contact,
+            SQLiteConnection db,
+            IWeixinSocketClient socketClient,
+            IBinggoOrderService orderService,
+            BinggoStatisticsService statisticsService,
+            IMemberDataService memberDataService,
+            IBinggoLotteryService lotteryService);
     }
 }
 

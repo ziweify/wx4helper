@@ -35,17 +35,13 @@ namespace BaiShengVx3Plus.Services.Contact
         /// <summary>
         /// 处理联系人数据（统一入口）
         /// </summary>
-        public Task<List<WxContact>> ProcessContactsAsync(JsonElement data)
+        public Task<List<WxContact>> ProcessContactsAsync(List<WxContact> contacts)
         {
             try
             {
-                _logService.Info("ContactDataService", "开始处理联系人数据");
+                _logService.Info("ContactDataService", $"开始处理 {contacts.Count} 个联系人数据");
 
-                // 1. 解析联系人数据
-                var contacts = ParseContacts(data);
-                _logService.Info("ContactDataService", $"✓ 解析到 {contacts.Count} 个联系人");
-
-                // 2. 触发事件通知 UI（不再保存到数据库，由 UI 层决定如何使用）
+                // 触发事件通知 UI（不再保存到数据库，由 UI 层决定如何使用）
                 _logService.Info("ContactDataService", $"📢 准备触发 ContactsUpdated 事件，联系人数量: {contacts.Count}");
                 ContactsUpdated?.Invoke(this, new ContactsUpdatedEventArgs
                 {
@@ -63,11 +59,21 @@ namespace BaiShengVx3Plus.Services.Contact
                 return Task.FromResult(new List<WxContact>());
             }
         }
+        
+        /// <summary>
+        /// 从 JSON 解析联系人列表（静态方法，无需依赖服务实例）
+        /// </summary>
+        /// <param name="data">JSON 数据</param>
+        /// <returns>解析后的联系人列表</returns>
+        public static List<WxContact> ParseContactsFromJson(JsonElement data)
+        {
+            return ParseContacts(data);
+        }
 
         /// <summary>
-        /// 解析联系人数据
+        /// 解析联系人数据（静态方法）
         /// </summary>
-        private List<WxContact> ParseContacts(JsonElement data)
+        private static List<WxContact> ParseContacts(JsonElement data)
         {
             var contacts = new List<WxContact>();
 
@@ -95,18 +101,18 @@ namespace BaiShengVx3Plus.Services.Contact
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logService.Error("ContactDataService", "解析联系人数据失败", ex);
+                // 静态方法无法使用 _logService，调用者负责日志
             }
 
             return contacts;
         }
 
         /// <summary>
-        /// 解析单个联系人
+        /// 解析单个联系人（静态方法）
         /// </summary>
-        private WxContact? ParseContactItem(JsonElement item)
+        private static WxContact? ParseContactItem(JsonElement item)
         {
             try
             {
@@ -178,9 +184,9 @@ namespace BaiShengVx3Plus.Services.Contact
 
                 return contact;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logService.Error("ContactDataService", $"解析单个联系人失败: {ex.Message}", ex);
+                // 静态方法无法使用 _logService，调用者负责日志
                 return null;
             }
         }

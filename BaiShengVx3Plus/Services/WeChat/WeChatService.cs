@@ -159,7 +159,7 @@ namespace BaiShengVx3Plus.Services.WeChat
                     //如果是开发模式
                     _logService.Info("WeChatService", "🚀 快速连接模式：使用快速重试获取联系人（微信已就绪）");
                     // 🔥 快速连接模式下，如果第一次失败，快速重试一次（不等待太久）
-                    contacts = await RefreshContactsAsyncWithRetry(
+                    contacts = await RefreshContactsAsync(
                         maxRetries: 2,  // 🔥 快速连接模式：最多重试2次（第一次 + 1次重试）
                         retryInterval: 500,  // 🔥 快速重试间隔：500ms（不等待太久）
                         cancellationToken);
@@ -170,7 +170,7 @@ namespace BaiShengVx3Plus.Services.WeChat
                     // 🔥 等待并重试获取联系人（直到数据库句柄初始化完成）
                     if(!IsRunModeDev)
                     {
-                        contacts = await RefreshContactsAsyncWithRetry(
+                        contacts = await RefreshContactsAsync(
                                                 maxRetries: 5,  // 🔥 减少重试次数（从10次减少到5次）
                                                 retryInterval: 1000,  // 🔥 减少重试间隔（从2000ms减少到1000ms）
                                                 cancellationToken);
@@ -287,102 +287,95 @@ namespace BaiShengVx3Plus.Services.WeChat
         /// <summary>
         /// 刷新联系人列表（带重试机制）
         /// </summary>
-        public async Task<List<WxContact>> RefreshContactsAsyncWithRetry(
-            int maxRetries = 10,
+        /// <param name="maxRetries">最大重试次数（默认1次，不重试）</param>
+        /// <param name="retryInterval">重试间隔（毫秒，默认2000ms）</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        public async Task<List<WxContact>> RefreshContactsAsync(
+            int maxRetries = 1,
             int retryInterval = 2000,
             CancellationToken cancellationToken = default)
         {
-            int attempt = 0;
-            while (attempt < maxRetries)
+            List<WxContact>? result = null;
+            Exception? lastException = null;
+            
+            try
             {
-                try
+                /// 如果是开发模式
+                if(_configService.GetIsRunModeDev())
                 {
-                    _logService.Info("WeChatService", $"开始刷新联系人列表 (尝试 {attempt + 1}/{maxRetries})");
+                    result = new List<WxContact>();
+                    result.Add(new WxContact() { Wxid = "wxid_111111@wx.com", Account = "111111", Nickname = "n111111" });
+                    result.Add(new WxContact() { Wxid = "wxid_222222@wx.com", Account = "222222", Nickname = "n222222" });
+                    result.Add(new WxContact() { Wxid = "wxid_333333@wx.com", Account = "333333", Nickname = "n333333" });
+                    result.Add(new WxContact() { Wxid = "wxid_444444", Account = "444444", Nickname = "n444444" });
+                    result.Add(new WxContact() { Wxid = "wxid_555555", Account = "555555", Nickname = "n555555" });
+                    return result;
+                }
 
-                    var contactsDoc = await _socketClient.SendAsync<JsonDocument>("GetContacts", 30000);
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
                     
-                    // ✅ SendAsync 已处理 error 和 result，直接使用
-                    if (contactsDoc != null)
+                    try
                     {
-                        _logService.Debug("WeChatService", $"收到数据类型: {contactsDoc.RootElement.ValueKind}");
-                        var contacts = await _contactDataService.ProcessContactsAsync(contactsDoc.RootElement);
-                        _logService.Info("WeChatService", $"✓ 联系人刷新成功，返回 {contacts.Count} 个");
-                        return contacts;
-                    }
+                        string retryInfo = maxRetries > 1 ? $" (尝试 {attempt}/{maxRetries})" : "";
+                        _logService.Info("WeChatService", $"开始刷新联系人列表{retryInfo}");
 
-                    _logService.Warning("WeChatService", $"联系人数据为空 (尝试 {attempt + 1}/{maxRetries})");
+                        var contactsDoc = await _socketClient.SendAsync<JsonDocument>("GetContacts", 30000);
+                        
+                        if (contactsDoc != null)
+                        {
+                            _logService.Debug("WeChatService", $"收到数据类型: {contactsDoc.RootElement.ValueKind}");
+                            
+                            // 🔥 使用静态方法解析 JSON
+                            result = Services.Contact.ContactDataService.ParseContactsFromJson(contactsDoc.RootElement);
+                            _logService.Info("WeChatService", $"✓ 联系人解析成功，共 {result.Count} 个");
+                            
+                            break; // 成功，退出重试循环
+                        }
+
+                        _logService.Warning("WeChatService", $"联系人数据为空{retryInfo}");
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        string retryInfo = maxRetries > 1 ? $" (尝试 {attempt}/{maxRetries})" : "";
+                        _logService.Warning("WeChatService", $"刷新联系人失败{retryInfo}: {ex.Message}");
+                    }
                     
-                    // 🔥 如果 contactsDoc 为 null，可能是超时或网络问题，尝试重试
-                    attempt++;
+                    // 🔥 如果不是最后一次尝试，等待后重试
                     if (attempt < maxRetries)
                     {
                         _logService.Info("WeChatService", $"等待 {retryInterval}ms 后重试...");
                         await Task.Delay(retryInterval, cancellationToken);
-                        continue;
+                    }
+                }
+                
+                // 🔥 所有重试都失败
+                if (result == null)
+                {
+                    if (lastException != null)
+                    {
+                        _logService.Error("WeChatService", "刷新联系人失败：超过最大重试次数", lastException);
                     }
                     else
                     {
                         _logService.Error("WeChatService", "获取联系人失败：数据为空（超过最大重试次数）");
-                        // 🔥 即使失败，也触发事件通知UI（空列表），确保UI更新
-                        // 通过 ContactDataService 触发事件（统一的事件机制）
-                        await _contactDataService.ProcessContactsAsync(JsonDocument.Parse("[]").RootElement);
-                        return new List<WxContact>();
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logService.Warning("WeChatService", $"刷新联系人失败 (尝试 {attempt + 1}/{maxRetries}): {ex.Message}");
                     
-                    attempt++;
-                    if (attempt < maxRetries)
-                    {
-                        await Task.Delay(retryInterval, cancellationToken);
-                    }
-                    else
-                    {
-                        _logService.Error("WeChatService", "刷新联系人失败：超过最大重试次数", ex);
-                        // 🔥 即使失败，也触发事件通知UI（空列表），确保UI更新
-                        // 通过 ContactDataService 触发事件（统一的事件机制）
-                        await _contactDataService.ProcessContactsAsync(JsonDocument.Parse("[]").RootElement);
-                        return new List<WxContact>();
-                    }
+                    result = new List<WxContact>();
                 }
             }
-
-            // 🔥 如果所有重试都失败，触发事件通知UI（空列表）
-            _logService.Error("WeChatService", "所有重试都失败，触发空列表事件");
-            // 通过 ContactDataService 触发事件（统一的事件机制）
-            await _contactDataService.ProcessContactsAsync(JsonDocument.Parse("[]").RootElement);
-            return new List<WxContact>();
-        }
-
-        /// <summary>
-        /// 刷新联系人列表（单次尝试，不带重试）
-        /// </summary>
-        public async Task<List<WxContact>> RefreshContactsAsync(CancellationToken cancellationToken = default)
-        {
-            try
+            finally
             {
-                _logService.Info("WeChatService", "开始刷新联系人列表");
-
-                var contactsDoc = await _socketClient.SendAsync<JsonDocument>("GetContacts", 30000);
-                if (contactsDoc != null)
+                // 🔥 无论成功或失败，都触发事件通知 UI
+                if (result != null)
                 {
-                    // ✅ SendAsync 已处理 error 和 result，直接使用
-                    _logService.Debug("WeChatService", $"收到数据类型: {contactsDoc.RootElement.ValueKind}");
-                    var contacts = await _contactDataService.ProcessContactsAsync(contactsDoc.RootElement);
-                    _logService.Info("WeChatService", $"✓ 联系人刷新成功，返回 {contacts.Count} 个");
-                    return contacts;
+                    await _contactDataService.ProcessContactsAsync(result);
                 }
-
-                _logService.Warning("WeChatService", "联系人数据为空");
-                return new List<WxContact>();
             }
-            catch (Exception ex)
-            {
-                _logService.Error("WeChatService", "刷新联系人失败", ex);
-                return new List<WxContact>();
-            }
+            
+            return result ?? new List<WxContact>();
         }
 
         /// <summary>

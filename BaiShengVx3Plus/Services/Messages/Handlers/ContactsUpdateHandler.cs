@@ -29,9 +29,12 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             {
                 _logService.Info("ContactsUpdateHandler", "📇 收到联系人更新推送");
 
-                // 统一调用 ContactDataService 处理
-                var contacts = await _contactDataService.ProcessContactsAsync(data);
+                // 🔥 使用静态方法解析 JSON
+                var contacts = Services.Contact.ContactDataService.ParseContactsFromJson(data);
+                _logService.Info("ContactsUpdateHandler", $"✓ 联系人解析成功，共 {contacts.Count} 个");
 
+                // 🔥 统一调用 ContactDataService 处理并触发事件
+                await _contactDataService.ProcessContactsAsync(contacts);
                 _logService.Info("ContactsUpdateHandler", $"✓ 处理完成，共 {contacts.Count} 个联系人");
             }
             catch (Exception ex)

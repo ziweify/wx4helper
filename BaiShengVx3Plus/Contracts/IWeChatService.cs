@@ -45,11 +45,16 @@ namespace BaiShengVx3Plus.Contracts
             bool isRunModeDev = false);
 
         /// <summary>
-        /// 刷新联系人列表
+        /// 刷新联系人列表（带重试机制）
         /// </summary>
+        /// <param name="maxRetries">最大重试次数（默认1次，不重试）</param>
+        /// <param name="retryInterval">重试间隔（毫秒，默认2000ms）</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>联系人列表</returns>
-        Task<List<WxContact>> RefreshContactsAsync(CancellationToken cancellationToken = default);
+        Task<List<WxContact>> RefreshContactsAsync(
+            int maxRetries = 1, 
+            int retryInterval = 2000, 
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 断开连接
