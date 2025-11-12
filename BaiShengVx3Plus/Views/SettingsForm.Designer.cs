@@ -30,6 +30,7 @@ namespace BaiShengVx3Plus.Views
         {
             uiTabControl1 = new Sunny.UI.UITabControl();
             tabPageSystem = new TabPage();
+            uiCheckBox1 = new Sunny.UI.UICheckBox();
             chkAdminModeSettings = new Sunny.UI.UICheckBox();
             tabPageConnection = new TabPage();
             uiGroupBox2 = new Sunny.UI.UIGroupBox();
@@ -62,7 +63,7 @@ namespace BaiShengVx3Plus.Views
             uiLabel3 = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
-            uiCheckBox1 = new Sunny.UI.UICheckBox();
+            grp开发模式选项 = new Sunny.UI.UIGroupBox();
             uiTabControl1.SuspendLayout();
             tabPageSystem.SuspendLayout();
             tabPageConnection.SuspendLayout();
@@ -95,6 +96,7 @@ namespace BaiShengVx3Plus.Views
             // tabPageSystem
             // 
             tabPageSystem.BackColor = Color.White;
+            tabPageSystem.Controls.Add(grp开发模式选项);
             tabPageSystem.Controls.Add(uiCheckBox1);
             tabPageSystem.Controls.Add(chkAdminModeSettings);
             tabPageSystem.Location = new Point(0, 40);
@@ -102,6 +104,18 @@ namespace BaiShengVx3Plus.Views
             tabPageSystem.Size = new Size(800, 470);
             tabPageSystem.TabIndex = 0;
             tabPageSystem.Text = "系统设置";
+            // 
+            // uiCheckBox1
+            // 
+            uiCheckBox1.Font = new Font("微软雅黑", 12F);
+            uiCheckBox1.ForeColor = Color.FromArgb(48, 48, 48);
+            uiCheckBox1.Location = new Point(40, 76);
+            uiCheckBox1.MinimumSize = new Size(1, 1);
+            uiCheckBox1.Name = "uiCheckBox1";
+            uiCheckBox1.Padding = new Padding(22, 0, 0, 0);
+            uiCheckBox1.Size = new Size(338, 30);
+            uiCheckBox1.TabIndex = 0;
+            uiCheckBox1.Text = "开发模式（允许手动绑定群, 模拟各项数据）";
             // 
             // chkAdminModeSettings
             // 
@@ -543,17 +557,18 @@ namespace BaiShengVx3Plus.Views
             btnCancel.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnCancel.Click += btnCancel_Click;
             // 
-            // uiCheckBox1
+            // grp开发模式选项
             // 
-            uiCheckBox1.Font = new Font("微软雅黑", 12F);
-            uiCheckBox1.ForeColor = Color.FromArgb(48, 48, 48);
-            uiCheckBox1.Location = new Point(40, 76);
-            uiCheckBox1.MinimumSize = new Size(1, 1);
-            uiCheckBox1.Name = "uiCheckBox1";
-            uiCheckBox1.Padding = new Padding(22, 0, 0, 0);
-            uiCheckBox1.Size = new Size(338, 30);
-            uiCheckBox1.TabIndex = 0;
-            uiCheckBox1.Text = "开发模式（允许手动绑定群, 模拟各项数据）";
+            grp开发模式选项.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            grp开发模式选项.Location = new Point(40, 114);
+            grp开发模式选项.Margin = new Padding(4, 5, 4, 5);
+            grp开发模式选项.MinimumSize = new Size(1, 1);
+            grp开发模式选项.Name = "grp开发模式选项";
+            grp开发模式选项.Padding = new Padding(0, 32, 0, 0);
+            grp开发模式选项.Size = new Size(338, 188);
+            grp开发模式选项.TabIndex = 1;
+            grp开发模式选项.Text = "开发模式选项";
+            grp开发模式选项.TextAlignment = ContentAlignment.MiddleLeft;
             // 
             // SettingsForm
             // 
@@ -615,6 +630,7 @@ namespace BaiShengVx3Plus.Views
         private TabPage tabPageSystem; // 🔥 系统设置选项卡
         private Sunny.UI.UICheckBox chkAdminModeSettings; // 🔥 管理模式checkbox
         private Sunny.UI.UICheckBox uiCheckBox1;
+        private Sunny.UI.UIGroupBox grp开发模式选项;
     }
 }
 

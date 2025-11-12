@@ -1,99 +1,48 @@
-using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace BaiShengVx3Plus.Models
 {
     /// <summary>
-    /// 应用程序配置
-    /// 存储应用级别的设置（非业务数据）
+    /// 应用程序配置（纯数据模型）
+    /// 职责：存储应用级别的设置数据（不包含业务逻辑）
     /// </summary>
-    public class AppConfiguration : INotifyPropertyChanged
+    public class AppConfiguration
     {
-        public AppConfiguration() {
-            //_currentBoundContact = new WxContact();
-        }
+        public string BsUserName { get; set; }   //百盛用户名
+        public string BsUserPwd { get; set; }    //百盛密码
+
 
         /// <summary>
         ///     运行模式
         /// </summary>
-        public bool _IsRunModeDev;
-        bool IsRunModeDev { get; set; }    //开发模式, 模拟联系人数据,模拟群数据,模拟恢复消息,可以控制界面显示模拟操作相关内容
-        bool IsRunModeAdmin { get; set; }  //管理模式(可以手动输入绑定群
-        bool IsRunModeBoss { get; set; }   //老板模式
+        public bool IsRunModeDev { get; set; }    //开发模式, 模拟联系人数据,模拟群数据,模拟恢复消息,可以控制界面显示模拟操作相关内容
+        public bool IsRunModeAdmin { get; set; }  //管理模式(可以手动输入绑定群
+        public bool IsRunModeBoss { get; set; }   //老板模式
 
         /// <summary>
         ///     软件模式
         /// </summary>
-        bool IsSoftModeVx { get; set; }
-        bool IsSoftModeFeitian { get; set; }
+        public bool IsSoftModeVx { get; set; }
+        public bool IsSoftModeFeitian { get; set; }
 
-        //运行时
-        private bool _isOrdersTaskingEnabled = false; // 默认关闭收单
-        private bool _isAutoBetEnabled = false; // 默认关闭自动投注
-        private int _sealSecondsAhead = 45; // 默认提前45秒封盘
-
-
-        // 当前绑定的联系人对象
-       //private WxContact? _currentBoundContact;
-       // public WxContact CurrentBoundContact { get { return _currentBoundContact; } }
 
         /// <summary>
         /// 收单开关（是否接收微信下注消息）
         /// </summary>
-        [JsonPropertyName("isOrdersTaskingEnabled")]
-        public bool IsOrdersTaskingEnabled
-        {
-            get => _isOrdersTaskingEnabled;
-            set
-            {
-                if (_isOrdersTaskingEnabled != value)
-                {
-                    _isOrdersTaskingEnabled = value;
-                    OnPropertyChanged(nameof(IsOrdersTaskingEnabled));
-                }
-            }
-        }
+        //[JsonPropertyName("isOrdersTaskingEnabled")]
+        public bool Is收单开关 { get; set; } = false;
         
         /// <summary>
         /// 自动投注开关（飞单）
         /// </summary>
-        [JsonPropertyName("isAutoBetEnabled")]
-        public bool IsAutoBetEnabled
-        {
-            get => _isAutoBetEnabled;
-            set
-            {
-                if (_isAutoBetEnabled != value)
-                {
-                    _isAutoBetEnabled = value;
-                    OnPropertyChanged(nameof(IsAutoBetEnabled));
-                }
-            }
-        }
+        //[JsonPropertyName("isAutoBetEnabled")]
+        public bool Is飞单开关 { get; set; } = false;
         
         /// <summary>
         /// 提前封盘秒数
         /// </summary>
-        [JsonPropertyName("sealSecondsAhead")]
-        public int SealSecondsAhead
-        {
-            get => _sealSecondsAhead;
-            set
-            {
-                if (_sealSecondsAhead != value)
-                {
-                    _sealSecondsAhead = value;
-                    OnPropertyChanged(nameof(SealSecondsAhead));
-                }
-            }
-        }
-        
-        public event PropertyChangedEventHandler? PropertyChanged;
-        
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        //[JsonPropertyName("sealSecondsAhead")]
+        public int N封盘提前秒数 { get; set; } = 45;
     }
 }
 

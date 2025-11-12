@@ -53,6 +53,7 @@ namespace BaiShengVx3Plus
                     {
                         // 核心服务
                         services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
+                        services.AddSingleton<IConfigurationService, Services.Configuration.ConfigurationService>(); // 配置服务
                         
                         // 业务服务
                         // ✅ IAuthService 已删除，直接使用 BoterApi
@@ -94,7 +95,7 @@ namespace BaiShengVx3Plus
                             services.AddTransient<IMessageHandler, MemberLeaveHandler>();
 
                         // 注册ViewModels
-                        services.AddTransient<LoginViewModel>();
+                        services.AddTransient<ConfigViewModel>();
                         services.AddTransient<VxMainViewModel>();
 
                         // 注册Views

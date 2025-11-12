@@ -55,8 +55,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         {
             try
             {
-                // 0. 检查是否开启收单
-                if(!ConfigurationManager.Instance.Configuration.IsOrdersTaskingEnabled)
+                // ✅ 检查是否开启收单（使用静态属性，由 VxMain 同步更新）
+                if(!IsOrdersTaskingEnabled)
                 {
                     return (false, null);
                 }

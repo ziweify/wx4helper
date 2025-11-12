@@ -5,9 +5,9 @@ namespace BaiShengVx3Plus.Views
 {
     public partial class LoginForm : UIForm
     {
-        private readonly LoginViewModel _viewModel;
+        private readonly ConfigViewModel _viewModel;
 
-        public LoginForm(LoginViewModel viewModel)
+        public LoginForm(ConfigViewModel viewModel)
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -17,18 +17,18 @@ namespace BaiShengVx3Plus.Views
         private void BindViewModel()
         {
             // 绑定用户名
-            txtUsername.TextChanged += (s, e) => _viewModel.Username = txtUsername.Text;
+            txtUsername.TextChanged += (s, e) => _viewModel.BsUserName = txtUsername.Text;
             
             // 绑定密码
-            txtPassword.TextChanged += (s, e) => _viewModel.Password = txtPassword.Text;
+            txtPassword.TextChanged += (s, e) => _viewModel.BsUserPass = txtPassword.Text;
             
             // 绑定记住密码
-            chkRememberPassword.CheckedChanged += (s, e) => _viewModel.RememberPassword = chkRememberPassword.Checked;
+            chkRememberPassword.CheckedChanged += (s, e) => _viewModel.IsRememberPassword = chkRememberPassword.Checked;
 
             // 同步初始值到 ViewModel（设计器中设置的 Text 属性不会触发 TextChanged 事件）
-            _viewModel.Username = txtUsername.Text;
-            _viewModel.Password = txtPassword.Text;
-            _viewModel.RememberPassword = chkRememberPassword.Checked;
+            _viewModel.BsUserName = txtUsername.Text;
+            _viewModel.BsUserPass = txtPassword.Text;
+            _viewModel.IsRememberPassword = chkRememberPassword.Checked;
 
             // 登录按钮
             btnLogin.Click += async (s, e) =>

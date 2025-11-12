@@ -23,6 +23,7 @@ namespace BaiShengVx3Plus
     public partial class VxMain : UIForm
     {
         private readonly VxMainViewModel _viewModel;
+        
         private readonly ILogService _logService;
         private readonly IWeixinSocketClient _socketClient; // Socket 客户端
         private readonly MessageDispatcher _messageDispatcher; // 消息分发器
@@ -40,6 +41,8 @@ namespace BaiShengVx3Plus
         private readonly BinggoGameSettings _binggoSettings;
         private readonly Services.AutoBet.AutoBetService _autoBetService; // 🤖 自动投注服务
         private readonly Services.AutoBet.AutoBetCoordinator _autoBetCoordinator; // 🤖 自动投注协调器
+        private readonly IConfigurationService _configService; // 📝 配置服务
+        private readonly ViewModels.ConfigViewModel _configViewModel; // 📝 配置 ViewModel（用于数据绑定）
         
         // 🔥 ORM 数据库连接
         private SQLiteConnection? _db;
@@ -119,7 +122,8 @@ namespace BaiShengVx3Plus
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
             BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
             Services.AutoBet.AutoBetService autoBetService, // 🤖 注入自动投注服务
-            Services.AutoBet.AutoBetCoordinator autoBetCoordinator) // 🤖 注入自动投注协调器
+            Services.AutoBet.AutoBetCoordinator autoBetCoordinator, // 🤖 注入自动投注协调器
+            IConfigurationService configService) // 📝 注入配置服务
         {
             InitializeComponent();
             _viewModel = viewModel;
@@ -138,6 +142,8 @@ namespace BaiShengVx3Plus
             _binggoSettings = binggoSettings;
             _autoBetService = autoBetService; // 🤖 自动投注服务
             _autoBetCoordinator = autoBetCoordinator; // 🤖 自动投注协调器
+            _configService = configService; // 📝 配置服务
+            _configViewModel = new ViewModels.ConfigViewModel(configService); // 📝 创建配置 ViewModel
             
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
@@ -3068,9 +3074,14 @@ namespace BaiShengVx3Plus
                 // 从默认配置加载设置
                 LoadAutoBetSettings();
                 
-                // 加载应用设置（开关状态）
-                swi_OrdersTasking.DataBindings.Add(new Binding("Active", ConfigurationManager.Instance.Configuration, "IsOrdersTaskingEnabled"));
-                swiAutoOrdersBet.DataBindings.Add(new Binding("Active", ConfigurationManager.Instance.Configuration, "IsAutoBetEnabled"));
+                // ✅ 加载应用设置（绑定到 ConfigViewModel，支持双向自动同步）
+                swi_OrdersTasking.DataBindings.Add(
+                    new Binding("Active", _configViewModel, nameof(_configViewModel.IsOrdersTaskingEnabled), 
+                    false, DataSourceUpdateMode.OnPropertyChanged));
+                    
+                swiAutoOrdersBet.DataBindings.Add(
+                    new Binding("Active", _configViewModel, nameof(_configViewModel.IsAutoBetEnabled), 
+                    false, DataSourceUpdateMode.OnPropertyChanged));
 
                 // 绑定自动保存事件（使用防抖机制）
                 // 下拉框：立即保存
@@ -3197,8 +3208,8 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"🎚️ 飞单开关触发: {value}");
                 
-                // 🔥 更新配置管理器（会自动保存到文件）
-                Services.ConfigurationManager.Instance.Configuration.IsAutoBetEnabled = value;
+                // ✅ 通过 Service 更新配置（会自动保存到文件 + 触发事件）
+                _configService.SetIsAutoBetEnabled(value);
                 
                 if (value) // 开启自动投注
                 {
@@ -3258,8 +3269,8 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", $"🎚️ 收单开关触发: {value}");
                 
-                // 🔥 更新配置管理器（会自动保存到文件）
-                Services.ConfigurationManager.Instance.Configuration.IsOrdersTaskingEnabled = value;
+                // ✅ 通过 Service 更新配置（会自动保存到文件 + 触发事件）
+                _configService.SetIsOrdersTaskingEnabled(value);
                 
                 // 更新消息处理器的全局开关
                 Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = value;
@@ -3291,18 +3302,19 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "📖 开始加载应用配置...");
                 
-                // 从配置管理器获取配置
-                var config = Services.ConfigurationManager.Instance.Configuration;
+                // ✅ 从配置服务获取配置
+                var isAutoBetEnabled = _configService.GetIsAutoBetEnabled();
+                var isOrdersTaskingEnabled = _configService.GetIsOrdersTaskingEnabled();
                 
-                _logService.Info("VxMain", $"📖 从配置文件读取: 飞单={config.IsAutoBetEnabled}, 收单={config.IsOrdersTaskingEnabled}");
+                _logService.Info("VxMain", $"📖 从配置文件读取: 飞单={isAutoBetEnabled}, 收单={isOrdersTaskingEnabled}");
                 
-                // 设置UI开关状态（不会触发 ValueChanged 事件，因为UI还没初始化完成）
-                swiAutoOrdersBet.Active = config.IsAutoBetEnabled;
-                swi_OrdersTasking.Active = config.IsOrdersTaskingEnabled;
+                // ✅ 通过 ViewModel 设置UI状态（通过数据绑定自动同步）
+                _configViewModel.IsAutoBetEnabled = isAutoBetEnabled;
+                _configViewModel.IsOrdersTaskingEnabled = isOrdersTaskingEnabled;
                 
-                // 🔥 手动同步到消息处理器（因为UI设置不会触发事件）
-                Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = config.IsOrdersTaskingEnabled;
-                _logService.Info("VxMain", $"✅ 已同步到 BinggoMessageHandler.IsOrdersTaskingEnabled = {Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled}");
+                // ✅ 手动同步到消息处理器（初始化时需要同步）
+                Services.Messages.Handlers.BinggoMessageHandler.IsOrdersTaskingEnabled = isOrdersTaskingEnabled;
+                _logService.Info("VxMain", $"✅ 已同步到 BinggoMessageHandler.IsOrdersTaskingEnabled = {isOrdersTaskingEnabled}");
                 
                 _logService.Info("VxMain", $"✅ 应用配置已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
             }
