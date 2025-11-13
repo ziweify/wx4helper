@@ -26,6 +26,11 @@ namespace BaiShengVx3Plus.Contracts
         int GetSealSecondsAhead();
         
         /// <summary>
+        /// 获取收单关闭时不发送系统消息状态
+        /// </summary>
+        bool Get收单关闭时不发送系统消息();
+        
+        /// <summary>
         /// 获取管理模式状态
         /// </summary>
         bool GetIsRunModeAdmin();
@@ -68,6 +73,11 @@ namespace BaiShengVx3Plus.Contracts
         /// 设置提前封盘秒数
         /// </summary>
         void SetSealSecondsAhead(int value);
+        
+        /// <summary>
+        /// 设置收单关闭时不发送系统消息状态
+        /// </summary>
+        void Set收单关闭时不发送系统消息(bool value);
         
         /// <summary>
         /// 设置管理模式

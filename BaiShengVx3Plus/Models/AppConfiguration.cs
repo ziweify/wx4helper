@@ -45,6 +45,12 @@ namespace BaiShengVx3Plus.Models
         public int N封盘提前秒数 { get; set; } = 45;
         
         /// <summary>
+        /// 收单关闭时不发送系统消息（开盘、封盘、开奖、结算消息）
+        /// 默认 true = 收单关闭时也不发送系统消息
+        /// </summary>
+        public bool 收单关闭时不发送系统消息 { get; set; } = true;
+        
+        /// <summary>
         /// 🔧 开发模式：当前选中的会员（用于测试）
         /// </summary>
         public string RunDevCurrentMember { get; set; } = string.Empty;

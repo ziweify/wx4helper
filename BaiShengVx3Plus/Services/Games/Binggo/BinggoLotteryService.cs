@@ -40,6 +40,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
     {
         private readonly ILogService _logService;
         private readonly BinggoGameSettings _settings;
+        private readonly IConfigurationService _configService;
         private SQLiteConnection? _db;
         private Core.BinggoLotteryDataBindingList? _bindingList;  // 🔥 UI 数据绑定
         
@@ -88,10 +89,28 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         public BinggoLotteryService(
             ILogService logService,
-            BinggoGameSettings settings)
+            BinggoGameSettings settings,
+            IConfigurationService configService)
         {
             _logService = logService;
             _settings = settings;
+            _configService = configService;
+        }
+        
+        /// <summary>
+        /// 🔥 检查是否应该发送系统消息
+        /// </summary>
+        /// <returns>true = 应该发送，false = 不应该发送</returns>
+        private bool ShouldSendSystemMessage()
+        {
+            // 如果收单开关关闭，且设置了"收单关闭时不发送系统消息"
+            if (!_configService.GetIsOrdersTaskingEnabled() && 
+                _configService.Get收单关闭时不发送系统消息())
+            {
+                _logService.Debug("BinggoLotteryService", "⏸️ 收单已关闭且设置了不发送系统消息，跳过发送");
+                return false;
+            }
+            return true;
         }
         
         /// <summary>
@@ -942,6 +961,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             try
             {
+                // 🔥 检查是否应该发送系统消息
+                if (!ShouldSendSystemMessage())
+                {
+                    return;
+                }
+                
                 int issueId = lotteryData.IssueId;
                 
                 // 🔥 发送中奖名单（参考 F5BotV2 第 1415-1462 行）
@@ -1301,22 +1326,26 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
                 if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
                 {
-                    int issueShort = issueId % 1000;
-                    string message = $"第{issueShort}队\r---------线下开始---------";
-                    
-                    _logService.Info("BinggoLotteryService", $"📢 发送开盘提示: {groupWxId} - {message}");
-                    
-                    var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
-                    if (response != null)
+                    // 🔥 检查是否应该发送系统消息
+                    if (ShouldSendSystemMessage())
                     {
-                        // 🔥 标记该期号已发送过"线下开始"消息
-                        _lastOpeningIssueId = issueId;
-                        _logService.Info("BinggoLotteryService", $"✅ 开盘提示已发送: {message}");
+                        int issueShort = issueId % 1000;
+                        string message = $"第{issueShort}队\r---------线下开始---------";
+                        
+                        _logService.Info("BinggoLotteryService", $"📢 发送开盘提示: {groupWxId} - {message}");
+                        
+                        var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
+                        if (response != null)
+                        {
+                            // 🔥 标记该期号已发送过"线下开始"消息
+                            _lastOpeningIssueId = issueId;
+                            _logService.Info("BinggoLotteryService", $"✅ 开盘提示已发送: {message}");
+                        }
+                        
+                        // 🔥 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
+                        await SendHistoryLotteryImageAsync(issueId, groupWxId);
                     }
                 }
-                
-                // 🔥 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
-                await SendHistoryLotteryImageAsync(issueId, groupWxId);
             }
             catch (Exception ex)
             {
@@ -1335,6 +1364,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
                     _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送历史记录图片");
+                    return;
+                }
+                
+                // 🔥 检查是否应该发送系统消息
+                if (!ShouldSendSystemMessage())
+                {
                     return;
                 }
                 
@@ -1612,6 +1647,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return;
                 }
                 
+                // 🔥 检查是否应该发送系统消息
+                if (!ShouldSendSystemMessage())
+                {
+                    return;
+                }
+                
                 // 🔥 格式完全按照 F5BotV2：{issueid%1000} 还剩30秒 或 {issueid%1000} 还剩15秒
                 int issueShort = issueId % 1000;
                 string message = $"{issueShort} 还剩{seconds}秒";
@@ -1643,6 +1684,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
                     _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘消息");
+                    return;
+                }
+                
+                // 🔥 检查是否应该发送系统消息
+                if (!ShouldSendSystemMessage())
+                {
                     return;
                 }
                 

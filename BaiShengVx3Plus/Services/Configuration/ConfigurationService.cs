@@ -49,6 +49,8 @@ namespace BaiShengVx3Plus.Services.Configuration
         
         public int GetSealSecondsAhead() => _configuration.N封盘提前秒数;
         
+        public bool Get收单关闭时不发送系统消息() => _configuration.收单关闭时不发送系统消息;
+        
         public bool GetIsRunModeAdmin() => _configuration.IsRunModeAdmin;
         
         public bool GetIsRunModeDev() => _configuration.IsRunModeDev;
@@ -117,6 +119,23 @@ namespace BaiShengVx3Plus.Services.Configuration
                 
                 // 触发变更事件（使用 ViewModel 的属性名，不是 Model 的属性名）
                 OnConfigurationChanged("SealSecondsAhead", oldValue, value);
+            }
+        }
+        
+        public void Set收单关闭时不发送系统消息(bool value)
+        {
+            if (_configuration.收单关闭时不发送系统消息 != value)
+            {
+                var oldValue = _configuration.收单关闭时不发送系统消息;
+                _configuration.收单关闭时不发送系统消息 = value;
+                
+                _logService.Info("ConfigurationService", $"收单关闭时不发送系统消息已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+                
+                // 触发变更事件
+                OnConfigurationChanged("收单关闭时不发送系统消息", oldValue, value);
             }
         }
         

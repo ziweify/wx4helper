@@ -31,6 +31,7 @@ namespace BaiShengVx3Plus.Views
             uiTabControl1 = new Sunny.UI.UITabControl();
             tabPageSystem = new TabPage();
             grp开发模式选项 = new Sunny.UI.UIGroupBox();
+            chk收单关闭时不发送系统消息 = new Sunny.UI.UICheckBox();
             chkRunModelDev = new Sunny.UI.UICheckBox();
             chkRunModeAdminSettings = new Sunny.UI.UICheckBox();
             tabPageConnection = new TabPage();
@@ -104,6 +105,7 @@ namespace BaiShengVx3Plus.Views
             // 
             tabPageSystem.BackColor = Color.White;
             tabPageSystem.Controls.Add(grp开发模式选项);
+            tabPageSystem.Controls.Add(chk收单关闭时不发送系统消息);
             tabPageSystem.Controls.Add(chkRunModelDev);
             tabPageSystem.Controls.Add(uiCheckBox1);
             tabPageSystem.Controls.Add(chkRunModeAdminSettings);
@@ -130,6 +132,18 @@ namespace BaiShengVx3Plus.Views
             grp开发模式选项.TabIndex = 1;
             grp开发模式选项.Text = "开发模式选项";
             grp开发模式选项.TextAlignment = ContentAlignment.MiddleLeft;
+            // 
+            // chk收单关闭时不发送系统消息
+            // 
+            chk收单关闭时不发送系统消息.Font = new Font("微软雅黑", 11F);
+            chk收单关闭时不发送系统消息.ForeColor = Color.FromArgb(48, 48, 48);
+            chk收单关闭时不发送系统消息.Location = new Point(14, 14);
+            chk收单关闭时不发送系统消息.MinimumSize = new Size(1, 1);
+            chk收单关闭时不发送系统消息.Name = "chk收单关闭时不发送系统消息";
+            chk收单关闭时不发送系统消息.Padding = new Padding(22, 0, 0, 0);
+            chk收单关闭时不发送系统消息.Size = new Size(750, 30);
+            chk收单关闭时不发送系统消息.TabIndex = 0;
+            chk收单关闭时不发送系统消息.Text = "收单关闭时不发送系统消息（开盘、封盘、开奖、结算等自动消息都不发送）";
             // 
             // chkRunModelDev
             // 
@@ -713,6 +727,7 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UIButton btnQuickSendImage;
         private Sunny.UI.UIButton btnQuickGetGroupContacts;
         private TabPage tabPageSystem; // 🔥 系统设置选项卡
+        private Sunny.UI.UICheckBox chk收单关闭时不发送系统消息; // 🔥 收单关闭时不发送系统消息checkbox
         private Sunny.UI.UICheckBox chkRunModeAdminSettings; // 🔥 管理模式checkbox
         private Sunny.UI.UICheckBox chkRunModelDev;
         private Sunny.UI.UIGroupBox grp开发模式选项;

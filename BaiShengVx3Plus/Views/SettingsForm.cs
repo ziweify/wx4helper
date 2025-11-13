@@ -83,6 +83,14 @@ namespace BaiShengVx3Plus.Views
                 _configService.SetRunDevSendMessage(tbxRunDevSendMessage.Text);
             };
             
+            // 🔥 收单关闭时不发送系统消息 checkbox
+            chk收单关闭时不发送系统消息.Checked = _configService.Get收单关闭时不发送系统消息();
+            chk收单关闭时不发送系统消息.CheckedChanged += (s, e) =>
+            {
+                _configService.Set收单关闭时不发送系统消息(chk收单关闭时不发送系统消息.Checked);
+                _logService.Info("SettingsForm", $"收单关闭时不发送系统消息: {chk收单关闭时不发送系统消息.Checked}");
+            };
+            
             // 🔍 测试：验证绑定是否生效（初始值）
             _logService.Info("SettingsForm", $"📋 设置加载: 管理模式={_settingVmodel.Is管理模式}, 开发模式={_settingVmodel.Is开发模式}");
             _logService.Info("SettingsForm", $"📋 UI显示: 管理模式Checked={chkRunModeAdminSettings.Checked}, 开发模式Checked={chkRunModelDev.Checked}");
