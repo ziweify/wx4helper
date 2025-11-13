@@ -45,9 +45,10 @@ namespace BaiShengVx3Plus
         private readonly ViewModels.ConfigViewModel _configViewModel; // 📝 配置 ViewModel（用于数据绑定）
         private readonly ViewModels.SettingViewModel _settingViewModel; // 🌐 设置 ViewModel（全局单例）
         
-        // 🔥 ORM 数据库连接
-        private SQLiteConnection? _db;
-        private string _currentDbPath = "";  // 当前数据库路径
+        // 🔥 ORM 数据库连接（双库结构）
+        private SQLiteConnection? _globalDb;  // 全局数据库: business.db (飞单配置、开奖数据)
+        private SQLiteConnection? _db;  // 微信专属数据库: business_{wxid}.db (会员、订单、投注记录等)
+        private string _currentDbPath = "";  // 当前微信专属数据库路径
         
         // 数据绑定列表
         private BindingList<WxContact> _contactsBindingList;
@@ -188,79 +189,103 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 初始化数据库（使用 ORM）
+        /// 初始化数据库（使用 ORM，双库结构）
         /// 
-        /// 🔥 数据库命名规则：
-        /// 1. 默认数据库: business.db（空的，不存储任何数据）
-        /// 2. 微信专属数据库: business_{wxid}.db（存储所有业务数据：会员、订单等）
-        /// 3. 日志数据库: logs.db（全局共享）
+        /// 🔥 数据库命名规则（优化后）：
+        /// 1. 全局数据库: business.db（存储全局共享数据）
+        ///    - AutoBetConfigs（飞单配置）
+        ///    - BinggoLotteryData（开奖数据）
+        ///    - BinggoBetItem（开奖下注项）
+        /// 
+        /// 2. 微信专属数据库: business_{wxid}.db（存储微信账号专属数据）
+        ///    - V2Member（会员信息）
+        ///    - V2MemberOrder（订单信息）
+        ///    - V2CreditWithdraw（上下分记录）
+        ///    - V2BalanceChange（资金变动记录）
+        ///    - BetOrderRecord（投注记录）
+        ///    - WxContact（联系人）
+        ///    - WxUserInfo（用户信息）
+        ///    - LogEntry（日志）
+        /// 
+        /// 3. 日志数据库: logs.db（全局共享，暂未使用）
         /// 
         /// 🔥 重要设计原则：
         /// 1. 数据库操作（增删改查）= 同步执行，保证数据一致性，避免污染
         /// 2. UI 更新（状态文本等）= 异步执行，避免阻塞 UI 线程，保证流畅
         /// 3. 数据绑定（DataSource）= 同步执行，确保数据立即生效
         /// </summary>
-        /// <param name="wxid">微信ID，"default" 表示默认空数据库，其他为实际微信ID</param>
+        /// <param name="wxid">微信ID，"default" 表示仅初始化全局数据库，其他为实际微信ID</param>
         private void InitializeDatabase(string wxid)
         {
             try
             {
                 // ========================================
-                // 🔥 步骤1: 数据库操作（同步，不阻塞UI）
+                // 🔥 步骤1: 初始化全局数据库（始终打开）
                 // ========================================
                 
-                // 关闭旧数据库连接
-                _db?.Close();
-                _db = null;
-                
-                // 🔥 数据库命名规则：
-                // - default → business.db（空数据库）
-                // - wxid_xxx → business_wxid_xxx.db（微信专属数据库，存储所有业务数据）
-                // 🔥 使用 AppData\Local 目录，无需管理员权限
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "BaiShengVx3Plus",
                     "Data");
-                
-                string dbPath = wxid == "default" 
-                    ? Path.Combine(dataDirectory, "business.db")  // 默认空数据库
-                    : Path.Combine(dataDirectory, $"business_{wxid}.db");  // 微信专属数据库
-                    
                 Directory.CreateDirectory(dataDirectory);
                 
-                // 🔥 保存数据库路径（用于清空数据时备份）
-                _currentDbPath = dbPath;
+                // 🔥 全局数据库：business.db（始终打开，存储全局共享数据）
+                string globalDbPath = Path.Combine(dataDirectory, "business.db");
                 
-                _logService.Info("VxMain", $"初始化数据库: {dbPath}");
-                
-                // 🔥 创建 ORM 数据库连接（同步）
-                _db = new SQLiteConnection(dbPath);
-                
-                // 🔥 统一创建所有数据表（防御性编程，预防 "no such table" 错误）
-                InitializeAllDatabaseTables(_db);
-                
-                // 🔥 将数据库连接传递给群组绑定服务
-                if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)
+                if (_globalDb == null || _globalDb.DatabasePath != globalDbPath)
                 {
-                    groupBindingService.SetDatabase(_db);
+                    _globalDb?.Close();
+                    _globalDb = new SQLiteConnection(globalDbPath);
+                    _logService.Info("VxMain", $"✅ 全局数据库已打开: {globalDbPath}");
+                    
+                    // 🔥 创建全局表
+                    InitializeGlobalTables(_globalDb);
                 }
                 
-                // ✅ 不再在这里创建和加载数据
-                // 数据加载延迟到绑定群后（参考 F5BotV2 第 816 行）
-                _logService.Info("VxMain", "✅ 数据库已准备，等待绑定群后加载数据");
+                // ========================================
+                // 🔥 步骤2: 初始化微信专属数据库（如果需要）
+                // ========================================
+                
+                if (wxid != "default")
+                {
+                    // 关闭旧的微信专属数据库连接
+                    _db?.Close();
+                    _db = null;
+                    
+                    // 🔥 微信专属数据库：business_{wxid}.db
+                    string wxDbPath = Path.Combine(dataDirectory, $"business_{wxid}.db");
+                    _currentDbPath = wxDbPath;
+                    
+                    _logService.Info("VxMain", $"初始化微信专属数据库: {wxDbPath}");
+                    _db = new SQLiteConnection(wxDbPath);
+                    
+                    // 🔥 创建微信专属表
+                    InitializeWxTables(_db);
+                    
+                    // 🔥 将数据库连接传递给群组绑定服务
+                    if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)
+                    {
+                        groupBindingService.SetDatabase(_db);
+                    }
+                    
+                    _logService.Info("VxMain", "✅ 微信专属数据库已准备，等待绑定群后加载数据");
+                }
+                else
+                {
+                    _logService.Info("VxMain", "✅ 仅初始化全局数据库（默认模式）");
+                }
                 
                 // ========================================
-                // 🔥 步骤3: 初始化炳狗服务（异步，不阻塞）
+                // 🔥 步骤3: 初始化炳狗服务
                 // ========================================
                 
                 InitializeBinggoServices();
                 
                 // ========================================
-                // 🔥 步骤4: 日志记录（异步，不阻塞）
+                // 🔥 步骤4: 日志记录
                 // ========================================
                 
-                _logService.Info("VxMain", $"✓ 数据库已初始化: {dbPath}");
-                // ✅ 数据将在绑定群后加载，此处不记录数量
+                _logService.Info("VxMain", $"✓ 数据库初始化完成");
             }
             catch (Exception ex)
             {
@@ -290,15 +315,25 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 1. 设置数据库连接
-                _lotteryService.SetDatabase(_db);
-                _orderService.SetDatabase(_db);
-                // 🔥 上下分数据库已通过 SetDatabaseForCreditWithdraw 设置
-                _autoBetService.SetDatabase(_db);  // 🤖 设置自动投注服务的数据库
+                // 🔥 1. 设置数据库连接（双库结构）
+                // 📌 全局数据库（business.db）
+                // - AutoBetService: AutoBetConfigs（飞单配置）
+                _autoBetService.SetDatabase(_globalDb);
+                _logService.Info("VxMain", "✅ AutoBetService 已设置全局数据库（AutoBetConfigs）");
                 
-                // 🤖 初始化投注记录服务数据库
+                // - LotteryService: BinggoLotteryData（开奖数据）
+                _lotteryService.SetDatabase(_globalDb);
+                _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
+                
+                // 📌 微信专属数据库（business_{wxid}.db）
+                // - BetRecordService: BetOrderRecord（投注记录）
                 var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
                 betRecordService?.SetDatabase(_db);
+                _logService.Info("VxMain", "✅ BetRecordService 已设置微信专属数据库（BetOrderRecord）");
+                
+                // - OrderService: V2MemberOrder（订单）
+                _orderService.SetDatabase(_db);
+                _logService.Info("VxMain", "✅ OrderService 已设置微信专属数据库（V2MemberOrder）");
                 
                 // 🤖 数据库设置完成后，重新加载自动投注设置
                 LoadAutoBetSettings();
@@ -306,8 +341,8 @@ namespace BaiShengVx3Plus
                 // 🎚️ 加载应用配置（从 appsettings.json）
                 LoadAppConfiguration();
                 
-                // 2. 创建开奖数据 BindingList
-                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
+                // 2. 创建开奖数据 BindingList（使用全局数据库）
+                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
                 _lotteryDataBindingList.LoadFromDatabase(100); // 加载最近 100 期
                 
                 // 3. 设置开奖服务的 BindingList（用于自动更新 UI）
@@ -1811,8 +1846,8 @@ namespace BaiShengVx3Plus
                         // 🔥 重新打开数据库
                         _db = new SQLiteConnection(_currentDbPath);
                         
-                        // 🔥 重新初始化所有表
-                        InitializeAllDatabaseTables(_db);
+                        // 🔥 重新初始化微信专属表
+                        InitializeWxTables(_db);
                     }
                     catch (Exception ex)
                     {
@@ -1824,8 +1859,8 @@ namespace BaiShengVx3Plus
                         {
                             _db = new SQLiteConnection(_currentDbPath);
                             
-                            // 🔥 重新初始化所有表
-                            InitializeAllDatabaseTables(_db);
+                            // 🔥 重新初始化微信专属表
+                            InitializeWxTables(_db);
                         }
                         return;
                     }
@@ -3301,82 +3336,100 @@ namespace BaiShengVx3Plus
         #region 数据库表初始化
 
         /// <summary>
-        /// 统一初始化所有数据库表
-        /// 🔥 防御性编程：确保所有表都存在，避免运行时出现 "no such table" 错误
-        /// 
-        /// 说明：
-        /// - SQLite 的 CreateTable<T>() 如果表已存在会自动跳过，不会报错
-        /// - 在数据库初始化时统一创建所有表，比分散在各处创建更可靠
-        /// - 即使某些表暂时不用，也预先创建好，为将来扩展做准备
+        /// 🔥 初始化全局数据库表（business.db）
+        /// 存储全局共享数据，所有微信账号共用
         /// </summary>
-        private void InitializeAllDatabaseTables(SQLiteConnection db)
+        private void InitializeGlobalTables(SQLiteConnection db)
         {
             try
             {
-                _logService.Info("VxMain", "🗄️ 开始初始化数据库表...");
+                _logService.Info("VxMain", "🗄️ 初始化全局数据库表...");
 
                 // ========================================
-                // 🔥 核心业务表（V2 系列）
+                // 🔥 自动投注配置表（全局共享）
+                // ========================================
+                
+                // 自动投注配置表（飞单配置，全局共享）
+                db.CreateTable<Models.AutoBet.BetConfig>();
+                _logService.Debug("VxMain", "✓ 全局表: BetConfig");
+
+                // ========================================
+                // 🔥 游戏开奖数据表（全局共享）
+                // ========================================
+                
+                // 炳狗开奖数据表（开奖数据，全局共享）
+                db.CreateTable<Models.Games.Binggo.BinggoLotteryData>();
+                _logService.Debug("VxMain", "✓ 全局表: BinggoLotteryData");
+                
+                // 炳狗下注项表（单/双/大/小/对子等，全局共享）
+                db.CreateTable<Models.Games.Binggo.BinggoBetItem>();
+                _logService.Debug("VxMain", "✓ 全局表: BinggoBetItem");
+
+                _logService.Info("VxMain", "✅ 全局数据库表初始化完成（3张表）");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化全局数据库表失败", ex);
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 初始化微信专属数据库表（business_{wxid}.db）
+        /// 存储微信账号专属数据：会员、订单、上下分记录、投注记录等
+        /// </summary>
+        private void InitializeWxTables(SQLiteConnection db)
+        {
+            try
+            {
+                _logService.Info("VxMain", "🗄️ 初始化微信专属数据库表...");
+
+                // ========================================
+                // 🔥 核心业务表（微信账号专属）
                 // ========================================
                 
                 // 会员表
                 db.CreateTable<V2Member>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: V2Member");
+                _logService.Debug("VxMain", "✓ 微信专属表: V2Member");
                 
-                // 订单表
+                // 订单表（微信收到的订单）
                 db.CreateTable<V2MemberOrder>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: V2MemberOrder");
+                _logService.Debug("VxMain", "✓ 微信专属表: V2MemberOrder");
                 
                 // 上下分申请表
                 db.CreateTable<V2CreditWithdraw>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: V2CreditWithdraw");
+                _logService.Debug("VxMain", "✓ 微信专属表: V2CreditWithdraw");
                 
                 // 资金变动表（上下分、订单结算等）
                 db.CreateTable<V2BalanceChange>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: V2BalanceChange");
+                _logService.Debug("VxMain", "✓ 微信专属表: V2BalanceChange");
+                
+                // 🔥 投注记录表（自动飞单到平台的投注记录）
+                db.CreateTable<Models.AutoBet.BetOrderRecord>();
+                _logService.Debug("VxMain", "✓ 微信专属表: BetOrderRecord");
 
                 // ========================================
-                // 🔥 游戏相关表
-                // ========================================
-                
-                // 炳狗开奖数据表
-                db.CreateTable<Models.Games.Binggo.BinggoLotteryData>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: BinggoLotteryData");
-                
-                // 炳狗下注项表（单/双/大/小/对子等）
-                db.CreateTable<Models.Games.Binggo.BinggoBetItem>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: BinggoBetItem");
-
-                // ========================================
-                // 🔥 系统配置表
-                // ========================================
-                
-                // 自动投注配置表
-                db.CreateTable<Models.AutoBet.BetConfig>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: BetConfig");
-
-                // ========================================
-                // 🔥 基础数据表
+                // 🔥 基础数据表（微信账号专属）
                 // ========================================
                 
                 // 微信联系人表
                 db.CreateTable<WxContact>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: WxContact");
+                _logService.Debug("VxMain", "✓ 微信专属表: WxContact");
                 
                 // 微信用户信息表
                 db.CreateTable<WxUserInfo>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: WxUserInfo");
+                _logService.Debug("VxMain", "✓ 微信专属表: WxUserInfo");
                 
                 // 日志表
                 db.CreateTable<LogEntry>();
-                _logService.Debug("VxMain", "✓ 创建/检查表: LogEntry");
+                _logService.Debug("VxMain", "✓ 微信专属表: LogEntry");
 
-                _logService.Info("VxMain", "✅ 数据库表初始化完成，共检查/创建 11 张表");
+                _logService.Info("VxMain", "✅ 微信专属数据库表初始化完成（8张表）");
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", "初始化数据库表失败", ex);
-                throw; // 重新抛出异常，因为数据库表初始化失败是严重错误
+                _logService.Error("VxMain", "初始化微信专属数据库表失败", ex);
+                throw;
             }
         }
 
