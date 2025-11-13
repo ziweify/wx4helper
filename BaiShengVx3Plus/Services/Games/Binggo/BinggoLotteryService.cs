@@ -1315,12 +1315,285 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                 }
                 
-                // 🔥 TODO: 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
-                // 暂时不实现，等待后续需求
+                // 🔥 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
+                await SendHistoryLotteryImageAsync(issueId, groupWxId);
             }
             catch (Exception ex)
             {
                 _logService.Error("BinggoLotteryService", $"开盘处理失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 发送历史记录图片（参考 F5BotV2 第1180-1202行）
+        /// 生成最近32期开奖走势图并发送到微信群
+        /// </summary>
+        private async Task SendHistoryLotteryImageAsync(int issueId, string? groupWxId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
+                {
+                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送历史记录图片");
+                    return;
+                }
+                
+                _logService.Info("BinggoLotteryService", $"📊 开始生成历史记录图片: 期号 {issueId}");
+                
+                // 🔥 最多重试5次生成图片（参考 F5BotV2 第1185行）
+                for (int retry = 0; retry < 5; retry++)
+                {
+                    try
+                    {
+                        // 🔥 1. 获取最近32期开奖数据（参考 F5BotV2 第1623行）
+                        var api = Services.Api.BoterApi.GetInstance();
+                        var response = await api.GetBgDayAsync(DateTime.Now.ToString("yyyy-MM-dd"), 32, true);
+                        
+                        if (response.Code != 0 || response.Data == null || response.Data.Count == 0)
+                        {
+                            _logService.Warning("BinggoLotteryService", $"获取历史数据失败，重试 {retry + 1}/5");
+                            await Task.Delay(500);  // 等待500ms后重试
+                            continue;
+                        }
+                        
+                        // 🔥 2. 生成图片（参考 F5BotV2 第1188行）
+                        string imagePath = Path.Combine(Path.GetTempPath(), "bgzst_latest.jpg");
+                        bool imageCreated = await CreateLotteryImageAsync(response.Data, imagePath);
+                        
+                        if (!imageCreated || !File.Exists(imagePath))
+                        {
+                            _logService.Warning("BinggoLotteryService", $"图片生成失败，重试 {retry + 1}/5");
+                            await Task.Delay(500);
+                            continue;
+                        }
+                        
+                        // 🔥 3. 发送图片到微信群（参考 F5BotV2 第1191行）
+                        _logService.Info("BinggoLotteryService", $"📤 发送历史记录图片到群: {groupWxId}");
+                        var sendResponse = await _socketClient.SendAsync<object>("SendImage", groupWxId, imagePath);
+                        
+                        if (sendResponse != null)
+                        {
+                            _logService.Info("BinggoLotteryService", $"✅ 历史记录图片已发送: {imagePath}");
+                            return;  // 成功，退出重试循环
+                        }
+                        else
+                        {
+                            _logService.Warning("BinggoLotteryService", $"图片发送失败，重试 {retry + 1}/5");
+                            await Task.Delay(500);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Warning("BinggoLotteryService", $"生成/发送图片异常，重试 {retry + 1}/5: {ex.Message}");
+                        await Task.Delay(500);
+                    }
+                }
+                
+                _logService.Error("BinggoLotteryService", "历史记录图片发送失败：已达最大重试次数");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"发送历史记录图片失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 生成开奖走势图（参考 F5BotV2 第1616-1693行）
+        /// </summary>
+        private async Task<bool> CreateLotteryImageAsync(List<BinggoLotteryData> historyData, string outputPath)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    if (historyData == null || historyData.Count == 0)
+                    {
+                        _logService.Warning("BinggoLotteryService", "历史数据为空，无法生成图片");
+                        return false;
+                    }
+                    
+                    // 🔥 模板图片路径（参考 F5BotV2 第1635行）
+                    string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bgzst.png");
+                    if (!File.Exists(templatePath))
+                    {
+                        _logService.Error("BinggoLotteryService", $"模板文件不存在: {templatePath}");
+                        return false;
+                    }
+                    
+                    // 🔥 加载模板图片（参考 F5BotV2 第1635-1636行）
+                    using (System.Drawing.Image templateImage = System.Drawing.Image.FromFile(templatePath))
+                    using (System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(templateImage, templateImage.Width, templateImage.Height))
+                    using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bitmap))
+                    {
+                        // 🔥 字体设置（参考 F5BotV2 第1643-1644行）
+                        using (System.Drawing.Font font = new System.Drawing.Font("微软雅黑", 16.0f))
+                        using (System.Drawing.Font fontBold = new System.Drawing.Font("微软雅黑", 16.0f, System.Drawing.FontStyle.Bold))
+                        {
+                            float rectY = 71;  // 🔥 起始Y坐标（参考 F5BotV2 第1641行）
+                            
+                            // 🔥 排序（参考 F5BotV2 第1647-1650行）
+                            var sortedData = historyData.OrderBy(d => d.IssueId).ToList();
+                            
+                            // 🔥 绘制每一期数据（参考 F5BotV2 第1652-1676行）
+                            for (int i = 0; i < sortedData.Count && i < 32; i++)  // 最多32期
+                            {
+                                var item = sortedData[i];
+                                float currentY = rectY + (i * 28);  // 每行高度28像素
+                                
+                                // 🔥 绘制期号（参考 F5BotV2 第1655、1659行）
+                                int issueShort = item.IssueId % 1000;
+                                DrawText(g, issueShort.ToString(), 2, currentY, font, System.Drawing.Color.Black);
+                                
+                                // 🔥 绘制时间（参考 F5BotV2 第1656、1660行）
+                                string time = DateTime.Parse(item.OpenTime).ToString("HH:mm");
+                                DrawText(g, time, 60, currentY, font, System.Drawing.Color.Black);
+                                
+                                // 🔥 绘制5个开奖号码（参考 F5BotV2 第1664-1668行）
+                                DrawLotteryNumber(g, 126, (int)currentY, fontBold, item.P1.Number);
+                                DrawLotteryNumber(g, 226 + 3, (int)currentY, fontBold, item.P2.Number);
+                                DrawLotteryNumber(g, 326 + 3, (int)currentY, fontBold, item.P3.Number);
+                                DrawLotteryNumber(g, 428 + 3, (int)currentY, fontBold, item.P4.Number);
+                                DrawLotteryNumber(g, 530 + 3, (int)currentY, fontBold, item.P5.Number);
+                                
+                                // 🔥 绘制和值（参考 F5BotV2 第1669-1670行）
+                                int sum = item.P1.Number + item.P2.Number + item.P3.Number + item.P4.Number + item.P5.Number;
+                                DrawLotterySum(g, 635, (int)currentY, fontBold, sum);
+                                
+                                // 🔥 绘制龙虎（参考 F5BotV2 第1671-1674行）
+                                string dragonTiger = item.DragonTiger == Models.Games.Binggo.DragonTigerType.Dragon ? "龙" : "虎";
+                                DrawLotteryDragonTiger(g, 750, (int)currentY, fontBold, dragonTiger);
+                            }
+                        }
+                        
+                        // 🔥 保存图片（参考 F5BotV2 第1680行）
+                        bitmap.Save(outputPath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                        _logService.Info("BinggoLotteryService", $"✅ 图片生成成功: {outputPath}");
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("BinggoLotteryService", $"生成图片失败: {ex.Message}", ex);
+                    return false;
+                }
+            });
+        }
+        
+        /// <summary>
+        /// 🔥 绘制文本（参考 F5BotV2 第1695-1715行）
+        /// 完全复制 F5BotV2 的实现：使用 RectangleF 绘制区域
+        /// </summary>
+        private void DrawText(System.Drawing.Graphics g, string text, float x, float y, System.Drawing.Font font, System.Drawing.Color color, float fontSize = 10.0f)
+        {
+            try
+            {
+                // 🔥 定义矩形区域（参考 F5BotV2 第1701-1704行）
+                float rectWidth = text.Length * (fontSize + 40);
+                float rectHeight = fontSize + 40;
+                System.Drawing.RectangleF textArea = new System.Drawing.RectangleF(x, y, rectWidth, rectHeight);
+                
+                // 🔥 使用画笔绘制文字（参考 F5BotV2 第1706-1707行）
+                using (System.Drawing.Brush brush = new System.Drawing.SolidBrush(color))
+                {
+                    g.DrawString(text, font, brush, textArea);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("BinggoLotteryService", $"绘制文本失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 绘制开奖号码（参考 F5BotV2 SetLotteryData 第1722-1747行）
+        /// 完全复制 F5BotV2 的逻辑：
+        /// - 1-40: 黑色数字 + "小"(黑) + "单/双"
+        /// - 41-80: 红色数字 + "大"(红) + "单/双"
+        /// - 单数: "单"(黑)
+        /// - 双数: "双"(红)
+        /// </summary>
+        private void DrawLotteryNumber(System.Drawing.Graphics g, int x, int y, System.Drawing.Font font, int number)
+        {
+            float tmpX = x;
+            
+            // 🔥 如果是个位数(1-9)，数字位置要右移8像素（参考 F5BotV2 第1727-1730行）
+            if (number >= 1 && number <= 40)
+            {
+                if (number >= 1 && number <= 9)
+                {
+                    tmpX += 8;
+                }
+                DrawText(g, number.ToString(), tmpX, y, font, System.Drawing.Color.Black);    // 数字（黑色）
+                DrawText(g, "小", x + 38, y, font, System.Drawing.Color.Black);               // 小（黑色）
+            }
+            if (number > 40 && number <= 80)
+            {
+                DrawText(g, number.ToString(), x, y, font, System.Drawing.Color.Red);         // 数字（红色）
+                DrawText(g, "大", x + 38, y, font, System.Drawing.Color.Red);                 // 大（红色）
+            }
+            
+            // 🔥 单双（参考 F5BotV2 第1739-1746行）
+            if (number % 2 == 1)
+            {
+                DrawText(g, "单", x + 68 + 3, y, font, System.Drawing.Color.Black);           // 单（黑色）
+            }
+            if (number % 2 == 0)
+            {
+                DrawText(g, "双", x + 68 + 3, y, font, System.Drawing.Color.Red);             // 双（红色）
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 绘制和值（参考 F5BotV2 SetLotterySum 第1750-1775行）
+        /// 完全复制 F5BotV2 的逻辑：
+        /// - 15-202: 黑色数字 + "小"(黑) + "单/双"
+        /// - 203-390: 红色数字 + "大"(红) + "单/双"
+        /// </summary>
+        private void DrawLotterySum(System.Drawing.Graphics g, int x, int y, System.Drawing.Font font, int sum)
+        {
+            float tmpX = x;
+            
+            // 🔥 如果是个位数(1-9)，数字位置要右移8像素（参考 F5BotV2 第1755-1758行）
+            if (sum >= 15 && sum <= 202)
+            {
+                if (sum >= 1 && sum <= 9)
+                {
+                    tmpX += 8;
+                }
+                DrawText(g, sum.ToString(), tmpX, y, font, System.Drawing.Color.Black);       // 数字（黑色）
+                DrawText(g, "小", x + 50, y, font, System.Drawing.Color.Black);               // 小（黑色）
+            }
+            if (sum >= 203 && sum <= 390)
+            {
+                DrawText(g, sum.ToString(), x, y, font, System.Drawing.Color.Red);            // 数字（红色）
+                DrawText(g, "大", x + 50, y, font, System.Drawing.Color.Red);                 // 大（红色）
+            }
+            
+            // 🔥 单双（参考 F5BotV2 第1767-1774行）
+            if (sum % 2 == 1)
+            {
+                DrawText(g, "单", x + 80, y, font, System.Drawing.Color.Black);               // 单（黑色）
+            }
+            if (sum % 2 == 0)
+            {
+                DrawText(g, "双", x + 80, y, font, System.Drawing.Color.Red);                 // 双（红色）
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 绘制龙虎（参考 F5BotV2 SetLotteryLh 第1778-1789行）
+        /// 龙：红色
+        /// 虎：黑色
+        /// </summary>
+        private void DrawLotteryDragonTiger(System.Drawing.Graphics g, int x, int y, System.Drawing.Font font, string text)
+        {
+            if (text == "龙")
+            {
+                DrawText(g, text, x, y, font, System.Drawing.Color.Red);     // 龙（红色）
+            }
+            else if (text == "虎")
+            {
+                DrawText(g, text, x, y, font, System.Drawing.Color.Black);   // 虎（黑色）
             }
         }
         
