@@ -36,6 +36,9 @@ namespace BaiShengVx3Plus.Views
             _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 接收 BindingList
             _membersBindingList = membersBindingList;  // 🔥 接收会员列表
             
+            // 🔥 确保资金变动表存在（修复 "no such table: V2BalanceChange" 错误）
+            _db.CreateTable<V2BalanceChange>();
+            
             InitializeComponent();
             
             // 🔥 创建 BindingSource 并绑定到 BindingList（标准做法）

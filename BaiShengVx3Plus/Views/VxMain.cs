@@ -230,6 +230,9 @@ namespace BaiShengVx3Plus
                 // 🔥 创建 ORM 数据库连接（同步）
                 _db = new SQLiteConnection(dbPath);
                 
+                // 🔥 统一创建所有数据表（防御性编程，预防 "no such table" 错误）
+                InitializeAllDatabaseTables(_db);
+                
                 // 🔥 将数据库连接传递给群组绑定服务
                 if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)
                 {
@@ -1793,6 +1796,9 @@ namespace BaiShengVx3Plus
                         
                         // 🔥 重新打开数据库
                         _db = new SQLiteConnection(_currentDbPath);
+                        
+                        // 🔥 重新初始化所有表
+                        InitializeAllDatabaseTables(_db);
                     }
                     catch (Exception ex)
                     {
@@ -1803,6 +1809,9 @@ namespace BaiShengVx3Plus
                         if (_db == null)
                         {
                             _db = new SQLiteConnection(_currentDbPath);
+                            
+                            // 🔥 重新初始化所有表
+                            InitializeAllDatabaseTables(_db);
                         }
                         return;
                     }
@@ -3267,6 +3276,90 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", "启动浏览器失败", ex);
                 Sunny.UI.UIMessageBox.Show($"启动失败: {ex.Message}", "错误", Sunny.UI.UIStyle.Red, Sunny.UI.UIMessageBoxButtons.OK);
+            }
+        }
+
+        #endregion
+
+        #region 数据库表初始化
+
+        /// <summary>
+        /// 统一初始化所有数据库表
+        /// 🔥 防御性编程：确保所有表都存在，避免运行时出现 "no such table" 错误
+        /// 
+        /// 说明：
+        /// - SQLite 的 CreateTable<T>() 如果表已存在会自动跳过，不会报错
+        /// - 在数据库初始化时统一创建所有表，比分散在各处创建更可靠
+        /// - 即使某些表暂时不用，也预先创建好，为将来扩展做准备
+        /// </summary>
+        private void InitializeAllDatabaseTables(SQLiteConnection db)
+        {
+            try
+            {
+                _logService.Info("VxMain", "🗄️ 开始初始化数据库表...");
+
+                // ========================================
+                // 🔥 核心业务表（V2 系列）
+                // ========================================
+                
+                // 会员表
+                db.CreateTable<V2Member>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: V2Member");
+                
+                // 订单表
+                db.CreateTable<V2MemberOrder>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: V2MemberOrder");
+                
+                // 上下分申请表
+                db.CreateTable<V2CreditWithdraw>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: V2CreditWithdraw");
+                
+                // 资金变动表（上下分、订单结算等）
+                db.CreateTable<V2BalanceChange>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: V2BalanceChange");
+
+                // ========================================
+                // 🔥 游戏相关表
+                // ========================================
+                
+                // 炳狗开奖数据表
+                db.CreateTable<Models.Games.Binggo.BinggoLotteryData>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: BinggoLotteryData");
+                
+                // 炳狗下注项表（单/双/大/小/对子等）
+                db.CreateTable<Models.Games.Binggo.BinggoBetItem>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: BinggoBetItem");
+
+                // ========================================
+                // 🔥 系统配置表
+                // ========================================
+                
+                // 自动投注配置表
+                db.CreateTable<Models.AutoBet.BetConfig>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: BetConfig");
+
+                // ========================================
+                // 🔥 基础数据表
+                // ========================================
+                
+                // 微信联系人表
+                db.CreateTable<WxContact>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: WxContact");
+                
+                // 微信用户信息表
+                db.CreateTable<WxUserInfo>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: WxUserInfo");
+                
+                // 日志表
+                db.CreateTable<LogEntry>();
+                _logService.Debug("VxMain", "✓ 创建/检查表: LogEntry");
+
+                _logService.Info("VxMain", "✅ 数据库表初始化完成，共检查/创建 11 张表");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化数据库表失败", ex);
+                throw; // 重新抛出异常，因为数据库表初始化失败是严重错误
             }
         }
 
