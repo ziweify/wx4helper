@@ -208,13 +208,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 // 创建或更新 BrowserClient（使用已建立的连接）
                 if (_browsers.TryGetValue(configId, out var existingBrowser))
                 {
-                    _log.Info("AutoBet", $"更新现有浏览器的 Socket 连接: {config.ConfigName}");
+                    _log.Info("AutoBet", $"更新现有浏览器的 Socket 连接: {config.ConfigName} (configId={configId})");
                     // ✅ 只附加新连接，不要 Dispose 整个 BrowserClient（会杀死进程）
                     existingBrowser.AttachConnection(client);
                 }
                 else
                 {
-                    _log.Info("AutoBet", $"创建新的浏览器客户端: {config.ConfigName}");
+                    _log.Info("AutoBet", $"创建新的浏览器客户端: {config.ConfigName} (configId={configId})");
                     var browserClient = new BrowserClient(configId);
                     browserClient.AttachConnection(client); // 附加已建立的 Socket 连接
                     _browsers[configId] = browserClient;
@@ -224,7 +224,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 config.Status = "已连接";
                 SaveConfig(config);
                 
-                _log.Info("AutoBet", $"✅ 浏览器 Socket 连接成功: {config.ConfigName}");
+                _log.Info("AutoBet", $"✅ 浏览器 Socket 连接成功: {config.ConfigName} (configId={configId})");
+                _log.Info("AutoBet", $"   当前 _browsers 字典: [{string.Join(", ", _browsers.Keys)}]");
             }
             catch (Exception ex)
             {
@@ -365,15 +366,22 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public async Task<BetResult> SendBetCommandAsync(int configId, string issueId, string betContentStandard)
         {
+            _log.Info("AutoBet", $"📤 尝试发送投注命令: configId={configId}");
+            _log.Info("AutoBet", $"   当前 _browsers 字典包含的 configId: [{string.Join(", ", _browsers.Keys)}]");
+            
             if (!_browsers.TryGetValue(configId, out var browserClient))
             {
-                _log.Warning("AutoBet", $"浏览器未连接，无法推送投注命令:配置{configId}");
+                _log.Warning("AutoBet", $"❌ 浏览器未连接，无法推送投注命令: configId={configId}");
+                _log.Warning("AutoBet", $"   _browsers 中实际的 configId: [{string.Join(", ", _browsers.Keys)}]");
+                _log.Warning("AutoBet", $"   ⚠️ configId 不匹配！请检查启动流程。");
                 return new BetResult
                 {
                     Success = false,
-                    ErrorMessage = "浏览器未连接"
+                    ErrorMessage = $"浏览器未连接(configId={configId}不匹配)"
                 };
             }
+            
+            _log.Info("AutoBet", $"✅ 找到浏览器客户端: configId={configId}");
             
             try
             {

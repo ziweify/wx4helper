@@ -3134,6 +3134,7 @@ namespace BaiShengVx3Plus
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
+                        _logService.Info("VxMain", $"📋 使用默认配置: Id={defaultConfig.Id}, Name={defaultConfig.ConfigName}, Platform={defaultConfig.Platform}");
                         var success = await _autoBetCoordinator.StartAsync(defaultConfig.Id);
                         
                         if (success)

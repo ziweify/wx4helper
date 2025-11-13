@@ -73,7 +73,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 _currentConfigId = configId;
                 _isAutoBetEnabled = true;
                 
-                _log.Info("AutoBet", "✅ 自动投注已启动");
+                _log.Info("AutoBet", $"✅ 自动投注已启动");
+                _log.Info("AutoBet", $"   _currentConfigId = {_currentConfigId}");
+                _log.Info("AutoBet", $"   ⚠️ 封盘投注时将使用此 configId 查找浏览器");
                 return true;
             }
             catch (Exception ex)
