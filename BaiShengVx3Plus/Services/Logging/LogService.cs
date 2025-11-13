@@ -1,3 +1,4 @@
+using System;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Contracts;
 using System.Collections.Concurrent;
@@ -28,7 +29,11 @@ namespace BaiShengVx3Plus.Services.Logging
             _pendingLogs = new ConcurrentQueue<LogEntry>();
             _cancellationTokenSource = new CancellationTokenSource();
 
-            var dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
+            // 🔥 使用 AppData\Local 目录，无需管理员权限
+            var dataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "BaiShengVx3Plus",
+                "Data");
             Directory.CreateDirectory(dataDir);
             _dbPath = Path.Combine(dataDir, "logs.db");
 

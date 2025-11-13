@@ -259,15 +259,29 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 _logService.Info("GroupBindingService", $"✅ 全局配置: IsRunModeDev = {isRunModeDev}");
                 
                 // 🔥 5. 获取服务器数据并智能合并会员
-                _logService.Info("GroupBindingService", $"开始获取群成员列表并智能合并: {contact.Wxid}");
+                _logService.Info("GroupBindingService", $"开始获取群成员: {contact.Nickname} ({contact.Wxid})");
+                
                 var serverResult = await socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
+                
+                // 🔥 检查返回结果
+                if (serverResult == null)
+                {
+                    _logService.Warning("GroupBindingService", "获取群成员失败: 返回 null");
+                }
+                else
+                {
+                    _logService.Info("GroupBindingService", $"获取成功，类型: {serverResult.RootElement.ValueKind}");
+                    if (serverResult.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        _logService.Info("GroupBindingService", $"数组长度: {serverResult.RootElement.GetArrayLength()}");
+                    }
+                }
                 
                 // 🔥 5.1. 开发模式：使用模拟数据
                 if (_configService.GetIsRunModeDev())
                 {
                     _logService.Info("GroupBindingService", "🔧 开发模式：使用模拟群成员数据");
                     
-                    // ✅ 使用匿名对象创建模拟数据（最简洁）
                     var mockMembers = new[]
                     {
                         new { username = "M100", Balance = 100f, wxid = "wxid_m100", nick_name = "nick100" },
@@ -278,28 +292,36 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                     };
                     
                     serverResult = JsonDocument.Parse(JsonConvert.SerializeObject(mockMembers));
-                    _logService.Info("GroupBindingService", $"✅ 模拟数据生成成功: {mockMembers.Length} 个会员");
+                    _logService.Info("GroupBindingService", $"✅ 模拟数据: {mockMembers.Length} 个会员");
                 }
 
                 if (serverResult == null || serverResult.RootElement.ValueKind != JsonValueKind.Array)
                 {
                     // 服务器获取失败，只加载数据库数据
-                    _logService.Warning("GroupBindingService", "获取群成员失败，只加载数据库数据");
+                    _logService.Warning("GroupBindingService", $"获取失败或格式错误，只加载数据库数据");
+                    if (serverResult != null)
+                    {
+                        _logService.Warning("GroupBindingService", $"ValueKind={serverResult.RootElement.ValueKind}");
+                    }
+                    
                     await Task.Run(() =>
                     {
                         membersBindingList.LoadFromDatabase();
                     });
-                    _logService.Info("GroupBindingService", $"✅ 从数据库加载: {membersBindingList.Count} 个会员（仅本地）");
+                    _logService.Info("GroupBindingService", $"从数据库加载: {membersBindingList.Count} 个会员");
                 }
                 else
                 {
                     // 🔥 6. 解析服务器返回的会员数据
+                    int arrayLength = serverResult.RootElement.GetArrayLength();
+                    _logService.Info("GroupBindingService", $"开始解析 {arrayLength} 个群成员");
+                    
                     var serverMembers = ParseServerMembers(serverResult.RootElement, contact.Wxid);
-                    _logService.Info("GroupBindingService", $"服务器返回 {serverMembers.Count} 个群成员");
+                    _logService.Info("GroupBindingService", $"解析完成: {serverMembers.Count} 个");
                     
                     // 🔥 7. 智能合并数据（数据库 + 服务器）
                     var mergedMembers = LoadAndMergeMembers(serverMembers, contact.Wxid);
-                    _logService.Info("GroupBindingService", $"智能合并完成: 共 {mergedMembers.Count} 个会员");
+                    _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
                     
                     // 🔥 8. 加载合并后的完整列表
                     foreach (var member in mergedMembers)

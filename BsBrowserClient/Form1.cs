@@ -97,9 +97,10 @@ public partial class Form1 : Form
             pnlBrowser.Controls.Add(_webView);
             
             // 🔥 为每个实例创建独立的用户数据文件夹，避免资源冲突
-            // 使用 configId 确保不同配置有独立的数据存储
+            // 使用 AppData\Local 目录，无需管理员权限
             var userDataFolder = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "BsBrowserClient",
                 "WebView2Data",
                 $"Config_{_configId}");
             

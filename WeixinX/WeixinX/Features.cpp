@@ -772,6 +772,11 @@ string WeixinX::Core::GetGroupContacts(string wxid)
 	
 	// 4. 构建 SQL 查询语句 - 使用多表 JOIN
 	// chatroom_member 存储的是数字 ID，需要通过 chat_room 和 contact 表映射到微信 ID
+	
+	// 🔥 记录传入的 wxid 参数（用于调试）
+	util::logging::print("GetGroupContacts: Received wxid parameter: [{}] (length={})", 
+		wxid.c_str(), wxid.length());
+	
 	std::string sql = 
 		"SELECT "
 		// 群成员关系（原始数字 ID）
@@ -796,10 +801,33 @@ string WeixinX::Core::GetGroupContacts(string wxid)
 		// LEFT JOIN contact 表（成员）：member_id (数字) -> id -> username
 		"LEFT JOIN contact c_member ON cm.member_id = c_member.id "
 		// LEFT JOIN contact 表（群）：room_wxid (微信ID) -> username
-		"LEFT JOIN contact c_room ON cr.username = c_room.username "
-		"ORDER BY cm.room_id, cm.member_id";
+		"LEFT JOIN contact c_room ON cr.username = c_room.username ";
 	
-	util::logging::print("GetGroupContacts: Executing JOIN SQL");
+	// 🔥 如果提供了 wxid 参数，添加 WHERE 子句过滤指定群
+	if (!wxid.empty())
+	{
+		// 转义单引号（防止 SQL 注入）
+		std::string escaped_wxid = wxid;
+		size_t pos = 0;
+		while ((pos = escaped_wxid.find("'", pos)) != std::string::npos)
+		{
+			escaped_wxid.replace(pos, 1, "''");
+			pos += 2;
+		}
+		
+		sql += "WHERE cr.username = '" + escaped_wxid + "' ";
+		util::logging::print("GetGroupContacts: ✅ Filtering by wxid=[{}] (escaped=[{}])", 
+			wxid.c_str(), escaped_wxid.c_str());
+	}
+	else
+	{
+		util::logging::print("GetGroupContacts: ⚠️ No wxid filter - querying ALL groups");
+	}
+	
+	sql += "ORDER BY cm.room_id, cm.member_id";
+	
+	// 🔥 输出完整的 SQL 语句（用于调试）
+	util::logging::print("GetGroupContacts: Executing SQL: {}", sql.c_str());
 	
 	// 5. 调用 get_table 查询
 	rc = util::invokeCdecl<int>(

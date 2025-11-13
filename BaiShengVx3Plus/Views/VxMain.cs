@@ -216,11 +216,17 @@ namespace BaiShengVx3Plus
                 // 🔥 数据库命名规则：
                 // - default → business.db（空数据库）
                 // - wxid_xxx → business_wxid_xxx.db（微信专属数据库，存储所有业务数据）
+                // 🔥 使用 AppData\Local 目录，无需管理员权限
+                var dataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "BaiShengVx3Plus",
+                    "Data");
+                
                 string dbPath = wxid == "default" 
-                    ? Path.Combine("Data", "business.db")  // 默认空数据库
-                    : Path.Combine("Data", $"business_{wxid}.db");  // 微信专属数据库
+                    ? Path.Combine(dataDirectory, "business.db")  // 默认空数据库
+                    : Path.Combine(dataDirectory, $"business_{wxid}.db");  // 微信专属数据库
                     
-                Directory.CreateDirectory("Data");
+                Directory.CreateDirectory(dataDirectory);
                 
                 // 🔥 保存数据库路径（用于清空数据时备份）
                 _currentDbPath = dbPath;
@@ -1761,10 +1767,18 @@ namespace BaiShengVx3Plus
                         string timestamp = DateTime.Now.ToString("MMddHHmm");  // 月日时分
                         string dbFileName = Path.GetFileName(_currentDbPath);
                         string backupDbName = $"d{timestamp}_{dbFileName}";
-                        string backupDbPath = Path.Combine("Data", "Backup", backupDbName);
+                        
+                        // 🔥 使用 AppData\Local 目录存储备份
+                        var backupDirectory = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                            "BaiShengVx3Plus",
+                            "Data",
+                            "Backup");
+                        
+                        string backupDbPath = Path.Combine(backupDirectory, backupDbName);
                         
                         // 创建备份目录
-                        Directory.CreateDirectory(Path.Combine("Data", "Backup"));
+                        Directory.CreateDirectory(backupDirectory);
                         
                         // 🔥 关闭数据库连接（SQLite需要关闭连接才能复制文件）
                         _db?.Close();

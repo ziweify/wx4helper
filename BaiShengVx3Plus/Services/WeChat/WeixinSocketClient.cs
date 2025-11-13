@@ -153,6 +153,8 @@ namespace BaiShengVx3Plus.Services.WeChat
                     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                 });
 
+                _logService.Info("WeixinSocketClient", $"📤 Sending command: method={method}, params=[{string.Join(", ", parameters)}]");
+
                 _logService.Debug("WeixinSocketClient", $"Sending: {json}");
 
                 // 发送消息（4字节长度 + 消息体）

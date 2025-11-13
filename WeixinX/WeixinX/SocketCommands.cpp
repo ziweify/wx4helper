@@ -59,22 +59,34 @@ Json::Value SocketCommands::HandleGetContacts(const Json::Value& params)
 
 Json::Value SocketCommands::HandleGetGroupContacts(const Json::Value& params)
 {
-    // 参数可选：如果提供了 groupId，将来可用于过滤
-    // 暂时不使用过滤，获取所有群成员数据
-    std::string groupId = "";
-    if (!params.empty() && params[0].isString()) {
-        groupId = params[0].asString();
-        util::logging::wPrint(L"Handling GetGroupContacts for group: {}", 
-            util::utf8ToUtf16(groupId.c_str()));
-    } else {
-        util::logging::print("Handling GetGroupContacts - querying all chatroom members");
-    }
+	// 🔥 参数可选：如果提供了 groupId，过滤指定群的成员
+	std::string groupId = "";
+	
+	// 🔥 调试：输出接收到的参数信息（转换枚举为整数）
+	util::logging::print("HandleGetGroupContacts: Received params type={}, size={}", 
+		static_cast<int>(params.type()), static_cast<int>(params.size()));
+	
+	if (!params.empty() && params[0].isString()) {
+		groupId = params[0].asString();
+		util::logging::print("HandleGetGroupContacts: Filtering for group: [{}]", 
+			groupId.c_str());
+	} else {
+		util::logging::print("HandleGetGroupContacts: No groupId parameter - querying ALL chatroom members");
+		
+		// 🔥 如果参数格式不对，输出详细信息
+		if (!params.empty()) {
+			util::logging::print("HandleGetGroupContacts: First param type={}, value={}", 
+				static_cast<int>(params[0].type()), params[0].toStyledString().c_str());
+		}
+	}
     
     try {
         // 获取 Core 单例实例
         auto& core = util::Singleton<Core>::Get();
         
-        // 调用 GetGroupContacts 查询数据库，返回 JSON 字符串
+        // 🔥 调用 GetGroupContacts 查询数据库（传递 groupId，如果为空则查询所有）
+        util::logging::print("HandleGetGroupContacts: Calling GetGroupContacts with wxid=[{}]", 
+            groupId.c_str());
         std::string jsonString = core.GetGroupContacts(groupId);
         
         // 解析 JSON 字符串为 Json::Value
