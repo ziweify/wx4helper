@@ -47,3 +47,7 @@
 /LxLib/obj/Release
 /Data
 /BaiShengVx3Plus/bin/Release/net8.0-windows - 1109
+
+# 大文件（超过 GitHub 100MB 限制）
+/BaiShengVx3Plus/libs/WeChatWin4.1.0.21.exe
+/BaiShengVx3Plus/libs/*.exe
