@@ -43,6 +43,16 @@ namespace BaiShengVx3Plus.Models
         /// </summary>
         //[JsonPropertyName("sealSecondsAhead")]
         public int N封盘提前秒数 { get; set; } = 45;
+        
+        /// <summary>
+        /// 🔧 开发模式：当前选中的会员（用于测试）
+        /// </summary>
+        public string RunDevCurrentMember { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// 🔧 开发模式：发送的测试消息内容
+        /// </summary>
+        public string RunDevSendMessage { get; set; } = "大12310";
     }
 }
 

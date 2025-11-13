@@ -94,6 +94,36 @@ namespace BaiShengVx3Plus.ViewModels
             }
         }
         
+        /// <summary>
+        /// 🔧 开发模式：当前会员（UI 双向绑定）
+        /// </summary>
+        public string RunDevCurrentMember
+        {
+            get => _configService.GetRunDevCurrentMember();
+            set
+            {
+                if (_configService.GetRunDevCurrentMember() != value)
+                {
+                    _configService.SetRunDevCurrentMember(value);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 🔧 开发模式：发送消息内容（UI 双向绑定）
+        /// </summary>
+        public string RunDevSendMessage
+        {
+            get => _configService.GetRunDevSendMessage();
+            set
+            {
+                if (_configService.GetRunDevSendMessage() != value)
+                {
+                    _configService.SetRunDevSendMessage(value);
+                }
+            }
+        }
+        
         // ========================================
         // 事件处理（ViewModelBase 已实现 INotifyPropertyChanged）
         // ========================================
@@ -116,6 +146,14 @@ namespace BaiShengVx3Plus.ViewModels
                     
                 case nameof(SealSecondsAhead):
                     OnPropertyChanged(nameof(SealSecondsAhead));
+                    break;
+                    
+                case "RunDevCurrentMember":
+                    OnPropertyChanged(nameof(RunDevCurrentMember));
+                    break;
+                    
+                case "RunDevSendMessage":
+                    OnPropertyChanged(nameof(RunDevSendMessage));
                     break;
             }
         }

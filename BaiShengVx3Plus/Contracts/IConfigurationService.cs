@@ -40,6 +40,16 @@ namespace BaiShengVx3Plus.Contracts
         /// </summary>
         bool GetIsRunModeBoss();
         
+        /// <summary>
+        /// 🔧 获取开发模式：当前会员
+        /// </summary>
+        string GetRunDevCurrentMember();
+        
+        /// <summary>
+        /// 🔧 获取开发模式：发送消息内容
+        /// </summary>
+        string GetRunDevSendMessage();
+        
         // ========================================
         // 保存配置
         // ========================================
@@ -73,6 +83,16 @@ namespace BaiShengVx3Plus.Contracts
         /// 设置老板模式
         /// </summary>
         void SetIsRunModeBoss(bool value);
+        
+        /// <summary>
+        /// 🔧 设置开发模式：当前会员
+        /// </summary>
+        void SetRunDevCurrentMember(string value);
+        
+        /// <summary>
+        /// 🔧 设置开发模式：发送消息内容
+        /// </summary>
+        void SetRunDevSendMessage(string value);
         
         // ========================================
         // 配置管理

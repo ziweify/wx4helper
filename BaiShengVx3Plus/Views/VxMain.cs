@@ -181,6 +181,10 @@ namespace BaiShengVx3Plus
 
             InitializeDataBindings();
             InitializeAutoBetUIEvents();  // 🤖 绑定自动投注事件
+            InitializeMemberContextMenu();  // 🔧 初始化会员表右键菜单（开发模式）
+            
+            // 🔧 订阅会员选择变化事件（开发模式-自动更新当前测试会员）
+            dgvMembers.SelectionChanged += DgvMembers_SelectionChanged;
         }
 
         /// <summary>
@@ -1919,7 +1923,14 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "创建新的设置窗口");
                 
                 // 创建新的设置窗口（非模态）
-                _settingsForm = new Views.SettingsForm(_socketClient, _logService, _settingViewModel, _binggoSettings);
+                // 🔧 传入模拟消息回调（用于开发模式测试）
+                _settingsForm = new Views.SettingsForm(
+                    _socketClient, 
+                    _logService, 
+                    _settingViewModel, 
+                    _binggoSettings, 
+                    _configService,
+                    SimulateMemberMessageAsync); // 🔧 开发模式：模拟消息回调
                 
                 // 订阅关闭事件，清理引用
                 _settingsForm.FormClosed += (s, args) =>

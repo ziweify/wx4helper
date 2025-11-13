@@ -15,21 +15,35 @@ namespace BaiShengVx3Plus.Views
         private readonly IWeixinSocketClient _socketClient;
         private readonly ILogService _logService;
         private readonly BinggoGameSettings _binggoSettings; // 🔥 游戏设置
-        private readonly SettingViewModel _settingVmodel;       
+        private readonly SettingViewModel _settingVmodel;
+        private readonly IConfigurationService _configService; // 📝 配置服务
+        
+        /// <summary>
+        /// 🔧 模拟消息处理回调（由 VxMain 提供）
+        /// </summary>
+        private Func<string, string, Task<(bool success, string? replyMessage, string? errorMessage)>>? _simulateMessageCallback;
+        
         public SettingsForm(
             IWeixinSocketClient socketClient, 
             ILogService logService,
             SettingViewModel setting,
-            BinggoGameSettings binggoSettings) // 🔥 注入游戏设置
+            BinggoGameSettings binggoSettings, // 🔥 注入游戏设置
+            IConfigurationService configService, // 📝 注入配置服务
+            Func<string, string, Task<(bool, string?, string?)>>? simulateMessageCallback = null) // 🔧 模拟消息回调
         {
             InitializeComponent();
             _socketClient = socketClient;
             _logService = logService;
             _settingVmodel = setting;
             _binggoSettings = binggoSettings;
+            _configService = configService;
+            _simulateMessageCallback = simulateMessageCallback;
             
             // 加载设置
             LoadSettings();
+            
+            // 🔧 绑定开发模式按钮事件
+            btnRunDevSendCommand.Click += BtnRunDevSendCommand_Click;
         }
 
         private void LoadSettings()
@@ -53,9 +67,26 @@ namespace BaiShengVx3Plus.Views
                     false, 
                     DataSourceUpdateMode.OnPropertyChanged)); // 🔥 关键：属性变化时立即更新
             
+            // 🔧 开发模式：绑定测试会员和测试消息
+            // 由于 IConfigurationService 是接口不支持直接绑定，使用手动方式
+            tbxRunDevCurrentMember.Text = _configService.GetRunDevCurrentMember();
+            tbxRunDevSendMessage.Text = _configService.GetRunDevSendMessage();
+            
+            // 🔧 手动订阅 TextChanged 事件来同步数据
+            tbxRunDevCurrentMember.TextChanged += (s, e) => 
+            {
+                _configService.SetRunDevCurrentMember(tbxRunDevCurrentMember.Text);
+            };
+            
+            tbxRunDevSendMessage.TextChanged += (s, e) => 
+            {
+                _configService.SetRunDevSendMessage(tbxRunDevSendMessage.Text);
+            };
+            
             // 🔍 测试：验证绑定是否生效（初始值）
             _logService.Info("SettingsForm", $"📋 设置加载: 管理模式={_settingVmodel.Is管理模式}, 开发模式={_settingVmodel.Is开发模式}");
             _logService.Info("SettingsForm", $"📋 UI显示: 管理模式Checked={chkRunModeAdminSettings.Checked}, 开发模式Checked={chkRunModelDev.Checked}");
+            _logService.Info("SettingsForm", $"🔧 开发模式配置: 当前会员={tbxRunDevCurrentMember.Text}, 测试消息={tbxRunDevSendMessage.Text}");
             
             // 🔍 测试：验证属性变更通知是否工作
             _settingVmodel.PropertyChanged += (s, e) =>
@@ -406,6 +437,118 @@ namespace BaiShengVx3Plus.Views
         {
             this.Close();
         }
+        
+        #region 开发模式功能
+        
+        /// <summary>
+        /// 🔧 开发模式：发送测试消息按钮点击事件
+        /// 实现：模拟会员发送消息，走真实的订单流程
+        /// </summary>
+        private async void BtnRunDevSendCommand_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 🔥 检查开发模式（防作弊）
+                if (!_configService.GetIsRunModeDev())
+                {
+                    _logService.Warning("SettingsForm", "⚠️ 非开发模式，无法发送测试消息");
+                    UIMessageBox.ShowWarning("请先启用开发模式！");
+                    return;
+                }
+                
+                // 检查回调是否可用
+                if (_simulateMessageCallback == null)
+                {
+                    _logService.Warning("SettingsForm", "未设置消息处理回调");
+                    UIMessageBox.ShowWarning("此功能需要先绑定群组！\n\n请先在主窗口绑定一个群组，然后在会员表右键菜单中使用\"发送测试消息\"功能。");
+                    return;
+                }
+                
+                // 获取当前会员信息
+                string currentMember = _configService.GetRunDevCurrentMember();
+                if (string.IsNullOrWhiteSpace(currentMember))
+                {
+                    _logService.Warning("SettingsForm", "未设置当前测试会员");
+                    UIMessageBox.ShowWarning("请先在会员表中选择一个测试会员！");
+                    return;
+                }
+                
+                // 解析会员 wxid（格式：昵称(wxid)）
+                string wxid = ExtractWxidFromMemberInfo(currentMember);
+                if (string.IsNullOrWhiteSpace(wxid))
+                {
+                    _logService.Warning("SettingsForm", $"无法解析会员wxid: {currentMember}");
+                    UIMessageBox.ShowWarning($"会员信息格式错误：{currentMember}\n\n期望格式：昵称(wxid)");
+                    return;
+                }
+                
+                // 获取要发送的消息
+                string message = _configService.GetRunDevSendMessage();
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    _logService.Warning("SettingsForm", "测试消息内容为空");
+                    UIMessageBox.ShowWarning("请输入测试消息内容！");
+                    return;
+                }
+                
+                _logService.Info("SettingsForm", $"🔧 开发模式-模拟消息: {currentMember} -> {message}");
+                
+                // 🔥 调用 VxMain 的模拟消息处理方法（走真实的订单流程）
+                var (success, replyMessage, errorMessage) = await _simulateMessageCallback(wxid, message);
+                
+                if (success)
+                {
+                    string resultMsg = $"✅ 测试消息已成功处理！\n\n会员：{currentMember}\n消息：{message}\n\n";
+                    
+                    if (!string.IsNullOrEmpty(replyMessage))
+                    {
+                        resultMsg += $"系统回复：{replyMessage}\n\n";
+                    }
+                    
+                    resultMsg += "订单已创建，请在订单表中查看。\n开奖后会自动结算。";
+                    
+                    UIMessageBox.ShowSuccess(resultMsg);
+                }
+                else
+                {
+                    string errorMsg = $"测试消息处理失败！\n\n会员：{currentMember}\n消息：{message}\n\n";
+                    
+                    if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        errorMsg += $"原因：{errorMessage}";
+                    }
+                    
+                    UIMessageBox.ShowWarning(errorMsg);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("SettingsForm", $"发送测试消息失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"发送测试消息失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 从会员信息字符串中提取 wxid
+        /// 格式：昵称(wxid) 或 wxid
+        /// </summary>
+        private string ExtractWxidFromMemberInfo(string memberInfo)
+        {
+            if (string.IsNullOrWhiteSpace(memberInfo))
+                return string.Empty;
+            
+            // 匹配格式：昵称(wxid)
+            var match = Regex.Match(memberInfo, @"\(([^)]+)\)");
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+            
+            // 如果没有括号，直接返回（可能就是 wxid）
+            return memberInfo.Trim();
+        }
+        
+        #endregion
     }
 }
 

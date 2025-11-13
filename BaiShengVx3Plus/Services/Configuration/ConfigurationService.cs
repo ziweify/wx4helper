@@ -55,6 +55,16 @@ namespace BaiShengVx3Plus.Services.Configuration
         
         public bool GetIsRunModeBoss() => _configuration.IsRunModeBoss;
         
+        /// <summary>
+        /// 🔧 获取开发模式：当前会员
+        /// </summary>
+        public string GetRunDevCurrentMember() => _configuration.RunDevCurrentMember;
+        
+        /// <summary>
+        /// 🔧 获取开发模式：发送消息内容
+        /// </summary>
+        public string GetRunDevSendMessage() => _configuration.RunDevSendMessage;
+        
         // ========================================
         // 保存配置（公共接口）
         // ========================================
@@ -158,6 +168,46 @@ namespace BaiShengVx3Plus.Services.Configuration
                 
                 // 触发变更事件
                 OnConfigurationChanged("IsRunModeBoss", oldValue, value);
+            }
+        }
+        
+        /// <summary>
+        /// 🔧 设置开发模式：当前会员
+        /// </summary>
+        public void SetRunDevCurrentMember(string value)
+        {
+            if (_configuration.RunDevCurrentMember != value)
+            {
+                var oldValue = _configuration.RunDevCurrentMember;
+                _configuration.RunDevCurrentMember = value;
+                
+                _logService.Info("ConfigurationService", $"开发模式-当前会员已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+                
+                // 触发变更事件
+                OnConfigurationChanged("RunDevCurrentMember", oldValue, value);
+            }
+        }
+        
+        /// <summary>
+        /// 🔧 设置开发模式：发送消息内容
+        /// </summary>
+        public void SetRunDevSendMessage(string value)
+        {
+            if (_configuration.RunDevSendMessage != value)
+            {
+                var oldValue = _configuration.RunDevSendMessage;
+                _configuration.RunDevSendMessage = value;
+                
+                _logService.Info("ConfigurationService", $"开发模式-发送消息已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+                
+                // 触发变更事件
+                OnConfigurationChanged("RunDevSendMessage", oldValue, value);
             }
         }
         
