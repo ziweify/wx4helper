@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -95,8 +96,24 @@ public partial class Form1 : Form
             
             pnlBrowser.Controls.Add(_webView);
             
+            // 🔥 为每个实例创建独立的用户数据文件夹，避免资源冲突
+            // 使用 configId 确保不同配置有独立的数据存储
+            var userDataFolder = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "WebView2Data",
+                $"Config_{_configId}");
+            
+            // 确保目录存在
+            Directory.CreateDirectory(userDataFolder);
+            
+            // 使用自定义用户数据文件夹初始化 WebView2
+            var environment = await CoreWebView2Environment.CreateAsync(
+                browserExecutableFolder: null,
+                userDataFolder: userDataFolder,
+                options: null);
+            
             // 等待 WebView2 初始化完成
-            await _webView.EnsureCoreWebView2Async(null);
+            await _webView.EnsureCoreWebView2Async(environment);
             
             // 初始化资源拦截器
             _resourceHandler = new WebView2ResourceHandler(OnResponseReceived);

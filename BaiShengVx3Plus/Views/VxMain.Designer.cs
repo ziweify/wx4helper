@@ -63,10 +63,13 @@ namespace BaiShengVx3Plus
             tsmiClearBalance = new ToolStripMenuItem();
             tsmiDeleteMember = new ToolStripMenuItem();
             tsmiSetMemberType = new ToolStripMenuItem();
-            tsmiSetNormal = new ToolStripMenuItem();
-            tsmiSetMember = new ToolStripMenuItem();
+            tsmiSetAdmin = new ToolStripMenuItem();
             tsmiSetAgent = new ToolStripMenuItem();
+            tsmiSetLeft = new ToolStripMenuItem();
+            tsmiSetMemberSub = new ToolStripMenuItem();
+            tsmiSetNormal = new ToolStripMenuItem();
             tsmiSetBlue = new ToolStripMenuItem();
+            tsmiSetPurple = new ToolStripMenuItem();
             tsmiSetYellow = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
             tsmiViewBalanceChange = new ToolStripMenuItem();
@@ -357,24 +360,17 @@ namespace BaiShengVx3Plus
             // 
             // tsmiSetMemberType
             // 
-            tsmiSetMemberType.DropDownItems.AddRange(new ToolStripItem[] { tsmiSetNormal, tsmiSetMember, tsmiSetAgent, tsmiSetBlue, tsmiSetYellow });
+            tsmiSetMemberType.DropDownItems.AddRange(new ToolStripItem[] { tsmiSetAdmin, tsmiSetAgent, tsmiSetLeft, tsmiSetMemberSub });
             tsmiSetMemberType.Name = "tsmiSetMemberType";
             tsmiSetMemberType.Size = new Size(162, 24);
             tsmiSetMemberType.Text = "设置会员类型";
             // 
-            // tsmiSetNormal
+            // tsmiSetAdmin
             // 
-            tsmiSetNormal.Name = "tsmiSetNormal";
-            tsmiSetNormal.Size = new Size(162, 24);
-            tsmiSetNormal.Text = "普会";
-            tsmiSetNormal.Click += TsmiSetMemberType_Click;
-            // 
-            // tsmiSetMember
-            // 
-            tsmiSetMember.Name = "tsmiSetMember";
-            tsmiSetMember.Size = new Size(162, 24);
-            tsmiSetMember.Text = "会员（盘内）";
-            tsmiSetMember.Click += TsmiSetMemberType_Click;
+            tsmiSetAdmin.Name = "tsmiSetAdmin";
+            tsmiSetAdmin.Size = new Size(162, 24);
+            tsmiSetAdmin.Text = "管理";
+            tsmiSetAdmin.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetAgent
             // 
@@ -383,12 +379,40 @@ namespace BaiShengVx3Plus
             tsmiSetAgent.Text = "托";
             tsmiSetAgent.Click += TsmiSetMemberType_Click;
             // 
+            // tsmiSetLeft
+            // 
+            tsmiSetLeft.Name = "tsmiSetLeft";
+            tsmiSetLeft.Size = new Size(162, 24);
+            tsmiSetLeft.Text = "已退群";
+            tsmiSetLeft.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiSetMemberSub
+            // 
+            tsmiSetMemberSub.DropDownItems.AddRange(new ToolStripItem[] { tsmiSetNormal, tsmiSetBlue, tsmiSetPurple, tsmiSetYellow });
+            tsmiSetMemberSub.Name = "tsmiSetMemberSub";
+            tsmiSetMemberSub.Size = new Size(162, 24);
+            tsmiSetMemberSub.Text = "会员";
+            // 
+            // tsmiSetNormal
+            // 
+            tsmiSetNormal.Name = "tsmiSetNormal";
+            tsmiSetNormal.Size = new Size(162, 24);
+            tsmiSetNormal.Text = "普会";
+            tsmiSetNormal.Click += TsmiSetMemberType_Click;
+            // 
             // tsmiSetBlue
             // 
             tsmiSetBlue.Name = "tsmiSetBlue";
             tsmiSetBlue.Size = new Size(162, 24);
-            tsmiSetBlue.Text = "蓝会（盘外）";
+            tsmiSetBlue.Text = "蓝会";
             tsmiSetBlue.Click += TsmiSetMemberType_Click;
+            // 
+            // tsmiSetPurple
+            // 
+            tsmiSetPurple.Name = "tsmiSetPurple";
+            tsmiSetPurple.Size = new Size(162, 24);
+            tsmiSetPurple.Text = "紫会";
+            tsmiSetPurple.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetYellow
             // 
@@ -1048,11 +1072,15 @@ namespace BaiShengVx3Plus
         private ToolStripMenuItem tsmiSetMemberType;       // 设置会员类型
         private ToolStripSeparator toolStripSeparator1;    // 分隔线
         private ToolStripMenuItem tsmiViewBalanceChange;   // 资金变动
-        // 设置会员类型子菜单
-        private ToolStripMenuItem tsmiSetNormal;           // 普会
-        private ToolStripMenuItem tsmiSetMember;           // 会员（盘内）
+        // 设置会员类型子菜单 - 顶级分类
+        private ToolStripMenuItem tsmiSetAdmin;            // 管理
         private ToolStripMenuItem tsmiSetAgent;            // 托
-        private ToolStripMenuItem tsmiSetBlue;             // 蓝会（盘外）
+        private ToolStripMenuItem tsmiSetLeft;             // 已退群
+        private ToolStripMenuItem tsmiSetMemberSub;        // 会员（子菜单）
+        // 会员子分类
+        private ToolStripMenuItem tsmiSetNormal;           // 普会
+        private ToolStripMenuItem tsmiSetBlue;             // 蓝会
+        private ToolStripMenuItem tsmiSetPurple;           // 紫会
         private ToolStripMenuItem tsmiSetYellow;           // 黄会
         private Sunny.UI.UIPanel pnl_opendata;
         private UserControls.UcBinggoDataCur ucBinggoDataCur;

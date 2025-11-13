@@ -2717,10 +2717,12 @@ namespace BaiShengVx3Plus
                 // 🔥 根据菜单项名称确定会员类型（使用 MemberState 枚举）
                 Models.MemberState newState = menuItem.Name switch
                 {
-                    "tsmiSetNormal" => Models.MemberState.普会,
-                    "tsmiSetMember" => Models.MemberState.会员,
+                    "tsmiSetAdmin" => Models.MemberState.管理,
                     "tsmiSetAgent" => Models.MemberState.托,
+                    "tsmiSetLeft" => Models.MemberState.已退群,
+                    "tsmiSetNormal" => Models.MemberState.普会,
                     "tsmiSetBlue" => Models.MemberState.蓝会,
+                    "tsmiSetPurple" => Models.MemberState.紫会,
                     "tsmiSetYellow" => Models.MemberState.黄会,
                     _ => selectedMember.State  // 保持不变
                 };

@@ -12,24 +12,42 @@ namespace BaiShengVx3Plus
     /// </summary>
     public partial class VxMain
     {
-        private ContextMenuStrip? _memberContextMenu;
         private ToolStripMenuItem? _devOptionsMenuItem;
+        private ToolStripSeparator? _separatorBeforeDevOptions;
         
         /// <summary>
-        /// 初始化会员表右键菜单
+        /// 初始化会员表右键菜单的开发选项
+        /// 🔥 在现有菜单 (cmsMembers) 基础上追加开发选项
         /// </summary>
         private void InitializeMemberContextMenu()
         {
-            // 创建右键菜单
-            _memberContextMenu = new ContextMenuStrip();
+            // ========================================
+            // 🔥 1. 添加常规功能：手动调整余额（原有菜单基础上增加）
+            // ========================================
+            var adjustBalanceItem = new ToolStripMenuItem
+            {
+                Text = "💰 手动调整余额",
+                Name = "menuAdjustBalance"
+            };
+            adjustBalanceItem.Click += MenuAdjustBalance_Click;
+            cmsMembers.Items.Add(adjustBalanceItem);
             
-            // 创建"开发选项"菜单项
+            // ========================================
+            // 🔥 2. 添加开发模式专属功能（动态显示）
+            // ========================================
+            
+            // 添加分隔线（开发模式下显示）
+            _separatorBeforeDevOptions = new ToolStripSeparator
+            {
+                Visible = false
+            };
+            cmsMembers.Items.Add(_separatorBeforeDevOptions);
+            
+            // 创建"开发选项"菜单项（开发模式下显示）
             _devOptionsMenuItem = new ToolStripMenuItem
             {
                 Text = "🔧 开发选项",
                 Name = "menuDevOptions",
-                Font = new Font("Microsoft YaHei UI", 9F),
-                // 默认不可见
                 Visible = false,
                 Enabled = false
             };
@@ -52,15 +70,12 @@ namespace BaiShengVx3Plus
             _devOptionsMenuItem.DropDownItems.Add(sendTestMessageItem);
             _devOptionsMenuItem.DropDownItems.Add(setCurrentMemberItem);
             
-            _memberContextMenu.Items.Add(_devOptionsMenuItem);
-            
-            // 绑定到 dgvMembers
-            dgvMembers.ContextMenuStrip = _memberContextMenu;
+            cmsMembers.Items.Add(_devOptionsMenuItem);
             
             // 监听右键菜单打开事件，根据开发模式动态设置可见性
-            _memberContextMenu.Opening += MemberContextMenu_Opening;
+            cmsMembers.Opening += MemberContextMenu_Opening;
             
-            _logService.Info("VxMain", "✅ 会员表右键菜单已初始化");
+            _logService.Info("VxMain", "✅ 会员表右键菜单已扩展（原有功能 + 手动调整余额 + 开发选项）");
         }
         
         /// <summary>
@@ -69,21 +84,17 @@ namespace BaiShengVx3Plus
         /// </summary>
         private void MemberContextMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (_devOptionsMenuItem == null) return;
+            if (_devOptionsMenuItem == null || _separatorBeforeDevOptions == null) return;
             
             // 🔥 每次打开菜单都重新检查开发模式状态（防作弊）
             bool isDevMode = _configService.GetIsRunModeDev();
             
+            // 动态显示/隐藏开发选项和分隔线
+            _separatorBeforeDevOptions.Visible = isDevMode;
             _devOptionsMenuItem.Visible = isDevMode;
             _devOptionsMenuItem.Enabled = isDevMode;
             
             _logService.Debug("VxMain", $"右键菜单打开检查: 开发模式={isDevMode}");
-            
-            // 如果不是开发模式，取消菜单显示
-            if (!isDevMode && _memberContextMenu != null && _memberContextMenu.Items.Count == 1)
-            {
-                e.Cancel = true;
-            }
         }
         
         /// <summary>
@@ -323,6 +334,93 @@ namespace BaiShengVx3Plus
                 return (false, null, $"❌ 系统异常\n\n{ex.Message}");
             }
         }
+        
+        #region 常用功能菜单事件
+        
+        /// <summary>
+        /// 💰 手动调整余额
+        /// </summary>
+        private void MenuAdjustBalance_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.CurrentRow?.DataBoundItem is not V2Member member)
+                {
+                    UIMessageBox.ShowWarning("请先选择一个会员！");
+                    return;
+                }
+                
+                // 使用输入框获取调整金额
+                string input = Microsoft.VisualBasic.Interaction.InputBox(
+                    $"请输入调整金额（正数=增加，负数=减少）\n\n会员：{member.Nickname}\n当前余额：{member.Balance:F2}",
+                    "调整会员余额",
+                    "0");
+                
+                if (string.IsNullOrWhiteSpace(input))
+                    return;
+                
+                if (!float.TryParse(input, out float amount) || amount == 0)
+                {
+                    UIMessageBox.ShowWarning("请输入有效的调整金额！");
+                    return;
+                }
+                
+                float oldBalance = member.Balance;
+                float newBalance = oldBalance + amount;
+                
+                if (newBalance < 0)
+                {
+                    UIMessageBox.ShowWarning("调整后余额不能为负数！");
+                    return;
+                }
+                
+                // 确认调整
+                string actionText = amount > 0 ? "增加" : "减少";
+                if (!UIMessageBox.ShowAsk($"确定要{actionText}【{member.Nickname}】的余额吗？\n\n" +
+                    $"调整金额：{amount:F2}\n" +
+                    $"调整前余额：{oldBalance:F2}\n" +
+                    $"调整后余额：{newBalance:F2}"))
+                {
+                    return;
+                }
+                
+                // 调整余额
+                member.Balance = newBalance;
+                
+                // 记录到资金变动表
+                if (_db != null)
+                {
+                    var balanceChange = new V2BalanceChange
+                    {
+                        GroupWxId = member.GroupWxId,
+                        Wxid = member.Wxid,
+                        Nickname = member.Nickname,
+                        BalanceBefore = oldBalance,
+                        BalanceAfter = newBalance,
+                        ChangeAmount = amount,
+                        Reason = ChangeReason.手动调整,
+                        IssueId = 0,
+                        TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                        Notes = $"管理员手动调整余额：{amount:F2}"
+                    };
+                    
+                    _db.Insert(balanceChange);
+                }
+                
+                _logService.Info("VxMain", $"手动调整余额: {member.Nickname} {oldBalance:F2} → {newBalance:F2}");
+                UIMessageBox.ShowSuccess($"余额调整成功！\n\n" +
+                    $"会员：{member.Nickname}\n" +
+                    $"新余额：{newBalance:F2}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"调整余额失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"调整余额失败：{ex.Message}");
+            }
+        }
+        
+        #endregion
     }
 }
 
