@@ -2232,7 +2232,7 @@ namespace BaiShengVx3Plus
                 // 主动请求联系人数据
                 // ✅ 调用 WeChatService（业务逻辑层）
                 // UI 层不应该直接操作 SocketClient
-                var contacts = await _wechatService.RefreshContactsAsync();
+                var contacts = await _wechatService.RefreshContactsAsync(1, 2000, ContactFilterType.群组);
                 
                 // UI 只负责显示结果
                 lblStatus.Text = $"已获取 {contacts.Count} 个联系人";

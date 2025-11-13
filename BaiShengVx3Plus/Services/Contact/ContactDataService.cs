@@ -35,29 +35,52 @@ namespace BaiShengVx3Plus.Services.Contact
         /// <summary>
         /// 处理联系人数据（统一入口）
         /// </summary>
-        public Task<List<WxContact>> ProcessContactsAsync(List<WxContact> contacts)
+        /// <param name="contacts">联系人列表</param>
+        /// <param name="filterType">过滤类型（默认全部）</param>
+        public Task<List<WxContact>> ProcessContactsAsync(List<WxContact> contacts, ContactFilterType filterType = ContactFilterType.全部)
         {
             try
             {
-                _logService.Info("ContactDataService", $"开始处理 {contacts.Count} 个联系人数据");
+                _logService.Info("ContactDataService", $"开始处理 {contacts.Count} 个联系人数据，过滤类型: {filterType}");
+
+                // 🔥 根据过滤类型过滤联系人
+                var filteredContacts = FilterContacts(contacts, filterType);
+                _logService.Info("ContactDataService", $"过滤后联系人数量: {filteredContacts.Count} (原始: {contacts.Count})");
 
                 // 触发事件通知 UI（不再保存到数据库，由 UI 层决定如何使用）
-                _logService.Info("ContactDataService", $"📢 准备触发 ContactsUpdated 事件，联系人数量: {contacts.Count}");
+                _logService.Info("ContactDataService", $"📢 准备触发 ContactsUpdated 事件，联系人数量: {filteredContacts.Count}");
                 ContactsUpdated?.Invoke(this, new ContactsUpdatedEventArgs
                 {
-                    Contacts = contacts,
+                    Contacts = filteredContacts,
                     UpdateTime = DateTime.Now,
                     Source = "Process"
                 });
                 _logService.Info("ContactDataService", $"✅ ContactsUpdated 事件已触发");
 
-                return Task.FromResult(contacts);
+                return Task.FromResult(filteredContacts);
             }
             catch (Exception ex)
             {
                 _logService.Error("ContactDataService", "处理联系人数据失败", ex);
                 return Task.FromResult(new List<WxContact>());
             }
+        }
+        
+        /// <summary>
+        /// 根据过滤类型过滤联系人
+        /// </summary>
+        /// <param name="contacts">原始联系人列表</param>
+        /// <param name="filterType">过滤类型</param>
+        /// <returns>过滤后的联系人列表</returns>
+        private List<WxContact> FilterContacts(List<WxContact> contacts, ContactFilterType filterType)
+        {
+            return filterType switch
+            {
+                ContactFilterType.联系人 => contacts.FindAll(c => !c.Wxid.Contains("@")),  // wxid 不含 @
+                ContactFilterType.群组 => contacts.FindAll(c => c.Wxid.Contains("@")),     // wxid 包含 @
+                ContactFilterType.全部 => contacts,                                         // 不过滤
+                _ => contacts
+            };
         }
         
         /// <summary>

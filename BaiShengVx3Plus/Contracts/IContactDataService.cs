@@ -22,8 +22,9 @@ namespace BaiShengVx3Plus.Contracts
         /// 触发事件通知 UI 层更新
         /// </summary>
         /// <param name="contacts">已解析的联系人列表</param>
-        /// <returns>联系人列表</returns>
-        Task<List<WxContact>> ProcessContactsAsync(List<WxContact> contacts);
+        /// <param name="filterType">过滤类型（默认全部）</param>
+        /// <returns>过滤后的联系人列表</returns>
+        Task<List<WxContact>> ProcessContactsAsync(List<WxContact> contacts, ContactFilterType filterType = ContactFilterType.全部);
 
         /// <summary>
         /// 联系人数据更新事件

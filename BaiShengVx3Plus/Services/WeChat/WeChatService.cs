@@ -162,7 +162,8 @@ namespace BaiShengVx3Plus.Services.WeChat
                     contacts = await RefreshContactsAsync(
                         maxRetries: 2,  // 🔥 快速连接模式：最多重试2次（第一次 + 1次重试）
                         retryInterval: 500,  // 🔥 快速重试间隔：500ms（不等待太久）
-                        cancellationToken);
+                        filterType: ContactFilterType.群组,
+                        cancellationToken: cancellationToken);
                 }
                 else
                 {
@@ -173,7 +174,8 @@ namespace BaiShengVx3Plus.Services.WeChat
                         contacts = await RefreshContactsAsync(
                                                 maxRetries: 5,  // 🔥 减少重试次数（从10次减少到5次）
                                                 retryInterval: 1000,  // 🔥 减少重试间隔（从2000ms减少到1000ms）
-                                                cancellationToken);
+                                                filterType: ContactFilterType.群组,
+                                                cancellationToken: cancellationToken);
                     }
                     else
                     {
@@ -285,14 +287,16 @@ namespace BaiShengVx3Plus.Services.WeChat
         }
 
         /// <summary>
-        /// 刷新联系人列表（带重试机制）
+        /// 刷新联系人列表（带重试机制和过滤）
         /// </summary>
         /// <param name="maxRetries">最大重试次数（默认1次，不重试）</param>
         /// <param name="retryInterval">重试间隔（毫秒，默认2000ms）</param>
+        /// <param name="filterType">过滤类型（默认全部）</param>
         /// <param name="cancellationToken">取消令牌</param>
         public async Task<List<WxContact>> RefreshContactsAsync(
             int maxRetries = 1,
             int retryInterval = 2000,
+            ContactFilterType filterType = ContactFilterType.全部,
             CancellationToken cancellationToken = default)
         {
             List<WxContact>? result = null;
@@ -368,10 +372,10 @@ namespace BaiShengVx3Plus.Services.WeChat
             }
             finally
             {
-                // 🔥 无论成功或失败，都触发事件通知 UI
+                // 🔥 无论成功或失败，都触发事件通知 UI（应用过滤）
                 if (result != null)
                 {
-                    await _contactDataService.ProcessContactsAsync(result);
+                    result = await _contactDataService.ProcessContactsAsync(result, filterType);
                 }
             }
             
