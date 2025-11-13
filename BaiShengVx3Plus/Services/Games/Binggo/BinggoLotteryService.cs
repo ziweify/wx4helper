@@ -65,6 +65,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         // 🔥 开盘消息发送标志（防止同一期号重复发送"线下开始"消息）
         private int _lastOpeningIssueId = 0;
         
+        // 🔥 上一期结算完成标志（确保"线下开始"消息在"留~名单"消息之后发送）
+        private int _lastSettledIssueId = 0;
+        
         // 🔥 开奖队列（参考 F5BotV2 的 itemUpdata）
         // 期号变更时，上期要开奖的期号进入队列，后台线程永远拿最新一条消息来开奖（处理卡奖情况）
         private readonly ConcurrentDictionary<int, BinggoLotteryData> _lotteryQueue = new ConcurrentDictionary<int, BinggoLotteryData>();
@@ -900,6 +903,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
                 {
                     await SendSettlementMessagesAsync(data, groupWxId, issueidLite, ordersReportsList);
+                    
+                    // 🔥 标记该期号已结算完成（发送了中~名单和留~名单）
+                    _lastSettledIssueId = issueId;
+                    _logService.Info("BinggoLotteryService", $"✅ 期号 {issueId} 结算完成，已发送中~名单和留~名单");
                 }
                 else
                 {
@@ -1241,6 +1248,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 🔥 开盘处理（参考 F5BotV2 第1139-1178行 On开盘中）
         /// 只在状态变为"开盘中"时执行一次
+        /// 🔥 重要：必须确保上一期的中~名单和留~名单已发送，才能发送本期的"线下开始"
         /// </summary>
         private async Task OnOpeningAsync(int issueId)
         {
@@ -1254,6 +1262,35 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 _logService.Info("BinggoLotteryService", $"📢 开盘处理: 期号 {issueId}");
+                
+                // 🔥 检查上一期是否已结算完成（发送了中~名单和留~名单）
+                // 参考 F5BotV2：开奖后状态变为"等待中"，然后在状态循环中变为"开盘中"时发送
+                // 只有在上一期结算完成后，才发送本期的"线下开始"消息
+                int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
+                if (_lastSettledIssueId < previousIssueId)
+                {
+                    _logService.Warning("BinggoLotteryService", 
+                        $"⚠️ 上一期 {previousIssueId} 尚未结算完成（已结算期号：{_lastSettledIssueId}），延迟发送本期 {issueId} 的'线下开始'消息");
+                    
+                    // 🔥 延迟最多 5 秒，等待上一期结算完成
+                    for (int i = 0; i < 10; i++)
+                    {
+                        await Task.Delay(500);  // 每次等待 500ms
+                        
+                        if (_lastSettledIssueId >= previousIssueId)
+                        {
+                            _logService.Info("BinggoLotteryService", $"✅ 上一期 {previousIssueId} 已结算完成，继续发送本期 {issueId} 的'线下开始'消息");
+                            break;
+                        }
+                    }
+                    
+                    // 🔥 如果超时仍未结算完成，也继续发送（避免卡死）
+                    if (_lastSettledIssueId < previousIssueId)
+                    {
+                        _logService.Warning("BinggoLotteryService", 
+                            $"⚠️ 等待超时，上一期 {previousIssueId} 仍未结算完成，强制发送本期 {issueId} 的'线下开始'消息");
+                    }
+                }
                 
                 // 🔥 重置提醒标志（参考 F5BotV2 第1157-1158行）
                 _reminded30Seconds = false;
