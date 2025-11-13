@@ -363,9 +363,49 @@ public partial class Form1 : Form
         }
         
         _socketServer = new SocketServer(configIdInt, CommandReceivedWrapper, socketLogCallback);
+        
+        // 订阅连接状态变化事件
+        _socketServer.StatusChanged += OnSocketStatusChanged;
+        
         _socketServer.Start();
         
         lblPort.Text = $"配置: {_configId} | 平台: {_platform}";
+    }
+    
+    /// <summary>
+    /// Socket 连接状态变化回调
+    /// </summary>
+    private void OnSocketStatusChanged(object? sender, Services.ConnectionStatus status)
+    {
+        // 跨线程更新 UI
+        if (lblStatus.GetCurrentParent()?.InvokeRequired ?? false)
+        {
+            lblStatus.GetCurrentParent()?.Invoke(() => UpdateConnectionStatus(status));
+        }
+        else
+        {
+            UpdateConnectionStatus(status);
+        }
+    }
+    
+    /// <summary>
+    /// 更新连接状态显示
+    /// </summary>
+    private void UpdateConnectionStatus(Services.ConnectionStatus status)
+    {
+        var (text, color) = status switch
+        {
+            Services.ConnectionStatus.断开 => ("● 未连接 VxMain", System.Drawing.Color.Red),
+            Services.ConnectionStatus.连接中 => ("● 连接中...", System.Drawing.Color.Orange),
+            Services.ConnectionStatus.已连接 => ("● 已连接 VxMain", System.Drawing.Color.Green),
+            Services.ConnectionStatus.重连中 => ("● 重连中...", System.Drawing.Color.Orange),
+            _ => ("● 未知状态", System.Drawing.Color.Gray)
+        };
+        
+        lblStatus.Text = text;
+        lblStatus.ForeColor = color;
+        
+        OnLogMessage($"🔄 连接状态: {text}", LogType.Socket);
     }
     
     /// <summary>

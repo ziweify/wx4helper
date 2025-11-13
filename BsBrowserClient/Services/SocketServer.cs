@@ -12,6 +12,17 @@ using Newtonsoft.Json.Linq;
 namespace BsBrowserClient.Services
 {
     /// <summary>
+    /// 连接状态枚举
+    /// </summary>
+    public enum ConnectionStatus
+    {
+        断开,
+        连接中,
+        已连接,
+        重连中
+    }
+    
+    /// <summary>
     /// Socket 服务器 - 接收主程序的命令
     /// </summary>
     public class SocketServer : IDisposable
@@ -29,6 +40,12 @@ namespace BsBrowserClient.Services
         private Task? _listenerTask;
         
         public bool IsRunning { get; private set; }
+        public ConnectionStatus Status { get; private set; } = ConnectionStatus.断开;
+        
+        /// <summary>
+        /// 连接状态变化事件
+        /// </summary>
+        public event EventHandler<ConnectionStatus>? StatusChanged;
         
         public SocketServer(int configId, Action<CommandRequest> onCommandReceived, Action<string> onLog)
         {
@@ -49,14 +66,28 @@ namespace BsBrowserClient.Services
                 _cts = new CancellationTokenSource();
                 IsRunning = true;
                 
+                UpdateStatus(ConnectionStatus.连接中);
                 _onLog($"🔗 尝试连接到 VxMain (端口: {VXMAIN_SERVER_PORT})...");
                 
                 _listenerTask = Task.Run(() => ConnectAndListenAsync(_cts.Token), _cts.Token);
             }
             catch (Exception ex)
             {
+                UpdateStatus(ConnectionStatus.断开);
                 _onLog($"❌ 连接失败: {ex.Message}");
                 throw;
+            }
+        }
+        
+        /// <summary>
+        /// 更新连接状态并触发事件
+        /// </summary>
+        private void UpdateStatus(ConnectionStatus newStatus)
+        {
+            if (Status != newStatus)
+            {
+                Status = newStatus;
+                StatusChanged?.Invoke(this, newStatus);
             }
         }
         
@@ -68,6 +99,7 @@ namespace BsBrowserClient.Services
             if (!IsRunning) return;
             
             IsRunning = false;
+            UpdateStatus(ConnectionStatus.断开);
             
             _cts?.Cancel();
             
@@ -114,6 +146,7 @@ namespace BsBrowserClient.Services
                         var welcome = JsonConvert.DeserializeObject<JObject>(welcomeLine);
                         if (welcome?["type"]?.ToString() == "welcome")
                         {
+                            UpdateStatus(ConnectionStatus.已连接);
                             _onLog($"✅ 握手成功: {welcome["message"]}");
                         }
                     }
@@ -127,6 +160,7 @@ namespace BsBrowserClient.Services
                 }
                 catch (Exception ex)
                 {
+                    UpdateStatus(ConnectionStatus.断开);
                     _onLog($"❌ 连接错误: {ex.Message}");
                     
                     // 清理连接
@@ -137,6 +171,7 @@ namespace BsBrowserClient.Services
                     // 等待后重试连接
                     if (!cancellationToken.IsCancellationRequested)
                     {
+                        UpdateStatus(ConnectionStatus.重连中);
                         _onLog("⏳ 5秒后重试连接...");
                         await Task.Delay(5000, cancellationToken);
                     }
@@ -156,6 +191,7 @@ namespace BsBrowserClient.Services
                     var line = await _reader.ReadLineAsync();
                     if (string.IsNullOrEmpty(line))
                     {
+                        UpdateStatus(ConnectionStatus.断开);
                         _onLog("⚠️ 连接已断开");
                         break;
                     }
@@ -183,12 +219,14 @@ namespace BsBrowserClient.Services
                 catch (System.IO.IOException ioEx) when (ioEx.InnerException is System.Net.Sockets.SocketException)
                 {
                     // 连接被远程主机强制关闭，正常退出循环
+                    UpdateStatus(ConnectionStatus.断开);
                     _onLog("⚠️ 连接已断开（远程主机关闭）");
                     break;
                 }
                 catch (System.IO.IOException ioEx)
                 {
                     // 其他 IO 异常，也认为连接断开
+                    UpdateStatus(ConnectionStatus.断开);
                     _onLog($"⚠️ 连接异常: {ioEx.Message}");
                     break;
                 }

@@ -308,15 +308,15 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "🎮 初始化炳狗服务...");
                 
-                // 检查数据库是否已初始化
-                if (_db == null)
+                // 🔥 检查全局数据库是否已初始化（必须先初始化全局数据库）
+                if (_globalDb == null)
                 {
-                    _logService.Warning("VxMain", "数据库未初始化，跳过炳狗服务初始化");
+                    _logService.Error("VxMain", "❌ 全局数据库未初始化，无法初始化炳狗服务！");
                     return;
                 }
                 
                 // 🔥 1. 设置数据库连接（双库结构）
-                // 📌 全局数据库（business.db）
+                // 📌 全局数据库（business.db）- 始终可用
                 // - AutoBetService: AutoBetConfigs（飞单配置）
                 _autoBetService.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ AutoBetService 已设置全局数据库（AutoBetConfigs）");
@@ -325,15 +325,22 @@ namespace BaiShengVx3Plus
                 _lotteryService.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
                 
-                // 📌 微信专属数据库（business_{wxid}.db）
-                // - BetRecordService: BetOrderRecord（投注记录）
-                var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
-                betRecordService?.SetDatabase(_db);
-                _logService.Info("VxMain", "✅ BetRecordService 已设置微信专属数据库（BetOrderRecord）");
-                
-                // - OrderService: V2MemberOrder（订单）
-                _orderService.SetDatabase(_db);
-                _logService.Info("VxMain", "✅ OrderService 已设置微信专属数据库（V2MemberOrder）");
+                // 📌 微信专属数据库（business_{wxid}.db）- 绑定微信后才可用
+                if (_db != null)
+                {
+                    // - BetRecordService: BetOrderRecord（投注记录）
+                    var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
+                    betRecordService?.SetDatabase(_db);
+                    _logService.Info("VxMain", "✅ BetRecordService 已设置微信专属数据库（BetOrderRecord）");
+                    
+                    // - OrderService: V2MemberOrder（订单）
+                    _orderService.SetDatabase(_db);
+                    _logService.Info("VxMain", "✅ OrderService 已设置微信专属数据库（V2MemberOrder）");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ 微信专属数据库未初始化（未绑定微信），部分功能暂不可用");
+                }
                 
                 // 🤖 数据库设置完成后，重新加载自动投注设置
                 LoadAutoBetSettings();
@@ -349,8 +356,11 @@ namespace BaiShengVx3Plus
                 _lotteryService.SetBindingList(_lotteryDataBindingList);
                 
                 // 4. 设置订单服务的 BindingList（可能为 null，服务内部会处理）
-                _orderService.SetOrdersBindingList(_ordersBindingList);
-                _orderService.SetMembersBindingList(_membersBindingList);
+                if (_db != null)
+                {
+                    _orderService.SetOrdersBindingList(_ordersBindingList);
+                    _orderService.SetMembersBindingList(_membersBindingList);
+                }
                 
                 // 🔥 5. 设置开奖服务的业务依赖（用于结算和发送微信消息）
                 // 参考 F5BotV2：所有开奖相关逻辑统一在 BinggoLotteryService 中处理
@@ -365,8 +375,11 @@ namespace BaiShengVx3Plus
                         _creditWithdrawsBindingList  // 🔥 传递上下分 BindingList
                     );
                     
-                    // 🔥 设置数据库连接（用于上下分申请）
-                    lotteryServiceImpl.SetDatabaseForCreditWithdraw(_db);
+                    // 🔥 设置数据库连接（用于上下分申请）- 仅在微信专属数据库可用时设置
+                    if (_db != null)
+                    {
+                        lotteryServiceImpl.SetDatabaseForCreditWithdraw(_db);
+                    }
                 }
                 
                 // 6. 订阅开奖事件（UI 更新，业务逻辑已在服务中处理）
