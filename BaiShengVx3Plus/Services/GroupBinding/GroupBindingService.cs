@@ -388,8 +388,12 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                             State = MemberState.会员
                         };
                         
-                        // 解析 wxid
-                        if (item.TryGetProperty("username", out var username))
+                        // 🔥 解析 wxid（支持多种字段名）
+                        if (item.TryGetProperty("member_wxid", out var memberWxid))
+                        {
+                            member.Wxid = memberWxid.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("username", out var username))
                         {
                             member.Wxid = username.GetString() ?? string.Empty;
                         }
@@ -399,10 +403,17 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                         }
                         
                         if (string.IsNullOrEmpty(member.Wxid))
+                        {
+                            _logService.Warning("GroupBindingService", "跳过无效会员：wxid 为空");
                             continue;
+                        }
                         
-                        // 解析昵称
-                        if (item.TryGetProperty("nick_name", out var nickName))
+                        // 🔥 解析昵称（支持多种字段名）
+                        if (item.TryGetProperty("member_nickname", out var memberNickname))
+                        {
+                            member.Nickname = memberNickname.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("nick_name", out var nickName))
                         {
                             member.Nickname = nickName.GetString() ?? string.Empty;
                         }
@@ -411,19 +422,40 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                             member.Nickname = nickname.GetString() ?? string.Empty;
                         }
                         
-                        // 解析群昵称
-                        if (item.TryGetProperty("display_name", out var displayName))
+                        // 🔥 解析备注名（作为群昵称）
+                        if (item.TryGetProperty("member_remark", out var memberRemark))
+                        {
+                            string remark = memberRemark.GetString() ?? string.Empty;
+                            if (!string.IsNullOrEmpty(remark))
+                            {
+                                member.DisplayName = remark;
+                            }
+                            else
+                            {
+                                member.DisplayName = member.Nickname; // 备注为空时使用昵称
+                            }
+                        }
+                        else if (item.TryGetProperty("display_name", out var displayName))
                         {
                             member.DisplayName = displayName.GetString() ?? string.Empty;
                         }
+                        else
+                        {
+                            member.DisplayName = member.Nickname; // 默认使用昵称
+                        }
                         
-                        // 解析微信号
-                        if (item.TryGetProperty("alias", out var alias))
+                        // 🔥 解析微信号（支持多种字段名）
+                        if (item.TryGetProperty("member_alias", out var memberAlias))
+                        {
+                            member.Account = memberAlias.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("alias", out var alias))
                         {
                             member.Account = alias.GetString() ?? string.Empty;
                         }
                         
                         members.Add(member);
+                        _logService.Debug("GroupBindingService", $"解析会员: {member.Nickname} ({member.Wxid})");
                     }
                     catch (Exception ex)
                     {
