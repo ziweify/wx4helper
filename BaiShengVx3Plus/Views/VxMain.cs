@@ -3126,7 +3126,37 @@ namespace BaiShengVx3Plus
             try
             {
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
-                if (defaultConfig != null)
+                if (defaultConfig == null)
+                {
+                    // 🔥 如果默认配置不存在，创建一个新的
+                    _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
+                    
+                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
+                    defaultConfig = new Models.AutoBet.BetConfig
+                    {
+                        ConfigName = "默认配置",
+                        Platform = platform.ToString(),
+                        PlatformUrl = platform switch
+                        {
+                            BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
+                            BetPlatform.云顶 => "https://www.yunding28.com",
+                            BetPlatform.海峡 => "https://www.haixia28.com",
+                            BetPlatform.红海 => "https://www.honghai28.com",
+                            _ => "https://yb666.fr.win2000.cc"
+                        },
+                        Username = txtAutoBetUsername.Text,
+                        Password = txtAutoBetPassword.Text,
+                        IsDefault = true,
+                        IsEnabled = false,
+                        AutoLogin = true,
+                        MinBetAmount = 1,
+                        MaxBetAmount = 10000
+                    };
+                    
+                    _autoBetService.SaveConfig(defaultConfig);
+                    _logService.Info("VxMain", "✅ 已创建新的默认配置");
+                }
+                else
                 {
                     // 保存平台（使用共享库统一转换）
                     var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
@@ -3153,15 +3183,13 @@ namespace BaiShengVx3Plus
                     _autoBetService.SaveConfig(defaultConfig);
 
                     _logService.Info("VxMain", "✅ 自动投注设置已保存");
-                    _logService.Info("VxMain", $"   - 平台: {platform}");
-                    _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
-                    _logService.Info("VxMain", $"   - 用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
-                    _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(password) ? "(空)" : "******")}");
                 }
-                else
-                {
-                    _logService.Warning("VxMain", "⚠️ 未找到默认配置，无法保存设置");
-                }
+                
+                // 统一的日志输出
+                _logService.Info("VxMain", $"   - 平台: {defaultConfig.Platform}");
+                _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
+                _logService.Info("VxMain", $"   - 用户名: {(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
+                _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "******")}");
             }
             catch (Exception ex)
             {
