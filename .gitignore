@@ -51,3 +51,4 @@
 # 大文件（超过 GitHub 100MB 限制）
 /BaiShengVx3Plus/libs/WeChatWin4.1.0.21.exe
 /BaiShengVx3Plus/libs/*.exe
+/BaiShengVx3Plus/bin
