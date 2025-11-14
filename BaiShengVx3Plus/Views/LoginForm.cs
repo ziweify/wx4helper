@@ -57,6 +57,9 @@ namespace BaiShengVx3Plus.Views
             // 登录成功事件
             _viewModel.LoginSucceeded += (s, e) =>
             {
+                // 🔥 保存登录信息（如果勾选了记住密码）
+                SaveLoginInfo();
+                
                 DialogResult = DialogResult.OK;
                 Close();
             };
@@ -64,8 +67,82 @@ namespace BaiShengVx3Plus.Views
 
         private void LoginForm_Load(object sender, EventArgs e)
         {
+            // 🔥 加载保存的登录信息
+            LoadSavedLoginInfo();
+            
             // 设置默认焦点
-            txtUsername.Focus();
+            if (string.IsNullOrEmpty(txtUsername.Text))
+            {
+                txtUsername.Focus();
+            }
+            else
+            {
+                txtPassword.Focus();
+            }
+        }
+        
+        /// <summary>
+        /// 加载保存的登录信息
+        /// </summary>
+        private void LoadSavedLoginInfo()
+        {
+            try
+            {
+                var configService = Program.ServiceProvider?.GetService(typeof(Contracts.IConfigurationService)) 
+                    as Services.Configuration.ConfigurationService;
+                
+                if (configService == null)
+                    return;
+                
+                var isRememberPassword = configService.GetIsRememberPassword();
+                
+                if (isRememberPassword)
+                {
+                    var username = configService.GetBsUserName();
+                    var password = configService.GetBsUserPassword();
+                    
+                    // 填充到界面
+                    txtUsername.Text = username;
+                    txtPassword.Text = password;
+                    chkRememberPassword.Checked = true;
+                    
+                    // 同步到 ViewModel
+                    _viewModel.BsUserName = username;
+                    _viewModel.BsUserPass = password;
+                    _viewModel.IsRememberPassword = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                // 加载失败不影响登录
+                System.Diagnostics.Debug.WriteLine($"加载登录信息失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 保存登录信息（登录成功后调用）
+        /// </summary>
+        private void SaveLoginInfo()
+        {
+            try
+            {
+                var configService = Program.ServiceProvider?.GetService(typeof(Contracts.IConfigurationService)) 
+                    as Services.Configuration.ConfigurationService;
+                
+                if (configService == null)
+                    return;
+                
+                configService.SaveLoginInfo(
+                    txtUsername.Text,
+                    txtPassword.Text,
+                    chkRememberPassword.Checked
+                );
+            }
+            catch (Exception ex)
+            {
+                // 保存失败不影响登录
+                System.Diagnostics.Debug.WriteLine($"保存登录信息失败: {ex.Message}");
+            }
         }
 
         private void btnCancel_Click(object sender, EventArgs e)

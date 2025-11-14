@@ -33,9 +33,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 创建投注记录
         /// </summary>
-        public BetRecord Create(BetRecord record)
+        public BetRecord? Create(BetRecord record)
         {
-            if (_db == null) throw new InvalidOperationException("数据库未初始化");
+            if (_db == null)
+            {
+                _log.Error("BetRecordService", "❌ 数据库未初始化，无法创建投注记录");
+                return null;
+            }
             
             record.CreateTime = DateTime.Now;
             record.SendTime = DateTime.Now;
@@ -52,7 +56,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public void Update(BetRecord record)
         {
-            if (_db == null) throw new InvalidOperationException("数据库未初始化");
+            if (_db == null)
+            {
+                _log.Error("BetRecordService", "❌ 数据库未初始化，无法更新投注记录");
+                return;
+            }
             
             record.UpdateTime = DateTime.Now;
             
@@ -74,7 +82,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public void UpdateResult(int recordId, bool success, string? result, string? errorMessage, 
             DateTime? postStartTime, DateTime? postEndTime, string? orderNo)
         {
-            if (_db == null) throw new InvalidOperationException("数据库未初始化");
+            if (_db == null)
+            {
+                _log.Error("BetRecordService", "❌ 数据库未初始化，无法更新投注结果");
+                return;
+            }
             
             var record = _db.Get<BetRecord>(recordId);
             if (record == null)

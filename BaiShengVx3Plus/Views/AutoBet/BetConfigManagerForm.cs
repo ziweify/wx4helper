@@ -788,6 +788,17 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         };
                         
                         betRecord = betRecordService.Create(betRecord);
+                        
+                        if (betRecord == null)
+                        {
+                            return new CommandResponse
+                            {
+                                Success = false,
+                                Message = "创建投注记录失败",
+                                ErrorMessage = "数据库未初始化"
+                            };
+                        }
+                        
                         _logService.Info("CommandPanel", $"BetRecord已创建:ID={betRecord.Id}");
                         
                         // 4. 发送投注命令

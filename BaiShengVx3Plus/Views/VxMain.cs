@@ -325,14 +325,14 @@ namespace BaiShengVx3Plus
                 _lotteryService.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
                 
+                // 📌 BetRecordService: 使用全局数据库（不依赖微信绑定）
+                var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
+                betRecordService?.SetDatabase(_globalDb);
+                _logService.Info("VxMain", "✅ BetRecordService 已设置全局数据库（BetRecord）");
+                
                 // 📌 微信专属数据库（business_{wxid}.db）- 绑定微信后才可用
                 if (_db != null)
                 {
-                    // - BetRecordService: BetOrderRecord（投注记录）
-                    var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
-                    betRecordService?.SetDatabase(_db);
-                    _logService.Info("VxMain", "✅ BetRecordService 已设置微信专属数据库（BetOrderRecord）");
-                    
                     // - OrderService: V2MemberOrder（订单）
                     _orderService.SetDatabase(_db);
                     _logService.Info("VxMain", "✅ OrderService 已设置微信专属数据库（V2MemberOrder）");

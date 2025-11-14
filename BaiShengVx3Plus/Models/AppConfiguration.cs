@@ -9,7 +9,8 @@ namespace BaiShengVx3Plus.Models
     public class AppConfiguration
     {
             public string BsUserName { get; set; } = string.Empty;   //百盛用户名
-            public string BsUserPwd { get; set; } = string.Empty;    //百盛密码
+            public string BsUserPwd { get; set; } = string.Empty;    //百盛密码（Base64加密）
+            public bool IsRememberPassword { get; set; } = false;    //记住密码
 
 
         /// <summary>

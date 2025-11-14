@@ -58,7 +58,23 @@ namespace BaiShengVx3Plus.Services.AutoBet
             {
                 _log.Info("AutoBet", $"🚀 启动自动投注，配置ID: {configId}");
                 
-                // 1. 启动浏览器
+                // 🔥 1. 先设置 IsEnabled = true（触发监控任务）
+                var config = _autoBetService.GetConfig(configId);
+                if (config == null)
+                {
+                    _log.Error("AutoBet", $"❌ 配置不存在: {configId}");
+                    return false;
+                }
+                
+                if (!config.IsEnabled)
+                {
+                    _log.Info("AutoBet", $"📌 设置配置 [{config.ConfigName}] 为启用状态");
+                    config.IsEnabled = true;  // PropertyChanged 自动保存，监控任务会看到
+                }
+                
+                // 🔥 2. 等待浏览器连接（最多3秒）
+                //    - 如果已有老浏览器，会在1-2秒内重连
+                //    - 如果没有，监控任务会在2秒后启动新浏览器
                 var success = await _autoBetService.StartBrowser(configId);
                 if (!success)
                 {
@@ -66,7 +82,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     return false;
                 }
                 
-                // 2. 订阅开奖事件
+                // 3. 订阅开奖事件
                 _lotteryService.IssueChanged += LotteryService_IssueChanged;
                 _lotteryService.StatusChanged += LotteryService_StatusChanged;
                 
@@ -225,6 +241,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     };
                     
                     betRecord = _betRecordService.Create(betRecord);
+                    
+                    if (betRecord == null)
+                    {
+                        _log.Error("AutoBet", "❌ 创建投注记录失败，数据库未初始化");
+                        return;
+                    }
+                    
                     _log.Info("AutoBet", $"✅ 投注记录已创建: ID={betRecord.Id}");
                     
                     // 5. 通过 Socket 发送投注命令到浏览器

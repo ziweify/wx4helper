@@ -231,6 +231,70 @@ namespace BaiShengVx3Plus.Services.Configuration
         }
         
         // ========================================
+        // 登录信息管理（记住密码功能）
+        // ========================================
+        
+        /// <summary>
+        /// 获取保存的用户名
+        /// </summary>
+        public string GetBsUserName() => _configuration.BsUserName;
+        
+        /// <summary>
+        /// 获取保存的密码（解密）
+        /// </summary>
+        public string GetBsUserPassword()
+        {
+            if (string.IsNullOrEmpty(_configuration.BsUserPwd))
+                return string.Empty;
+            
+            return Utils.PasswordHelper.Decrypt(_configuration.BsUserPwd);
+        }
+        
+        /// <summary>
+        /// 获取是否记住密码
+        /// </summary>
+        public bool GetIsRememberPassword() => _configuration.IsRememberPassword;
+        
+        /// <summary>
+        /// 保存登录信息（记住密码）
+        /// </summary>
+        public void SaveLoginInfo(string username, string password, bool rememberPassword)
+        {
+            _configuration.BsUserName = username;
+            _configuration.IsRememberPassword = rememberPassword;
+            
+            if (rememberPassword && !string.IsNullOrEmpty(password))
+            {
+                // 加密保存密码
+                _configuration.BsUserPwd = Utils.PasswordHelper.Encrypt(password);
+                _logService.Info("ConfigurationService", $"登录信息已保存: 用户名={username}, 记住密码=是");
+            }
+            else
+            {
+                // 不记住密码，清空
+                _configuration.BsUserPwd = string.Empty;
+                _logService.Info("ConfigurationService", $"登录信息已保存: 用户名={username}, 记住密码=否");
+            }
+            
+            // 自动保存
+            SaveConfiguration();
+        }
+        
+        /// <summary>
+        /// 清除保存的登录信息
+        /// </summary>
+        public void ClearLoginInfo()
+        {
+            _configuration.BsUserName = string.Empty;
+            _configuration.BsUserPwd = string.Empty;
+            _configuration.IsRememberPassword = false;
+            
+            SaveConfiguration();
+            
+            _logService.Info("ConfigurationService", "登录信息已清除");
+        }
+        
+        // ========================================
         // 配置管理（公共接口）
         // ========================================
         
