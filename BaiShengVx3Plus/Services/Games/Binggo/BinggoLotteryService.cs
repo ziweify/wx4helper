@@ -1021,6 +1021,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", "✅ 留分名单已发送");
                 }
                 
+                // 🔥 重要：增加延迟，确保消息真正发送到微信群（参考 F5BotV2 的消息发送机制）
+                // 这样可以确保下一期的"线下开始"消息不会在"留~名单"之前发送
+                await Task.Delay(1000);  // 延迟1秒，确保消息顺序正确
+                _logService.Info("BinggoLotteryService", "✅ 结算消息发送完成，已等待1秒确保消息顺序");
+                
                 // 🔥 检查是否是今日最后一期（参考 F5BotV2 第 1482-1488 行）
                 int dayIndex = Helpers.BinggoHelper.GetDayIndex(issueId);
                 if (dayIndex == 203)
@@ -1290,31 +1295,19 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 🔥 检查上一期是否已结算完成（发送了中~名单和留~名单）
                 // 参考 F5BotV2：开奖后状态变为"等待中"，然后在状态循环中变为"开盘中"时发送
-                // 只有在上一期结算完成后，才发送本期的"线下开始"消息
+                // 🔥 关键：只有在上一期真正结算完成后，才发送本期的"线下开始"消息
+                // 🔥 如果上一期还没结算完成，直接 return，不发送"线下开始"消息
                 int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
                 if (_lastSettledIssueId < previousIssueId)
                 {
                     _logService.Warning("BinggoLotteryService", 
-                        $"⚠️ 上一期 {previousIssueId} 尚未结算完成（已结算期号：{_lastSettledIssueId}），延迟发送本期 {issueId} 的'线下开始'消息");
+                        $"⚠️ 上一期 {previousIssueId} 尚未结算完成（已结算期号：{_lastSettledIssueId}），跳过发送本期 {issueId} 的'线下开始'消息");
+                    _logService.Warning("BinggoLotteryService", 
+                        $"⚠️ 等待上一期开奖并结算完成后，下次 tick 时再发送'线下开始'消息");
                     
-                    // 🔥 延迟最多 5 秒，等待上一期结算完成
-                    for (int i = 0; i < 10; i++)
-                    {
-                        await Task.Delay(500);  // 每次等待 500ms
-                        
-                        if (_lastSettledIssueId >= previousIssueId)
-                        {
-                            _logService.Info("BinggoLotteryService", $"✅ 上一期 {previousIssueId} 已结算完成，继续发送本期 {issueId} 的'线下开始'消息");
-                            break;
-                        }
-                    }
-                    
-                    // 🔥 如果超时仍未结算完成，也继续发送（避免卡死）
-                    if (_lastSettledIssueId < previousIssueId)
-                    {
-                        _logService.Warning("BinggoLotteryService", 
-                            $"⚠️ 等待超时，上一期 {previousIssueId} 仍未结算完成，强制发送本期 {issueId} 的'线下开始'消息");
-                    }
+                    // 🔥 直接返回，不发送"线下开始"消息
+                    // 下次 tick 时会再次检查，如果上一期已结算完成，就会发送
+                    return;
                 }
                 
                 // 🔥 重置提醒标志（参考 F5BotV2 第1157-1158行）
@@ -1341,6 +1334,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             _lastOpeningIssueId = issueId;
                             _logService.Info("BinggoLotteryService", $"✅ 开盘提示已发送: {message}");
                         }
+                        
+                        // 🔥 重要：增加延迟，确保"线下开始"消息先到达微信群，然后再发送图片
+                        await Task.Delay(500);  // 延迟500ms
                         
                         // 🔥 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
                         await SendHistoryLotteryImageAsync(issueId, groupWxId);
