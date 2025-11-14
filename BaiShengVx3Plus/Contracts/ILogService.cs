@@ -115,7 +115,8 @@ namespace BaiShengVx3Plus.Contracts
         /// <summary>
         /// 导出日志到文件
         /// </summary>
-        Task ExportToFileAsync(string filePath, DateTime? startTime = null, DateTime? endTime = null);
+        /// <param name="limit">导出数量限制，默认10000条，避免100万+数据卡顿</param>
+        Task ExportToFileAsync(string filePath, DateTime? startTime = null, DateTime? endTime = null, int limit = 10000);
     }
 
     /// <summary>

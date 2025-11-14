@@ -151,19 +151,20 @@ namespace BaiShengVx3Plus.Services.Logging
             try
             {
                 using var connection = new SQLiteConnection(_dbPath);
-                var allLogs = connection.Table<LogEntry>().ToList();
-
+                
+                // 🔥 性能优化：使用 SQL COUNT 而不是加载所有数据到内存
+                // 避免加载100万+条数据导致卡顿
                 return new LogStatistics
                 {
-                    TotalCount = allLogs.Count,
-                    TraceCount = allLogs.Count(l => l.Level == LogLevel.Trace),
-                    DebugCount = allLogs.Count(l => l.Level == LogLevel.Debug),
-                    InfoCount = allLogs.Count(l => l.Level == LogLevel.Info),
-                    WarningCount = allLogs.Count(l => l.Level == LogLevel.Warning),
-                    ErrorCount = allLogs.Count(l => l.Level == LogLevel.Error),
-                    FatalCount = allLogs.Count(l => l.Level == LogLevel.Fatal),
-                    FirstLogTime = allLogs.MinBy(l => l.Timestamp)?.Timestamp,
-                    LastLogTime = allLogs.MaxBy(l => l.Timestamp)?.Timestamp
+                    TotalCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry"),
+                    TraceCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry WHERE Level = ?", (int)LogLevel.Trace),
+                    DebugCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry WHERE Level = ?", (int)LogLevel.Debug),
+                    InfoCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry WHERE Level = ?", (int)LogLevel.Info),
+                    WarningCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry WHERE Level = ?", (int)LogLevel.Warning),
+                    ErrorCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry WHERE Level = ?", (int)LogLevel.Error),
+                    FatalCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM LogEntry WHERE Level = ?", (int)LogLevel.Fatal),
+                    FirstLogTime = connection.ExecuteScalar<DateTime?>("SELECT MIN(Timestamp) FROM LogEntry"),
+                    LastLogTime = connection.ExecuteScalar<DateTime?>("SELECT MAX(Timestamp) FROM LogEntry")
                 };
             }
             catch
@@ -199,16 +200,20 @@ namespace BaiShengVx3Plus.Services.Logging
             _minimumLevel = level;
         }
 
-        public async Task ExportToFileAsync(string filePath, DateTime? startTime = null, DateTime? endTime = null)
+        public async Task ExportToFileAsync(string filePath, DateTime? startTime = null, DateTime? endTime = null, int limit = 10000)
         {
             await Task.Run(() =>
             {
                 try
                 {
-                    var logs = QueryLogs(startTime, endTime, limit: int.MaxValue);
+                    // 🔥 性能优化：默认只导出最新10000条日志，避免100万+条数据卡顿
+                    // 如果需要导出所有日志，可以传入 limit = int.MaxValue
+                    Console.WriteLine($"[LogService] 开始导出日志，限制条数: {limit}");
+                    var logs = QueryLogs(startTime, endTime, limit: limit);
                     var lines = logs.Select(log => 
                         $"[{log.Timestamp:yyyy-MM-dd HH:mm:ss}] [{log.Level}] [{log.Source}] {log.Message}");
                     File.WriteAllLines(filePath, lines);
+                    Console.WriteLine($"[LogService] 导出完成，共 {logs.Count} 条日志");
                 }
                 catch (Exception ex)
                 {

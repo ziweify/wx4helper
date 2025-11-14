@@ -1387,19 +1387,70 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             continue;
                         }
                         
-                        // 🔥 2. 生成图片（参考 F5BotV2 第1188行）
-                        string imagePath = Path.Combine(Path.GetTempPath(), "bgzst_latest.jpg");
+                        // 🔥 2. 生成图片到 C:\images\ 目录（避免中文路径问题）
+                        // 不使用用户文件夹，避免中文用户名导致的路径问题
+                        // 需要管理员权限才能在C盘根目录创建文件夹
+                        var dataDir = @"C:\images";
+                        
+                        // 🔥 防御性编程：确保目录存在
+                        if (!Directory.Exists(dataDir))
+                        {
+                            try
+                            {
+                                Directory.CreateDirectory(dataDir);
+                                _logService.Info("BinggoLotteryService", $"创建图片目录: {dataDir}");
+                            }
+                            catch (UnauthorizedAccessException ex)
+                            {
+                                _logService.Error("BinggoLotteryService", $"创建目录失败，需要管理员权限: {ex.Message}");
+                                throw new Exception("需要管理员权限才能在C盘根目录创建文件夹，请以管理员身份运行程序");
+                            }
+                        }
+                        
+                        string imagePath = Path.Combine(dataDir, $"img_{issueId}.jpg");
+                        _logService.Info("BinggoLotteryService", $"图片保存路径: {imagePath}");
+                        
                         bool imageCreated = await CreateLotteryImageAsync(response.Data, imagePath);
                         
-                        if (!imageCreated || !File.Exists(imagePath))
+                        // 🔥 防御性编程：严格检查图片是否生成成功
+                        if (!imageCreated)
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片生成失败，重试 {retry + 1}/5");
+                            _logService.Warning("BinggoLotteryService", $"图片生成失败（返回false），重试 {retry + 1}/5");
                             await Task.Delay(500);
                             continue;
                         }
                         
-                        // 🔥 3. 发送图片到微信群（参考 F5BotV2 第1191行）
-                        _logService.Info("BinggoLotteryService", $"📤 发送历史记录图片到群: {groupWxId}");
+                        if (!File.Exists(imagePath))
+                        {
+                            _logService.Warning("BinggoLotteryService", $"图片文件不存在: {imagePath}，重试 {retry + 1}/5");
+                            await Task.Delay(500);
+                            continue;
+                        }
+                        
+                        // 🔥 防御性编程：检查文件大小
+                        var fileInfo = new FileInfo(imagePath);
+                        if (fileInfo.Length == 0)
+                        {
+                            _logService.Warning("BinggoLotteryService", $"图片文件为空: {imagePath}，重试 {retry + 1}/5");
+                            await Task.Delay(500);
+                            continue;
+                        }
+                        
+                        _logService.Info("BinggoLotteryService", $"✅ 图片生成成功: {imagePath}，大小: {fileInfo.Length} 字节");
+                        
+                        // 🔥 防御性编程：等待文件完全写入磁盘（避免"文件找不到"错误）
+                        await Task.Delay(300);  // 等待300ms确保文件系统完全刷新
+                        
+                        // 🔥 再次验证文件是否可以访问
+                        if (!File.Exists(imagePath))
+                        {
+                            _logService.Warning("BinggoLotteryService", $"等待后文件仍不存在: {imagePath}，重试 {retry + 1}/5");
+                            await Task.Delay(500);
+                            continue;
+                        }
+                        
+                        // 🔥 3. 发送图片到微信群（直接使用纯英文路径 C:\images\）
+                        _logService.Info("BinggoLotteryService", $"📤 发送历史记录图片到群: {groupWxId}，文件路径: {imagePath}");
                         var sendResponse = await _socketClient.SendAsync<object>("SendImage", groupWxId, imagePath);
                         
                         if (sendResponse != null)
@@ -1409,7 +1460,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         }
                         else
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片发送失败，重试 {retry + 1}/5");
+                            _logService.Warning("BinggoLotteryService", $"图片发送失败（返回null），重试 {retry + 1}/5");
                             await Task.Delay(500);
                         }
                     }
@@ -1443,11 +1494,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         return false;
                     }
                     
-                    // 🔥 模板图片路径（参考 F5BotV2 第1635行）
-                    string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bgzst.png");
+                    // 🔥 模板图片路径（在 libs 目录下）
+                    string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs", "bgzst.png");
                     if (!File.Exists(templatePath))
                     {
                         _logService.Error("BinggoLotteryService", $"模板文件不存在: {templatePath}");
+                        _logService.Error("BinggoLotteryService", $"请确保 libs/bgzst.png 文件存在");
                         return false;
                     }
                     
@@ -1496,9 +1548,26 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             }
                         }
                         
+                        // 🔥 防御性编程：确保输出目录存在
+                        string? outputDir = Path.GetDirectoryName(outputPath);
+                        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+                        {
+                            Directory.CreateDirectory(outputDir);
+                            _logService.Info("BinggoLotteryService", $"创建输出目录: {outputDir}");
+                        }
+                        
                         // 🔥 保存图片（参考 F5BotV2 第1680行）
                         bitmap.Save(outputPath, System.Drawing.Imaging.ImageFormat.Jpeg);
-                        _logService.Info("BinggoLotteryService", $"✅ 图片生成成功: {outputPath}");
+                        
+                        // 🔥 防御性编程：验证文件是否真的生成了
+                        if (!File.Exists(outputPath))
+                        {
+                            _logService.Error("BinggoLotteryService", $"图片保存失败，文件不存在: {outputPath}");
+                            return false;
+                        }
+                        
+                        var fileInfo = new FileInfo(outputPath);
+                        _logService.Info("BinggoLotteryService", $"✅ 图片生成成功: {outputPath}，大小: {fileInfo.Length} 字节");
                         return true;
                     }
                 }

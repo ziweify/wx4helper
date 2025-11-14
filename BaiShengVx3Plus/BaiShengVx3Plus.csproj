@@ -7,6 +7,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>libs\1165z-ivqi2-001.ico</ApplicationIcon>
+    <!-- 以管理员权限运行（需要在C:\images\创建文件夹） -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <!-- 排除文档文件夹，防止被编译 -->
