@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Models.AutoBet;  // 🔥 使用统一的 BetItem
 
 namespace BaiShengVx3Plus.Services.AutoBet
 {
@@ -43,23 +44,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
             /// <summary>
             /// 合并后的投注项列表
             /// </summary>
-            public List<BetItem> BetItems { get; set; } = new();
+            public BetStandardOrderList BetItems { get; set; } = new();
         }
         
-        /// <summary>
-        /// 投注项
-        /// </summary>
-        public class BetItem
-        {
-            public string Number { get; set; } = "";      // 号码："1"
-            public string PlayType { get; set; } = "";    // 玩法："大"
-            public decimal Amount { get; set; }           // 金额：50
-            
-            public override string ToString()
-            {
-                return $"{Number}{PlayType}{Amount}";
-            }
-        }
+        // 🔥 BetItem 已移到 Models.AutoBet.BetItem，统一使用
         
         /// <summary>
         /// 合并订单
@@ -77,7 +65,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             _log.Info("OrderMerger", $"开始合并订单:共{orderList.Count}个");
             
             // 解析所有订单为投注项
-            var allItems = new List<BetItem>();
+            var allItems = new BetStandardOrderList();
             var orderIds = new List<long>();
             
             foreach (var order in orderList)
@@ -86,7 +74,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 // 解析 BetContentStandar（已经是标准格式，如 "1大20"）
                 var items = ParseBetContent(order.BetContentStandar, order.AmountTotal);
-                allItems.AddRange(items);
+                foreach (var item in items)
+                {
+                    allItems.Add(item);
+                }
                 
                 _log.Info("OrderMerger", 
                     $"  订单{order.Id}:{order.BetContentStandar} {order.AmountTotal}元 → {items.Count}项");
@@ -95,9 +86,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
             // 合并相同号码和玩法的投注项（参考 F5BotV2 逻辑）
             var mergedItems = MergeBetItems(allItems);
             
-            // 生成标准投注内容
-            var betContentStandard = string.Join(",", mergedItems.Select(item => item.ToString()));
-            var totalAmount = mergedItems.Sum(item => item.Amount);
+            // 生成标准投注内容（格式："P1大50,P2小30"）
+            var betContentStandard = string.Join(",", mergedItems.Select(item => $"{item.Car}{GetPlayName(item.Play)}{item.MoneySum}"));
+            var totalAmount = mergedItems.Sum(item => item.MoneySum);
             
             _log.Info("OrderMerger", 
                 $"✅ 合并完成:{orderList.Count}个订单 → {mergedItems.Count}项投注 总额{totalAmount}元");
@@ -115,9 +106,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 解析投注内容为投注项列表
         /// </summary>
-        private List<BetItem> ParseBetContent(string? betContentStandar, float amount)
+        private BetStandardOrderList ParseBetContent(string? betContentStandar, float amount)
         {
-            var items = new List<BetItem>();
+            var items = new BetStandardOrderList();
             
             if (string.IsNullOrEmpty(betContentStandar))
             {
@@ -165,16 +156,34 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     }
                     
                     // 解析金额
-                    decimal itemAmount = string.IsNullOrEmpty(amountStr) ? 0 : decimal.Parse(amountStr);
+                    int itemAmount = string.IsNullOrEmpty(amountStr) ? 0 : int.Parse(amountStr);
                     
                     if (!string.IsNullOrEmpty(number) && !string.IsNullOrEmpty(playType) && itemAmount > 0)
                     {
-                        items.Add(new BetItem
+                        // 将号码和玩法转换为枚举
+                        var carEnum = number switch
                         {
-                            Number = number,
-                            PlayType = playType,
-                            Amount = itemAmount
-                        });
+                            "1" => CarNumEnum.P1,
+                            "2" => CarNumEnum.P2,
+                            "3" => CarNumEnum.P3,
+                            "4" => CarNumEnum.P4,
+                            "5" => CarNumEnum.P5,
+                            "总" or "6" => CarNumEnum.P总,
+                            _ => CarNumEnum.P1
+                        };
+                        
+                        var playEnum = playType switch
+                        {
+                            "大" => BetPlayEnum.大,
+                            "小" => BetPlayEnum.小,
+                            "单" => BetPlayEnum.单,
+                            "双" => BetPlayEnum.双,
+                            "尾大" => BetPlayEnum.尾大,
+                            "尾小" => BetPlayEnum.尾小,
+                            _ => BetPlayEnum.大
+                        };
+                        
+                        items.Add(new BetStandardOrder(0, carEnum, playEnum, itemAmount));
                     }
                 }
             }
@@ -189,25 +198,56 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 合并投注项（参考 F5BotV2 逻辑）
         /// </summary>
-        private List<BetItem> MergeBetItems(List<BetItem> items)
+        private BetStandardOrderList MergeBetItems(BetStandardOrderList items)
         {
-            var merged = new List<BetItem>();
+            var merged = new BetStandardOrderList();
             
             // 按号码和玩法分组，累加金额
-            var groups = items.GroupBy(item => new { item.Number, item.PlayType });
+            var groups = items.GroupBy(item => new { item.Car, item.Play });
             
             foreach (var group in groups)
             {
-                merged.Add(new BetItem
-                {
-                    Number = group.Key.Number,
-                    PlayType = group.Key.PlayType,
-                    Amount = group.Sum(item => item.Amount)
-                });
+                merged.Add(new BetStandardOrder(
+                    0, 
+                    group.Key.Car, 
+                    group.Key.Play, 
+                    group.Sum(item => item.MoneySum)
+                ));
             }
             
-            // 排序（按号码）
-            return merged.OrderBy(item => item.Number).ToList();
+            // 排序（按car枚举值）
+            var sorted = merged.OrderBy(item => item.Car).ToList();
+            var result = new BetStandardOrderList();
+            foreach (var item in sorted)
+            {
+                result.Add(item);
+            }
+            return result;
+        }
+        
+        /// <summary>
+        /// 获取玩法名称
+        /// </summary>
+        private string GetPlayName(BetPlayEnum play)
+        {
+            return play switch
+            {
+                BetPlayEnum.大 => "大",
+                BetPlayEnum.小 => "小",
+                BetPlayEnum.单 => "单",
+                BetPlayEnum.双 => "双",
+                BetPlayEnum.尾大 => "尾大",
+                BetPlayEnum.尾小 => "尾小",
+                BetPlayEnum.合单 => "合单",
+                BetPlayEnum.合双 => "合双",
+                BetPlayEnum.龙 => "龙",
+                BetPlayEnum.虎 => "虎",
+                BetPlayEnum.豹子 => "豹子",
+                BetPlayEnum.顺子 => "顺子",
+                BetPlayEnum.寿 => "寿",
+                BetPlayEnum.喜 => "喜",
+                _ => ""
+            };
         }
     }
 }

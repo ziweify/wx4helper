@@ -599,43 +599,33 @@ public partial class Form1 : Form
                     break;
                     
                 case "投注":
-                    // 新的投注流程：接收标准投注内容，执行投注，返回详细结果
+                    // 新的投注流程：接收标准化订单列表，执行投注，返回详细结果
                     var betData = command.Data as JObject;
-                    var betIssueId = betData?["issueId"]?.ToString() ?? "";
-                    var betContent = betData?["betContent"]?.ToString() ?? "";
                     
-                    OnLogMessage($"📝 收到投注命令:期号{betIssueId} 内容:{betContent}", LogType.Bet);
+                    // 🔥 接收 BetStandardOrderList
+                    var betOrders = betData?.ToObject<BetStandardOrderList>();
                     
-                    if (string.IsNullOrEmpty(betContent))
+                    if (betOrders == null || betOrders.Count == 0)
                     {
                         response.Message = "投注内容为空";
+                        OnLogMessage($"❌ 投注内容为空", LogType.Bet);
                         break;
                     }
+                    
+                    var betIssueId = betOrders[0].IssueId;
+                    var totalAmount = betOrders.GetTotalAmount();
+                    
+                    OnLogMessage($"📝 收到投注命令:期号{betIssueId} 共{betOrders.Count}项 {totalAmount}元", LogType.Bet);
                     
                     // 记录POST前时间
                     var postStartTime = DateTime.Now;
                     
                     try
                     {
-                        OnLogMessage($"📦 准备投注:期号={betIssueId} 内容={betContent}", LogType.Bet);
+                        OnLogMessage($"📦 准备投注:期号={betIssueId} 共{betOrders.Count}项 {totalAmount}元", LogType.Bet);
                         
-                        // 🔥 参考F5BotV2：将所有投注项组装成一个包，一次性POST
-                        // betContent格式："1大10,2大10,3大10,4大10"
-                        // 不需要拆分逐个投注，而是整体发送给平台脚本
-                        // 平台脚本内部会将betContent解析并组装成一个POST请求
-                        
-                        var betOrder = new BetOrder
-                        {
-                            IssueId = betIssueId,
-                            BetContent = betContent,  // 🔥 完整的投注内容，不拆分
-                            Amount = 0  // 金额已包含在内容中
-                        };
-                        
-                        // 🔥 平台脚本内部会：
-                        //    1. 解析 betContent："1大10,2大10,3大10,4大10"
-                        //    2. 组装成 JSON数组：[{id:1,money:10},{id:2,money:10},...]
-                        //    3. 一次性POST请求到平台
-                        var (success, orderId) = await _platformScript!.PlaceBetAsync(betOrder);
+                        // 🔥 使用标准化订单列表，平台脚本将其转换为平台特定的格式
+                        var (success, orderId) = await _platformScript!.PlaceBetAsync(betOrders);
                         
                         // 记录POST后时间
                         var postEndTime = DateTime.Now;
@@ -1163,18 +1153,15 @@ public partial class Form1 : Form
             OnLogMessage($"✅ 当前余额: ¥{balance}");
             
             // 测试投注"1大10"
-            var testBetContent = "1大10";
-            var betOrder = new BetOrder
+            var testOrders = new BetStandardOrderList
             {
-                IssueId = "0",  // 测试用，期号为0
-                BetContent = testBetContent,
-                Amount = 0
+                new BetStandardOrder(0, CarNumEnum.P1, BetPlayEnum.大, 10)
             };
             
-            OnLogMessage($"📤 调用PlaceBetAsync:内容={testBetContent}");
+            OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");
             var startTime = DateTime.Now;
             
-            var (success, orderId) = await _platformScript.PlaceBetAsync(betOrder);
+            var (success, orderId) = await _platformScript.PlaceBetAsync(testOrders);
             
             var endTime = DateTime.Now;
             var duration = (int)(endTime - startTime).TotalMilliseconds;

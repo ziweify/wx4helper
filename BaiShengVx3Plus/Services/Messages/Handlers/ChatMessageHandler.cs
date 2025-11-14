@@ -23,6 +23,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         private readonly IWeixinSocketClient _socketClient;
         private readonly BinggoMessageHandler _binggoMessageHandler;
         private readonly IMemberDataService _memberDataService;
+        private readonly IUserInfoService _userInfoService; // 🔥 新增：获取当前用户信息
 
         public ServerMessageType MessageType => ServerMessageType.OnMessage;
 
@@ -30,12 +31,14 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             ILogService logService,
             IWeixinSocketClient socketClient,
             BinggoMessageHandler binggoMessageHandler,
-            IMemberDataService memberDataService)
+            IMemberDataService memberDataService,
+            IUserInfoService userInfoService) // 🔥 新增
         {
             _logService = logService;
             _socketClient = socketClient;
             _binggoMessageHandler = binggoMessageHandler;
             _memberDataService = memberDataService;
+            _userInfoService = userInfoService; // 🔥 新增
         }
 
         public async Task HandleAsync(JsonElement data)
@@ -80,10 +83,15 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return;
                 }
                 
-                // 4. 调用炳狗消息处理器
+                // 🔥 获取当前用户 wxid（用于管理员判断）
+                string currentUserWxid = _userInfoService.GetCurrentWxid();
+                
+                // 4. 调用炳狗消息处理器（传递群ID和当前用户ID）
                 var (handled, replyMessage) = await _binggoMessageHandler.HandleMessageAsync(
                     member, 
-                    message.Content);
+                    message.Content,
+                    message.Receiver1,  // 🔥 群ID
+                    currentUserWxid);   // 🔥 当前用户ID
                 
                 // 4. 如果已处理，发送回复消息
                 if (handled && !string.IsNullOrEmpty(replyMessage))

@@ -44,6 +44,24 @@ namespace BaiShengVx3Plus.Models.AutoBet
         public bool IsDefault { get; set; } = false;
         
         /// <summary>
+        /// 浏览器进程ID（用于检查进程是否还在运行）
+        /// </summary>
+        public int ProcessId { get; set; } = 0;
+        
+        /// <summary>
+        /// 🔥 浏览器客户端（运行时对象，不保存到数据库）
+        /// 配置对象自己管理与浏览器的连接！
+        /// </summary>
+        [Ignore]
+        public Services.AutoBet.BrowserClient? Browser { get; set; }
+        
+        /// <summary>
+        /// 🔥 是否已连接到浏览器
+        /// </summary>
+        [Ignore]
+        public bool IsConnected => Browser?.IsConnected ?? false;
+        
+        /// <summary>
         /// 显示浏览器窗口（兼容属性）
         /// </summary>
         [Ignore]

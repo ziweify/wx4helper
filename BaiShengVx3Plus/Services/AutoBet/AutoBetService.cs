@@ -19,8 +19,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private readonly ILogService _log;
         private IBinggoOrderService? _orderService;
         
-        // 🔥 核心：配置ID → 浏览器客户端
-        private readonly Dictionary<int, BrowserClient> _browsers = new();
+        // 🔥 已删除字典！配置对象自己管理 Browser 连接
+        // private readonly Dictionary<int, BrowserClient> _browsers = new();  // ❌ 不需要了
         
         // Socket 服务器（双向通信：心跳、状态推送、远程控制）
         private AutoBetSocketServer? _socketServer;
@@ -29,9 +29,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private AutoBetHttpServer? _httpServer;
         
         // 待投注订单队列（配置ID → 订单队列）
-        private readonly Dictionary<int, Queue<BetOrder>> _orderQueues = new();
+        private readonly Dictionary<int, Queue<BetStandardOrderList>> _orderQueues = new();
         
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
+        // 每个配置对象通过 config.Browser 管理自己的浏览器连接
         private Core.BetConfigBindingList? _configs;
         
         // 🔥 后台监控任务：自动启动浏览器（如果配置需要但未连接）
@@ -80,7 +81,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         {
             _db = db;
             _db.CreateTable<BetConfig>();
-            _db.CreateTable<BetOrderRecord>();
+            // 🔥 BetOrderRecord 已删除，改用 BetRecord（由 BetRecordService 管理）
             
             // 🔥 创建配置 BindingList 并加载数据到内存
             _configs = new Core.BetConfigBindingList(_db);
@@ -133,9 +134,18 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
             else
             {
-                // 🔥 修改现有配置：直接修改对象属性即可
-                // PropertyChanged 事件会自动保存到数据库
-                _log.Info("AutoBet", $"配置已更新: {config.ConfigName}");
+                // 🔥 修改现有配置：强制更新到数据库
+                // 因为某些字段（如 Username, Password）是自动属性，不会触发 PropertyChanged
+                if (_db != null)
+                {
+                    config.LastUpdateTime = DateTime.Now;
+                    _db.Update(config);  // 🔥 强制更新到数据库
+                    _log.Info("AutoBet", $"配置已更新并保存到数据库: {config.ConfigName}");
+                }
+                else
+                {
+                    _log.Warning("AutoBet", $"配置已更新但数据库未初始化: {config.ConfigName}");
+                }
             }
         }
         
@@ -254,20 +264,20 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// 🔥 浏览器连接回调（当浏览器通过 Socket 主动连接到 VxMain 时）
         /// 根据配置名匹配配置（而不是配置ID），解决数据库重建后ID变化的问题
         /// </summary>
-        private void OnBrowserConnected(string configName, int browserConfigId)
+        private void OnBrowserConnected(string configName, int browserConfigId, int processId)
         {
             try
             {
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 _log.Info("AutoBet", $"🔗 浏览器已通过 Socket 连接，配置名: {configName}");
                 _log.Info("AutoBet", $"   浏览器ConfigId: {browserConfigId}");
-                _log.Info("AutoBet", $"   当前 _browsers 字典: [{string.Join(", ", _browsers.Keys)}]");
+                _log.Info("AutoBet", $"   进程ID: {processId}");
                 
                 // 🔥 根据配置名查找配置（而不是配置ID）
                 Models.AutoBet.BetConfig? config;
                 lock (_lock)
                 {
-                    config = _configs.FirstOrDefault(c => c.ConfigName == configName);
+                    config = _configs?.FirstOrDefault(c => c.ConfigName == configName);
                 }
                 
                 if (config == null)
@@ -280,9 +290,15 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 int configId = config.Id;
                 _log.Info("AutoBet", $"✅ 配置信息: {config.ConfigName} (Id={configId}, {config.Platform})");
                 _log.Info("AutoBet", $"   说明：配置名固定，但数据库重建后配置ID可能变化");
+                _log.Info("AutoBet", $"   当前连接状态: {(config.IsConnected ? "已连接" : "未连接")}");
+                
+                // 🔥 保存进程ID到配置
+                config.ProcessId = processId;
+                SaveConfig(config);
+                _log.Info("AutoBet", $"✅ 已保存进程ID: {processId}");
                 
                 // 🔥 从 AutoBetSocketServer 获取 ClientConnection
-                var connection = _socketServer.GetConnection(browserConfigId);
+                var connection = _socketServer?.GetConnection(browserConfigId);
                 if (connection == null)
                 {
                     _log.Error("AutoBet", $"❌ 无法获取 ClientConnection: {browserConfigId}");
@@ -292,28 +308,23 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 _log.Info("AutoBet", $"✅ 已获取 ClientConnection，连接状态: {connection.IsConnected}");
                 
-                // 🔥 创建或更新 BrowserClient（使用 ClientConnection）
-                if (_browsers.TryGetValue(configId, out var existingBrowser))
+                // 🔥 配置对象自己管理 Browser！
+                if (config.Browser != null)
                 {
-                    _log.Info("AutoBet", $"📌 _browsers 字典中已存在该配置，更新连接");
-                    // ✅ 附加 ClientConnection（不是 TcpClient）
-                    existingBrowser.AttachConnection(connection);
+                    _log.Info("AutoBet", $"📌 配置已有 Browser 实例，更新连接");
+                    config.Browser.AttachConnection(connection);
                 }
                 else
                 {
-                    // 🔥 主程序重启或数据库重建场景：_browsers 字典为空，但浏览器在运行并重连了
-                    _log.Info("AutoBet", $"📌 _browsers 字典中无此配置，自动创建 BrowserClient");
+                    // 🔥 主程序重启或数据库重建场景：config.Browser 为 null，但浏览器在运行并重连了
+                    _log.Info("AutoBet", $"📌 配置无 Browser 实例，自动创建");
                     _log.Info("AutoBet", $"   场景：主程序重启、数据库重建、或浏览器先于主程序启动");
                     
                     var browserClient = new BrowserClient(configId);
-                    browserClient.AttachConnection(connection); // 🔥 附加 ClientConnection
+                    browserClient.AttachConnection(connection);
+                    config.Browser = browserClient;  // 🔥 配置对象持有 Browser
                     
-                    lock (_lock)
-                    {
-                        _browsers[configId] = browserClient;
-                    }
-                    
-                    _log.Info("AutoBet", $"✅ BrowserClient 已创建并附加连接");
+                    _log.Info("AutoBet", $"✅ BrowserClient 已创建并附加到配置");
                 }
                 
                 // 更新配置状态
@@ -321,7 +332,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 SaveConfig(config);
                 
                 _log.Info("AutoBet", $"✅ 浏览器 Socket 连接处理完成: {config.ConfigName}");
-                _log.Info("AutoBet", $"   更新后 _browsers 字典: [{string.Join(", ", _browsers.Keys)}]");
+                _log.Info("AutoBet", $"   配置连接状态: {(config.IsConnected ? "已连接" : "未连接")}");
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             catch (Exception ex)
@@ -341,9 +352,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
             {
                 // 🔥 首先，将所有消息分发给对应的 BrowserClient
                 //    这样 BrowserClient.SendCommandAsync 可以通过回调接收响应
-                if (_browsers.TryGetValue(configId, out var browserClient))
+                var config = GetConfig(configId);
+                if (config?.Browser != null)
                 {
-                    browserClient.OnMessageReceived(message);
+                    config.Browser.OnMessageReceived(message);
                 }
                 
                 // 然后，处理特定类型的消息（Cookie更新、登录成功等）
@@ -435,9 +447,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public async Task NotifySealingAsync(int configId, string issueId, int secondsRemaining)
         {
-            if (!_browsers.TryGetValue(configId, out var browserClient))
+            var config = GetConfig(configId);
+            var browserClient = config?.Browser;
+            if (browserClient == null)
             {
-                _log.Warning("AutoBet", $"浏览器未连接，无法推送封盘通知:配置{configId}");
+                _log.Warning("AutoBet", $"浏览器未连接，无法推送封盘通知: {config?.ConfigName ?? configId.ToString()}");
                 return;
             }
             
@@ -465,22 +479,66 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public async Task<BetResult> SendBetCommandAsync(int configId, string issueId, string betContentStandard)
         {
             _log.Info("AutoBet", $"📤 尝试发送投注命令: configId={configId}");
-            _log.Info("AutoBet", $"   当前 _browsers 字典包含的 configId: [{string.Join(", ", _browsers.Keys)}]");
             
-            if (!_browsers.TryGetValue(configId, out var browserClient))
+            var config = GetConfig(configId);
+            if (config == null)
             {
-                _log.Warning("AutoBet", $"❌ 浏览器未连接，无法推送投注命令: configId={configId}");
-                _log.Warning("AutoBet", $"   _browsers 中实际的 configId: [{string.Join(", ", _browsers.Keys)}]");
-                _log.Warning("AutoBet", $"   ⚠️ configId 不匹配！请检查启动流程。");
+                _log.Error("AutoBet", $"❌ 配置不存在: configId={configId}");
                 return new BetResult
                 {
                     Success = false,
-                    ErrorMessage = $"浏览器未连接(configId={configId}不匹配)"
+                    ErrorMessage = "配置不存在"
                 };
             }
             
-            _log.Info("AutoBet", $"✅ 找到浏览器客户端: configId={configId}");
-            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");  // 🔥 添加连接状态检查
+            var browserClient = config.Browser;
+            if (browserClient == null)
+            {
+                _log.Warning("AutoBet", $"❌ 浏览器未连接，无法推送投注命令: {config.ConfigName}");
+                _log.Warning("AutoBet", $"   监控任务会在3秒内自动检查并重启浏览器");
+                
+                return new BetResult
+                {
+                    Success = false,
+                    ErrorMessage = "浏览器未连接(监控任务将自动重连)"
+                };
+            }
+            
+            // 🔥 检查连接状态
+            if (!browserClient.IsConnected)
+            {
+                _log.Error("AutoBet", $"❌ 浏览器客户端存在但 IsConnected=false");
+                
+                // 🔥 详细诊断（仅在连接失败时输出）
+                var connection = browserClient.GetConnection();
+                _log.Error("AutoBet", $"   📊 诊断: connection={connection != null}");
+                
+                if (connection != null)
+                {
+                    _log.Error("AutoBet", $"   Client={connection.Client != null}, Connected={connection.Client?.Connected}");
+                    
+                    if (connection.Client?.Client != null)
+                    {
+                        try
+                        {
+                            var socket = connection.Client.Client;
+                            bool pollResult = socket.Poll(1, System.Net.Sockets.SelectMode.SelectRead);
+                            int available = socket.Available;
+                            _log.Error("AutoBet", $"   Socket.Poll={pollResult}, Available={available}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Error("AutoBet", $"   Socket检查异常: {ex.Message}");
+                        }
+                    }
+                }
+                
+                return new BetResult
+                {
+                    Success = false,
+                    ErrorMessage = "连接状态异常(请查看日志)"
+                };
+            }
             
             try
             {
@@ -524,24 +582,26 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 添加订单到队列（供 HTTP 接口查询）
         /// </summary>
-        public void QueueBetOrder(int configId, BetOrder order)
+        public void QueueBetOrder(int configId, BetStandardOrderList orders)
         {
             lock (_orderQueues)
             {
                 if (!_orderQueues.ContainsKey(configId))
                 {
-                    _orderQueues[configId] = new Queue<BetOrder>();
+                    _orderQueues[configId] = new Queue<BetStandardOrderList>();
                 }
                 
-                _orderQueues[configId].Enqueue(order);
-                _log.Info("AutoBet", $"📝 订单已加入队列: 配置{configId} {order.IssueId} {order.BetContent} {order.Amount}元");
+                _orderQueues[configId].Enqueue(orders);
+                var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
+                var totalAmount = orders.GetTotalAmount();
+                _log.Info("AutoBet", $"📝 订单已加入队列: 配置{configId} 期号{issueId} 共{orders.Count}项 {totalAmount}元");
             }
         }
         
         /// <summary>
         /// 获取待处理订单（HTTP API 调用）
         /// </summary>
-        public BetOrder? GetPendingOrder(int configId, string? issueId)
+        public BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
         {
             lock (_orderQueues)
             {
@@ -551,9 +611,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 如果指定了期号，查找对应期号的订单
-                if (!string.IsNullOrEmpty(issueId))
+                if (issueId.HasValue)
                 {
-                    return queue.FirstOrDefault(o => o.IssueId == issueId);
+                    return queue.FirstOrDefault(o => o.Count > 0 && o[0].IssueId == issueId.Value);
                 }
                 
                 // 否则返回队首订单
@@ -566,7 +626,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public BrowserClient? GetBrowserClient(int configId)
         {
-            return _browsers.TryGetValue(configId, out var client) ? client : null;
+            return GetConfig(configId)?.Browser;
         }
         
         /// <summary>
@@ -584,39 +644,22 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 从队列移除已处理的订单
-                BetOrder? order = null;
+                BetStandardOrderList? orders = null;
                 lock (_orderQueues)
                 {
                     if (_orderQueues.TryGetValue(configId, out var queue) && queue.Count > 0)
                     {
-                        order = queue.Dequeue();
+                        orders = queue.Dequeue();
                     }
                 }
                 
-                if (order == null)
+                if (orders == null)
                 {
                     _log.Warning("AutoBet", $"未找到对应订单: 配置{configId}");
                     return;
                 }
                 
-                // 记录到数据库
-                if (_db != null)
-                {
-                    _db.Insert(new BetOrderRecord
-                    {
-                        ConfigId = configId,
-                        ConfigName = config.ConfigName,
-                        Platform = config.Platform,
-                        IssueId = order.IssueId ?? "",
-                        PlayType = order.PlayType,
-                        BetContent = order.BetContent,
-                        Amount = order.Amount,
-                        PlatformOrderId = orderId,
-                        Status = success ? "成功" : "失败",
-                        ErrorMessage = errorMessage,
-                        CreateTime = DateTime.Now
-                    });
-                }
+                // 🔥 投注记录已由 BetRecordService 统一管理，此处不再重复记录
                 
                 _log.Info("AutoBet", $"📥 [{config.ConfigName}] 投注结果: {(success ? "✅ 成功" : "❌ 失败")} 订单号:{orderId}");
             }
@@ -652,52 +695,18 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 _log.Info("AutoBet", $"   当前 IsEnabled 状态: {config.IsEnabled}");
                 
                 // 🔥 检查是否已连接
-                bool isConnected;
-                lock (_lock)
-                {
-                    isConnected = _browsers.ContainsKey(configId);
-                }
-                
-                if (isConnected)
+                if (config.IsConnected)
                 {
                     _log.Info("AutoBet", $"✅ 浏览器已连接，无需启动");
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     return true;
                 }
                 
-                _log.Info("AutoBet", $"📌 浏览器未连接，主动触发监控任务检查...");
-                
-                // 🔥 主动触发监控任务（不等待定时器）
-                _log.Info("AutoBet", "   手动调用 MonitorBrowsers 立即检查并启动");
-                MonitorBrowsers(null);
-                
-                // 🔥 等待浏览器连接（最多6秒，给监控任务足够时间）
-                // 监控任务会等待2秒 + 启动浏览器需要2-3秒
-                _log.Info("AutoBet", $"   等待浏览器启动并连接（最多6秒）...");
-                for (int i = 1; i <= 6; i++)
-                {
-                    await Task.Delay(1000);
-                    
-                    bool connected;
-                    lock (_lock)
-                    {
-                        connected = _browsers.ContainsKey(configId);
-                    }
-                    
-                    if (connected)
-                    {
-                        _log.Info("AutoBet", $"✅ 浏览器已连接！（等待了 {i} 秒）");
-                        _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                        return true;
-                    }
-                    
-                    _log.Info("AutoBet", $"   ⏳ 等待浏览器连接... {i}/6 秒");
-                }
-                
-                _log.Warning("AutoBet", $"⚠️ 等待6秒后浏览器仍未连接");
-                _log.Warning("AutoBet", $"   可能原因：1) 浏览器进程启动失败  2) Socket连接失败  3) 配置ID不匹配");
+                _log.Info("AutoBet", $"📌 浏览器未连接，监控任务将在3秒内自动启动");
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                return false;
+                
+                // 🔥 不再手动触发，让监控任务自动处理（防止重复启动）
+                return true;  // 返回 true，让调用者知道配置已启用
             }
             catch (Exception ex)
             {
@@ -726,13 +735,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 再次检查是否已连接（避免重复启动）
-                bool isConnected;
-                lock (_lock)
-                {
-                    isConnected = _browsers.ContainsKey(configId);
-                }
-                
-                if (isConnected)
+                if (config.IsConnected)
                 {
                     _log.Info("AutoBet", $"✅ 浏览器已连接，取消启动");
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -749,12 +752,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 var newBrowserClient = new BrowserClient(configId);
                 await newBrowserClient.StartAsync(0, config.ConfigName, config.Platform, config.PlatformUrl);
                 
-                lock (_lock)
-                {
-                    _browsers[configId] = newBrowserClient;
-                }
-                _log.Info("AutoBet", $"✅ 浏览器进程已启动");
-                _log.Info("AutoBet", $"   更新后 _browsers 字典: [{string.Join(", ", _browsers.Keys)}]");
+                // 🔥 配置对象持有 Browser
+                config.Browser = newBrowserClient;
+                _log.Info("AutoBet", $"✅ 浏览器进程已启动，已设置到配置对象");
                 
                 // 更新状态
                 config.Status = "已启动";
@@ -814,17 +814,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 投注
         /// </summary>
-        public async Task<BetResult> PlaceBet(int configId, BetOrder order)
+        public async Task<BetResult> PlaceBet(int configId, BetStandardOrderList orders)
         {
-            if (!_browsers.TryGetValue(configId, out var browserClient))
-            {
-                return new BetResult
-                {
-                    Success = false,
-                    ErrorMessage = "浏览器未启动"
-                };
-            }
-            
             var config = GetConfig(configId);
             if (config == null)
             {
@@ -835,29 +826,24 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 };
             }
             
-            _log.Info("AutoBet", $"📤 [{config.ConfigName}] 投注: {order.PlayType} {order.BetContent} {order.Amount}");
+            var browserClient = config.Browser;
+            if (browserClient == null)
+            {
+                return new BetResult
+                {
+                    Success = false,
+                    ErrorMessage = "浏览器未启动"
+                };
+            }
+            
+            var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
+            var totalAmount = orders.GetTotalAmount();
+            _log.Info("AutoBet", $"📤 [{config.ConfigName}] 投注: 期号{issueId} 共{orders.Count}项 {totalAmount}元");
             
             // 发送投注命令
-            var result = await browserClient.SendCommandAsync("PlaceBet", order);
+            var result = await browserClient.SendCommandAsync("PlaceBet", orders);
             
-            // 保存订单记录
-            if (_db != null)
-            {
-                _db.Insert(new BetOrderRecord
-                {
-                    ConfigId = configId,
-                    ConfigName = config.ConfigName,
-                    Platform = config.Platform,
-                    IssueId = order.IssueId ?? "",
-                    PlayType = order.PlayType,
-                    BetContent = order.BetContent,
-                    Amount = order.Amount,
-                    PlatformOrderId = result.OrderId,
-                    Status = result.Success ? "成功" : "失败",
-                    ErrorMessage = result.ErrorMessage,
-                    CreateTime = DateTime.Now
-                });
-            }
+            // 🔥 投注记录已由 BetRecordService 统一管理，此处不再重复记录
             
             _log.Info("AutoBet", $"📥 [{config.ConfigName}] 投注结果: {(result.Success ? "✅ 成功" : "❌ 失败")}");
             
@@ -869,32 +855,32 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public void StopBrowser(int configId)
         {
+            _log.Info("AutoBet", $"⏹️ 请求停止浏览器: ConfigId={configId}");
+            
             var config = GetConfig(configId);
             
-            // 🔥 标记配置为禁用状态（PropertyChanged 自动保存到数据库）
-            if (config != null && config.IsEnabled)
+            // 🔥 先设置 IsEnabled=false（防止监控任务重启）
+            if (config != null)
             {
-                config.IsEnabled = false;  // 自动保存
-                _log.Info("AutoBet", $"✅ 配置 [{config.ConfigName}] 飞单已关闭");
+                config.IsEnabled = false;  // 🔥 自动保存，监控任务会立即看到
+                _log.Info("AutoBet", $"   配置 [{config.ConfigName}] IsEnabled 已设置为 false");
             }
             
-            // 关闭浏览器进程
-            if (_browsers.TryGetValue(configId, out var browserClient))
+            // 然后关闭浏览器进程
+            var browserClient = config?.Browser;
+            if (browserClient != null)
             {
+                _log.Info("AutoBet", $"   正在关闭浏览器进程...");
+                
                 browserClient.Dispose();
+                config!.Browser = null;  // 🔥 配置对象清除 Browser 引用
+                config.Status = "已停止";
                 
-                lock (_lock)
-                {
-                    _browsers.Remove(configId);
-                }
-                
-                if (config != null)
-                {
-                    config.Status = "已停止";
-                    // IsEnabled 已经在上面修改过，会自动保存
-                }
-                
-                _log.Info("AutoBet", $"⏹️ 浏览器已停止: {config?.ConfigName}");
+                _log.Info("AutoBet", $"✅ 浏览器已停止: {config.ConfigName}");
+            }
+            else
+            {
+                _log.Info("AutoBet", $"   浏览器未运行，无需停止");
             }
         }
         
@@ -903,9 +889,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public void StopAllBrowsers()
         {
-            foreach (var configId in _browsers.Keys.ToList())
+            if (_configs == null) return;
+            
+            foreach (var config in _configs.Where(c => c.Browser != null).ToList())
             {
-                StopBrowser(configId);
+                StopBrowser(config.Id);
             }
         }
         
@@ -934,37 +922,55 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     return;
                 }
                 
-                _log.Debug("AutoBet", $"🔍 监控任务检查: 发现 {enabledConfigs.Count} 个启用的配置");
-                
+                // 🔥 简化日志：只在有问题时才输出
                 foreach (var config in enabledConfigs)
                 {
-                    // 🔥 检查连接状态（从 _browsers 字典查询）
-                    bool isConnected;
-                    lock (_lock)
+                    // 🔥 检查连接状态（配置对象自己管理）
+                    if (config.IsConnected)
                     {
-                        isConnected = _browsers.ContainsKey(config.Id);
-                    }
-                    
-                    if (isConnected)
-                    {
-                        _log.Debug("AutoBet", $"✅ 配置 [{config.ConfigName}] 已连接，跳过");
+                        // 已连接，跳过
                         continue;
                     }
                     
-                    // 🔥 检查是否正在启动（防止重复启动）
-                    bool isStarting;
-                    lock (_lock)
+                    // 🔥 如果 Browser 存在但未连接，移除它
+                    if (config.Browser != null && !config.Browser.IsConnected)
                     {
-                        isStarting = _startingConfigs.Contains(config.Id);
+                        _log.Warning("AutoBet", $"⚠️ 配置 [{config.ConfigName}] Browser存在但IsConnected=False");
+                        
+                        // 🔥 详细诊断
+                        var connection = config.Browser.GetConnection();
+                        _log.Warning("AutoBet", $"   诊断: connection={connection != null}, Client={connection?.Client != null}, Connected={connection?.Client?.Connected}");
+                        
+                        // 🔥 移除失效的 Browser，允许重新启动
+                        config.Browser = null;
+                        _log.Info("AutoBet", $"   🔧 已移除失效的 Browser");
                     }
                     
-                    if (isStarting)
+                    // 🔥 检查进程是否还在运行（简单方案）
+                    if (config.ProcessId > 0 && IsProcessRunning(config.ProcessId))
+                    {
+                        _log.Info("AutoBet", $"⏳ 配置 [{config.ConfigName}] 浏览器进程 {config.ProcessId} 仍在运行，等待重连...");
+                        continue;  // 🔥 进程还在，不启动新的
+                    }
+                    
+                    // 🔥 前置并发控制：立即标记"正在启动"（在 Task.Run 之前）
+                    bool shouldStart = false;
+                    lock (_lock)
+                    {
+                        if (!_startingConfigs.Contains(config.Id))
+                        {
+                            _startingConfigs.Add(config.Id);  // 🔥 立即标记，防止竞态
+                            shouldStart = true;
+                        }
+                    }
+                    
+                    if (!shouldStart)
                     {
                         _log.Debug("AutoBet", $"⏳ 配置 [{config.ConfigName}] 正在启动中，跳过");
                         continue;
                     }
                     
-                    // 🔥 未连接，准备启动浏览器
+                    // 🔥 未连接，准备启动浏览器（已标记，不会重复）
                     _log.Info("AutoBet", $"📌 配置 [{config.ConfigName}] 飞单已开启但未连接");
                     
                     // 🔥 异步处理（不阻塞定时器）
@@ -974,41 +980,27 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     {
                         try
                         {
-                            // 🔥 先等待2秒，给老浏览器重连的机会（在标记"正在启动"之前）
+                            // 🔥 先等待2秒，给老浏览器重连的机会
                             _log.Info("AutoBet", $"⏳ [{configName}] 等待2秒，给老浏览器重连的机会...");
                             await Task.Delay(2000);
                             
                             // 🔥 等待后再次检查连接状态
-                            bool isConnectedNow;
-                            lock (_lock)
-                            {
-                                isConnectedNow = _browsers.ContainsKey(configId);
-                            }
-                            
-                            if (isConnectedNow)
+                            var cfgCheck = GetConfig(configId);
+                            if (cfgCheck?.IsConnected == true)
                             {
                                 _log.Info("AutoBet", $"✅ [{configName}] 已在等待期间连接，无需启动浏览器");
                                 return;
                             }
                             
-                            // 🔥 确认未连接后，再标记为"正在启动"（防止重复）
-                            bool shouldStart = false;
-                            lock (_lock)
+                            // 🔥 再次检查 IsEnabled（可能用户在等待期间关闭了）
+                            var cfg = GetConfig(configId);
+                            if (cfg == null || !cfg.IsEnabled)
                             {
-                                if (!_startingConfigs.Contains(configId))
-                                {
-                                    _startingConfigs.Add(configId);
-                                    shouldStart = true;
-                                }
-                            }
-                            
-                            if (!shouldStart)
-                            {
-                                _log.Debug("AutoBet", $"⏳ [{configName}] 其他任务正在启动浏览器，跳过");
+                                _log.Info("AutoBet", $"   [{configName}] IsEnabled=false，取消启动");
                                 return;
                             }
                             
-                            // 🔥 确认未连接，启动浏览器
+                            // 🔥 确认未连接且需要启动，启动浏览器
                             _log.Info("AutoBet", $"🚀 [{configName}] 启动浏览器...");
                             await StartBrowserInternal(configId);
                         }
@@ -1033,6 +1025,22 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
         }
         
+        /// <summary>
+        /// 🔥 检查进程是否还在运行
+        /// </summary>
+        private bool IsProcessRunning(int processId)
+        {
+            try
+            {
+                var process = System.Diagnostics.Process.GetProcessById(processId);
+                return !process.HasExited;
+            }
+            catch
+            {
+                return false;  // 进程不存在
+            }
+        }
+        
         public void Dispose()
         {
             _monitorTimer?.Dispose();
@@ -1043,3 +1051,4 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
     }
 }
+

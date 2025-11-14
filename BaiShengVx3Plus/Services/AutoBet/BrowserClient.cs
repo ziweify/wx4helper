@@ -35,6 +35,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public bool IsConnected => _connection != null && _connection.IsConnected;
         
         /// <summary>
+        /// 🔥 获取底层连接对象（用于诊断）
+        /// </summary>
+        public AutoBetSocketServer.ClientConnection? GetConnection() => _connection;
+        
+        /// <summary>
         /// 检查进程是否还在运行
         /// </summary>
         public bool IsProcessRunning

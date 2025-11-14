@@ -173,6 +173,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 return;
             }
             
+            // 🔥 防御性检查：确保数据库已设置
+            if (_db == null)
+            {
+                _logService.Error("BinggoLotteryService", "❌ 数据库未设置，无法启动服务！请先调用 SetDatabase()");
+                return;
+            }
+            
             _logService.Info("BinggoLotteryService", "🚀 开奖服务启动");
             _isRunning = true;
             
@@ -396,8 +403,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                                     // 保存到数据库
                                     if (_db != null)
                                     {
-                                        _db.InsertOrReplace(openedData);
-                                        _bindingList?.LoadFromDatabase(100);
+                                        try
+                                        {
+                                            _db.InsertOrReplace(openedData);
+                                            _bindingList?.LoadFromDatabase(100);
+                                        }
+                                        catch (SQLite.SQLiteException ex) when (ex.Message.Contains("no such table"))
+                                        {
+                                            // 🔥 表不存在（可能是数据库刚初始化），忽略错误
+                                            _logService.Warning("BinggoLotteryService", $"保存开奖数据失败，表不存在: {ex.Message}");
+                                        }
                                     }
                                     
                     // 🔥 处理开奖（参考 F5BotV2: On已开奖(bgData)）
@@ -661,17 +676,25 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 步骤1: 如果不强制刷新，先查本地数据库
                 if (!forceRefresh && _db != null)
                 {
-                    // 🔥 IsOpened 是计算属性（[Ignore]），不能在 SQLite 查询中直接使用
-                    // 先查询 LotteryData 不为空的记录，然后在内存中过滤 IsOpened
-                    var local = _db.Table<BinggoLotteryData>()
-                        .Where(d => d.IssueId == issueId && !string.IsNullOrEmpty(d.LotteryData))
-                        .ToList()
-                        .FirstOrDefault(d => d.IsOpened);
-                    
-                    if (local != null)
+                    try
                     {
-                        _logService.Info("BinggoLotteryService", $"✓ 从本地缓存获取期号 {issueId} 数据");
-                        return local;
+                        // 🔥 IsOpened 是计算属性（[Ignore]），不能在 SQLite 查询中直接使用
+                        // 先查询 LotteryData 不为空的记录，然后在内存中过滤 IsOpened
+                        var local = _db.Table<BinggoLotteryData>()
+                            .Where(d => d.IssueId == issueId && !string.IsNullOrEmpty(d.LotteryData))
+                            .ToList()
+                            .FirstOrDefault(d => d.IsOpened);
+                        
+                        if (local != null)
+                        {
+                            _logService.Info("BinggoLotteryService", $"✓ 从本地缓存获取期号 {issueId} 数据");
+                            return local;
+                        }
+                    }
+                    catch (SQLite.SQLiteException ex) when (ex.Message.Contains("no such table"))
+                    {
+                        // 🔥 表不存在（可能是数据库刚初始化），忽略错误，直接从网络获取
+                        _logService.Warning("BinggoLotteryService", $"本地数据库表不存在，跳过本地查询，从网络获取: {ex.Message}");
                     }
                 }
                 

@@ -14,6 +14,11 @@ namespace BaiShengVx3Plus.Contracts
         WxUserInfo CurrentUser { get; }
 
         /// <summary>
+        /// 获取当前用户的 Wxid
+        /// </summary>
+        string GetCurrentWxid();
+
+        /// <summary>
         /// 更新用户信息（线程安全）
         /// </summary>
         void UpdateUserInfo(WxUserInfo userInfo);

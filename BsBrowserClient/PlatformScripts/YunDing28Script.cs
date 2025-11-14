@@ -324,85 +324,19 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 下注
         /// </summary>
-        public async Task<(bool success, string orderId)> PlaceBetAsync(BetOrder order)
+        public async Task<(bool success, string orderId)> PlaceBetAsync(BetStandardOrderList orders)
         {
             try
             {
-                Log($"🎲 投注: {order.BetContent} {order.Amount}元");
+                var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
+                var totalAmount = orders.GetTotalAmount();
+                Log($"🎲 投注: 期号{issueId} 共{orders.Count}项 {totalAmount}元");
                 
-                var script = $@"
-                    (function() {{
-                        try {{
-                            // 查找投注按钮（根据投注内容）
-                            const betContent = '{order.BetContent}';
-                            const betAmount = {order.Amount};
-                            
-                            // 查找对应的投注按钮
-                            const betButtons = document.querySelectorAll('[data-bet], [class*=""bet""]');
-                            let targetButton = null;
-                            
-                            for (const btn of betButtons) {{
-                                const text = btn.innerText || btn.textContent;
-                                if (text.includes(betContent)) {{
-                                    targetButton = btn;
-                                    break;
-                                }}
-                            }}
-                            
-                            if (targetButton) {{
-                                // 输入金额
-                                const amountInput = document.querySelector('input[name=""amount""]') ||
-                                                  document.querySelector('.amount-input') ||
-                                                  document.querySelector('input[type=""number""]');
-                                
-                                if (amountInput) {{
-                                    amountInput.value = betAmount;
-                                    amountInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                                }}
-                                
-                                // 点击投注
-                                targetButton.click();
-                                
-                                // 查找确认按钮
-                                setTimeout(() => {{
-                                    const confirmBtn = document.querySelector('.confirm-btn') ||
-                                                     document.querySelector('#confirm-bet') ||
-                                                     Array.from(document.querySelectorAll('button')).find(btn => 
-                                                         btn.textContent.includes('确认') || 
-                                                         btn.textContent.includes('投注')
-                                                     );
-                                    if (confirmBtn) {{
-                                        confirmBtn.click();
-                                    }}
-                                }}, 500);
-                                
-                                return {{ success: true, orderId: 'YD' + Date.now() }};
-                            }}
-                            
-                            return {{ success: false, orderId: '', message: '找不到投注按钮' }};
-                        }} catch (error) {{
-                            return {{ success: false, orderId: '', message: error.message }};
-                        }}
-                    }})();
-                ";
-                
-                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
-                var json = JObject.Parse(result);
-                
-                var success = json["success"]?.Value<bool>() ?? false;
-                var orderId = json["orderId"]?.ToString() ?? "";
-                var message = json["message"]?.ToString() ?? "";
-                
-                if (success)
-                {
-                    Log($"✅ 投注成功: {orderId}");
-                    return (true, orderId);
-                }
-                else
-                {
-                    Log($"❌ 投注失败: {message}");
-                    return (false, "");
-                }
+                // 🔥 云顶28平台的投注逻辑需要根据实际平台实现
+                // 目前返回未实现状态
+                Log($"⚠️ 云顶28平台投注功能待实现，需要根据实际平台页面结构实现");
+                await Task.CompletedTask;
+                return (false, "云顶28平台投注功能待实现");
             }
             catch (Exception ex)
             {

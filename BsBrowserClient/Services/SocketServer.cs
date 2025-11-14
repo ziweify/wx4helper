@@ -40,6 +40,10 @@ namespace BsBrowserClient.Services
         private CancellationTokenSource? _cts;
         private Task? _listenerTask;
         
+        // 🔥 心跳定时器
+        private System.Threading.Timer? _heartbeatTimer;
+        private readonly object _heartbeatLock = new object();
+        
         public bool IsRunning { get; private set; }
         public ConnectionStatus Status { get; private set; } = ConnectionStatus.断开;
         
@@ -137,7 +141,8 @@ namespace BsBrowserClient.Services
                     {
                         type = "hello",
                         configId = _configId,
-                        configName = _configName  // 🔥 同时发送配置名
+                        configName = _configName,  // 🔥 同时发送配置名
+                        processId = System.Diagnostics.Process.GetCurrentProcess().Id  // 🔥 传递进程ID
                     };
                     await _writer.WriteLineAsync(JsonConvert.SerializeObject(handshake));
                     _onLog($"📤 已发送握手，配置ID: {_configId}，配置名: {_configName}");

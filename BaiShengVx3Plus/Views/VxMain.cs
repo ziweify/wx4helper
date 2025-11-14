@@ -149,6 +149,16 @@ namespace BaiShengVx3Plus
             _configViewModel = new ViewModels.ConfigViewModel(configService); // 📝 创建配置 ViewModel
             _settingViewModel = settingViewModel; // 🌐 设置 ViewModel（全局单例）
             
+            // 🔥 诊断：检查 AutoBetService 是否成功注入
+            if (_autoBetService == null)
+            {
+                _logService.Error("VxMain", "❌❌❌ AutoBetService 未成功注入！这会导致浏览器无法连接！");
+            }
+            else
+            {
+                _logService.Info("VxMain", $"✅ AutoBetService 已注入: {_autoBetService.GetType().FullName}");
+            }
+            
             // 订阅服务器推送事件，并使用消息分发器处理
             _socketClient.OnServerPush += SocketClient_OnServerPush;
             
@@ -329,6 +339,15 @@ namespace BaiShengVx3Plus
                 var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
                 betRecordService?.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ BetRecordService 已设置全局数据库（BetRecord）");
+                
+                // 📌 AdminCommandHandler: 设置会员 BindingList 和数据库
+                var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
+                if (adminCommandHandler != null && _db != null)
+                {
+                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                    adminCommandHandler.SetDatabase(_db);
+                    _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表和数据库");
+                }
                 
                 // 📌 微信专属数据库（business_{wxid}.db）- 绑定微信后才可用
                 if (_db != null)
@@ -944,6 +963,13 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                // 🔥 显示版本号
+                this.Text = Utils.VersionInfo.FullVersion;
+                _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", $"🚀 {Utils.VersionInfo.FullVersion}");
+                _logService.Info("VxMain", $"📅 构建日期: {Utils.VersionInfo.BuildDate}");
+                _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                
                 lblStatus.Text = "正在初始化...";
                 
                 // 隐藏不需要显示的列
@@ -3189,11 +3215,13 @@ namespace BaiShengVx3Plus
                     
                     defaultConfig.Username = username;
                     defaultConfig.Password = password;
+                    defaultConfig.LastUpdateTime = DateTime.Now;  // 🔥 强制触发更新
 
                     // 保存到数据库
                     _autoBetService.SaveConfig(defaultConfig);
 
                     _logService.Info("VxMain", "✅ 自动投注设置已保存");
+                    _logService.Info("VxMain", $"   用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
                 }
                 
                 // 统一的日志输出
@@ -3506,9 +3534,7 @@ namespace BaiShengVx3Plus
                 db.CreateTable<V2BalanceChange>();
                 _logService.Debug("VxMain", "✓ 微信专属表: V2BalanceChange");
                 
-                // 🔥 投注记录表（自动飞单到平台的投注记录）
-                db.CreateTable<Models.AutoBet.BetOrderRecord>();
-                _logService.Debug("VxMain", "✓ 微信专属表: BetOrderRecord");
+                // 🔥 BetOrderRecord 已删除，改用 BetRecord（由 BetRecordService 在全局数据库中管理）
 
                 // ========================================
                 // 🔥 基础数据表（微信账号专属）

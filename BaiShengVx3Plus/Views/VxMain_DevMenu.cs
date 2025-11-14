@@ -286,11 +286,18 @@ namespace BaiShengVx3Plus
                     return (false, null, $"❌ 未找到会员\n\n微信ID: {memberWxid}\n\n该会员不在当前绑定群的会员列表中。");
                 }
                 
-                // 3. 🔥 调用炳狗消息处理器（与 ChatMessageHandler 第84行完全一致）
+                // 3. 🔥 调用炳狗消息处理器（与 ChatMessageHandler 第90行完全一致）
                 _logService.Info("VxMain", $"📨 调用 BinggoMessageHandler.HandleMessageAsync");
+                
+                // 🔥 获取当前用户 wxid 和群 wxid
+                string currentUserWxid = _userInfoService.GetCurrentWxid();
+                string groupWxid = _groupBindingService.CurrentBoundGroup?.Wxid ?? "";
+                
                 var (handled, replyMessage) = await _binggoMessageHandler.HandleMessageAsync(
                     member, 
-                    message);
+                    message,
+                    groupWxid,          // 🔥 群ID
+                    currentUserWxid);   // 🔥 当前用户ID
                 
                 // 4. 🔥 处理返回结果（与 ChatMessageHandler 第89行逻辑一致）
                 if (handled && !string.IsNullOrEmpty(replyMessage))

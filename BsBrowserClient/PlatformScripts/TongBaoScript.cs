@@ -26,7 +26,7 @@ namespace BsBrowserClient.PlatformScripts
         private string _sid = "";
         private string _uuid = "";
         private string _token = "";
-        private string _region = "A";  // A,B,C,D盘类型
+        private string _region = "C";  // A,B,C,D盘类型
         private decimal _currentBalance = 0;
         private string _baseUrl = "";  // 缓存的base URL
         
@@ -245,7 +245,7 @@ namespace BsBrowserClient.PlatformScripts
         /// 下注 - 使用HTTP POST
         /// 参考 F5BotV2 的 Bet 方法
         /// </summary>
-        public async Task<(bool success, string orderId)> PlaceBetAsync(BetOrder order)
+        public async Task<(bool success, string orderId)> PlaceBetAsync(BetStandardOrderList orders)
         {
             try
             {
@@ -255,56 +255,54 @@ namespace BsBrowserClient.PlatformScripts
                     return (false, "");
                 }
                 
-                _logCallback($"🎲 开始投注: {order.BetContent}");
+                var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
+                var totalAmount = orders.GetTotalAmount();
+                _logCallback($"🎲 开始投注: 期号{issueId} 共{orders.Count}项 {totalAmount}元");
                 
-                // 🔥 解析投注内容："1大10,2大10,3大10,4大10"
-                var items = order.BetContent.Split(',');
+                // 🔥 使用标准化订单列表，不需要再解析文本
                 var betList = new List<object>();
                 var userdataList = new List<string>();
                 
-                foreach (var item in items)
+                foreach (var order in orders)
                 {
-                    var trimmed = item.Trim();
-                    // 解析：1大10 → 号码=1, 玩法=大, 金额=10
-                    var match = Regex.Match(trimmed, @"^(\d+)(大|小|单|双|尾大|尾小)(\d+)$");
-                    if (match.Success)
+                    // 🔥 直接从 CarNumEnum 映射到平台显示名称
+                    var carName = order.car switch
                     {
-                        var number = match.Groups[1].Value;
-                        var playType = match.Groups[2].Value;
-                        var money = int.Parse(match.Groups[3].Value);
-                        
-                        // 🔥 从赔率映射表中获取ID
-                        var betIdStr = GetBetId(number, playType);
-                        
-                        // 输出调试信息
-                        _logCallback($"   🔍 查找ID: number={number}, playType={playType}, betIdStr={betIdStr}, 映射表数量={_oddsMap.Count}");
-                        
-                        var betId = int.TryParse(betIdStr, out var id) ? id : 0;
-                        betList.Add(new { id = betId, money = money });
-                        
-                        // userdata 需要显示完整的名称，如："平一大"
-                        var carName = number switch
-                        {
-                            "1" => "平一",
-                            "2" => "平二",
-                            "3" => "平三",
-                            "4" => "平四",
-                            "5" => "平五",
-                            "6" => "平六",
-                            "7" => "平七",
-                            "8" => "平八",
-                            "9" => "平九",
-                            "10" => "平十",
-                            _ => number
-                        };
-                        userdataList.Add($"{carName}{playType}");
-                        
-                        _logCallback($"   解析:{carName}{playType} 金额:{money} ID:{betId}");
-                    }
-                    else
+                        CarNumEnum.P1 => "平一",
+                        CarNumEnum.P2 => "平二",
+                        CarNumEnum.P3 => "平三",
+                        CarNumEnum.P4 => "平四",
+                        CarNumEnum.P5 => "平五",
+                        CarNumEnum.P总 => "总和",
+                        _ => "平一"
+                    };
+                    
+                    // 🔥 直接从 BetPlayEnum 映射到玩法名称
+                    var playType = order.play switch
                     {
-                        _logCallback($"   ⚠️ 无法解析:{trimmed}");
-                    }
+                        BetPlayEnum.大 => "大",
+                        BetPlayEnum.小 => "小",
+                        BetPlayEnum.单 => "单",
+                        BetPlayEnum.双 => "双",
+                        BetPlayEnum.尾大 => "尾大",
+                        BetPlayEnum.尾小 => "尾小",
+                        _ => "大"
+                    };
+                    
+                    var money = order.moneySum;
+                    
+                    // 🔥 从赔率映射表中获取ID
+                    var oddsKey = $"{carName}{playType}";  // 如："平一大"
+                    var betIdStr = _oddsMap.ContainsKey(oddsKey) ? _oddsMap[oddsKey] : "0";
+                    
+                    // 输出调试信息
+                    _logCallback($"   🔍 查找ID: {oddsKey} → ID={betIdStr}, 映射表数量={_oddsMap.Count}");
+                    
+                    var betId = int.TryParse(betIdStr, out var id) ? id : 0;
+                    betList.Add(new { id = betId, money = money });
+                    userdataList.Add(oddsKey);
+                    
+                    _logCallback($"   解析:{oddsKey} 金额:{money} ID:{betId}");
                 }
                 
                 if (betList.Count == 0)

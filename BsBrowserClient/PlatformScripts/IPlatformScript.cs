@@ -22,7 +22,7 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 下注
         /// </summary>
-        Task<(bool success, string orderId)> PlaceBetAsync(BetOrder order);
+        Task<(bool success, string orderId)> PlaceBetAsync(BetStandardOrderList orders);
         
         /// <summary>
         /// 处理响应（拦截到的数据）

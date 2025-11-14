@@ -230,12 +230,40 @@ namespace BaiShengVx3Plus.Services.Logging
         {
             try
             {
+                // 🔥 确保数据库目录存在
+                var dbDir = Path.GetDirectoryName(_dbPath);
+                if (!string.IsNullOrEmpty(dbDir) && !Directory.Exists(dbDir))
+                {
+                    Directory.CreateDirectory(dbDir);
+                    Console.WriteLine($"创建日志数据库目录: {dbDir}");
+                }
+                
+                Console.WriteLine($"初始化日志数据库: {_dbPath}");
+                
                 using var connection = new SQLiteConnection(_dbPath);
-                connection.CreateTable<LogEntry>();  // 🔥 ORM 自动建表
+                
+                // 🔥 一次性创建所有表（确保表存在）
+                connection.CreateTable<LogEntry>();
+                
+                Console.WriteLine("✅ 日志数据库表初始化成功");
+                
+                // 验证表是否创建成功
+                var tableCount = connection.ExecuteScalar<int>(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='LogEntry'");
+                
+                if (tableCount == 0)
+                {
+                    throw new Exception("LogEntry 表创建失败！");
+                }
+                
+                Console.WriteLine($"✅ LogEntry 表验证成功");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"初始化日志数据库失败: {ex.Message}");
+                Console.WriteLine($"❌ 初始化日志数据库失败: {ex.Message}");
+                Console.WriteLine($"   数据库路径: {_dbPath}");
+                Console.WriteLine($"   堆栈: {ex.StackTrace}");
+                throw;  // 🔥 重新抛出异常，让调用者知道初始化失败
             }
         }
 
@@ -284,17 +312,21 @@ namespace BaiShengVx3Plus.Services.Logging
             try
             {
                 using var connection = new SQLiteConnection(_dbPath);
+                
+                // 🔥 表已经在 InitializeDatabase 中创建，直接写入
                 connection.RunInTransaction(() =>
                 {
                     foreach (var log in logs)
                     {
-                        connection.Insert(log);  // 🔥 ORM 一行代码
+                        connection.Insert(log);
                     }
                 });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"写入日志失败: {ex.Message}");
+                Console.WriteLine($"❌ 写入日志失败: {ex.Message}");
+                Console.WriteLine($"   数据库路径: {_dbPath}");
+                Console.WriteLine($"   待写入日志数: {logs.Count}");
             }
         }
 

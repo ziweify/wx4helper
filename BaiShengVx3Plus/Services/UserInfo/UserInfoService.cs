@@ -30,6 +30,17 @@ namespace BaiShengVx3Plus.Services.UserInfo
         }
 
         /// <summary>
+        /// 获取当前用户的 Wxid
+        /// </summary>
+        public string GetCurrentWxid()
+        {
+            lock (_lockObject)
+            {
+                return _currentUser.Wxid ?? string.Empty;
+            }
+        }
+
+        /// <summary>
         /// 用户信息更新事件
         /// </summary>
         public event EventHandler<UserInfoUpdatedEventArgs>? UserInfoUpdated;
