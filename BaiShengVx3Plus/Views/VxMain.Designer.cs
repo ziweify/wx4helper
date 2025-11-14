@@ -42,6 +42,7 @@ namespace BaiShengVx3Plus
             DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle11 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VxMain));
             ucBinggoDataCur = new BaiShengVx3Plus.UserControls.UcBinggoDataCur();
             ucBinggoDataLast = new BaiShengVx3Plus.UserControls.UcBinggoDataLast();
             lblSealSeconds = new Label();
@@ -368,21 +369,21 @@ namespace BaiShengVx3Plus
             // tsmiSetAdmin
             // 
             tsmiSetAdmin.Name = "tsmiSetAdmin";
-            tsmiSetAdmin.Size = new Size(162, 24);
+            tsmiSetAdmin.Size = new Size(120, 24);
             tsmiSetAdmin.Text = "管理";
             tsmiSetAdmin.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetAgent
             // 
             tsmiSetAgent.Name = "tsmiSetAgent";
-            tsmiSetAgent.Size = new Size(162, 24);
+            tsmiSetAgent.Size = new Size(120, 24);
             tsmiSetAgent.Text = "托";
             tsmiSetAgent.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetLeft
             // 
             tsmiSetLeft.Name = "tsmiSetLeft";
-            tsmiSetLeft.Size = new Size(162, 24);
+            tsmiSetLeft.Size = new Size(120, 24);
             tsmiSetLeft.Text = "已退群";
             tsmiSetLeft.Click += TsmiSetMemberType_Click;
             // 
@@ -390,34 +391,34 @@ namespace BaiShengVx3Plus
             // 
             tsmiSetMemberSub.DropDownItems.AddRange(new ToolStripItem[] { tsmiSetNormal, tsmiSetBlue, tsmiSetPurple, tsmiSetYellow });
             tsmiSetMemberSub.Name = "tsmiSetMemberSub";
-            tsmiSetMemberSub.Size = new Size(162, 24);
+            tsmiSetMemberSub.Size = new Size(120, 24);
             tsmiSetMemberSub.Text = "会员";
             // 
             // tsmiSetNormal
             // 
             tsmiSetNormal.Name = "tsmiSetNormal";
-            tsmiSetNormal.Size = new Size(162, 24);
+            tsmiSetNormal.Size = new Size(106, 24);
             tsmiSetNormal.Text = "普会";
             tsmiSetNormal.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetBlue
             // 
             tsmiSetBlue.Name = "tsmiSetBlue";
-            tsmiSetBlue.Size = new Size(162, 24);
+            tsmiSetBlue.Size = new Size(106, 24);
             tsmiSetBlue.Text = "蓝会";
             tsmiSetBlue.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetPurple
             // 
             tsmiSetPurple.Name = "tsmiSetPurple";
-            tsmiSetPurple.Size = new Size(162, 24);
+            tsmiSetPurple.Size = new Size(106, 24);
             tsmiSetPurple.Text = "紫会";
             tsmiSetPurple.Click += TsmiSetMemberType_Click;
             // 
             // tsmiSetYellow
             // 
             tsmiSetYellow.Name = "tsmiSetYellow";
-            tsmiSetYellow.Size = new Size(162, 24);
+            tsmiSetYellow.Size = new Size(106, 24);
             tsmiSetYellow.Text = "黄会";
             tsmiSetYellow.Click += TsmiSetMemberType_Click;
             // 
@@ -1005,6 +1006,7 @@ namespace BaiShengVx3Plus
             Controls.Add(splitContainerMain);
             Controls.Add(pnlTopButtons);
             Controls.Add(statusStrip);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "VxMain";
             Text = "百胜VX3Plus - 管理系统";
             ZoomScaleRect = new Rectangle(15, 15, 980, 762);

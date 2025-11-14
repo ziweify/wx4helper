@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>libs\1165z-ivqi2-001.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- 排除文档文件夹，防止被编译 -->
@@ -13,6 +14,9 @@
     <Compile Remove="0-资料\**" />
     <EmbeddedResource Remove="0-资料\**" />
     <None Remove="0-资料\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="libs\1165z-ivqi2-001.ico" />
   </ItemGroup>
 
   <ItemGroup>

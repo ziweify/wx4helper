@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             statusStrip1 = new StatusStrip();
             lblStatus = new ToolStripStatusLabel();
             lblBalance = new ToolStripStatusLabel();
@@ -64,7 +65,7 @@
             // statusStrip1
             // 
             statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblPort });
-            statusStrip1.Location = new Point(0, 788);
+            statusStrip1.Location = new Point(0, 838);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(1264, 22);
             statusStrip1.TabIndex = 0;
@@ -179,8 +180,8 @@
             // splitContainer.Panel2
             // 
             splitContainer.Panel2.Controls.Add(pnlLog);
-            splitContainer.Size = new Size(1264, 743);
-            splitContainer.SplitterDistance = 517;
+            splitContainer.Size = new Size(1264, 793);
+            splitContainer.SplitterDistance = 551;
             splitContainer.TabIndex = 3;
             // 
             // pnlBrowser
@@ -188,7 +189,7 @@
             pnlBrowser.Dock = DockStyle.Fill;
             pnlBrowser.Location = new Point(0, 0);
             pnlBrowser.Name = "pnlBrowser";
-            pnlBrowser.Size = new Size(1264, 517);
+            pnlBrowser.Size = new Size(1264, 551);
             pnlBrowser.TabIndex = 0;
             // 
             // pnlLog
@@ -198,7 +199,7 @@
             pnlLog.Dock = DockStyle.Fill;
             pnlLog.Location = new Point(0, 0);
             pnlLog.Name = "pnlLog";
-            pnlLog.Size = new Size(1264, 222);
+            pnlLog.Size = new Size(1264, 238);
             pnlLog.TabIndex = 0;
             // 
             // txtLog
@@ -210,7 +211,7 @@
             txtLog.Location = new Point(0, 0);
             txtLog.Name = "txtLog";
             txtLog.ReadOnly = true;
-            txtLog.Size = new Size(1264, 192);
+            txtLog.Size = new Size(1264, 208);
             txtLog.TabIndex = 0;
             txtLog.Text = "";
             txtLog.WordWrap = false;
@@ -225,7 +226,7 @@
             pnlLogButtons.Controls.Add(btnSaveLog);
             pnlLogButtons.Controls.Add(btnClearLog);
             pnlLogButtons.Dock = DockStyle.Bottom;
-            pnlLogButtons.Location = new Point(0, 192);
+            pnlLogButtons.Location = new Point(0, 208);
             pnlLogButtons.Name = "pnlLogButtons";
             pnlLogButtons.Size = new Size(1264, 30);
             pnlLogButtons.TabIndex = 1;
@@ -316,6 +317,7 @@
             Controls.Add(splitContainer);
             Controls.Add(pnlTop);
             Controls.Add(statusStrip1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "百盛浏览器";
