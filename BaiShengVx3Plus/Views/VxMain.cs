@@ -3088,6 +3088,10 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                // 🔥 加载设置时，临时解绑事件，避免触发自动启动
+                _logService.Info("VxMain", "📋 加载自动投注设置（临时解绑事件）...");
+                swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
+                
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
@@ -3099,10 +3103,18 @@ namespace BaiShengVx3Plus
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
                     txtAutoBetPassword.Text = defaultConfig.Password ?? "";
                 }
+                
+                _logService.Info("VxMain", "✅ 自动投注设置加载完成");
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "加载自动投注设置失败", ex);
+            }
+            finally
+            {
+                // 🔥 重新绑定事件
+                swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
+                _logService.Info("VxMain", "✅ 自动投注开关事件已重新绑定");
             }
         }
 
@@ -3259,7 +3271,11 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                _logService.Info("VxMain", "📖 开始加载应用配置...");
+                _logService.Info("VxMain", "📖 开始加载应用配置（临时解绑事件）...");
+                
+                // 🔥 临时解绑事件，避免加载时触发自动启动
+                swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
+                swi_OrdersTasking.ValueChanged -= swi_OrdersTasking_ValueChanged;
                 
                 // ✅ 从配置服务获取配置
                 var isAutoBetEnabled = _configService.GetIsAutoBetEnabled();
@@ -3276,6 +3292,40 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", $"✅ 已同步到 BinggoMessageHandler.IsOrdersTaskingEnabled = {isOrdersTaskingEnabled}");
                 
                 _logService.Info("VxMain", $"✅ 应用配置已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
+                
+                // 🔥 重新绑定事件
+                swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
+                swi_OrdersTasking.ValueChanged += swi_OrdersTasking_ValueChanged;
+                _logService.Info("VxMain", "✅ UI 开关事件已重新绑定");
+                
+                // 🔥 如果飞单开关开启，手动触发启动（此时浏览器已有时间重连）
+                if (isAutoBetEnabled)
+                {
+                    _logService.Info("VxMain", "🚀 检测到飞单开关开启，准备启动自动投注...");
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // 额外等待 2 秒，确保 Socket 服务器完全就绪，浏览器有时间重连
+                            await Task.Delay(2000);
+                            _logService.Info("VxMain", "⏳ 已等待 2 秒，开始启动自动投注");
+                            
+                            // 切换到 UI 线程触发开关事件
+                            if (InvokeRequired)
+                            {
+                                Invoke(new Action(() => swiAutoOrdersBet_ValueChanged(null, true)));
+                            }
+                            else
+                            {
+                                swiAutoOrdersBet_ValueChanged(null, true);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logService.Error("VxMain", "延迟启动自动投注失败", ex);
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {

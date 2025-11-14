@@ -120,9 +120,18 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
+        /// 附加到已存在的浏览器进程（主程序重启场景）
+        /// </summary>
+        public void AttachToExistingProcess(Process process)
+        {
+            _process = process;
+            // Socket 连接会在浏览器重连时由 AutoBetSocketServer.OnBrowserConnected 处理
+        }
+        
+        /// <summary>
         /// 启动浏览器进程（浏览器会主动连接到 VxMain 的 Socket 服务器）
         /// </summary>
-        public async Task<bool> StartAsync(int port, string platform, string platformUrl)
+        public async Task<bool> StartAsync(int port, string configName, string platform, string platformUrl)
         {
             try
             {
@@ -143,7 +152,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = browserExePath,
-                        Arguments = $"--config-id {_configId} --port {port} --platform {platform} --url {platformUrl}",
+                        Arguments = $"--config-id {_configId} --config-name \"{configName}\" --port {port} --platform {platform} --url {platformUrl}",  // 🔥 添加配置名参数
                         WorkingDirectory = browserDirectory, // 设置工作目录为浏览器所在目录
                         UseShellExecute = false,
                         CreateNoWindow = false // 显示浏览器窗口

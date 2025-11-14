@@ -18,6 +18,7 @@ namespace BsBrowserClient;
 public partial class Form1 : Form
 {
     private readonly string _configId;
+    private readonly string _configName;  // 🔥 新增配置名
     private readonly int _port;
     private readonly string _platform;
     private readonly string _platformUrl;
@@ -27,24 +28,25 @@ public partial class Form1 : Form
     private WebView2? _webView;
     private WebView2ResourceHandler? _resourceHandler;
     
-    public Form1() : this("0", 9527, "YunDing28", "")
+    public Form1() : this("0", "未命名配置", 9527, "YunDing28", "")
     {
     }
     
-    public Form1(string configId, int port, string platform, string platformUrl)
+    public Form1(string configId, string configName, int port, string platform, string platformUrl)
     {
         InitializeComponent();
         
         _configId = configId;
+        _configName = configName;  // 🔥 保存配置名
         _port = port;
         _platform = platform;
         _platformUrl = string.IsNullOrEmpty(platformUrl) ? GetDefaultUrl(platform) : platformUrl;
         
-        // 设置窗口标题（包含配置ID用于识别）
-        this.Text = $"BsBrowser-{configId}";
+        // 🔥 设置窗口标题（显示配置名，用于观察）
+        this.Text = $"BsBrowser-{configName}";
         
         // 更新状态栏
-        lblPort.Text = $"端口: {port} | 平台: {platform} | 配置: {configId}";
+        lblPort.Text = $"配置: {configName} (ID:{configId}) | 平台: {platform}";
         txtUrl.Text = _platformUrl;
     }
     
@@ -362,7 +364,7 @@ public partial class Form1 : Form
             OnCommandReceivedAsync(cmd).Wait();
         }
         
-        _socketServer = new SocketServer(configIdInt, CommandReceivedWrapper, socketLogCallback);
+        _socketServer = new SocketServer(configIdInt, _configName, CommandReceivedWrapper, socketLogCallback);  // 🔥 传入配置名
         
         // 订阅连接状态变化事件
         _socketServer.StatusChanged += OnSocketStatusChanged;

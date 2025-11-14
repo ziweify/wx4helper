@@ -155,13 +155,17 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 configId = handshake["configId"]?.ToObject<int>() ?? -1;
+                var configName = handshake["configName"]?.ToString() ?? "";  // 🔥 解析配置名
+                
                 if (configId <= 0)
                 {
                     _log.Warning("AutoBetServer", "握手失败：配置ID无效");
                     return;
                 }
                 
-                _log.Info("AutoBetServer", $"✅ 浏览器握手成功，配置ID: {configId}");
+                _log.Info("AutoBetServer", $"✅ 浏览器握手成功");
+                _log.Info("AutoBetServer", $"   配置ID: {configId}");
+                _log.Info("AutoBetServer", $"   配置名: {configName}");
                 
                 // 2. 发送确认消息
                 var response = new

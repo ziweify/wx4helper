@@ -30,6 +30,7 @@ namespace BsBrowserClient.Services
         private const int VXMAIN_SERVER_PORT = 19527; // VxMain 监听的固定端口
         
         private readonly int _configId;
+        private readonly string _configName;  // 🔥 新增配置名
         private readonly Action<CommandRequest> _onCommandReceived;
         private readonly Action<string> _onLog;
         
@@ -47,9 +48,10 @@ namespace BsBrowserClient.Services
         /// </summary>
         public event EventHandler<ConnectionStatus>? StatusChanged;
         
-        public SocketServer(int configId, Action<CommandRequest> onCommandReceived, Action<string> onLog)
+        public SocketServer(int configId, string configName, Action<CommandRequest> onCommandReceived, Action<string> onLog)
         {
             _configId = configId;
+            _configName = configName;  // 🔥 保存配置名
             _onCommandReceived = onCommandReceived;
             _onLog = onLog;
         }
@@ -130,14 +132,15 @@ namespace BsBrowserClient.Services
                     _reader = new StreamReader(stream, utf8NoBom);
                     _writer = new StreamWriter(stream, utf8NoBom) { AutoFlush = true };
                     
-                    // 2. 发送握手消息（包含配置ID）
+                    // 2. 发送握手消息（包含配置ID和配置名）
                     var handshake = new
                     {
                         type = "hello",
-                        configId = _configId
+                        configId = _configId,
+                        configName = _configName  // 🔥 同时发送配置名
                     };
                     await _writer.WriteLineAsync(JsonConvert.SerializeObject(handshake));
-                    _onLog($"📤 已发送握手，配置ID: {_configId}");
+                    _onLog($"📤 已发送握手，配置ID: {_configId}，配置名: {_configName}");
                     
                     // 3. 等待确认消息
                     var welcomeLine = await _reader.ReadLineAsync(cancellationToken);
@@ -168,12 +171,12 @@ namespace BsBrowserClient.Services
                     _writer?.Dispose();
                     _client?.Close();
                     
-                    // 等待后重试连接
+                    // 等待后重试连接（快速重连，确保主程序重启后能快速连上）
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         UpdateStatus(ConnectionStatus.重连中);
-                        _onLog("⏳ 5秒后重试连接...");
-                        await Task.Delay(5000, cancellationToken);
+                        _onLog("⏳ 1秒后重试连接...");
+                        await Task.Delay(1000, cancellationToken);  // 🔥 改为1秒快速重连
                     }
                 }
             }
