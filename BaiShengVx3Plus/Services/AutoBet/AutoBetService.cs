@@ -251,45 +251,69 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 浏览器连接回调（当浏览器通过 Socket 主动连接到 VxMain 时）
+        /// 🔥 浏览器连接回调（当浏览器通过 Socket 主动连接到 VxMain 时）
+        /// 根据配置名匹配配置（而不是配置ID），解决数据库重建后ID变化的问题
         /// </summary>
-        private void OnBrowserConnected(int configId, System.Net.Sockets.TcpClient client)
+        private void OnBrowserConnected(string configName, int browserConfigId)
         {
             try
             {
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                _log.Info("AutoBet", $"🔗 浏览器已通过 Socket 连接，配置ID: {configId}");
-                _log.Info("AutoBet", $"   客户端地址: {client.Client.RemoteEndPoint}");
+                _log.Info("AutoBet", $"🔗 浏览器已通过 Socket 连接，配置名: {configName}");
+                _log.Info("AutoBet", $"   浏览器ConfigId: {browserConfigId}");
                 _log.Info("AutoBet", $"   当前 _browsers 字典: [{string.Join(", ", _browsers.Keys)}]");
                 
-                // 检查配置是否存在
-                var config = GetConfig(configId);
+                // 🔥 根据配置名查找配置（而不是配置ID）
+                Models.AutoBet.BetConfig? config;
+                lock (_lock)
+                {
+                    config = _configs.FirstOrDefault(c => c.ConfigName == configName);
+                }
+                
                 if (config == null)
                 {
-                    _log.Error("AutoBet", $"❌ 配置不存在: {configId}，拒绝连接");
+                    _log.Error("AutoBet", $"❌ 配置不存在: {configName}，拒绝连接");
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     return;
                 }
                 
-                _log.Info("AutoBet", $"✅ 配置信息: {config.ConfigName} ({config.Platform})");
+                int configId = config.Id;
+                _log.Info("AutoBet", $"✅ 配置信息: {config.ConfigName} (Id={configId}, {config.Platform})");
+                _log.Info("AutoBet", $"   说明：配置名固定，但数据库重建后配置ID可能变化");
                 
-                // 🔥 创建或更新 BrowserClient（使用已建立的连接）
+                // 🔥 从 AutoBetSocketServer 获取 ClientConnection
+                var connection = _socketServer.GetConnection(browserConfigId);
+                if (connection == null)
+                {
+                    _log.Error("AutoBet", $"❌ 无法获取 ClientConnection: {browserConfigId}");
+                    _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    return;
+                }
+                
+                _log.Info("AutoBet", $"✅ 已获取 ClientConnection，连接状态: {connection.IsConnected}");
+                
+                // 🔥 创建或更新 BrowserClient（使用 ClientConnection）
                 if (_browsers.TryGetValue(configId, out var existingBrowser))
                 {
-                    _log.Info("AutoBet", $"📌 _browsers 字典中已存在该 configId，更新 Socket 连接");
-                    // ✅ 只附加新连接，不要 Dispose 整个 BrowserClient（会杀死进程）
-                    existingBrowser.AttachConnection(client);
+                    _log.Info("AutoBet", $"📌 _browsers 字典中已存在该配置，更新连接");
+                    // ✅ 附加 ClientConnection（不是 TcpClient）
+                    existingBrowser.AttachConnection(connection);
                 }
                 else
                 {
-                    // 🔥 主程序重启场景：_browsers 字典为空，但浏览器在运行并重连了
-                    _log.Info("AutoBet", $"📌 _browsers 字典中无此 configId，自动创建 BrowserClient（主程序重启场景）");
+                    // 🔥 主程序重启或数据库重建场景：_browsers 字典为空，但浏览器在运行并重连了
+                    _log.Info("AutoBet", $"📌 _browsers 字典中无此配置，自动创建 BrowserClient");
+                    _log.Info("AutoBet", $"   场景：主程序重启、数据库重建、或浏览器先于主程序启动");
+                    
                     var browserClient = new BrowserClient(configId);
-                    browserClient.AttachConnection(client); // 附加已建立的 Socket 连接
-                    _browsers[configId] = browserClient;
+                    browserClient.AttachConnection(connection); // 🔥 附加 ClientConnection
+                    
+                    lock (_lock)
+                    {
+                        _browsers[configId] = browserClient;
+                    }
                     
                     _log.Info("AutoBet", $"✅ BrowserClient 已创建并附加连接");
-                    _log.Info("AutoBet", $"   提示：这通常发生在主程序重启后，浏览器自动重连的情况");
                 }
                 
                 // 更新配置状态
@@ -302,7 +326,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
             catch (Exception ex)
             {
-                _log.Error("AutoBet", $"❌ 处理浏览器连接失败: {configId}", ex);
+                _log.Error("AutoBet", $"❌ 处理浏览器连接失败: {configName}", ex);
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
         }
@@ -456,6 +480,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
             
             _log.Info("AutoBet", $"✅ 找到浏览器客户端: configId={configId}");
+            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");  // 🔥 添加连接状态检查
             
             try
             {

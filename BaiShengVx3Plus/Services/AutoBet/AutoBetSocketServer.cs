@@ -20,7 +20,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private const int SERVER_PORT = 19527; // VxMain 监听的固定端口
         
         private readonly ILogService _log;
-        private readonly Action<int, TcpClient> _onBrowserConnected;
+        private readonly Action<string, int> _onBrowserConnected;  // 🔥 改为 (string configName, int configId)
         private readonly Action<int, JObject>? _onMessageReceived; // 🔥 新增消息处理回调
         
         private TcpListener? _listener;
@@ -32,12 +32,23 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         public AutoBetSocketServer(
             ILogService log, 
-            Action<int, TcpClient> onBrowserConnected,
+            Action<string, int> onBrowserConnected,  // 🔥 改为 (string configName, int configId)
             Action<int, JObject>? onMessageReceived = null) // 🔥 新增参数
         {
             _log = log;
             _onBrowserConnected = onBrowserConnected;
             _onMessageReceived = onMessageReceived; // 🔥 保存回调
+        }
+        
+        /// <summary>
+        /// 🔥 获取指定配置的连接（供 BrowserClient 使用）
+        /// </summary>
+        public ClientConnection? GetConnection(int configId)
+        {
+            lock (_connections)
+            {
+                return _connections.TryGetValue(configId, out var conn) ? conn : null;
+            }
         }
         
         /// <summary>
@@ -157,9 +168,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 configId = handshake["configId"]?.ToObject<int>() ?? -1;
                 var configName = handshake["configName"]?.ToString() ?? "";  // 🔥 解析配置名
                 
-                if (configId <= 0)
+                // 🔥 配置名是必须的，用于匹配配置
+                if (string.IsNullOrEmpty(configName))
                 {
-                    _log.Warning("AutoBetServer", "握手失败：配置ID无效");
+                    _log.Warning("AutoBetServer", "握手失败：配置名为空");
                     return;
                 }
                 
@@ -195,8 +207,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     _connections[configId] = connection;
                 }
                 
-                // 4. 通知 AutoBetService 有新连接
-                _onBrowserConnected(configId, client);
+                // 4. 🔥 通知 AutoBetService 有新连接（传递配置名和配置ID）
+                _onBrowserConnected(configName, configId);
                 
                 // 5. 持续读取消息（包括主动通知和命令响应）
                 while (!cancellationToken.IsCancellationRequested)
@@ -253,17 +265,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 reader?.Dispose();
                 writer?.Dispose();
                 client.Close();
-            }
-        }
-        
-        /// <summary>
-        /// 获取指定配置的连接
-        /// </summary>
-        public ClientConnection? GetConnection(int configId)
-        {
-            lock (_connections)
-            {
-                return _connections.TryGetValue(configId, out var conn) ? conn : null;
             }
         }
         

@@ -26,15 +26,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private const int SW_SHOW = 5;
         private readonly int _configId;
         private Process? _process;
-        private TcpClient? _socket;
-        private StreamReader? _reader;
-        private StreamWriter? _writer;
+        private AutoBetSocketServer.ClientConnection? _connection;  // 🔥 改为使用 ClientConnection
         
         // 🔥 响应等待机制
         private readonly Dictionary<string, TaskCompletionSource<Newtonsoft.Json.Linq.JObject>> _pendingResponses = new();
         private readonly object _responseLock = new();
         
-        public bool IsConnected => _socket != null && _socket.Connected;
+        public bool IsConnected => _connection != null && _connection.IsConnected;
         
         /// <summary>
         /// 检查进程是否还在运行
@@ -97,26 +95,23 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 附加已建立的连接（用于浏览器主动连接的情况）
+        /// 🔥 附加已建立的连接（用于浏览器主动连接的情况）
+        /// 改为接收 ClientConnection，避免 Socket 冲突
         /// </summary>
-        public void AttachConnection(TcpClient socket)
+        public void AttachConnection(AutoBetSocketServer.ClientConnection? connection)
         {
-            // 先关闭旧的 Socket 连接（如果存在）
-            try
-            {
-                _reader?.Dispose();
-                _writer?.Dispose();
-                _socket?.Close();
-            }
-            catch { /* 忽略关闭旧连接的错误 */ }
+            Console.WriteLine($"[BrowserClient] AttachConnection 调用:");
+            Console.WriteLine($"  - ConfigId: {_configId}");
+            Console.WriteLine($"  - 传入的 connection == null: {connection == null}");
+            Console.WriteLine($"  - 传入的 connection.IsConnected: {connection?.IsConnected}");
             
-            // 附加新连接
-            _socket = socket;
-            var stream = _socket.GetStream();
-            // 🔥 使用不带BOM的UTF8编码（new UTF8Encoding(false)）
-            var utf8NoBom = new System.Text.UTF8Encoding(false);
-            _reader = new StreamReader(stream, utf8NoBom);
-            _writer = new StreamWriter(stream, utf8NoBom) { AutoFlush = true };
+            // 🔥 直接使用 ClientConnection，不再创建新的 reader/writer
+            _connection = connection;
+            
+            Console.WriteLine($"[BrowserClient] AttachConnection 完成:");
+            Console.WriteLine($"  - _connection == null: {_connection == null}");
+            Console.WriteLine($"  - _connection.IsConnected: {_connection?.IsConnected}");
+            Console.WriteLine($"  - IsConnected: {IsConnected}");
         }
         
         /// <summary>
@@ -181,12 +176,20 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 发送命令并等待响应（通过 AutoBetSocketServer 的回调机制）
+        /// 🔥 发送命令并等待响应（通过 ClientConnection 发送，避免 Socket 冲突）
         /// </summary>
         public async Task<BetResult> SendCommandAsync(string command, object? data = null)
         {
+            // 🔥 详细的连接状态检查
+            Console.WriteLine($"[BrowserClient] SendCommandAsync 调用:");
+            Console.WriteLine($"  - ConfigId: {_configId}");
+            Console.WriteLine($"  - _connection == null: {_connection == null}");
+            Console.WriteLine($"  - _connection?.IsConnected: {_connection?.IsConnected}");
+            Console.WriteLine($"  - IsConnected: {IsConnected}");
+            
             if (!IsConnected)
             {
+                Console.WriteLine($"[BrowserClient] ❌ 连接检查失败，返回错误");
                 return new BetResult
                 {
                     Success = false,
@@ -212,15 +215,27 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     _pendingResponses[requestId] = tcs;
                 }
                 
-                // 发送 JSON
+                // 🔥 通过 ClientConnection 发送命令（避免 Socket 冲突）
                 var json = JsonConvert.SerializeObject(request);
                 Console.WriteLine($"[BrowserClient] 发送命令:{command} ConfigId:{_configId}");
                 Console.WriteLine($"[BrowserClient] 发送数据:{json.Substring(0, Math.Min(200, json.Length))}...");
                 
-                await _writer!.WriteLineAsync(json);
-                await _writer.FlushAsync();  // 🔥 确保数据立即发送
+                var sendSuccess = await _connection!.SendCommandAsync(command, data);
+                if (!sendSuccess)
+                {
+                    Console.WriteLine($"[BrowserClient] ❌ 发送命令失败");
+                    lock (_responseLock)
+                    {
+                        _pendingResponses.Remove(requestId);
+                    }
+                    return new BetResult
+                    {
+                        Success = false,
+                        ErrorMessage = "发送命令失败"
+                    };
+                }
                 
-                Console.WriteLine($"[BrowserClient] 等待响应... Socket连接: {_socket?.Connected}");
+                Console.WriteLine($"[BrowserClient] ✅ 命令已发送，等待响应...");
                 
                 // 🔥 等待响应（通过回调触发）
                 Newtonsoft.Json.Linq.JObject? responseObj = null;
@@ -386,37 +401,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 重新连接（用于 VxMain 重启后恢复连接）
+        /// 🔥 重新连接已废弃 - 使用 ClientConnection 后由 AutoBetSocketServer 管理连接
         /// </summary>
+        [Obsolete("不再使用，连接由 AutoBetSocketServer 管理")]
         public async Task<bool> ReconnectAsync(int port)
         {
-            try
-            {
-                // 如果已连接，先断开
-                if (_socket != null)
-                {
-                    _reader?.Dispose();
-                    _writer?.Dispose();
-                    _socket?.Close();
-                    _socket?.Dispose();
-                }
-                
-                // 重新连接
-                _socket = new TcpClient();
-                await _socket.ConnectAsync("127.0.0.1", port);
-                
-                var stream = _socket.GetStream();
-                // 🔥 使用不带BOM的UTF8编码
-                var utf8NoBom = new System.Text.UTF8Encoding(false);
-                _reader = new StreamReader(stream, utf8NoBom);
-                _writer = new StreamWriter(stream, utf8NoBom) { AutoFlush = true };
-                
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            await Task.CompletedTask;
+            return _connection != null && _connection.IsConnected;
         }
         
         /// <summary>
@@ -426,11 +417,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
         {
             try
             {
-                // 关闭 Socket
-                _reader?.Dispose();
-                _writer?.Dispose();
-                _socket?.Close();
-                _socket?.Dispose();
+                // 🔥 清理连接引用（不关闭 Socket，由 AutoBetSocketServer 管理）
+                _connection = null;
                 
                 // 关闭进程
                 if (_process != null && !_process.HasExited)

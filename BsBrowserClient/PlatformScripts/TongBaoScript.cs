@@ -412,6 +412,17 @@ namespace BsBrowserClient.PlatformScripts
                         
                         if (!string.IsNullOrEmpty(_sid) && !string.IsNullOrEmpty(_uuid))
                         {
+                            // 🔥 同时设置 _baseUrl（手动登录时也能获取到）
+                            if (string.IsNullOrEmpty(_baseUrl) && !string.IsNullOrEmpty(response.Url))
+                            {
+                                try
+                                {
+                                    _baseUrl = new Uri(response.Url).GetLeftPart(UriPartial.Authority);
+                                    _logCallback($"✅ Base URL 已设置: {_baseUrl}");
+                                }
+                                catch { }
+                            }
+                            
                             _logCallback($"✅ 拦截到登录参数 - UUID: {_uuid}, Token: {_token.Substring(0, 10)}...");
                         }
                     }

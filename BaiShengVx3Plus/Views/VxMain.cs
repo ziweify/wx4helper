@@ -2465,7 +2465,16 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                _logService.Info("VxMain", "窗口正在关闭，断开 Socket 连接");
+                _logService.Info("VxMain", "窗口正在关闭...");
+                
+                // 🔥 强制保存自动投注设置（防止防抖定时器未触发导致数据丢失）
+                _logService.Info("VxMain", "保存自动投注设置...");
+                _saveTimer?.Dispose();  // 取消防抖定时器
+                _saveTimer = null;
+                SaveAutoBetSettings();  // 立即保存
+                
+                // 断开 Socket 连接
+                _logService.Info("VxMain", "断开 Socket 连接");
                 _socketClient?.Disconnect();
                 
                 // 关闭设置窗口（如果打开）
@@ -2475,6 +2484,8 @@ namespace BaiShengVx3Plus
                     _settingsForm.Close();
                     _settingsForm = null;
                 }
+                
+                _logService.Info("VxMain", "✅ 窗口关闭前处理完成");
             }
             catch (Exception ex)
             {
