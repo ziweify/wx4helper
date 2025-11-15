@@ -85,6 +85,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             lblNotes = new Sunny.UI.UILabel();
             tabRecords = new TabPage();
             pnlRecordsContent = new Sunny.UI.UIPanel();
+            tbxRecordsDetailed = new Sunny.UI.UIRichTextBox();
             dgvRecords = new Sunny.UI.UIDataGridView();
             pnlRecordsTop = new Sunny.UI.UIPanel();
             btnRefreshRecords = new Sunny.UI.UIButton();
@@ -98,7 +99,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             btnStartBrowser = new Sunny.UI.UIButton();
             btnSave = new Sunny.UI.UIButton();
             lblStatus = new Sunny.UI.UILabel();
-            tbxRecordsDetailed = new Sunny.UI.UIRichTextBox();
             (splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -838,6 +838,20 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlRecordsContent.Text = null;
             pnlRecordsContent.TextAlignment = ContentAlignment.MiddleCenter;
             // 
+            // tbxRecordsDetailed
+            // 
+            tbxRecordsDetailed.FillColor = Color.White;
+            tbxRecordsDetailed.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            tbxRecordsDetailed.Location = new Point(711, 48);
+            tbxRecordsDetailed.Margin = new Padding(4, 5, 4, 5);
+            tbxRecordsDetailed.MinimumSize = new Size(1, 1);
+            tbxRecordsDetailed.Name = "tbxRecordsDetailed";
+            tbxRecordsDetailed.Padding = new Padding(2);
+            tbxRecordsDetailed.ShowText = false;
+            tbxRecordsDetailed.Size = new Size(279, 622);
+            tbxRecordsDetailed.TabIndex = 2;
+            tbxRecordsDetailed.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
             // dgvRecords
             // 
             dgvRecords.AllowUserToAddRows = false;
@@ -1035,21 +1049,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             lblStatus.TabIndex = 0;
             lblStatus.Text = "状态: 未运行";
             lblStatus.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // tbxRecordsDetailed
-            // 
-            tbxRecordsDetailed.FillColor = Color.White;
-            tbxRecordsDetailed.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            tbxRecordsDetailed.Location = new Point(711, 48);
-            tbxRecordsDetailed.Margin = new Padding(4, 5, 4, 5);
-            tbxRecordsDetailed.MinimumSize = new Size(1, 1);
-            tbxRecordsDetailed.Name = "tbxRecordsDetailed";
-            tbxRecordsDetailed.Padding = new Padding(2);
-            tbxRecordsDetailed.ShowText = false;
-            tbxRecordsDetailed.Size = new Size(279, 622);
-            tbxRecordsDetailed.TabIndex = 2;
-            tbxRecordsDetailed.Text = "uiRichTextBox1";
-            tbxRecordsDetailed.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // BetConfigManagerForm
             // 

@@ -32,6 +32,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             
             // 🔥 订阅 DataBindingComplete 事件，在数据绑定完成后设置列属性
             dgvRecords.DataBindingComplete += DgvRecords_DataBindingComplete;
+            dgvRecords.SelectionChanged += DgvRecords_SelectionChanged;
         }
         
         /// <summary>
@@ -194,6 +195,108 @@ namespace BaiShengVx3Plus.Views.AutoBet
             }
             
             _logService.Info("ConfigManager", $"已加载 {configs.Count} 个配置");
+        }
+        
+        /// <summary>
+        /// 投注记录选择变更事件 - 显示详细信息
+        /// </summary>
+        private void DgvRecords_SelectionChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvRecords.SelectedRows.Count == 0)
+                {
+                    tbxRecordsDetailed.Text = "";
+                    return;
+                }
+                
+                var selectedRow = dgvRecords.SelectedRows[0];
+                var record = selectedRow.DataBoundItem as BetRecord;
+                
+                if (record == null)
+                {
+                    tbxRecordsDetailed.Text = "无法获取记录数据";
+                    return;
+                }
+                
+                // 🔥 格式化输出所有字段信息
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("═══════════════════════════════════════");
+                sb.AppendLine("📋 投注记录详细信息");
+                sb.AppendLine("═══════════════════════════════════════");
+                sb.AppendLine();
+                
+                // 基本信息
+                sb.AppendLine("【基本信息】");
+                sb.AppendLine($"ID: {record.Id}");
+                sb.AppendLine($"配置ID: {record.ConfigId}");
+                sb.AppendLine($"期号: {record.IssueId}");
+                sb.AppendLine($"来源: {record.Source}");
+                sb.AppendLine();
+                
+                // 投注内容
+                sb.AppendLine("【投注内容】");
+                sb.AppendLine($"投注内容: {record.BetContentStandard ?? "(空)"}");
+                sb.AppendLine($"总金额: {record.TotalAmount:F2} 元");
+                sb.AppendLine($"关联订单ID: {record.OrderIds ?? "(无)"}");
+                sb.AppendLine();
+                
+                // 时间信息
+                sb.AppendLine("【时间信息】");
+                sb.AppendLine($"发送时间: {record.SendTime:yyyy-MM-dd HH:mm:ss.fff}");
+                sb.AppendLine($"POST开始: {record.PostStartTime?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "(未记录)"}");
+                sb.AppendLine($"POST结束: {record.PostEndTime?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "(未记录)"}");
+                if (record.PostStartTime.HasValue && record.PostEndTime.HasValue)
+                {
+                    var actualDuration = (record.PostEndTime.Value - record.PostStartTime.Value).TotalMilliseconds;
+                    sb.AppendLine($"实际耗时: {actualDuration:F2} ms");
+                }
+                sb.AppendLine($"记录耗时: {record.DurationMs?.ToString() ?? "(未记录)"} ms");
+                sb.AppendLine($"创建时间: {record.CreateTime:yyyy-MM-dd HH:mm:ss.fff}");
+                sb.AppendLine($"更新时间: {record.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "(未更新)"}");
+                sb.AppendLine();
+                
+                // 结果信息
+                sb.AppendLine("【结果信息】");
+                sb.AppendLine($"成功状态: {GetSuccessStatus(record.Success)}");
+                sb.AppendLine($"平台订单号: {record.OrderNo ?? "(无)"}");
+                sb.AppendLine();
+                
+                // 错误信息（如果有）
+                if (!string.IsNullOrEmpty(record.ErrorMessage))
+                {
+                    sb.AppendLine("【❌ 错误信息】");
+                    sb.AppendLine(record.ErrorMessage);
+                    sb.AppendLine();
+                }
+                
+                // 返回结果（如果有）
+                if (!string.IsNullOrEmpty(record.Result))
+                {
+                    sb.AppendLine("【📥 平台返回结果】");
+                    sb.AppendLine(record.Result);
+                    sb.AppendLine();
+                }
+                
+                sb.AppendLine("═══════════════════════════════════════");
+                
+                tbxRecordsDetailed.Text = sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BetConfigManagerForm", $"显示记录详情失败: {ex.Message}", ex);
+                tbxRecordsDetailed.Text = $"显示记录详情失败: {ex.Message}";
+            }
+        }
+        
+        /// <summary>
+        /// 获取成功状态的文本描述
+        /// </summary>
+        private string GetSuccessStatus(bool? success)
+        {
+            if (success == null) return "⏳ 等待中";
+            if (success == true) return "✅ 成功";
+            return "❌ 失败";
         }
 
         /// <summary>
