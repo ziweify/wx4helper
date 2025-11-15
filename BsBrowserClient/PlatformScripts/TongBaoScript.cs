@@ -245,14 +245,14 @@ namespace BsBrowserClient.PlatformScripts
         /// 下注 - 使用HTTP POST
         /// 参考 F5BotV2 的 Bet 方法
         /// </summary>
-        public async Task<(bool success, string orderId)> PlaceBetAsync(BetStandardOrderList orders)
+        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BetStandardOrderList orders)
         {
             try
             {
                 if (string.IsNullOrEmpty(_sid) || string.IsNullOrEmpty(_uuid) || string.IsNullOrEmpty(_token))
                 {
                     _logCallback("❌ 未登录，无法下注");
-                    return (false, "");
+                    return (false, "", "#未登录，无法下注");  // 🔥 #前缀表示客户端校验错误
                 }
                 
                 var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
@@ -308,7 +308,7 @@ namespace BsBrowserClient.PlatformScripts
                 if (betList.Count == 0)
                 {
                     _logCallback("❌ 没有有效的投注项");
-                    return (false, "");
+                    return (false, "", "#没有有效的投注项");  // 🔥 #前缀表示客户端校验错误
                 }
                 
                 // 构造POST数据（完全按照F5BotV2 Line 358-391的方式）
@@ -343,7 +343,7 @@ namespace BsBrowserClient.PlatformScripts
                 if (string.IsNullOrEmpty(_baseUrl))
                 {
                     _logCallback("❌ 未获取到base URL，可能未登录");
-                    return (false, "");
+                    return (false, "", "#未获取到base URL，可能未登录");  // 🔥 #前缀表示客户端校验错误
                 }
                 
                 // 发送POST请求（参考F5BotV2 Line 408-420）
@@ -364,7 +364,7 @@ namespace BsBrowserClient.PlatformScripts
                 _logCallback($"📥 投注响应（完整）:");
                 _logCallback($"   {responseText}");
                 
-                // 解析响应（参考F5BotV2 Line 430-441）
+                // 🔥 解析响应（参考F5BotV2 Line 430-441）
                 var json = JObject.Parse(responseText);
                 var succeed = json["status"]?.Value<bool>() ?? false;
                 
@@ -372,20 +372,21 @@ namespace BsBrowserClient.PlatformScripts
                 {
                     var orderId = json["BettingNumber"]?.ToString() ?? $"TB{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
                     _logCallback($"✅ 投注成功: {orderId}");
-                    return (true, orderId);
+                    return (true, orderId, responseText);  // 🔥 返回完整响应
                 }
                 else
                 {
                     var msg = json["msg"]?.ToString() ?? "未知错误";
                     var errcode = json["errcode"]?.ToString() ?? "";
                     _logCallback($"❌ 投注失败: {msg} (errcode={errcode})");
-                    return (false, "");
+                    return (false, "", responseText);  // 🔥 返回完整响应（包含错误信息）
                 }
             }
             catch (Exception ex)
             {
                 _logCallback($"❌ 投注异常: {ex.Message}");
-                return (false, "");
+                _logCallback($"   堆栈: {ex.StackTrace}");
+                return (false, "", $"#投注异常: {ex.Message}");  // 🔥 #前缀表示客户端异常
             }
         }
         

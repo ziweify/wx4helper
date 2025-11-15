@@ -638,7 +638,7 @@ public partial class Form1 : Form
                         OnLogMessage($"📦 准备投注:期号={betIssueId} 共{betOrders.Count}项 {totalAmount}元", LogType.Bet);
                         
                         // 🔥 使用标准化订单列表，平台脚本将其转换为平台特定的格式
-                        var (success, orderId) = await _platformScript!.PlaceBetAsync(betOrders);
+                        var (success, orderId, platformResponse) = await _platformScript!.PlaceBetAsync(betOrders);
                         
                         // 记录POST后时间
                         var postEndTime = DateTime.Now;
@@ -651,11 +651,12 @@ public partial class Form1 : Form
                             postStartTime = postStartTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                             postEndTime = postEndTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                             durationMs = durationMs,
-                            orderNo = orderId
+                            orderNo = orderId,
+                            platformResponse = platformResponse  // 🔥 包含平台完整响应
                         };
                         
                         OnLogMessage($"✅ 投注完成:成功={success} 耗时={durationMs}ms 订单号={orderId}", LogType.Bet);
-                        OnLogMessage($"📊 返回数据:postStartTime={postStartTime:yyyy-MM-dd HH:mm:ss.fff}, postEndTime={postEndTime:yyyy-MM-dd HH:mm:ss.fff}");
+                        OnLogMessage($"📊 平台响应:{platformResponse}");
                     }
                     catch (Exception betEx)
                     {
@@ -1174,7 +1175,7 @@ public partial class Form1 : Form
             OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");
             var startTime = DateTime.Now;
             
-            var (success, orderId) = await _platformScript.PlaceBetAsync(testOrders);
+            var (success, orderId, platformResponse) = await _platformScript.PlaceBetAsync(testOrders);
             
             var endTime = DateTime.Now;
             var duration = (int)(endTime - startTime).TotalMilliseconds;

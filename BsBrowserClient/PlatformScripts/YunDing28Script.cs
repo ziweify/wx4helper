@@ -324,7 +324,7 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 下注
         /// </summary>
-        public async Task<(bool success, string orderId)> PlaceBetAsync(BetStandardOrderList orders)
+        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BetStandardOrderList orders)
         {
             try
             {
@@ -336,12 +336,13 @@ namespace BsBrowserClient.PlatformScripts
                 // 目前返回未实现状态
                 Log($"⚠️ 云顶28平台投注功能待实现，需要根据实际平台页面结构实现");
                 await Task.CompletedTask;
-                return (false, "云顶28平台投注功能待实现");
+                return (false, "", "#云顶28平台投注功能待实现");  // 🔥 #前缀表示客户端错误
+
             }
             catch (Exception ex)
             {
                 Log($"❌ 投注异常: {ex.Message}");
-                return (false, "");
+                return (false, "", $"#投注异常: {ex.Message}");  // 🔥 #前缀表示客户端异常
             }
         }
         

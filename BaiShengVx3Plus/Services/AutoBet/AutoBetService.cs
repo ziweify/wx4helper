@@ -754,12 +754,14 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     ErrorMessage = result.ErrorMessage
                 };
                 
-                // 🔥 如果 result.Data 是 JObject，安全地解析字段
+                // 🔥 解析返回数据（包含时间信息和平台完整响应）
                 if (result.Data != null && result.Data is Newtonsoft.Json.Linq.JObject dataObj)
                 {
-                    betResult.Result = dataObj.ToString();
+                    // 🔥 提取平台完整响应（最重要的信息）
+                    var platformResponse = dataObj["platformResponse"]?.ToString();
+                    betResult.Result = platformResponse ?? dataObj.ToString();
                     
-                    // 解析时间和耗时（使用 JObject 的安全访问方式）
+                    // 解析时间和耗时（用于性能监控）
                     var postStartStr = dataObj["postStartTime"]?.ToString();
                     var postEndStr = dataObj["postEndTime"]?.ToString();
                     
@@ -776,6 +778,46 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     betResult.DurationMs = dataObj["durationMs"]?.ToObject<int?>();
                     betResult.OrderNo = dataObj["orderNo"]?.ToString();
                     betResult.OrderId = dataObj["orderId"]?.ToString();  // 兼容旧字段
+                    
+                    // 🔥 处理错误信息（区分客户端错误和平台错误）
+                    if (!result.Success)
+                    {
+                        // 如果平台响应以#开头，说明是客户端校验错误
+                        if (!string.IsNullOrEmpty(platformResponse) && platformResponse.StartsWith("#"))
+                        {
+                            betResult.ErrorMessage = platformResponse;  // 客户端错误（#未登录，无法下注）
+                        }
+                        // 否则尝试从平台API响应中提取错误信息
+                        else if (!string.IsNullOrEmpty(platformResponse))
+                        {
+                            try
+                            {
+                                var platformJson = Newtonsoft.Json.Linq.JObject.Parse(platformResponse);
+                                var msg = platformJson["msg"]?.ToString();
+                                var errcode = platformJson["errcode"]?.ToString();
+                                if (!string.IsNullOrEmpty(msg))
+                                {
+                                    // 平台API错误（格式化显示）
+                                    betResult.ErrorMessage = string.IsNullOrEmpty(errcode) 
+                                        ? $"[平台] {msg}" 
+                                        : $"[平台] {msg} (errcode={errcode})";
+                                }
+                            }
+                            catch
+                            {
+                                // JSON解析失败，可能是普通错误文本
+                                if (string.IsNullOrEmpty(betResult.ErrorMessage))
+                                {
+                                    betResult.ErrorMessage = result.ErrorMessage;
+                                }
+                            }
+                        }
+                        // 如果还是没有ErrorMessage，使用CommandResponse的ErrorMessage
+                        else if (string.IsNullOrEmpty(betResult.ErrorMessage))
+                        {
+                            betResult.ErrorMessage = result.ErrorMessage ?? "投注失败";
+                        }
+                    }
                 }
                 else if (result.Data != null)
                 {
