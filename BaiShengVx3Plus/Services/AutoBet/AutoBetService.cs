@@ -45,6 +45,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
         // 🔥 监控任务执行标记（防止并发执行）
         private bool _isMonitoring = false;
         
+        // 🔥 用于取消异步任务的 CancellationTokenSource
+        private CancellationTokenSource? _cancellationTokenSource;
+        
         public AutoBetService(ILogService log, IBinggoOrderService orderService)
         {
             _log = log;
@@ -93,12 +96,16 @@ namespace BaiShengVx3Plus.Services.AutoBet
             EnsureDefaultConfig();
             _log.Info("AutoBet", $"✅ 数据库已设置，已加载 {_configs.Count} 个配置到内存");
             
+            // 🔥 创建 CancellationTokenSource（用于取消异步任务）
+            _cancellationTokenSource = new CancellationTokenSource();
+            
             // 🔥 主程序重启场景：检查是否有浏览器进程在运行，等待它们重连
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(1000);  // 等待1秒，让 Socket 服务器完全启动
+                    // 🔥 使用 CancellationToken，如果已取消则立即返回
+                    await Task.Delay(1000, _cancellationTokenSource.Token);  // 等待1秒，让 Socket 服务器完全启动
                     
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     _log.Info("AutoBet", "🔍 检查是否有浏览器进程在运行（主程序重启场景）...");
@@ -118,7 +125,14 @@ namespace BaiShengVx3Plus.Services.AutoBet
                             
                             for (int i = 0; i < 10; i++)
                             {
-                                await Task.Delay(500);
+                                // 🔥 检查是否已取消
+                                if (_cancellationTokenSource?.Token.IsCancellationRequested == true)
+                                {
+                                    _log.Info("AutoBet", $"   ⏹️ [{config.ConfigName}] 任务已取消，停止等待重连");
+                                    break;
+                                }
+                                
+                                await Task.Delay(500, _cancellationTokenSource?.Token ?? CancellationToken.None);
                                 
                                 // 检查是否已连接
                                 if (config.IsConnected)
@@ -168,11 +182,15 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 }
+                catch (OperationCanceledException)
+                {
+                    _log.Info("AutoBet", "检查浏览器进程任务已取消");
+                }
                 catch (Exception ex)
                 {
                     _log.Error("AutoBet", "检查浏览器进程时出错", ex);
                 }
-            });
+            }, _cancellationTokenSource.Token);
             
             // 🔥 配置加载完成后，再启动监控任务（主要机制，负责检查配置状态并启动浏览器）
             _monitorTimer = new System.Threading.Timer(MonitorBrowsers, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
@@ -1303,13 +1321,86 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
         }
         
+        /// <summary>
+        /// 🔥 释放资源（主进程关闭时调用）
+        /// 按正确顺序停止所有定时器和自动任务
+        /// </summary>
         public void Dispose()
         {
-            _monitorTimer?.Dispose();
-            StopAllBrowsers();
-            _socketServer?.Dispose();
-            _httpServer?.Dispose();
-            _log.Info("AutoBet", "AutoBetService 已释放");
+            try
+            {
+                _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _log.Info("AutoBet", "🛑 开始释放 AutoBetService 资源...");
+                
+                // 🔥 步骤1: 取消所有异步任务
+                if (_cancellationTokenSource != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 取消所有异步任务...");
+                    _cancellationTokenSource.Cancel();
+                    _cancellationTokenSource.Dispose();
+                    _cancellationTokenSource = null;
+                    _log.Info("AutoBet", "✅ 异步任务已取消");
+                }
+                
+                // 🔥 步骤2: 停止监控定时器（防止新的任务启动）
+                if (_monitorTimer != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止监控定时器...");
+                    _monitorTimer.Dispose();
+                    _monitorTimer = null;
+                    _log.Info("AutoBet", "✅ 监控定时器已停止");
+                }
+                
+                // 🔥 步骤3: 等待正在执行的监控任务完成（最多等待2秒）
+                if (_isMonitoring)
+                {
+                    _log.Info("AutoBet", "⏳ 等待正在执行的监控任务完成...");
+                    int waitCount = 0;
+                    while (_isMonitoring && waitCount < 20)  // 最多等待2秒
+                    {
+                        Thread.Sleep(100);
+                        waitCount++;
+                    }
+                    if (_isMonitoring)
+                    {
+                        _log.Warning("AutoBet", "⚠️ 监控任务仍在执行，强制继续");
+                    }
+                    else
+                    {
+                        _log.Info("AutoBet", "✅ 监控任务已完成");
+                    }
+                }
+                
+                // 🔥 步骤4: 停止 Socket 服务器（停止接受新连接）
+                if (_socketServer != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止 Socket 服务器...");
+                    _socketServer.Dispose();
+                    _socketServer = null;
+                    _log.Info("AutoBet", "✅ Socket 服务器已停止");
+                }
+                
+                // 🔥 步骤5: 停止 HTTP 服务器
+                if (_httpServer != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止 HTTP 服务器...");
+                    _httpServer.Dispose();
+                    _httpServer = null;
+                    _log.Info("AutoBet", "✅ HTTP 服务器已停止");
+                }
+                
+                // 🔥 步骤6: 停止所有浏览器（最后停止，因为可能正在处理命令）
+                _log.Info("AutoBet", "⏹️ 停止所有浏览器...");
+                StopAllBrowsers();
+                _log.Info("AutoBet", "✅ 所有浏览器已停止");
+                
+                _log.Info("AutoBet", "✅ AutoBetService 资源释放完成");
+                _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "释放资源时出错", ex);
+            }
         }
     }
 }
