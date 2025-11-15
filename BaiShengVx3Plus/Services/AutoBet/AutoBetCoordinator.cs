@@ -238,6 +238,57 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     _log.Info("AutoBet", $"   合并内容: {mergeResult.BetContentStandard}");
                     _log.Info("AutoBet", $"   总金额: {mergeResult.TotalAmount:F2}元");
                     
+                    // 3.5 验证每一项投注金额是否符合配置限制（参考 F5BotV2 第 2438-2509 行）
+                    _log.Info("AutoBet", $"🔍 开始验证投注金额限制...");
+                    var config = _autoBetService.GetConfig(_currentConfigId);
+                    if (config == null)
+                    {
+                        _log.Error("AutoBet", "❌ 配置不存在，无法验证金额限制");
+                        return;
+                    }
+                    
+                    // 🔥 完全参照 F5BotV2 逻辑：只要有一项不符合，整条拒绝（第 2444-2461 行）
+                    string? firstInvalidItem = null;
+                    foreach (var item in mergeResult.BetItems)
+                    {
+                        var itemKey = $"{item.Car}{item.Play}";  // 如: P1大
+                        
+                        // 检查最小金额限制（参考 F5BotV2 第 2450-2455 行）
+                        if (item.MoneySum < config.MinBetAmount)
+                        {
+                            // 🔥 F5BotV2 原文：@{memberOrder.nickname} 进仓失败!{key}不能小于{this._appSetting.wxMinBet}
+                            firstInvalidItem = $"{itemKey}不能小于{config.MinBetAmount}";
+                            _log.Warning("AutoBet", $"⚠️ 进仓失败! {itemKey} 金额 {item.MoneySum}元 不能小于 {config.MinBetAmount}元");
+                            break;
+                        }
+                        
+                        // 检查最大金额限制（参考 F5BotV2 第 2456-2461 行）
+                        if (item.MoneySum > config.MaxBetAmount)
+                        {
+                            // 🔥 F5BotV2 原文：@{memberOrder.nickname} 进仓失败!{key}超限,当前{betitem.moneySum},剩余:{maxLimit}
+                            firstInvalidItem = $"{itemKey}超限,当前{item.MoneySum},最大{config.MaxBetAmount}";
+                            _log.Warning("AutoBet", $"⚠️ 进仓失败! {itemKey} 金额 {item.MoneySum}元 超过最大限制 {config.MaxBetAmount}元");
+                            break;
+                        }
+                    }
+                    
+                    // 🔥 如果有不符合限制的项，拒绝整个投注（参考 F5BotV2 第 2453、2459、2469、2475 行）
+                    if (firstInvalidItem != null)
+                    {
+                        _log.Error("AutoBet", $"❌ 进仓失败! {firstInvalidItem}");
+                        _log.Error("AutoBet", $"   订单数量: {mergeResult.OrderIds.Count}个");
+                        _log.Error("AutoBet", $"   合并内容: {mergeResult.BetContentStandard}");
+                        _log.Error("AutoBet", $"💡 请在【配置管理】中调整【最小金额】({config.MinBetAmount}元)和【最大金额】({config.MaxBetAmount}元)");
+                        
+                        // 🔥 注意：订单保持 `待处理` 状态，不进行投注，不修改订单状态
+                        // 下次封盘时如果金额仍不符合，会继续拒绝
+                        // 只记录日志供管理员查看
+                        
+                        return;
+                    }
+                    
+                    _log.Info("AutoBet", $"✅ 投注金额验证通过（限制: {config.MinBetAmount}-{config.MaxBetAmount}元）");
+                    
                     // 4. 创建投注记录
                     _log.Info("AutoBet", $"📋 创建投注记录...");
                     var betRecord = new BetRecord
