@@ -64,10 +64,11 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         
         /// <summary>
         /// 转换为标准字符串 (例如: "1大100")
+        /// 🔥 参考 F5BotV2/Boter/BoterBetContent.cs 第296行：使用 moneySum（总金额）
         /// </summary>
         public override string ToString()
         {
-            return $"{CarNumber}{PlayType}{Amount}";
+            return $"{CarNumber}{PlayType}{TotalAmount}";  // 🔥 使用 TotalAmount（总金额）= Amount * Quantity
         }
         
         /// <summary>
