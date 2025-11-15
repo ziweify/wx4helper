@@ -269,18 +269,6 @@ namespace BsBrowserClient.PlatformScripts
                 
                 foreach (var order in orders)
                 {
-                    // 🔥 直接从 CarNumEnum 映射到平台显示名称（根据实际网站显示）
-                    var carName = order.Car switch
-                    {
-                        CarNumEnum.P1 => "平一",
-                        CarNumEnum.P2 => "平二",
-                        CarNumEnum.P3 => "平三",
-                        CarNumEnum.P4 => "平四",
-                        CarNumEnum.P5 => "平五",
-                        CarNumEnum.P总 => "和值",  // 🔥 修正：和值而不是总和
-                        _ => "平一"
-                    };
-                    
                     // 🔥 直接从 BetPlayEnum 映射到玩法名称
                     var playType = order.Play switch
                     {
@@ -292,8 +280,31 @@ namespace BsBrowserClient.PlatformScripts
                         BetPlayEnum.尾小 => "尾小",
                         BetPlayEnum.合单 => "合单",
                         BetPlayEnum.合双 => "合双",
+                        BetPlayEnum.龙 => "龙",
+                        BetPlayEnum.虎 => "虎",
                         _ => "大"
                     };
+                    
+                    // 🔥 特殊处理：龙虎的 carName 为空（参照 F5BotV2）
+                    string carName;
+                    if (order.Play == BetPlayEnum.龙 || order.Play == BetPlayEnum.虎)
+                    {
+                        carName = "";  // 🔥 龙虎没有车号前缀（F5BotV2 中 carName 为空字符串）
+                    }
+                    else
+                    {
+                        // 其他玩法正常映射车号
+                        carName = order.Car switch
+                        {
+                            CarNumEnum.P1 => "平一",
+                            CarNumEnum.P2 => "平二",
+                            CarNumEnum.P3 => "平三",
+                            CarNumEnum.P4 => "平四",
+                            CarNumEnum.P5 => "平五",
+                            CarNumEnum.P总 => "和值",  // 🔥 和值（大小单双尾大尾小）
+                            _ => "平一"
+                        };
+                    }
                     
                     var money = order.MoneySum;
                     
@@ -696,6 +707,21 @@ namespace BsBrowserClient.PlatformScripts
             car = CarNumEnum.P1;
             play = BetPlayEnum.大;
             
+            // 🔥 特殊处理：龙虎没有车号前缀（F5BotV2 中龙虎的 carName 为空字符串）
+            // 必须放在最前面，因为龙虎不匹配任何 StartsWith 条件！
+            if (name == "龙")
+            {
+                car = CarNumEnum.P总;
+                play = BetPlayEnum.龙;
+                return true;
+            }
+            else if (name == "虎")
+            {
+                car = CarNumEnum.P总;
+                play = BetPlayEnum.虎;
+                return true;
+            }
+            
             // 解析车号
             if (name.StartsWith("平一"))
             {
@@ -724,20 +750,6 @@ namespace BsBrowserClient.PlatformScripts
             else
             {
                 return false;  // 无法识别车号
-            }
-            
-            // 🔥 特殊处理：龙虎没有车号前缀（F5BotV2 中龙虎的 carName 为空字符串）
-            if (name == "龙")
-            {
-                car = CarNumEnum.P总;
-                play = BetPlayEnum.龙;
-                return true;
-            }
-            else if (name == "虎")
-            {
-                car = CarNumEnum.P总;
-                play = BetPlayEnum.虎;
-                return true;
             }
             
             // 解析玩法（从后往前匹配，因为车号长度不固定）
