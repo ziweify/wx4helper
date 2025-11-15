@@ -1,4 +1,5 @@
 using BaiShengVx3Plus.Shared.Models;
+using BsBrowserClient.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
@@ -32,6 +33,9 @@ namespace BsBrowserClient.PlatformScripts
         
         // 赔率ID映射表：key="平一大", value="5370"
         private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
+        
+        // 赔率值映射表：key="平一大", value=1.97f （实际赔率）
+        private readonly Dictionary<string, float> _oddsValues = new Dictionary<string, float>();
         
         // 测试账号（来自F5BotV2注释）
         // 账号: wwww11
@@ -245,7 +249,7 @@ namespace BsBrowserClient.PlatformScripts
         /// 下注 - 使用HTTP POST
         /// 参考 F5BotV2 的 Bet 方法
         /// </summary>
-        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BetStandardOrderList orders)
+        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
         {
             try
             {
@@ -265,7 +269,7 @@ namespace BsBrowserClient.PlatformScripts
                 
                 foreach (var order in orders)
                 {
-                    // 🔥 直接从 CarNumEnum 映射到平台显示名称
+                    // 🔥 直接从 CarNumEnum 映射到平台显示名称（根据实际网站显示）
                     var carName = order.Car switch
                     {
                         CarNumEnum.P1 => "平一",
@@ -273,7 +277,7 @@ namespace BsBrowserClient.PlatformScripts
                         CarNumEnum.P3 => "平三",
                         CarNumEnum.P4 => "平四",
                         CarNumEnum.P5 => "平五",
-                        CarNumEnum.P总 => "总和",
+                        CarNumEnum.P总 => "和值",  // 🔥 修正：和值而不是总和
                         _ => "平一"
                     };
                     
@@ -458,7 +462,7 @@ namespace BsBrowserClient.PlatformScripts
                         }
                     }
                     
-                    // 解析响应数据，获取赔率ID
+                    // 解析响应数据，获取赔率ID和赔率值（参考 F5BotV2）
                     if (!string.IsNullOrEmpty(response.Context))
                     {
                         try
@@ -468,6 +472,7 @@ namespace BsBrowserClient.PlatformScripts
                             if (msg != null && msg.Type == JTokenType.Array)
                             {
                                 _oddsMap.Clear();
+                                _oddsValues.Clear();  // 🔥 清空赔率值
                                 int count = 0;
                                 
                                 // ResultID从5370开始，对应"平一大"
@@ -476,6 +481,8 @@ namespace BsBrowserClient.PlatformScripts
                                 foreach (var item in resultArray)
                                 {
                                     var resultId = item["ResultID"]?.ToString(); // 🔥 字段是ResultID
+                                    var odds = item["Odds"]?.Value<float>() ?? 1.97f; // 🔥 获取实际赔率
+                                    
                                     if (!string.IsNullOrEmpty(resultId))
                                     {
                                         // 根据ResultID推算name
@@ -484,11 +491,12 @@ namespace BsBrowserClient.PlatformScripts
                                         if (!string.IsNullOrEmpty(name))
                                         {
                                             _oddsMap[name] = resultId;
+                                            _oddsValues[name] = odds;  // 🔥 存储实际赔率
                                             count++;
                                         }
                                     }
                                 }
-                                _logCallback($"✅ 赔率ID已更新，共{_oddsMap.Count}项");
+                                _logCallback($"✅ 赔率数据已更新，共{_oddsMap.Count}项（ID+实际赔率值）");
                             }
                             else
                             {
@@ -540,47 +548,78 @@ namespace BsBrowserClient.PlatformScripts
         
         /// <summary>
         /// 根据ResultID推算名称
-        /// ResultID规律: 5370开始，每个号码有6个玩法（大小单双尾大尾小）
-        /// 5370=平一大, 5371=平一小, 5372=平一单, 5373=平一双, 5374=平一尾大, 5375=平一尾小
-        /// 5376=平二大, 5377=平二小...
+        /// 🔥 完全参照 F5BotV2/BetSite/HongHai/TongBaoOdds.cs
+        /// 规律：
+        /// - 5364-5369: 前五和值（6个玩法：大小单双尾大尾小）
+        /// - 5370-5377: 平码一（8个玩法：大小单双尾大尾小合单合双）
+        /// - 5378-5385: 平码二（8个玩法）
+        /// - 5386-5393: 平码三（8个玩法）
+        /// - 5394-5401: 平码四（8个玩法）
+        /// - 5402-5409: 特码/平五（8个玩法）
         /// </summary>
         private string GetNameFromResultId(int resultId)
         {
-            if (resultId < 5364) return "";
-            
-            int offset = resultId - 5364;
-            int carIndex = offset / 6;  // 每个号码6个玩法
-            int playIndex = offset % 6;
-            
-            if (carIndex >= 10) return ""; // 只有1-10号
-            
-            string carName = carIndex switch
+            // 🔥 龙虎: 5418-5419（参照 F5BotV2，carName 为空字符串）
+            if (resultId == 5418)
             {
-                0 => "平一",
-                1 => "平二",
-                2 => "平三",
-                3 => "平四",
-                4 => "平五",
-                5 => "平六",
-                6 => "平七",
-                7 => "平八",
-                8 => "平九",
-                9 => "平十",
-                _ => ""
-            };
-            
-            string playName = playIndex switch
+                return "龙";  // 🔥 龙虎没有车号前缀
+            }
+            else if (resultId == 5419)
             {
-                0 => "大",
-                1 => "小",
-                2 => "单",
-                3 => "双",
-                4 => "尾大",
-                5 => "尾小",
-                _ => ""
-            };
+                return "虎";  // 🔥 龙虎没有车号前缀
+            }
             
-            return $"{carName}{playName}";
+            // 🔥 前五和值（总和）: 5364-5369（参照 F5BotV2）
+            if (resultId >= 5364 && resultId <= 5369)
+            {
+                int playIndex = resultId - 5364;
+                string playName = playIndex switch
+                {
+                    0 => "大",      // 5364
+                    1 => "小",      // 5365
+                    2 => "单",      // 5366
+                    3 => "双",      // 5367
+                    4 => "尾大",    // 5368
+                    5 => "尾小",    // 5369
+                    _ => ""
+                };
+                return $"和值{playName}";  // 🔥 修正：和值而不是总和
+            }
+            
+            // 🔥 平码一到平五: 5370-5409
+            if (resultId >= 5370 && resultId <= 5409)
+            {
+                int offset = resultId - 5370;
+                int carIndex = offset / 8;  // 🔥 每个号码8个玩法
+                int playIndex = offset % 8;
+                
+                string carName = carIndex switch
+                {
+                    0 => "平一",    // 5370-5377
+                    1 => "平二",    // 5378-5385
+                    2 => "平三",    // 5386-5393
+                    3 => "平四",    // 5394-5401
+                    4 => "平五",    // 5402-5409
+                    _ => ""
+                };
+                
+                string playName = playIndex switch
+                {
+                    0 => "大",      // +0
+                    1 => "小",      // +1
+                    2 => "单",      // +2
+                    3 => "双",      // +3
+                    4 => "尾大",    // +4
+                    5 => "尾小",    // +5
+                    6 => "合单",    // +6
+                    7 => "合双",    // +7
+                    _ => ""
+                };
+                
+                return $"{carName}{playName}";
+            }
+            
+            return "";
         }
         
         /// <summary>
@@ -589,7 +628,7 @@ namespace BsBrowserClient.PlatformScripts
         /// </summary>
         private string GetBetId(string number, string playType)
         {
-            // 组合成赔率名称，如："平一大"
+            // 组合成赔率名称，如："平一大"（网站显示用）
             // number: "1" → "平一", "2" → "平二", ...
             var carName = number switch
             {
@@ -598,11 +637,7 @@ namespace BsBrowserClient.PlatformScripts
                 "3" => "平三",
                 "4" => "平四",
                 "5" => "平五",
-                "6" => "平六",
-                "7" => "平七",
-                "8" => "平八",
-                "9" => "平九",
-                "10" => "平十",
+                "6" or "总" => "和值",  // 🔥 修正：和值而不是总和
                 _ => "平一"
             };
             
@@ -615,6 +650,133 @@ namespace BsBrowserClient.PlatformScripts
             
             _logCallback($"⚠️ 未找到赔率ID: {oddsName}，使用默认值0");
             return "0";
+        }
+        
+        /// <summary>
+        /// 获取赔率列表（用于赔率显示窗口）
+        /// </summary>
+        public List<BsBrowserClient.Models.OddsInfo> GetOddsList()
+        {
+            var oddsList = new List<BsBrowserClient.Models.OddsInfo>();
+            
+            if (_oddsMap.Count == 0)
+            {
+                _logCallback("⚠️ 赔率数据尚未加载");
+                return oddsList;
+            }
+            
+            // 遍历赔率映射表，生成 OddsInfo 列表
+            foreach (var kvp in _oddsMap)
+            {
+                var name = kvp.Key;      // 如："平一大"
+                var oddsId = kvp.Value;  // 如："5370"
+                
+                // 解析名称，提取车号和玩法
+                if (!TryParseName(name, out var car, out var play))
+                {
+                    continue;  // 跳过无法解析的项
+                }
+                
+                // 🔥 获取实际赔率值（如果没有则使用默认值1.97）
+                var odds = _oddsValues.ContainsKey(name) ? _oddsValues[name] : 1.97f;
+                
+                oddsList.Add(new BsBrowserClient.Models.OddsInfo(car, play, name, odds, oddsId));
+            }
+            
+            return oddsList;
+        }
+        
+        /// <summary>
+        /// 解析名称，提取车号和玩法
+        /// </summary>
+        private bool TryParseName(string name, out BaiShengVx3Plus.Shared.Models.CarNumEnum car, out BaiShengVx3Plus.Shared.Models.BetPlayEnum play)
+        {
+            car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P1;
+            play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.大;
+            
+            // 解析车号
+            if (name.StartsWith("平一"))
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P1;
+            }
+            else if (name.StartsWith("平二"))
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P2;
+            }
+            else if (name.StartsWith("平三"))
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P3;
+            }
+            else if (name.StartsWith("平四"))
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P4;
+            }
+            else if (name.StartsWith("平五"))
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P5;
+            }
+            else if (name.StartsWith("和值"))
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P总;
+            }
+            else
+            {
+                return false;  // 无法识别车号
+            }
+            
+            // 🔥 特殊处理：龙虎没有车号前缀（F5BotV2 中龙虎的 carName 为空字符串）
+            if (name == "龙")
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P总;
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.龙;
+                return true;
+            }
+            else if (name == "虎")
+            {
+                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P总;
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.虎;
+                return true;
+            }
+            
+            // 解析玩法（从后往前匹配，因为车号长度不固定）
+            if (name.EndsWith("大"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.大;
+            }
+            else if (name.EndsWith("小"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.小;
+            }
+            else if (name.EndsWith("单"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.单;
+            }
+            else if (name.EndsWith("双"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.双;
+            }
+            else if (name.EndsWith("尾大"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.尾大;
+            }
+            else if (name.EndsWith("尾小"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.尾小;
+            }
+            else if (name.EndsWith("合单"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.合单;
+            }
+            else if (name.EndsWith("合双"))
+            {
+                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.合双;
+            }
+            else
+            {
+                return false;  // 无法识别玩法
+            }
+            
+            return true;
         }
     }
 }

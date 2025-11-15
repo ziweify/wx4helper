@@ -1,8 +1,10 @@
 using BaiShengVx3Plus.Shared.Models;
+using BsBrowserClient.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace BsBrowserClient.PlatformScripts
@@ -324,7 +326,7 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 下注
         /// </summary>
-        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BetStandardOrderList orders)
+        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
         {
             try
             {
@@ -362,6 +364,15 @@ namespace BsBrowserClient.PlatformScripts
         {
             // WebView2 使用 CoreWebView2.CookieManager
             Log($"设置 Cookie (长度: {cookie?.Length ?? 0})");
+        }
+        
+        /// <summary>
+        /// 获取赔率列表（用于赔率显示窗口）
+        /// </summary>
+        public List<BsBrowserClient.Models.OddsInfo> GetOddsList()
+        {
+            Log("⚠️ 云顶28平台赔率功能待实现");
+            return new List<BsBrowserClient.Models.OddsInfo>();
         }
     }
 }

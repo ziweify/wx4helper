@@ -63,8 +63,9 @@
   <Target Name="CopyBrowserClient" AfterTargets="Build">
     <PropertyGroup>
       <BrowserClientSourcePath>$(MSBuildProjectDirectory)\..\BsBrowserClient\bin\$(Configuration)\net8.0-windows</BrowserClientSourcePath>
-      <BrowserClientDestPath>$(OutputPath)BrowserClient</BrowserClientDestPath>
-      <BrowserClientVersionFile>$(BrowserClientDestPath)\.version</BrowserClientVersionFile>
+      <!-- 🔥 修改：生成到主程序同一文件夹，而不是子目录 -->
+      <BrowserClientDestPath>$(OutputPath)</BrowserClientDestPath>
+      <BrowserClientVersionFile>$(BrowserClientDestPath)\.browserversion</BrowserClientVersionFile>
     </PropertyGroup>
     
     <!-- 创建目标目录 -->

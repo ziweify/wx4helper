@@ -6,6 +6,7 @@
         ///  Required designer variable.
         /// </summary>
         private System.ComponentModel.IContainer components = null;
+        private ToolStripStatusLabel lblOddsInfo;
 
         /// <summary>
         ///  Clean up any resources being used.
@@ -33,6 +34,7 @@
             lblStatus = new ToolStripStatusLabel();
             lblBalance = new ToolStripStatusLabel();
             lblPort = new ToolStripStatusLabel();
+            lblOddsInfo = new ToolStripStatusLabel();
             pnlTop = new Panel();
             btnTestBet = new Button();
             btnTestCookie = new Button();
@@ -64,7 +66,7 @@
             // 
             // statusStrip1
             // 
-            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblPort });
+            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblPort, lblOddsInfo });
             statusStrip1.Location = new Point(0, 838);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(1264, 22);
@@ -88,6 +90,14 @@
             lblPort.Name = "lblPort";
             lblPort.Size = new Size(46, 17);
             lblPort.Text = "端口: 0";
+            // 
+            // lblOddsInfo
+            // 
+            lblOddsInfo.Name = "lblOddsInfo";
+            lblOddsInfo.Size = new Size(80, 17);
+            lblOddsInfo.Text = "📊 查看赔率";
+            lblOddsInfo.IsLink = true;
+            lblOddsInfo.Click += LblOddsInfo_Click;
             // 
             // pnlTop
             // 

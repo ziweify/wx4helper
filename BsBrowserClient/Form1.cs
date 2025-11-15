@@ -8,6 +8,7 @@ using CommandRequest = BsBrowserClient.Models.CommandRequest;  // 🔥 使用别
 using CommandResponse = BsBrowserClient.Models.CommandResponse;  // 🔥 命令响应
 using BsBrowserClient.Services;
 using BsBrowserClient.PlatformScripts;
+using BsBrowserClient.Forms;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json;
@@ -1284,6 +1285,42 @@ public partial class Form1 : Form
         {
             OnLogMessage($"❌ 保存日志失败: {ex.Message}");
             MessageBox.Show($"保存日志失败: {ex.Message}", "错误", 
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+    
+    /// <summary>
+    /// 点击赔率信息链接
+    /// </summary>
+    private void LblOddsInfo_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_platformScript == null)
+            {
+                MessageBox.Show("平台脚本未初始化", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            
+            // 获取赔率列表
+            var oddsList = _platformScript.GetOddsList();
+            
+            if (oddsList.Count == 0)
+            {
+                MessageBox.Show("赔率数据尚未加载，请先登录并等待赔率更新", "提示", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            // 创建并显示赔率窗口
+            var oddsForm = new OddsDisplayForm();
+            oddsForm.SetOddsData(oddsList);
+            oddsForm.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 打开赔率窗口失败: {ex.Message}");
+            MessageBox.Show($"打开赔率窗口失败: {ex.Message}", "错误", 
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }

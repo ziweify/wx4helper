@@ -128,9 +128,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
             try
             {
                 // 1. 启动浏览器进程
-                var browserDirectory = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "BrowserClient");
+                // 🔥 修改：浏览器程序和主程序在同一文件夹
+                var browserDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 
                 var browserExePath = Path.Combine(browserDirectory, "BsBrowserClient.exe");
                 
