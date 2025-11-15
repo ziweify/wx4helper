@@ -1,5 +1,6 @@
 using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
+using BaiShengVx3Plus.Utils;
 
 namespace BaiShengVx3Plus.Views
 {
@@ -67,6 +68,9 @@ namespace BaiShengVx3Plus.Views
 
         private void LoginForm_Load(object sender, EventArgs e)
         {
+            // 🔥 显示版本号
+            this.Text = VersionInfo.FullVersion;
+            
             // 🔥 加载保存的登录信息
             LoadSavedLoginInfo();
             

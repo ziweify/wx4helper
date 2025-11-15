@@ -51,6 +51,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private Core.V2OrderBindingList? _ordersBindingList;
         private Core.V2MemberBindingList? _membersBindingList;
         private Core.V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList
+        private BinggoStatisticsService? _statisticsService;  // 🔥 统计服务（用于更新统计）
         
         private System.Threading.Timer? _timer;
         private int _currentIssueId;
@@ -122,7 +123,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             IWeixinSocketClient? socketClient,
             Core.V2OrderBindingList? ordersBindingList,
             Core.V2MemberBindingList? membersBindingList,
-            Core.V2CreditWithdrawBindingList? creditWithdrawsBindingList)/*= null*/
+            Core.V2CreditWithdrawBindingList? creditWithdrawsBindingList,
+            BinggoStatisticsService? statisticsService = null)  // 🔥 统计服务（可选）
         {
             _orderService = orderService;
             _groupBindingService = groupBindingService;
@@ -130,6 +132,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             _ordersBindingList = ordersBindingList;
             _membersBindingList = membersBindingList;
             _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 设置上下分 BindingList
+            _statisticsService = statisticsService;  // 🔥 设置统计服务
             _logService.Info("BinggoLotteryService", "✅ 业务依赖已设置");
         }
         
@@ -1216,11 +1219,30 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     ods.OrderStatus = OrderStatus.已取消;
                     _orderService.UpdateOrder(ods);
                     
-                    // 退款给会员
+                    // 🔥 退款给会员（参考 F5BotV2 第2301行）
                     member.Balance += ods.AmountTotal;
+                    
+                    // 🔥 减掉会员统计（参考 F5BotV2 第2302-2304行：OrderCancel 方法）
+                    // 注意：托单不计算在内，但这里已经通过订单类型判断了
+                    if (ods.OrderType != OrderType.托)
+                    {
+                        member.BetCur -= ods.AmountTotal;
+                        member.BetToday -= ods.AmountTotal;
+                        member.BetTotal -= ods.AmountTotal;
+                        member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
+                        
+                        _logService.Info("BinggoLotteryService", 
+                            $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
+                    }
                     
                     _logService.Info("BinggoLotteryService", 
                         $"✅ 取消订单: {member.Nickname} - 期号:{_currentIssueId} - 订单ID:{ods.Id}");
+                    
+                    // 🔥 更新全局统计（参考 F5BotV2 第680-709行：OnMemberOrderCancel）
+                    if (_statisticsService != null && ods.OrderType != OrderType.托)
+                    {
+                        _statisticsService.OnOrderCanceled(ods);
+                    }
                     
                     // 🔥 回复格式 - 参考 F5BotV2 第2221行：@{m.nickname} {BetContentOriginal}\r已取消!\r+{AmountTotal}|留:{(int)Balance}
                     string cancelReply = $"@{member.Nickname} {ods.BetContentOriginal}\r已取消!\r+{ods.AmountTotal}|留:{(int)member.Balance}";

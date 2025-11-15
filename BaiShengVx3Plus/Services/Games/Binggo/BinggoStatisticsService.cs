@@ -238,6 +238,125 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         }
         
         /// <summary>
+        /// 🔥 订单创建时立即增加统计（参考 F5BotV2 第 538-573 行：OnMemberOrderCreate）
+        /// 实时增减，而不是重新计算
+        /// </summary>
+        public void OnOrderCreated(V2MemberOrder order)
+        {
+            try
+            {
+                // 🔥 跳过托单和已取消订单（参考 F5BotV2 第 548 行）
+                if (order.OrderType == OrderType.托 || order.OrderStatus == OrderStatus.已取消)
+                    return;
+                
+                DateTime orderDate = order.CreatedAt.Date;
+                DateTime today = DateTime.Now.Date;
+                int amount = (int)order.AmountTotal;
+                
+                // 🔥 总下注（总是增加）
+                BetMoneyTotal += amount;
+                
+                // 🔥 今日下注（如果是今天的订单）
+                if (orderDate == today)
+                {
+                    BetMoneyToday += amount;
+                }
+                
+                // 🔥 当期下注（如果是当前期号）
+                if (order.IssueId == IssueidCur)
+                {
+                    BetMoneyCur += amount;
+                }
+                
+                _logService.Debug("BinggoStatistics", 
+                    $"📊 统计增加: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoStatistics", $"OnOrderCreated 失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 订单取消时立即减掉统计（参考 F5BotV2 第 680-709 行：OnMemberOrderCancel）
+        /// 实时增减，而不是重新计算
+        /// </summary>
+        public void OnOrderCanceled(V2MemberOrder order)
+        {
+            try
+            {
+                // 🔥 跳过托单（参考 F5BotV2 第 688 行）
+                if (order.OrderType == OrderType.托)
+                    return;
+                
+                DateTime orderDate = order.CreatedAt.Date;
+                DateTime today = DateTime.Now.Date;
+                int amount = (int)order.AmountTotal;
+                
+                // 🔥 总下注（总是减掉）
+                BetMoneyTotal -= amount;
+                
+                // 🔥 今日下注（如果是今天的订单）
+                if (orderDate == today)
+                {
+                    BetMoneyToday -= amount;
+                }
+                
+                // 🔥 当期下注（如果是当前期号）
+                if (order.IssueId == IssueidCur)
+                {
+                    BetMoneyCur -= amount;
+                }
+                
+                _logService.Debug("BinggoStatistics", 
+                    $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoStatistics", $"OnOrderCanceled 失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 订单结算时更新盈利统计（参考 F5BotV2 第 626-635 行：OnMemberOrderFinish）
+        /// 只更新盈利，不更新投注金额（投注金额在下单时已更新）
+        /// </summary>
+        public void OnOrderSettled(V2MemberOrder order)
+        {
+            try
+            {
+                // 🔥 跳过托单（参考 F5BotV2 第 626 行）
+                if (order.OrderType == OrderType.托)
+                    return;
+                
+                // 🔥 只更新已结算的订单（参考 F5BotV2 第 599 行）
+                if (order.OrderStatus != OrderStatus.已完成)
+                    return;
+                
+                DateTime orderDate = order.CreatedAt.Date;
+                DateTime today = DateTime.Now.Date;
+                float netProfit = order.NetProfit;  // 纯利
+                
+                // 🔥 总盈亏和今日盈亏（参考 F5BotV2 第 630-631 行）
+                // 注意：F5BotV2 使用 -= order.NetProfit，但我们的系统 NetProfit 已经是纯利（正数=盈利，负数=亏损）
+                // 所以直接 += 即可
+                IncomeTotal += netProfit;
+                
+                if (orderDate == today)
+                {
+                    IncomeToday += netProfit;
+                }
+                
+                _logService.Debug("BinggoStatistics", 
+                    $"📊 盈利统计更新: 订单 {order.Id} - 纯利 {netProfit:F2} - 总盈 {IncomeTotal:F2} 今盈 {IncomeToday:F2}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoStatistics", $"OnOrderSettled 失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
         /// 设置当前期号
         /// </summary>
         public void SetCurrentIssueId(int issueId)
@@ -245,7 +364,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             if (IssueidCur != issueId)
             {
                 IssueidCur = issueId;
-                // 期号变更后重新计算本期下注
+                // 期号变更后重新计算本期下注（因为期号变了，需要重新计算）
                 UpdateStatistics();
             }
         }

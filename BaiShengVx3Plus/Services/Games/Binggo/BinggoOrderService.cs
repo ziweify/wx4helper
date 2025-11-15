@@ -171,6 +171,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 5. 增加待结算金额和统计（参考 F5BotV2 第 546 行）
+                // 注意：托单不计算在内（已在前面判断）
                 member.BetWait += (float)betContent.TotalAmount;
                 member.BetToday += (float)betContent.TotalAmount;
                 member.BetTotal += (float)betContent.TotalAmount;
@@ -192,8 +193,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
                 
-                // 🔥 7. 更新统计（参考 F5BotV2 第 569 行）
-                _statisticsService?.UpdateStatistics();
+                // 🔥 7. 更新全局统计（实时增减，参考 F5BotV2 第 538-573 行：OnMemberOrderCreate）
+                // 注意：托单不计算在内（已在前面判断）
+                if (_statisticsService != null && order.OrderType != OrderType.托)
+                {
+                    _statisticsService.OnOrderCreated(order);
+                }
                 
                 // 8. 生成回复消息（🔥 完全参考 F5BotV2 格式）
                 // 格式：@昵称\r已进仓{注数}\r{投注内容}|扣:{金额}|留:{余额}
@@ -434,6 +439,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     
                     _logService.Info("BinggoOrderService", 
                         $"✅ 会员更新: {member.Nickname} - 余额 {member.Balance:F2} - 今日盈亏 {member.IncomeToday:F2} - 待结算 {member.BetWait:F2}");
+                    
+                    // 🔥 更新全局盈利统计（参考 F5BotV2 第 626-635 行：OnMemberOrderFinish）
+                    // 注意：只更新盈利，不更新投注金额（投注金额在下单时已更新）
+                    if (_statisticsService != null)
+                    {
+                        _statisticsService.OnOrderSettled(order);
+                    }
                 }
                 
                 await Task.CompletedTask;

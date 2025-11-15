@@ -391,7 +391,8 @@ namespace BaiShengVx3Plus
                         _socketClient,
                         _ordersBindingList,
                         _membersBindingList,
-                        _creditWithdrawsBindingList  // 🔥 传递上下分 BindingList
+                        _creditWithdrawsBindingList,  // 🔥 传递上下分 BindingList
+                        _statisticsService  // 🔥 添加统计服务参数（最后一个，可选）
                     );
                     
                     // 🔥 设置数据库连接（用于上下分申请）- 仅在微信专属数据库可用时设置
