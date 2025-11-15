@@ -102,22 +102,33 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 停止自动投注
+        /// 停止自动投注（只设置状态，不关闭浏览器）
+        /// 
+        /// 🔥 设计原则：
+        /// - 飞单开关只是状态标识，表示是否准备好进行飞单
+        /// - 关闭飞单：只停止处理订单，浏览器保持运行
+        /// - 浏览器只在用户明确要求停止时才关闭（如配置管理器中的"停止浏览器"按钮）
         /// </summary>
         public void Stop()
         {
-            _log.Info("AutoBet", "⏹️ 停止自动投注");
+            _log.Info("AutoBet", "⏹️ 停止自动投注（只设置状态，不关闭浏览器）");
             
             _isAutoBetEnabled = false;
             
-            // 取消订阅
+            // 取消订阅事件（不再处理封盘投注）
             _lotteryService.IssueChanged -= LotteryService_IssueChanged;
             _lotteryService.StatusChanged -= LotteryService_StatusChanged;
             
-            // 停止浏览器
+            // 🔥 只设置配置状态为禁用，不关闭浏览器
             if (_currentConfigId > 0)
             {
-                _autoBetService.StopBrowser(_currentConfigId);
+                var config = _autoBetService.GetConfig(_currentConfigId);
+                if (config != null)
+                {
+                    config.IsEnabled = false;  // 设置状态，监控任务会看到
+                    _autoBetService.SaveConfig(config);
+                    _log.Info("AutoBet", $"✅ 配置 [{config.ConfigName}] 已设置为禁用状态（浏览器保持运行）");
+                }
                 _currentConfigId = -1;
             }
         }

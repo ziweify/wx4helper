@@ -22,6 +22,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private readonly ILogService _log;
         private readonly Action<string, int, int> _onBrowserConnected;  // 🔥 改为 (string configName, int configId, int processId)
         private readonly Action<int, JObject>? _onMessageReceived; // 🔥 新增消息处理回调
+        private readonly Action<int>? _onBrowserDisconnected; // 🔥 新增连接断开回调
         
         private TcpListener? _listener;
         private CancellationTokenSource? _cts;
@@ -33,11 +34,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public AutoBetSocketServer(
             ILogService log, 
             Action<string, int, int> onBrowserConnected,  // 🔥 改为 (string configName, int configId, int processId)
-            Action<int, JObject>? onMessageReceived = null) // 🔥 新增参数
+            Action<int, JObject>? onMessageReceived = null, // 🔥 新增参数
+            Action<int>? onBrowserDisconnected = null) // 🔥 新增连接断开回调
         {
             _log = log;
             _onBrowserConnected = onBrowserConnected;
             _onMessageReceived = onMessageReceived; // 🔥 保存回调
+            _onBrowserDisconnected = onBrowserDisconnected; // 🔥 保存连接断开回调
         }
         
         /// <summary>
@@ -262,6 +265,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         }
                     }
                     _log.Info("AutoBetServer", $"❌ 配置 {configId} 连接已关闭");
+                    
+                    // 🔥 通知连接断开（事件驱动）
+                    _onBrowserDisconnected?.Invoke(configId);
                 }
                 
                 reader?.Dispose();

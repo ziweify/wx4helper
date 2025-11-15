@@ -105,18 +105,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public void AttachConnection(AutoBetSocketServer.ClientConnection? connection)
         {
-            Console.WriteLine($"[BrowserClient] AttachConnection 调用:");
-            Console.WriteLine($"  - ConfigId: {_configId}");
-            Console.WriteLine($"  - 传入的 connection == null: {connection == null}");
-            Console.WriteLine($"  - 传入的 connection.IsConnected: {connection?.IsConnected}");
-            
             // 🔥 直接使用 ClientConnection，不再创建新的 reader/writer
             _connection = connection;
             
-            Console.WriteLine($"[BrowserClient] AttachConnection 完成:");
-            Console.WriteLine($"  - _connection == null: {_connection == null}");
-            Console.WriteLine($"  - _connection.IsConnected: {_connection?.IsConnected}");
-            Console.WriteLine($"  - IsConnected: {IsConnected}");
+            // 🔥 连接已附加，IsConnected 属性会自动反映真实状态
         }
         
         /// <summary>

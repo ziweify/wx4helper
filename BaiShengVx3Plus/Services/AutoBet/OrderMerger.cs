@@ -227,6 +227,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         /// <summary>
         /// 获取玩法名称
+        /// 🔥 注意：只包含实际使用的玩法，移除不存在的"豹子"和"顺子"
         /// </summary>
         private string GetPlayName(BetPlayEnum play)
         {
@@ -242,8 +243,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 BetPlayEnum.合双 => "合双",
                 BetPlayEnum.龙 => "龙",
                 BetPlayEnum.虎 => "虎",
-                BetPlayEnum.豹子 => "豹子",
-                BetPlayEnum.顺子 => "顺子",
                 BetPlayEnum.寿 => "寿",
                 BetPlayEnum.喜 => "喜",
                 _ => ""
