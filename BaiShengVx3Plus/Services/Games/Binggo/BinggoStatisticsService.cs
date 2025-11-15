@@ -285,6 +285,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 _logService.Debug("BinggoStatistics", 
                     $"📊 统计增加: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
+                
+                // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
+                OnPropertyChanged(nameof(PanDescribe));
             }
             catch (Exception ex)
             {
@@ -342,6 +345,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 _logService.Info("BinggoStatistics", 
                     $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd} 时间戳 {order.TimeStampBet}");
+                
+                // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示（重要！）
+                OnPropertyChanged(nameof(PanDescribe));
             }
             catch (Exception ex)
             {
@@ -394,6 +400,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 _logService.Debug("BinggoStatistics", 
                     $"📊 盈利统计更新: 订单 {order.Id} - 纯利 {netProfit:F2} - 总盈 {IncomeTotal:F2} 今盈 {IncomeToday:F2}");
+                
+                // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
+                OnPropertyChanged(nameof(PanDescribe));
             }
             catch (Exception ex)
             {
