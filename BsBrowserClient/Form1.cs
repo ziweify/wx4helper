@@ -644,6 +644,27 @@ public partial class Form1 : Form
                         var postEndTime = DateTime.Now;
                         var durationMs = (int)(postEndTime - postStartTime).TotalMilliseconds;
                         
+                        // 🔥 解析 platformResponse（避免双重序列化导致转义）
+                        object? platformResponseObj = null;
+                        try
+                        {
+                            // 如果以#开头，说明是客户端错误（字符串）
+                            if (!string.IsNullOrEmpty(platformResponse) && platformResponse.StartsWith("#"))
+                            {
+                                platformResponseObj = platformResponse;  // 保持字符串
+                            }
+                            // 否则尝试解析为JSON对象
+                            else if (!string.IsNullOrEmpty(platformResponse))
+                            {
+                                platformResponseObj = Newtonsoft.Json.Linq.JToken.Parse(platformResponse);  // 解析为对象
+                            }
+                        }
+                        catch
+                        {
+                            // 解析失败，保持原字符串
+                            platformResponseObj = platformResponse;
+                        }
+                        
                         response.Success = success;
                         response.Message = success ? "投注成功" : "投注失败";
                         response.Data = new
@@ -652,7 +673,7 @@ public partial class Form1 : Form
                             postEndTime = postEndTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                             durationMs = durationMs,
                             orderNo = orderId,
-                            platformResponse = platformResponse  // 🔥 包含平台完整响应
+                            platformResponse = platformResponseObj  // 🔥 直接放入对象，而不是字符串
                         };
                         
                         OnLogMessage($"✅ 投注完成:成功={success} 耗时={durationMs}ms 订单号={orderId}", LogType.Bet);

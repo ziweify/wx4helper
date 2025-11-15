@@ -274,7 +274,8 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 if (!string.IsNullOrEmpty(record.Result))
                 {
                     sb.AppendLine("【📥 平台返回结果】");
-                    sb.AppendLine(record.Result);
+                    // 🔥 智能格式化JSON显示
+                    sb.AppendLine(FormatJsonForDisplay(record.Result));
                     sb.AppendLine();
                 }
                 
@@ -297,6 +298,42 @@ namespace BaiShengVx3Plus.Views.AutoBet
             if (success == null) return "⏳ 等待中";
             if (success == true) return "✅ 成功";
             return "❌ 失败";
+        }
+        
+        /// <summary>
+        /// 格式化JSON用于显示（自动解析转义的JSON字符串）
+        /// </summary>
+        private string FormatJsonForDisplay(string jsonString)
+        {
+            try
+            {
+                // 🔥 尝试解析为JSON对象
+                var jsonObj = Newtonsoft.Json.Linq.JToken.Parse(jsonString);
+                
+                // 🔥 如果是对象，格式化显示（缩进2个空格）
+                return jsonObj.ToString(Newtonsoft.Json.Formatting.Indented);
+            }
+            catch
+            {
+                // 🔥 如果解析失败，可能是转义过的JSON字符串
+                try
+                {
+                    // 尝试反序列化为字符串（去掉外层转义）
+                    var unescaped = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(jsonString);
+                    if (!string.IsNullOrEmpty(unescaped) && unescaped != jsonString)
+                    {
+                        // 递归尝试格式化反转义后的字符串
+                        return FormatJsonForDisplay(unescaped);
+                    }
+                }
+                catch
+                {
+                    // 忽略错误
+                }
+                
+                // 🔥 如果都失败了，返回原始字符串
+                return jsonString;
+            }
         }
 
         /// <summary>
