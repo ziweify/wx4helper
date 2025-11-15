@@ -1241,7 +1241,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 🔥 更新全局统计（参考 F5BotV2 第680-709行：OnMemberOrderCancel）
                     if (_statisticsService != null && ods.OrderType != OrderType.托)
                     {
+                        _logService.Info("BinggoLotteryService", 
+                            $"📊 调用统计服务减掉订单: 订单ID={ods.Id} 金额={ods.AmountTotal} 期号={ods.IssueId}");
                         _statisticsService.OnOrderCanceled(ods);
+                        _logService.Info("BinggoLotteryService", 
+                            $"✅ 统计服务已调用: 总注={_statisticsService.BetMoneyTotal} 今投={_statisticsService.BetMoneyToday} 当前={_statisticsService.BetMoneyCur}");
+                    }
+                    else
+                    {
+                        _logService.Warning("BinggoLotteryService", 
+                            $"⚠️ 未调用统计服务: _statisticsService={(_statisticsService != null ? "已设置" : "null")} 订单类型={ods.OrderType}");
                     }
                     
                     // 🔥 回复格式 - 参考 F5BotV2 第2221行：@{m.nickname} {BetContentOriginal}\r已取消!\r+{AmountTotal}|留:{(int)Balance}

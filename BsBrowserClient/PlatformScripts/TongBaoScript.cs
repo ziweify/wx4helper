@@ -1,4 +1,4 @@
-using BsBrowserClient.Models;
+using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
@@ -266,7 +266,7 @@ namespace BsBrowserClient.PlatformScripts
                 foreach (var order in orders)
                 {
                     // 🔥 直接从 CarNumEnum 映射到平台显示名称
-                    var carName = order.car switch
+                    var carName = order.Car switch
                     {
                         CarNumEnum.P1 => "平一",
                         CarNumEnum.P2 => "平二",
@@ -278,7 +278,7 @@ namespace BsBrowserClient.PlatformScripts
                     };
                     
                     // 🔥 直接从 BetPlayEnum 映射到玩法名称
-                    var playType = order.play switch
+                    var playType = order.Play switch
                     {
                         BetPlayEnum.大 => "大",
                         BetPlayEnum.小 => "小",
@@ -289,7 +289,7 @@ namespace BsBrowserClient.PlatformScripts
                         _ => "大"
                     };
                     
-                    var money = order.moneySum;
+                    var money = order.MoneySum;
                     
                     // 🔥 从赔率映射表中获取ID
                     var oddsKey = $"{carName}{playType}";  // 如："平一大"

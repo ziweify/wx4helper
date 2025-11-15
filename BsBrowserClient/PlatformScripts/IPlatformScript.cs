@@ -1,4 +1,4 @@
-using BsBrowserClient.Models;
+using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using System.Threading.Tasks;
 

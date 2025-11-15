@@ -52,6 +52,7 @@ namespace BaiShengVx3Plus
                     .ConfigureServices((context, services) =>
                     {
                         // 核心服务
+                        services.AddSingleton<Services.Database.DatabaseInitializer>();  // 🔥 数据库初始化器（必须在 LogService 之前）
                         services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
                         services.AddSingleton<IConfigurationService, Services.Configuration.ConfigurationService>(); // 配置服务
                         

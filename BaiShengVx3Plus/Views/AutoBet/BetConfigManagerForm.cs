@@ -758,7 +758,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         
                         // 2. 解析投注内容
                         var originalContent = cmdParam; // "1234大10"
-                        var standardContent = ParseBetContent(originalContent); // "1大10,2大10,3大10,4大10"
+                        var standardContent = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContent(originalContent); // "1大10,2大10,3大10,4大10"
                         var totalAmount = CalculateTotalAmount(standardContent);
                         
                         _logService.Info("CommandPanel", $"投注解析:原始={originalContent} 标准={standardContent} 金额={totalAmount}");
@@ -836,19 +836,35 @@ namespace BaiShengVx3Plus.Views.AutoBet
                             LoadConfigRecords(_selectedConfig.Id);
                         }
                         
+                        // 🔥 安全地构建返回数据（避免 JToken 序列化错误）
+                        var responseData = new Dictionary<string, object?>
+                        {
+                            ["betRecordId"] = betRecord.Id,
+                            ["issueId"] = currentIssueId,
+                            ["originalContent"] = originalContent,
+                            ["standardContent"] = standardContent,
+                            ["totalAmount"] = totalAmount,
+                            ["betResult"] = new Dictionary<string, object?>
+                            {
+                                ["Success"] = betResult.Success,
+                                ["OrderId"] = betResult.OrderId,
+                                ["Result"] = betResult.Result,
+                                ["ErrorMessage"] = betResult.ErrorMessage,
+                                ["PostStartTime"] = betResult.PostStartTime?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                                ["PostEndTime"] = betResult.PostEndTime?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                                ["DurationMs"] = betResult.DurationMs,
+                                ["OrderNo"] = betResult.OrderNo,
+                                ["Data"] = betResult.Data is Newtonsoft.Json.Linq.JToken jToken 
+                                    ? jToken.ToString()  // 将 JToken 转换为字符串，避免序列化错误
+                                    : betResult.Data
+                            }
+                        };
+                        
                         return new CommandResponse
                         {
                             Success = betResult.Success,
                             Message = betResult.ErrorMessage ?? (betResult.Success ? "投注成功" : "投注失败"),
-                            Data = new 
-                            {
-                                betRecordId = betRecord.Id,
-                                issueId = currentIssueId,
-                                originalContent = originalContent,
-                                standardContent = standardContent,
-                                totalAmount = totalAmount,
-                                betResult
-                            },
+                            Data = responseData,
                             ErrorMessage = betResult.ErrorMessage
                         };
                         
@@ -873,56 +889,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                     Message = "发送失败",
                     ErrorMessage = ex.Message
                 };
-            }
-        }
-        
-        /// <summary>
-        /// 解析投注内容："1234大10" → "1大10,2大10,3大10,4大10"
-        /// </summary>
-        private string ParseBetContent(string input)
-        {
-            try
-            {
-                var items = new List<string>();
-                
-                // 按空格或逗号分割
-                var parts = input.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries);
-                
-                foreach (var part in parts)
-                {
-                    var trimmed = part.Trim();
-                    
-                    // 检查是否包含连续数字（如："1234大20"）
-                    var match = System.Text.RegularExpressions.Regex.Match(
-                        trimmed, 
-                        @"^(\d+)(大|小|单|双)(\d+)$"
-                    );
-                    
-                    if (match.Success)
-                    {
-                        var numbers = match.Groups[1].Value;  // "1234"
-                        var type = match.Groups[2].Value;      // "大"
-                        var amount = match.Groups[3].Value;    // "10"
-                        
-                        // 拆分为单个投注
-                        foreach (var num in numbers)
-                        {
-                            items.Add($"{num}{type}{amount}");
-                        }
-                    }
-                    else
-                    {
-                        // 已经是标准格式或无法解析，直接添加
-                        items.Add(trimmed);
-                    }
-                }
-                
-                return string.Join(",", items);
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("CommandPanel", "解析投注内容失败", ex);
-                return input; // 解析失败返回原内容
             }
         }
         

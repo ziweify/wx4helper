@@ -1,4 +1,4 @@
-using BsBrowserClient.Models;
+using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;

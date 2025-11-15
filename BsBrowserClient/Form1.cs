@@ -4,7 +4,8 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using BsBrowserClient.Models;
+using CommandRequest = BsBrowserClient.Models.CommandRequest;  // 🔥 使用别名避免类型冲突
+using CommandResponse = BsBrowserClient.Models.CommandResponse;  // 🔥 命令响应
 using BsBrowserClient.Services;
 using BsBrowserClient.PlatformScripts;
 using Microsoft.Web.WebView2.WinForms;
@@ -12,6 +13,7 @@ using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using BaiShengVx3Plus.Shared.Platform;
+using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
 
 namespace BsBrowserClient;
 
@@ -600,15 +602,26 @@ public partial class Form1 : Form
                     
                 case "投注":
                     // 新的投注流程：接收标准化订单列表，执行投注，返回详细结果
-                    var betData = command.Data as JObject;
+                    BaiShengVx3Plus.Shared.Models.BetStandardOrderList? betOrders = null;
                     
-                    // 🔥 接收 BetStandardOrderList
-                    var betOrders = betData?.ToObject<BetStandardOrderList>();
+                    // 🔥 BetStandardOrderList 序列化后可能是数组（JArray）或对象（JObject）
+                    if (command.Data is Newtonsoft.Json.Linq.JArray jArray)
+                    {
+                        // 如果是数组，直接反序列化
+                        betOrders = jArray.ToObject<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
+                    }
+                    else if (command.Data is JObject betData)
+                    {
+                        // 如果是对象，尝试反序列化
+                        betOrders = betData.ToObject<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
+                    }
                     
                     if (betOrders == null || betOrders.Count == 0)
                     {
                         response.Message = "投注内容为空";
+                        response.ErrorMessage = "投注内容解析失败：无法将数据转换为 BetStandardOrderList";
                         OnLogMessage($"❌ 投注内容为空", LogType.Bet);
+                        OnLogMessage($"   数据类型: {command.Data?.GetType().Name ?? "null"}", LogType.Bet);
                         break;
                     }
                     
@@ -1153,9 +1166,9 @@ public partial class Form1 : Form
             OnLogMessage($"✅ 当前余额: ¥{balance}");
             
             // 测试投注"1大10"
-            var testOrders = new BetStandardOrderList
+            var testOrders = new BaiShengVx3Plus.Shared.Models.BetStandardOrderList
             {
-                new BetStandardOrder(0, CarNumEnum.P1, BetPlayEnum.大, 10)
+                new BaiShengVx3Plus.Shared.Models.BetStandardOrder(0, BaiShengVx3Plus.Shared.Models.CarNumEnum.P1, BaiShengVx3Plus.Shared.Models.BetPlayEnum.大, 10)
             };
             
             OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");

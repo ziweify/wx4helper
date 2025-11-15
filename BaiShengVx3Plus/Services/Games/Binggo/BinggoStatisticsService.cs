@@ -249,27 +249,41 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (order.OrderType == OrderType.托 || order.OrderStatus == OrderStatus.已取消)
                     return;
                 
-                DateTime orderDate = order.CreatedAt.Date;
+                // 🔥 使用 TimeStampBet 获取订单日期（参考 F5BotV2 第 550 行：LxTimestampHelper.GetDateTime(order.TimeStampBet)）
+                // 注意：TimeStampBet 是下注时间戳，CreatedAt 是数据库记录创建时间，两者可能不同
+                DateTime orderDate;
+                try
+                {
+                    orderDate = LxLib.LxSys.LxTimestampHelper.GetDateTime(order.TimeStampBet).Date;
+                }
+                catch
+                {
+                    // 如果时间戳转换失败，使用 CreatedAt 作为后备
+                    orderDate = order.CreatedAt.Date;
+                    _logService.Warning("BinggoStatistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
+                }
+                
                 DateTime today = DateTime.Now.Date;
                 int amount = (int)order.AmountTotal;
                 
-                // 🔥 总下注（总是增加）
+                // 🔥 总下注（总是增加，参考 F5BotV2 第 555、565 行）
                 BetMoneyTotal += amount;
                 
-                // 🔥 今日下注（如果是今天的订单）
+                // 🔥 今日下注（如果是今天的订单，参考 F5BotV2 第 552-555 行）
                 if (orderDate == today)
                 {
                     BetMoneyToday += amount;
+                    
+                    // 🔥 当期下注（如果是当前期号，参考 F5BotV2 第 557-560 行）
+                    if (order.IssueId == IssueidCur)
+                    {
+                        BetMoneyCur += amount;
+                    }
                 }
-                
-                // 🔥 当期下注（如果是当前期号）
-                if (order.IssueId == IssueidCur)
-                {
-                    BetMoneyCur += amount;
-                }
+                // 🔥 如果不是今天的订单，只增加总注，不增加今日和当前（参考 F5BotV2 第 563-565 行）
                 
                 _logService.Debug("BinggoStatistics", 
-                    $"📊 统计增加: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur}");
+                    $"📊 统计增加: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
             }
             catch (Exception ex)
             {
@@ -287,29 +301,46 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 // 🔥 跳过托单（参考 F5BotV2 第 688 行）
                 if (order.OrderType == OrderType.托)
+                {
+                    _logService.Debug("BinggoStatistics", $"跳过托单取消统计: 订单 {order.Id}");
                     return;
+                }
                 
-                DateTime orderDate = order.CreatedAt.Date;
+                // 🔥 使用 TimeStampBet 获取订单日期（参考 F5BotV2 第 690 行：LxTimestampHelper.GetDateTime(order.TimeStampBet)）
+                // 注意：TimeStampBet 是下注时间戳，CreatedAt 是数据库记录创建时间，两者可能不同
+                DateTime orderDate;
+                try
+                {
+                    orderDate = LxLib.LxSys.LxTimestampHelper.GetDateTime(order.TimeStampBet).Date;
+                }
+                catch
+                {
+                    // 如果时间戳转换失败，使用 CreatedAt 作为后备
+                    orderDate = order.CreatedAt.Date;
+                    _logService.Warning("BinggoStatistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
+                }
+                
                 DateTime today = DateTime.Now.Date;
                 int amount = (int)order.AmountTotal;
                 
-                // 🔥 总下注（总是减掉）
+                // 🔥 总下注（总是减掉，参考 F5BotV2 第 694、703 行）
                 BetMoneyTotal -= amount;
                 
-                // 🔥 今日下注（如果是今天的订单）
+                // 🔥 今日下注（如果是今天的订单，参考 F5BotV2 第 692-695 行）
                 if (orderDate == today)
                 {
                     BetMoneyToday -= amount;
+                    
+                    // 🔥 当期下注（如果是当前期号，参考 F5BotV2 第 696-699 行）
+                    if (order.IssueId == IssueidCur)
+                    {
+                        BetMoneyCur -= amount;
+                    }
                 }
+                // 🔥 如果不是今天的订单，只减掉总注，不减今日和当前（参考 F5BotV2 第 701-704 行）
                 
-                // 🔥 当期下注（如果是当前期号）
-                if (order.IssueId == IssueidCur)
-                {
-                    BetMoneyCur -= amount;
-                }
-                
-                _logService.Debug("BinggoStatistics", 
-                    $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur}");
+                _logService.Info("BinggoStatistics", 
+                    $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd} 时间戳 {order.TimeStampBet}");
             }
             catch (Exception ex)
             {
@@ -333,7 +364,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (order.OrderStatus != OrderStatus.已完成)
                     return;
                 
-                DateTime orderDate = order.CreatedAt.Date;
+                // 🔥 使用 TimeStampBet 获取订单日期（参考 F5BotV2 第 550 行：LxTimestampHelper.GetDateTime(order.TimeStampBet)）
+                // 注意：TimeStampBet 是下注时间戳，CreatedAt 是数据库记录创建时间，两者可能不同
+                DateTime orderDate;
+                try
+                {
+                    orderDate = LxLib.LxSys.LxTimestampHelper.GetDateTime(order.TimeStampBet).Date;
+                }
+                catch
+                {
+                    // 如果时间戳转换失败，使用 CreatedAt 作为后备
+                    orderDate = order.CreatedAt.Date;
+                    _logService.Warning("BinggoStatistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
+                }
+                
                 DateTime today = DateTime.Now.Date;
                 float netProfit = order.NetProfit;  // 纯利
                 

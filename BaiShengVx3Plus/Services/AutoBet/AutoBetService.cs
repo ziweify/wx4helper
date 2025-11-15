@@ -5,7 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Contracts.Games;
-using BaiShengVx3Plus.Models.AutoBet;
+using BaiShengVx3Plus.Models.AutoBet;  // 🔥 BetConfig, BetResult
+using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
 using SQLite;
 
 namespace BaiShengVx3Plus.Services.AutoBet
@@ -29,7 +30,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         private AutoBetHttpServer? _httpServer;
         
         // 待投注订单队列（配置ID → 订单队列）
-        private readonly Dictionary<int, Queue<BetStandardOrderList>> _orderQueues = new();
+        private readonly Dictionary<int, Queue<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>> _orderQueues = new();
         
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
@@ -727,31 +728,62 @@ namespace BaiShengVx3Plus.Services.AutoBet
             
             try
             {
-                var data = new
-                {
-                    issueId = issueId,
-                    betContent = betContentStandard
-                };
+                // 🔥 将字符串格式的 betContentStandard 解析为 BetStandardOrderList
+                // 格式："1大10,2大10,3大10,4大10"
+                var betOrders = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
                 
-                var result = await browserClient.SendCommandAsync("投注", data);
+                if (betOrders == null || betOrders.Count == 0)
+                {
+                    _log.Warning("AutoBet", $"❌ 解析投注内容失败或为空: {betContentStandard}");
+                    return new BetResult
+                    {
+                        Success = false,
+                        ErrorMessage = "投注内容解析失败"
+                    };
+                }
+                
+                // 🔥 发送 BetStandardOrderList 对象（浏览器端期望的格式）
+                var result = await browserClient.SendCommandAsync("投注", betOrders);
                 
                 _log.Info("AutoBet", $"📥 投注结果:配置{configId} 成功={result.Success}");
                 
-                return new BetResult
+                // 🔥 安全解析 result.Data（避免 JValue 错误）
+                var betResult = new BetResult
                 {
                     Success = result.Success,
-                    Result = result.Data?.ToString(),
-                    ErrorMessage = result.ErrorMessage,
-                    // 其他字段从 result.Data 解析
-                    PostStartTime = result.Data != null && ((dynamic)result.Data).postStartTime != null ? 
-                        DateTime.Parse(((dynamic)result.Data).postStartTime.ToString()) : null,
-                    PostEndTime = result.Data != null && ((dynamic)result.Data).postEndTime != null ? 
-                        DateTime.Parse(((dynamic)result.Data).postEndTime.ToString()) : null,
-                    DurationMs = result.Data != null && ((dynamic)result.Data).durationMs != null ? 
-                        (int)((dynamic)result.Data).durationMs : null,
-                    OrderNo = result.Data != null && ((dynamic)result.Data).orderNo != null ? 
-                        ((dynamic)result.Data).orderNo.ToString() : null
+                    ErrorMessage = result.ErrorMessage
                 };
+                
+                // 🔥 如果 result.Data 是 JObject，安全地解析字段
+                if (result.Data != null && result.Data is Newtonsoft.Json.Linq.JObject dataObj)
+                {
+                    betResult.Result = dataObj.ToString();
+                    
+                    // 解析时间和耗时（使用 JObject 的安全访问方式）
+                    var postStartStr = dataObj["postStartTime"]?.ToString();
+                    var postEndStr = dataObj["postEndTime"]?.ToString();
+                    
+                    if (!string.IsNullOrEmpty(postStartStr) && DateTime.TryParse(postStartStr, out var postStart))
+                    {
+                        betResult.PostStartTime = postStart;
+                    }
+                    
+                    if (!string.IsNullOrEmpty(postEndStr) && DateTime.TryParse(postEndStr, out var postEnd))
+                    {
+                        betResult.PostEndTime = postEnd;
+                    }
+                    
+                    betResult.DurationMs = dataObj["durationMs"]?.ToObject<int?>();
+                    betResult.OrderNo = dataObj["orderNo"]?.ToString();
+                    betResult.OrderId = dataObj["orderId"]?.ToString();  // 兼容旧字段
+                }
+                else if (result.Data != null)
+                {
+                    // 如果不是 JObject，直接转换为字符串
+                    betResult.Result = result.Data.ToString();
+                }
+                
+                return betResult;
             }
             catch (Exception ex)
             {
@@ -767,13 +799,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 添加订单到队列（供 HTTP 接口查询）
         /// </summary>
-        public void QueueBetOrder(int configId, BetStandardOrderList orders)
+        public void QueueBetOrder(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
         {
             lock (_orderQueues)
             {
                 if (!_orderQueues.ContainsKey(configId))
                 {
-                    _orderQueues[configId] = new Queue<BetStandardOrderList>();
+                    _orderQueues[configId] = new Queue<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
                 }
                 
                 _orderQueues[configId].Enqueue(orders);
@@ -786,7 +818,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 获取待处理订单（HTTP API 调用）
         /// </summary>
-        public BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
+        public BaiShengVx3Plus.Shared.Models.BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
         {
             lock (_orderQueues)
             {
@@ -829,7 +861,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 从队列移除已处理的订单
-                BetStandardOrderList? orders = null;
+                BaiShengVx3Plus.Shared.Models.BetStandardOrderList? orders = null;
                 lock (_orderQueues)
                 {
                     if (_orderQueues.TryGetValue(configId, out var queue) && queue.Count > 0)
@@ -1062,7 +1094,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 投注
         /// </summary>
-        public async Task<BetResult> PlaceBet(int configId, BetStandardOrderList orders)
+        public async Task<BetResult> PlaceBet(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
         {
             var config = GetConfig(configId);
             if (config == null)

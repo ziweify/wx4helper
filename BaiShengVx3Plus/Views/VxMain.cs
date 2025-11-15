@@ -248,8 +248,17 @@ namespace BaiShengVx3Plus
                     _globalDb = new SQLiteConnection(globalDbPath);
                     _logService.Info("VxMain", $"✅ 全局数据库已打开: {globalDbPath}");
                     
-                    // 🔥 创建全局表
-                    InitializeGlobalTables(_globalDb);
+                    // 🔥 使用统一的数据库初始化器创建全局表
+                    var databaseInitializer = Program.ServiceProvider?.GetService<Services.Database.DatabaseInitializer>();
+                    if (databaseInitializer != null)
+                    {
+                        databaseInitializer.InitializeGlobalTables(_globalDb);
+                    }
+                    else
+                    {
+                        // 如果 DatabaseInitializer 不可用，使用旧方法（向后兼容）
+                        InitializeGlobalTables(_globalDb);
+                    }
                 }
                 
                 // ========================================
@@ -269,8 +278,17 @@ namespace BaiShengVx3Plus
                     _logService.Info("VxMain", $"初始化微信专属数据库: {wxDbPath}");
                     _db = new SQLiteConnection(wxDbPath);
                     
-                    // 🔥 创建微信专属表
-                    InitializeWxTables(_db);
+                    // 🔥 使用统一的数据库初始化器创建微信专属表
+                    var databaseInitializer = Program.ServiceProvider?.GetService<Services.Database.DatabaseInitializer>();
+                    if (databaseInitializer != null)
+                    {
+                        databaseInitializer.InitializeWxTables(_db);
+                    }
+                    else
+                    {
+                        // 如果 DatabaseInitializer 不可用，使用旧方法（向后兼容）
+                        InitializeWxTables(_db);
+                    }
                     
                     // 🔥 将数据库连接传递给群组绑定服务
                     if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)

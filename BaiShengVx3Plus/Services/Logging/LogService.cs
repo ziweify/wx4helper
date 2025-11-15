@@ -37,6 +37,8 @@ namespace BaiShengVx3Plus.Services.Logging
             Directory.CreateDirectory(dataDir);
             _dbPath = Path.Combine(dataDir, "logs.db");
 
+            // 🔥 LogService 自己初始化数据库（避免循环依赖）
+            // DatabaseInitializer 只用于其他数据库的初始化
             InitializeDatabase();
 
             _consumerThread = new Thread(ConsumeLogsAsync)
@@ -240,6 +242,38 @@ namespace BaiShengVx3Plus.Services.Logging
                 
                 Console.WriteLine($"初始化日志数据库: {_dbPath}");
                 
+                // 🔥 如果数据库文件存在但可能损坏，尝试修复或重建
+                if (File.Exists(_dbPath))
+                {
+                    try
+                    {
+                        // 尝试打开数据库，检查是否损坏
+                        using var testConnection = new SQLiteConnection(_dbPath);
+                        var testResult = testConnection.ExecuteScalar<int>("SELECT 1");
+                        Console.WriteLine("✅ 现有数据库文件可正常访问");
+                    }
+                    catch (Exception testEx)
+                    {
+                        Console.WriteLine($"⚠️ 数据库文件可能损坏，尝试重建: {testEx.Message}");
+                        try
+                        {
+                            // 备份旧文件（如果可能）
+                            var backupPath = _dbPath + ".backup." + DateTime.Now.ToString("yyyyMMddHHmmss");
+                            File.Copy(_dbPath, backupPath, overwrite: true);
+                            Console.WriteLine($"📦 已备份旧数据库到: {backupPath}");
+                        }
+                        catch
+                        {
+                            // 备份失败，继续删除
+                        }
+                        
+                        // 删除损坏的数据库文件
+                        File.Delete(_dbPath);
+                        Console.WriteLine("🗑️ 已删除损坏的数据库文件，将重新创建");
+                    }
+                }
+                
+                // 🔥 创建或打开数据库连接
                 using var connection = new SQLiteConnection(_dbPath);
                 
                 // 🔥 一次性创建所有表（确保表存在）
@@ -258,12 +292,31 @@ namespace BaiShengVx3Plus.Services.Logging
                 
                 Console.WriteLine($"✅ LogEntry 表验证成功");
             }
+            catch (SQLiteException sqlEx)
+            {
+                var errorMsg = $"❌ 初始化日志数据库失败（SQLite错误）:\n" +
+                              $"   错误: {sqlEx.Message}\n" +
+                              $"   数据库路径: {_dbPath}\n" +
+                              $"   错误代码: {sqlEx.Result}\n\n" +
+                              $"   建议：\n" +
+                              $"   1. 检查数据库文件是否被其他程序占用\n" +
+                              $"   2. 检查目录权限\n" +
+                              $"   3. 尝试手动删除数据库文件后重新启动程序";
+                Console.WriteLine(errorMsg);
+                throw new Exception(errorMsg, sqlEx);
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ 初始化日志数据库失败: {ex.Message}");
-                Console.WriteLine($"   数据库路径: {_dbPath}");
+                var errorMsg = $"❌ 初始化日志数据库失败:\n" +
+                              $"   错误: {ex.Message}\n" +
+                              $"   数据库路径: {_dbPath}\n\n" +
+                              $"   建议：\n" +
+                              $"   1. 检查目录权限\n" +
+                              $"   2. 检查磁盘空间\n" +
+                              $"   3. 尝试手动删除数据库文件后重新启动程序";
+                Console.WriteLine(errorMsg);
                 Console.WriteLine($"   堆栈: {ex.StackTrace}");
-                throw;  // 🔥 重新抛出异常，让调用者知道初始化失败
+                throw new Exception(errorMsg, ex);
             }
         }
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models;
-using BaiShengVx3Plus.Models.AutoBet;  // 🔥 使用统一的 BetItem
+using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
 
 namespace BaiShengVx3Plus.Services.AutoBet
 {
@@ -73,7 +73,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 orderIds.Add(order.Id);
                 
                 // 解析 BetContentStandar（已经是标准格式，如 "1大20"）
-                var items = ParseBetContent(order.BetContentStandar, order.AmountTotal);
+                var items = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContent(order.BetContentStandar, order.AmountTotal);
                 foreach (var item in items)
                 {
                     allItems.Add(item);
@@ -86,8 +86,22 @@ namespace BaiShengVx3Plus.Services.AutoBet
             // 合并相同号码和玩法的投注项（参考 F5BotV2 逻辑）
             var mergedItems = MergeBetItems(allItems);
             
-            // 生成标准投注内容（格式："P1大50,P2小30"）
-            var betContentStandard = string.Join(",", mergedItems.Select(item => $"{item.Car}{GetPlayName(item.Play)}{item.MoneySum}"));
+            // 🔥 生成标准投注内容（格式："1大50,2小30"）- 注意：不带P前缀
+            // 将 CarNumEnum.P1 转换为 "1"，而不是 "P1"
+            var betContentStandard = string.Join(",", mergedItems.Select(item => 
+            {
+                var carNumber = item.Car switch
+                {
+                    CarNumEnum.P1 => "1",
+                    CarNumEnum.P2 => "2",
+                    CarNumEnum.P3 => "3",
+                    CarNumEnum.P4 => "4",
+                    CarNumEnum.P5 => "5",
+                    CarNumEnum.P总 => "6",
+                    _ => "1"
+                };
+                return $"{carNumber}{GetPlayName(item.Play)}{item.MoneySum}";
+            }));
             var totalAmount = mergedItems.Sum(item => item.MoneySum);
             
             _log.Info("OrderMerger", 
@@ -101,98 +115,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 OrderIds = orderIds,
                 BetItems = mergedItems
             };
-        }
-        
-        /// <summary>
-        /// 解析投注内容为投注项列表
-        /// </summary>
-        private BetStandardOrderList ParseBetContent(string? betContentStandar, float amount)
-        {
-            var items = new BetStandardOrderList();
-            
-            if (string.IsNullOrEmpty(betContentStandar))
-            {
-                return items;
-            }
-            
-            // 🔥 BetContentStandar 格式：1大20,3大20,4大20（逗号分隔多个投注项）
-            // 每个投注项格式：号码 + 玩法 + 金额
-            
-            try
-            {
-                // 🔥 先按逗号分割
-                var parts = betContentStandar.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                
-                foreach (var part in parts)
-                {
-                    var content = part.Trim();
-                    if (string.IsNullOrEmpty(content)) continue;
-                    
-                    // 解析单个投注项："1大20"
-                    // 提取：号码、玩法、金额
-                    var number = "";
-                    var playType = "";
-                    var amountStr = "";
-                    
-                    foreach (var ch in content)
-                    {
-                        if (char.IsDigit(ch))
-                        {
-                            if (string.IsNullOrEmpty(playType))
-                            {
-                                // 还没有玩法，说明是号码
-                                number += ch;
-                            }
-                            else
-                            {
-                                // 已经有玩法了，说明是金额
-                                amountStr += ch;
-                            }
-                        }
-                        else if (char.IsLetter(ch) || ch >= 0x4E00 && ch <= 0x9FA5)  // 汉字范围
-                        {
-                            playType += ch;
-                        }
-                    }
-                    
-                    // 解析金额
-                    int itemAmount = string.IsNullOrEmpty(amountStr) ? 0 : int.Parse(amountStr);
-                    
-                    if (!string.IsNullOrEmpty(number) && !string.IsNullOrEmpty(playType) && itemAmount > 0)
-                    {
-                        // 将号码和玩法转换为枚举
-                        var carEnum = number switch
-                        {
-                            "1" => CarNumEnum.P1,
-                            "2" => CarNumEnum.P2,
-                            "3" => CarNumEnum.P3,
-                            "4" => CarNumEnum.P4,
-                            "5" => CarNumEnum.P5,
-                            "总" or "6" => CarNumEnum.P总,
-                            _ => CarNumEnum.P1
-                        };
-                        
-                        var playEnum = playType switch
-                        {
-                            "大" => BetPlayEnum.大,
-                            "小" => BetPlayEnum.小,
-                            "单" => BetPlayEnum.单,
-                            "双" => BetPlayEnum.双,
-                            "尾大" => BetPlayEnum.尾大,
-                            "尾小" => BetPlayEnum.尾小,
-                            _ => BetPlayEnum.大
-                        };
-                        
-                        items.Add(new BetStandardOrder(0, carEnum, playEnum, itemAmount));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.Error("OrderMerger", $"解析投注内容失败:{betContentStandar}", ex);
-            }
-            
-            return items;
         }
         
         /// <summary>
