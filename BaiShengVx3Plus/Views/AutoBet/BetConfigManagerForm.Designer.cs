@@ -28,15 +28,15 @@ namespace BaiShengVx3Plus.Views.AutoBet
         /// </summary>
         private void InitializeComponent()
         {
-            DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle11 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle13 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle14 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle15 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle16 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle17 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle18 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle4 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle5 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle9 = new DataGridViewCellStyle();
             splitContainer = new Sunny.UI.UISplitContainer();
             pnlLeft = new Sunny.UI.UIPanel();
             dgvConfigs = new Sunny.UI.UIDataGridView();
@@ -98,6 +98,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             btnStartBrowser = new Sunny.UI.UIButton();
             btnSave = new Sunny.UI.UIButton();
             lblStatus = new Sunny.UI.UILabel();
+            tbxRecordsDetailed = new Sunny.UI.UIRichTextBox();
             (splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -111,6 +112,8 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlBasicContent.SuspendLayout();
             tabAdvanced.SuspendLayout();
             pnlAdvancedContent.SuspendLayout();
+            pnlCommandPanel.SuspendLayout();
+            pnlQuickButtons.SuspendLayout();
             tabRecords.SuspendLayout();
             pnlRecordsContent.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvRecords).BeginInit();
@@ -158,29 +161,29 @@ namespace BaiShengVx3Plus.Views.AutoBet
             dgvConfigs.AllowUserToAddRows = false;
             dgvConfigs.AllowUserToDeleteRows = false;
             dgvConfigs.AllowUserToResizeRows = false;
-            dataGridViewCellStyle10.BackColor = Color.FromArgb(235, 243, 255);
-            dgvConfigs.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle10;
+            dataGridViewCellStyle1.BackColor = Color.FromArgb(235, 243, 255);
+            dgvConfigs.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             dgvConfigs.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvConfigs.BackgroundColor = Color.White;
             dgvConfigs.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
-            dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle11.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle11.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle11.ForeColor = Color.White;
-            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle11.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle11.WrapMode = DataGridViewTriState.True;
-            dgvConfigs.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle11;
+            dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle2.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle2.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle2.ForeColor = Color.White;
+            dataGridViewCellStyle2.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle2.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
+            dgvConfigs.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             dgvConfigs.ColumnHeadersHeight = 32;
             dgvConfigs.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            dataGridViewCellStyle12.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle12.BackColor = SystemColors.Window;
-            dataGridViewCellStyle12.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle12.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle12.SelectionBackColor = Color.FromArgb(155, 200, 255);
-            dataGridViewCellStyle12.SelectionForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle12.WrapMode = DataGridViewTriState.False;
-            dgvConfigs.DefaultCellStyle = dataGridViewCellStyle12;
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = SystemColors.Window;
+            dataGridViewCellStyle3.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle3.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(155, 200, 255);
+            dataGridViewCellStyle3.SelectionForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle3.WrapMode = DataGridViewTriState.False;
+            dgvConfigs.DefaultCellStyle = dataGridViewCellStyle3;
             dgvConfigs.Dock = DockStyle.Fill;
             dgvConfigs.EnableHeadersVisualStyles = false;
             dgvConfigs.Font = new Font("宋体", 12F);
@@ -189,19 +192,19 @@ namespace BaiShengVx3Plus.Views.AutoBet
             dgvConfigs.MultiSelect = false;
             dgvConfigs.Name = "dgvConfigs";
             dgvConfigs.ReadOnly = true;
-            dataGridViewCellStyle13.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle13.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle13.Font = new Font("宋体", 12F);
-            dataGridViewCellStyle13.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle13.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle13.SelectionForeColor = Color.White;
-            dataGridViewCellStyle13.WrapMode = DataGridViewTriState.True;
-            dgvConfigs.RowHeadersDefaultCellStyle = dataGridViewCellStyle13;
+            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle4.Font = new Font("宋体", 12F);
+            dataGridViewCellStyle4.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle4.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle4.SelectionForeColor = Color.White;
+            dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
+            dgvConfigs.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
             dgvConfigs.RowHeadersVisible = false;
             dgvConfigs.RowHeadersWidth = 51;
-            dataGridViewCellStyle14.BackColor = Color.White;
-            dataGridViewCellStyle14.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            dgvConfigs.RowsDefaultCellStyle = dataGridViewCellStyle14;
+            dataGridViewCellStyle5.BackColor = Color.White;
+            dataGridViewCellStyle5.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvConfigs.RowsDefaultCellStyle = dataGridViewCellStyle5;
             dgvConfigs.RowTemplate.Height = 29;
             dgvConfigs.SelectedIndex = -1;
             dgvConfigs.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -586,7 +589,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             tabAdvanced.Controls.Add(pnlAdvancedContent);
             tabAdvanced.Location = new Point(0, 40);
             tabAdvanced.Name = "tabAdvanced";
-            tabAdvanced.Size = new Size(994, 675);
+            tabAdvanced.Size = new Size(200, 60);
             tabAdvanced.TabIndex = 1;
             tabAdvanced.Text = "高级设置";
             // 
@@ -603,7 +606,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlAdvancedContent.Margin = new Padding(4, 5, 4, 5);
             pnlAdvancedContent.MinimumSize = new Size(1, 1);
             pnlAdvancedContent.Name = "pnlAdvancedContent";
-            pnlAdvancedContent.Size = new Size(994, 675);
+            pnlAdvancedContent.Size = new Size(200, 60);
             pnlAdvancedContent.TabIndex = 0;
             pnlAdvancedContent.Text = null;
             pnlAdvancedContent.TextAlignment = ContentAlignment.MiddleCenter;
@@ -617,11 +620,15 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlCommandPanel.Controls.Add(btnSendCommand);
             pnlCommandPanel.Controls.Add(lblCommandResult);
             pnlCommandPanel.Controls.Add(txtCommandResult);
+            pnlCommandPanel.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             pnlCommandPanel.Location = new Point(40, 280);
+            pnlCommandPanel.Margin = new Padding(4, 5, 4, 5);
+            pnlCommandPanel.MinimumSize = new Size(1, 1);
             pnlCommandPanel.Name = "pnlCommandPanel";
             pnlCommandPanel.Size = new Size(910, 380);
             pnlCommandPanel.TabIndex = 4;
             pnlCommandPanel.Text = null;
+            pnlCommandPanel.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // lblCommandPanel
             // 
@@ -639,11 +646,15 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlQuickButtons.Controls.Add(btnBetCommand);
             pnlQuickButtons.Controls.Add(btnGetQuotaCommand);
             pnlQuickButtons.Controls.Add(btnGetCookieCommand);
+            pnlQuickButtons.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             pnlQuickButtons.Location = new Point(0, 35);
+            pnlQuickButtons.Margin = new Padding(4, 5, 4, 5);
+            pnlQuickButtons.MinimumSize = new Size(1, 1);
             pnlQuickButtons.Name = "pnlQuickButtons";
             pnlQuickButtons.Size = new Size(910, 45);
             pnlQuickButtons.TabIndex = 1;
             pnlQuickButtons.Text = null;
+            pnlQuickButtons.TextAlignment = ContentAlignment.MiddleCenter;
             // 
             // btnBetCommand
             // 
@@ -747,6 +758,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             txtCommandResult.Size = new Size(820, 180);
             txtCommandResult.TabIndex = 6;
             txtCommandResult.TextAlignment = ContentAlignment.TopLeft;
+            txtCommandResult.Watermark = "";
             // 
             // txtCookies
             // 
@@ -812,6 +824,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // 
             // pnlRecordsContent
             // 
+            pnlRecordsContent.Controls.Add(tbxRecordsDetailed);
             pnlRecordsContent.Controls.Add(dgvRecords);
             pnlRecordsContent.Controls.Add(pnlRecordsTop);
             pnlRecordsContent.Dock = DockStyle.Fill;
@@ -830,22 +843,22 @@ namespace BaiShengVx3Plus.Views.AutoBet
             dgvRecords.AllowUserToAddRows = false;
             dgvRecords.AllowUserToDeleteRows = false;
             dgvRecords.AllowUserToResizeRows = false;
-            dataGridViewCellStyle15.BackColor = Color.FromArgb(235, 243, 255);
-            dgvRecords.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle15;
+            dataGridViewCellStyle6.BackColor = Color.FromArgb(235, 243, 255);
+            dgvRecords.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle6;
             dgvRecords.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvRecords.BackgroundColor = Color.White;
             dgvRecords.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
-            dataGridViewCellStyle16.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle16.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle16.Font = new Font("微软雅黑", 12F);
-            dataGridViewCellStyle16.ForeColor = Color.White;
-            dataGridViewCellStyle16.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle16.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle16.WrapMode = DataGridViewTriState.True;
-            dgvRecords.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle16;
+            dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle7.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle7.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle7.ForeColor = Color.White;
+            dataGridViewCellStyle7.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle7.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
+            dgvRecords.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle7;
             dgvRecords.ColumnHeadersHeight = 32;
             dgvRecords.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            dgvRecords.Dock = DockStyle.Fill;
+            dgvRecords.Dock = DockStyle.Left;
             dgvRecords.EnableHeadersVisualStyles = false;
             dgvRecords.Font = new Font("宋体", 12F);
             dgvRecords.GridColor = Color.FromArgb(80, 160, 255);
@@ -853,23 +866,23 @@ namespace BaiShengVx3Plus.Views.AutoBet
             dgvRecords.MultiSelect = false;
             dgvRecords.Name = "dgvRecords";
             dgvRecords.ReadOnly = true;
-            dataGridViewCellStyle17.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle17.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle17.Font = new Font("宋体", 12F);
-            dataGridViewCellStyle17.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle17.SelectionBackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle17.SelectionForeColor = Color.White;
-            dataGridViewCellStyle17.WrapMode = DataGridViewTriState.True;
-            dgvRecords.RowHeadersDefaultCellStyle = dataGridViewCellStyle17;
+            dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle8.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle8.Font = new Font("宋体", 12F);
+            dataGridViewCellStyle8.ForeColor = Color.FromArgb(48, 48, 48);
+            dataGridViewCellStyle8.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle8.SelectionForeColor = Color.White;
+            dataGridViewCellStyle8.WrapMode = DataGridViewTriState.True;
+            dgvRecords.RowHeadersDefaultCellStyle = dataGridViewCellStyle8;
             dgvRecords.RowHeadersVisible = false;
             dgvRecords.RowHeadersWidth = 51;
-            dataGridViewCellStyle18.BackColor = Color.White;
-            dataGridViewCellStyle18.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            dgvRecords.RowsDefaultCellStyle = dataGridViewCellStyle18;
+            dataGridViewCellStyle9.BackColor = Color.White;
+            dataGridViewCellStyle9.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            dgvRecords.RowsDefaultCellStyle = dataGridViewCellStyle9;
             dgvRecords.RowTemplate.Height = 29;
             dgvRecords.SelectedIndex = -1;
             dgvRecords.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvRecords.Size = new Size(994, 630);
+            dgvRecords.Size = new Size(706, 630);
             dgvRecords.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvRecords.TabIndex = 1;
             // 
@@ -1023,6 +1036,21 @@ namespace BaiShengVx3Plus.Views.AutoBet
             lblStatus.Text = "状态: 未运行";
             lblStatus.TextAlign = ContentAlignment.MiddleLeft;
             // 
+            // tbxRecordsDetailed
+            // 
+            tbxRecordsDetailed.FillColor = Color.White;
+            tbxRecordsDetailed.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            tbxRecordsDetailed.Location = new Point(711, 48);
+            tbxRecordsDetailed.Margin = new Padding(4, 5, 4, 5);
+            tbxRecordsDetailed.MinimumSize = new Size(1, 1);
+            tbxRecordsDetailed.Name = "tbxRecordsDetailed";
+            tbxRecordsDetailed.Padding = new Padding(2);
+            tbxRecordsDetailed.ShowText = false;
+            tbxRecordsDetailed.Size = new Size(279, 622);
+            tbxRecordsDetailed.TabIndex = 2;
+            tbxRecordsDetailed.Text = "uiRichTextBox1";
+            tbxRecordsDetailed.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
             // BetConfigManagerForm
             // 
             AutoScaleMode = AutoScaleMode.None;
@@ -1049,6 +1077,8 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlBasicContent.ResumeLayout(false);
             tabAdvanced.ResumeLayout(false);
             pnlAdvancedContent.ResumeLayout(false);
+            pnlCommandPanel.ResumeLayout(false);
+            pnlQuickButtons.ResumeLayout(false);
             tabRecords.ResumeLayout(false);
             pnlRecordsContent.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvRecords).EndInit();
@@ -1120,6 +1150,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
         private Sunny.UI.UIButton btnStartBrowser;
         private Sunny.UI.UIButton btnSave;
         private Sunny.UI.UILabel lblStatus;
+        private Sunny.UI.UIRichTextBox tbxRecordsDetailed;
     }
 }
 

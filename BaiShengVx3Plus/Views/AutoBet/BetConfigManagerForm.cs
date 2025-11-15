@@ -150,11 +150,29 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 dgvConfigs.Columns["Id"].HeaderText = "ID";
                 dgvConfigs.Columns["Id"].Width = 50;
                 dgvConfigs.Columns["ConfigName"].HeaderText = "配置名称";
-                dgvConfigs.Columns["ConfigName"].Width = 150;
+                // 🔥 配置名称：4个中文宽度（使用 TextRenderer 精确测量）
+                using (var g = dgvConfigs.CreateGraphics())
+                {
+                    var font = dgvConfigs.Font;
+                    int width = System.Windows.Forms.TextRenderer.MeasureText("配置名称", font).Width; // 4个中文字符
+                    dgvConfigs.Columns["ConfigName"].Width = width + 20; // 加上边距
+                }
                 dgvConfigs.Columns["Platform"].HeaderText = "平台";
-                dgvConfigs.Columns["Platform"].Width = 100;
+                // 🔥 平台：3个中文宽度
+                using (var g = dgvConfigs.CreateGraphics())
+                {
+                    var font = dgvConfigs.Font;
+                    int width = System.Windows.Forms.TextRenderer.MeasureText("平台台", font).Width; // 3个中文字符
+                    dgvConfigs.Columns["Platform"].Width = width + 20; // 加上边距
+                }
                 dgvConfigs.Columns["Username"].HeaderText = "账号";
-                dgvConfigs.Columns["Username"].Width = 120;
+                // 🔥 账号：7个字母宽度
+                using (var g = dgvConfigs.CreateGraphics())
+                {
+                    var font = dgvConfigs.Font;
+                    int width = System.Windows.Forms.TextRenderer.MeasureText("ABCDEFG", font).Width; // 7个字母
+                    dgvConfigs.Columns["Username"].Width = width + 20; // 加上边距
+                }
                 dgvConfigs.Columns["IsDefault"].HeaderText = "默认";
                 dgvConfigs.Columns["IsDefault"].Width = 60;
                 dgvConfigs.Columns["IsEnabled"].HeaderText = "启用";
