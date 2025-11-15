@@ -290,6 +290,8 @@ namespace BsBrowserClient.PlatformScripts
                         BetPlayEnum.双 => "双",
                         BetPlayEnum.尾大 => "尾大",
                         BetPlayEnum.尾小 => "尾小",
+                        BetPlayEnum.合单 => "合单",
+                        BetPlayEnum.合双 => "合双",
                         _ => "大"
                     };
                     
@@ -689,35 +691,35 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 解析名称，提取车号和玩法
         /// </summary>
-        private bool TryParseName(string name, out BaiShengVx3Plus.Shared.Models.CarNumEnum car, out BaiShengVx3Plus.Shared.Models.BetPlayEnum play)
+        private bool TryParseName(string name, out CarNumEnum car, out BetPlayEnum play)
         {
-            car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P1;
-            play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.大;
+            car = CarNumEnum.P1;
+            play = BetPlayEnum.大;
             
             // 解析车号
             if (name.StartsWith("平一"))
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P1;
+                car = CarNumEnum.P1;
             }
             else if (name.StartsWith("平二"))
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P2;
+                car = CarNumEnum.P2;
             }
             else if (name.StartsWith("平三"))
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P3;
+                car = CarNumEnum.P3;
             }
             else if (name.StartsWith("平四"))
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P4;
+                car = CarNumEnum.P4;
             }
             else if (name.StartsWith("平五"))
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P5;
+                car = CarNumEnum.P5;
             }
             else if (name.StartsWith("和值"))
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P总;
+                car = CarNumEnum.P总;
             }
             else
             {
@@ -727,49 +729,49 @@ namespace BsBrowserClient.PlatformScripts
             // 🔥 特殊处理：龙虎没有车号前缀（F5BotV2 中龙虎的 carName 为空字符串）
             if (name == "龙")
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P总;
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.龙;
+                car = CarNumEnum.P总;
+                play = BetPlayEnum.龙;
                 return true;
             }
             else if (name == "虎")
             {
-                car = BaiShengVx3Plus.Shared.Models.CarNumEnum.P总;
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.虎;
+                car = CarNumEnum.P总;
+                play = BetPlayEnum.虎;
                 return true;
             }
             
             // 解析玩法（从后往前匹配，因为车号长度不固定）
             if (name.EndsWith("大"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.大;
+                play = BetPlayEnum.大;
             }
             else if (name.EndsWith("小"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.小;
+                play = BetPlayEnum.小;
             }
             else if (name.EndsWith("单"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.单;
+                play = BetPlayEnum.单;
             }
             else if (name.EndsWith("双"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.双;
+                play = BetPlayEnum.双;
             }
             else if (name.EndsWith("尾大"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.尾大;
+                play = BetPlayEnum.尾大;
             }
             else if (name.EndsWith("尾小"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.尾小;
+                play = BetPlayEnum.尾小;
             }
             else if (name.EndsWith("合单"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.合单;
+                play = BetPlayEnum.合单;
             }
             else if (name.EndsWith("合双"))
             {
-                play = BaiShengVx3Plus.Shared.Models.BetPlayEnum.合双;
+                play = BetPlayEnum.合双;
             }
             else
             {
