@@ -310,6 +310,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return;
                 }
                 
+                // 🔥 检查订单状态：已完成的订单不应该取消统计（已完成说明已经结算过了）
+                if (order.OrderStatus == OrderStatus.已完成)
+                {
+                    _logService.Warning("BinggoStatistics", $"⚠️ 订单 {order.Id} 已完成，不能取消统计");
+                    return;
+                }
+                
+                // 🔥 注意：订单状态可能是"已取消"（正常取消流程），这是允许的
+                // 因为取消订单时会先设置状态为"已取消"，然后调用此方法
+                
                 // 🔥 使用 TimeStampBet 获取订单日期（参考 F5BotV2 第 690 行：LxTimestampHelper.GetDateTime(order.TimeStampBet)）
                 // 注意：TimeStampBet 是下注时间戳，CreatedAt 是数据库记录创建时间，两者可能不同
                 DateTime orderDate;
@@ -326,6 +336,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 DateTime today = DateTime.Now.Date;
                 int amount = (int)order.AmountTotal;
+                
+                // 🔥 记录更新前的统计值（用于日志）
+                int oldTotal = BetMoneyTotal;
+                int oldToday = BetMoneyToday;
+                int oldCur = BetMoneyCur;
                 
                 // 🔥 总下注（总是减掉，参考 F5BotV2 第 694、703 行）
                 BetMoneyTotal -= amount;
@@ -344,10 +359,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 如果不是今天的订单，只减掉总注，不减今日和当前（参考 F5BotV2 第 701-704 行）
                 
                 _logService.Info("BinggoStatistics", 
-                    $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd} 时间戳 {order.TimeStampBet}");
+                    $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {oldTotal}→{BetMoneyTotal} 今投 {oldToday}→{BetMoneyToday} 当前 {oldCur}→{BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
                 
                 // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示（重要！）
+                // 必须在主线程上触发，确保UI能正确更新
                 OnPropertyChanged(nameof(PanDescribe));
+                
+                _logService.Debug("BinggoStatistics", $"✅ 已触发 PanDescribe 属性变化通知，UI应该更新");
             }
             catch (Exception ex)
             {

@@ -906,11 +906,13 @@ namespace zhaocaimao.Services.Games.Binggo
                         // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
                         string nickname = order.Nickname ?? member.Nickname ?? member.DisplayName ?? "未知";
 
+                        // 🔥 注意：这里不缓存余额，因为余额在结算过程中会被更新
+                        // 余额将在发送消息时重新获取最新值（参考 F5BotV2 第 1454 行）
                         if (!ordersReports.ContainsKey(order.Wxid))
                         {
                             ordersReports[order.Wxid] = (
                                 nickname,
-                                member.Balance,
+                                0f,  // 🔥 不缓存余额，将在发送时重新获取
                                 order.AmountTotal,
                                 order.Profit
                             );
@@ -920,7 +922,7 @@ namespace zhaocaimao.Services.Games.Binggo
                             var existing = ordersReports[order.Wxid];
                             ordersReports[order.Wxid] = (
                                 existing.nickname,
-                                existing.balance,
+                                0f,  // 🔥 不缓存余额，将在发送时重新获取
                                 existing.totalAmount + order.AmountTotal,
                                 existing.profit + order.Profit
                             );
@@ -1007,9 +1009,19 @@ namespace zhaocaimao.Services.Games.Binggo
                 {
                     foreach (var report in ordersReports)
                     {
+                        // 🔥 重新获取最新余额（参考 F5BotV2 第 1454 行：var m = v2Memberbindlite.FirstOrDefault(...)）
+                        // 因为同一个会员可能有多个订单，每次结算都会更新余额
+                        // 所以必须在发送消息时重新获取最新余额，不能使用ordersReports中缓存的余额
+                        var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == report.wxid);
+                        if (member == null) continue;  // 会员不存在，跳过
+                        
+                        // 🔥 使用结算后的最新余额（参考 F5BotV2 第 1458 行：[{(int)m.Balance}]）
+                        float currentBalance = member.Balance;
+                        
                         // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
+                        // 盈利 = 总赢金额 - 投注总额 = 纯利（参考 F5BotV2 第 1458 行：{(int)order.Profit- order.AmountTotal}）
                         float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
-                        winningMessage.Append($"{report.nickname}[{(int)report.balance}] {(int)netProfit}\r");
+                        winningMessage.Append($"{report.nickname}[{(int)currentBalance}] {(int)netProfit}\r");
                     }
                 }
                 
