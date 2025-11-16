@@ -61,3 +61,7 @@ BaiShengVx3Plus/MyLog/business.db
 BaiShengVx3Plus/MyLog/logs.db
 BaiShengVx3Plus/MyLog/logs.db
 /BaiShengVx3Plus/MyLog/logs.db
+/BaiShengVx3Plus/MyLog
+/BaiShengVx3Plus/WAL模式分析与解决方案.md
+/BaiShengVx3Plus/账号密码保存诊断报告.md
+/BaiShengVx3Plus/账号密码保存问题排查指南.md
