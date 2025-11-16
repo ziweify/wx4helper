@@ -1,0 +1,123 @@
+﻿using System;
+using System.Text.Json;
+using System.Threading.Tasks;
+using zhaocaimao.Models;
+using zhaocaimao.Contracts;
+using zhaocaimao.Contracts.Messages;
+
+namespace zhaocaimao.Services.Messages.Handlers
+{
+    /// <summary>
+    /// 登录事件处理器
+    /// </summary>
+    public class LoginEventHandler : IMessageHandler
+    {
+        private readonly ILogService _logService;
+        private readonly IUserInfoService _userInfoService;
+
+        public ServerMessageType MessageType => ServerMessageType.OnLogin;
+
+        public LoginEventHandler(
+            ILogService logService, 
+            IUserInfoService userInfoService)
+        {
+            _logService = logService;
+            _userInfoService = userInfoService;
+        }
+
+        public async Task HandleAsync(JsonElement data)
+        {
+            try
+            {
+                var loginData = JsonSerializer.Deserialize<LoginEventData>(data.GetRawText());
+                if (loginData == null) 
+                {
+                    _logService.Error("LoginEventHandler", "Failed to deserialize login data");
+                    return;
+                }
+
+                _logService.Info("LoginEventHandler", 
+                    $"✅ 微信登录 | Wxid: {loginData.Wxid} | 昵称: {loginData.Nickname}");
+
+                // 检查 wxid 是否为空
+                if (string.IsNullOrEmpty(loginData.Wxid))
+                {
+                    _logService.Warning("LoginEventHandler", "Wxid is empty, skip processing");
+                    return;
+                }
+
+                // 1. 更新用户信息
+                var userInfo = new WxUserInfo
+                {
+                    Wxid = loginData.Wxid,
+                    Nickname = loginData.Nickname ?? string.Empty,
+                    Account = loginData.Account ?? string.Empty,
+                    Mobile = loginData.Mobile ?? string.Empty,
+                    Avatar = loginData.Avatar ?? string.Empty,
+                    DataPath = loginData.DataPath ?? string.Empty,
+                    CurrentDataPath = loginData.CurrentDataPath ?? string.Empty,
+                    DbKey = loginData.DbKey ?? string.Empty
+                };
+
+                _userInfoService.UpdateUserInfo(userInfo);
+
+                // 🔥 数据库初始化由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动触发
+                // 联系人列表的获取也在同一事件中自动触发
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("LoginEventHandler", "Error handling login event", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 登出事件处理器
+    /// </summary>
+    public class LogoutEventHandler : IMessageHandler
+    {
+        private readonly ILogService _logService;
+        private readonly IUserInfoService _userInfoService;
+
+        public ServerMessageType MessageType => ServerMessageType.OnLogout;
+
+        public LogoutEventHandler(
+            ILogService logService, 
+            IUserInfoService userInfoService)
+        {
+            _logService = logService;
+            _userInfoService = userInfoService;
+        }
+
+        public async Task HandleAsync(JsonElement data)
+        {
+            try
+            {
+                var logoutData = JsonSerializer.Deserialize<LoginEventData>(data.GetRawText());
+                if (logoutData == null) 
+                {
+                    _logService.Error("LogoutEventHandler", "Failed to deserialize logout data");
+                    return;
+                }
+
+                _logService.Info("LogoutEventHandler", 
+                    $"❌ 微信登出 | Wxid: {logoutData.Wxid} | 昵称: {logoutData.Nickname}");
+
+                // 1. 清空用户信息
+                _userInfoService.ClearUserInfo();
+                
+                // 🔥 数据库连接由 VxMain 管理，在用户切换时自动清空
+                // UI 更新由 VxMain 的 UserInfoService_UserInfoUpdated 事件自动处理
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("LogoutEventHandler", "Error handling logout event", ex);
+            }
+        }
+    }
+}
+
