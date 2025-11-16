@@ -235,7 +235,7 @@ namespace zhaocaimao
                 
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "BaiShengVx3Plus",
+                    "招财猫",
                     "Data");
                 Directory.CreateDirectory(dataDirectory);
                 
@@ -805,6 +805,13 @@ namespace zhaocaimao
         /// </summary>
         private void UpdateMemberInfoLabel()
         {
+            // 🔥 空值检查，防止空引用异常
+            if (lblMemberInfo == null || _statisticsService == null)
+            {
+                _logService.Warning("VxMain", "⚠️ UpdateMemberInfoLabel: lblMemberInfo 或 _statisticsService 为 null");
+                return;
+            }
+            
             // 🔥 更新统计数据缓存
             _currentStats.MemberCount = _membersBindingList?.Count ?? 0;
             _currentStats.OrderCount = _ordersBindingList?.Count ?? 0;
@@ -823,7 +830,10 @@ namespace zhaocaimao
             lblMemberInfo.Invalidate();
             
             // 订单信息标签（可选保留）
-            lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
+            if (lblOrderInfo != null)
+            {
+                lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
+            }
         }
         
         /// <summary>
@@ -1659,27 +1669,91 @@ namespace zhaocaimao
                 // 🔥 6. 绑定到 DataGridView（UI 更新）
                 UpdateUIThreadSafe(() =>
                 {
+                    // 🔥 确保切换到数据管理标签页
+                    if (tabControlMain.SelectedTab != tabPageDataManagement)
+                    {
+                        tabControlMain.SelectedTab = tabPageDataManagement;
+                        _logService.Info("VxMain", "✅ 已切换到数据管理标签页");
+                    }
+                    
+                    // 🔥 确保表格可见
+                    dgvMembers.Visible = true;
+                    dgvOrders.Visible = true;
+                    pnlMembers.Visible = true;
+                    pnlOrders.Visible = true;
+                    splitContainerRight.Visible = true;
+                    
+                    // 🔥 记录数据数量（绑定前）
+                    int memberCount = _membersBindingList?.Count ?? 0;
+                    int orderCount = _ordersBindingList?.Count ?? 0;
+                    _logService.Info("VxMain", $"📊 准备绑定数据: 会员 {memberCount} 条, 订单 {orderCount} 条");
+                    
+                    // 🔥 绑定数据源
+                    dgvMembers.DataSource = null;  // 先清空，确保重新绑定
+                    dgvOrders.DataSource = null;
+                    
                     dgvMembers.DataSource = _membersBindingList;
                     dgvOrders.DataSource = _ordersBindingList;
+                    
+                    // 🔥 强制刷新表格
+                    dgvMembers.Refresh();
+                    dgvOrders.Refresh();
+                    
+                    // 🔥 等待一下，让列自动生成
+                    Application.DoEvents();
                     
                     // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
                     // 这样列头标题、列宽、对齐等配置才会生效
                     if (dgvMembers.Columns.Count > 0)
                     {
                         dgvMembers.ConfigureFromModel<V2Member>();
-                        _logService.Info("VxMain", "✅ 会员表列配置已应用");
+                        _logService.Info("VxMain", $"✅ 会员表列配置已应用，共 {dgvMembers.Columns.Count} 列, {dgvMembers.Rows.Count} 行");
+                    }
+                    else
+                    {
+                        _logService.Warning("VxMain", "⚠️ 会员表列数为0，可能数据源未正确绑定");
+                        _logService.Warning("VxMain", $"   数据源类型: {_membersBindingList?.GetType().Name ?? "null"}");
+                        _logService.Warning("VxMain", $"   数据源数量: {_membersBindingList?.Count ?? 0}");
                     }
                     
                     if (dgvOrders.Columns.Count > 0)
                     {
                         dgvOrders.ConfigureFromModel<V2MemberOrder>();
-                        _logService.Info("VxMain", "✅ 订单表列配置已应用");
+                        _logService.Info("VxMain", $"✅ 订单表列配置已应用，共 {dgvOrders.Columns.Count} 列, {dgvOrders.Rows.Count} 行");
                     }
+                    else
+                    {
+                        _logService.Warning("VxMain", "⚠️ 订单表列数为0，可能数据源未正确绑定");
+                        _logService.Warning("VxMain", $"   数据源类型: {_ordersBindingList?.GetType().Name ?? "null"}");
+                        _logService.Warning("VxMain", $"   数据源数量: {_ordersBindingList?.Count ?? 0}");
+                    }
+                    
+                    // 🔥 再次刷新，确保显示
+                    dgvMembers.Invalidate();
+                    dgvOrders.Invalidate();
+                    dgvMembers.Update();
+                    dgvOrders.Update();
+                    
+                    _logService.Info("VxMain", $"📊 数据绑定完成: 会员 {memberCount} 条, 订单 {orderCount} 条");
                 });
                 
                 // 🔥 7. 更新 UI 显示
-                UpdateMemberInfoLabel();
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
+                UpdateUIThreadSafe(() =>
+                {
+                    UpdateMemberInfoLabel();
+                    lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
+                });
+                
+                // 🔥 8. 重新设置 AdminCommandHandler 的引用（重要！）
+                // 因为在 InitializeBinggoServices 时，_membersBindingList 可能还是 null
+                // 现在绑定群成功后，_membersBindingList 已经有值了，需要重新设置
+                var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
+                if (adminCommandHandler != null && _db != null && _membersBindingList != null)
+                {
+                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                    adminCommandHandler.SetDatabase(_db);
+                    _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表和数据库（绑定群后）");
+                }
                 
                 _logService.Info("VxMain", 
                     $"✅ 绑定群完成: {result.MemberCount} 个会员, {result.OrderCount} 个订单, {result.CreditWithdrawCount} 条上下分记录");
@@ -1878,7 +1952,7 @@ namespace zhaocaimao
                         // 🔥 使用 AppData\Local 目录存储备份
                         var backupDirectory = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "BaiShengVx3Plus",
+                            "招财猫",
                             "Data",
                             "Backup");
                         

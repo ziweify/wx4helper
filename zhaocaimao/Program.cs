@@ -97,6 +97,7 @@ namespace zhaocaimao
                         // Views
                         services.AddTransient<LoginForm>();
                         services.AddTransient<VxMain>();
+                        services.AddTransient<Views.LogViewerForm>();  // 🔥 注册日志窗口
                     })
                     .Build();
 

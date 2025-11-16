@@ -32,7 +32,7 @@ namespace zhaocaimao.Services.Logging
             // 🔥 使用 AppData\Local 目录，无需管理员权限
             var dataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "BaiShengVx3Plus",
+                "招财猫",
                 "Data");
             Directory.CreateDirectory(dataDir);
             _dbPath = Path.Combine(dataDir, "logs.db");
