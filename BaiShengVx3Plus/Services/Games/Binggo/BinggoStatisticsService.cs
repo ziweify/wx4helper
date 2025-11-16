@@ -174,11 +174,24 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     if (order.OrderType == OrderType.托 || order.OrderStatus == OrderStatus.已取消)
                         continue;
                     
+                    // 🔥 使用 TimeStampBet 获取订单日期（与 OnOrderCreated/OnOrderCanceled 保持一致）
+                    // 注意：TimeStampBet 是下注时间戳，CreatedAt 是数据库记录创建时间，两者可能不同
+                    DateTime orderDate;
+                    try
+                    {
+                        orderDate = TimestampHelper.GetDateTime(order.TimeStampBet).Date;
+                    }
+                    catch
+                    {
+                        // 如果时间戳转换失败，使用 CreatedAt 作为后备
+                        orderDate = order.CreatedAt.Date;
+                    }
+                    
                     // 总下注
                     totalBet += (int)order.AmountTotal;
                     
-                    // 今日下注
-                    if (order.CreatedAt.Date == today)
+                    // 今日下注（使用 TimeStampBet 判断，与 OnOrderCreated/OnOrderCanceled 保持一致）
+                    if (orderDate == today)
                     {
                         todayBet += (int)order.AmountTotal;
                     }
@@ -193,7 +206,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     if (order.OrderStatus == OrderStatus.已完成)
                     {
                         totalIncome += order.NetProfit;
-                        if (order.CreatedAt.Date == today)
+                        if (orderDate == today)
                         {
                             todayIncome += order.NetProfit;
                         }
@@ -231,6 +244,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 _logService.Info("BinggoStatistics", 
                     $"统计更新: 总注{totalBet} 今投{todayBet} 当前{curBet} 总盈{totalIncome:F2} 今盈{todayIncome:F2}");
+                
+                // 🔥 重要：UpdateStatistics 会重新计算所有统计，覆盖 OnOrderCanceled 的更新
+                // 所以必须在 UpdateStatistics 后触发 PropertyChanged，确保 UI 更新
+                OnPropertyChanged(nameof(PanDescribe));
             }
             catch (Exception ex)
             {

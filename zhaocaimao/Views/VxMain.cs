@@ -832,7 +832,7 @@ namespace zhaocaimao
             // 订单信息标签（可选保留）
             if (lblOrderInfo != null)
             {
-                lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
+            lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
             }
         }
         
@@ -1740,8 +1740,8 @@ namespace zhaocaimao
                 // 🔥 7. 更新 UI 显示
                 UpdateUIThreadSafe(() =>
                 {
-                    UpdateMemberInfoLabel();
-                    lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
+                UpdateMemberInfoLabel();
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
                 });
                 
                 // 🔥 8. 重新设置 AdminCommandHandler 的引用（重要！）

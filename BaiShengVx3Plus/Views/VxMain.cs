@@ -439,7 +439,8 @@ namespace BaiShengVx3Plus
                 {
                     if (e.PropertyName == nameof(BinggoStatisticsService.PanDescribe))
                     {
-                        UpdateUIThreadSafeAsync(() => UpdateMemberInfoLabel());
+                        // 🔥 使用同步更新，确保立即刷新 UI（特别是订单取消时）
+                        UpdateUIThreadSafe(() => UpdateMemberInfoLabel());
                     }
                 };
                 
