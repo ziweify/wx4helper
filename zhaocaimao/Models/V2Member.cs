@@ -84,7 +84,7 @@ namespace zhaocaimao.Models
             set => SetField(ref _wxid, value);
         }
 
-        [DataGridColumn(HeaderText = "账号", Width = 120, Order = 2)]
+        [DataGridColumn(HeaderText = "账号", Width = 120, Order = 2, Visible = false)]
         public string? Account
         {
             get => _account;
