@@ -157,8 +157,8 @@ namespace zhaocaimao.Views
                     }
                 }
                 
-                // 限制显示行数（保留最新1000条，删除顶部旧数据）
-                while (dgvLogs.Rows.Count > 1000)
+                // 限制显示行数（保留最新3000条，删除顶部旧数据）
+                while (dgvLogs.Rows.Count > 3000)
                 {
                     dgvLogs.Rows.RemoveAt(0);  // 删除最旧的（顶部）
                 }

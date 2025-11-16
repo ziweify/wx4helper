@@ -41,12 +41,14 @@ namespace zhaocaimao.Contracts.Games
         /// <summary>
         /// 补单（手动创建）
         /// </summary>
-        /// <returns>(成功, 消息, 订单对象)</returns>
+        /// <param name="sendToWeChat">是否发送到微信（线上补单=true，离线补单=false）</param>
+        /// <returns>(成功, 微信消息, 订单对象)</returns>
         Task<(bool success, string message, V2MemberOrder? order)> CreateManualOrderAsync(
             V2Member member,
             int issueId,
             string betContent,
-            decimal amount);
+            decimal amount,
+            bool sendToWeChat = true);
         
         /// <summary>
         /// 结算指定期号的所有订单

@@ -291,14 +291,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (orderDate == today)
                 {
                     BetMoneyToday += amount;
-                    
-                    // 🔥 当期下注（如果是当前期号，参考 F5BotV2 第 557-560 行）
-                    if (order.IssueId == IssueidCur)
-                    {
-                        BetMoneyCur += amount;
-                    }
                 }
-                // 🔥 如果不是今天的订单，只增加总注，不增加今日和当前（参考 F5BotV2 第 563-565 行）
+                
+                // 🔥 当期下注（只要是当前期号就增加，不依赖日期！确保统计一致性）
+                // 与 OnOrderCanceled 保持相同逻辑
+                if (order.IssueId == IssueidCur)
+                {
+                    BetMoneyCur += amount;
+                }
                 
                 _logService.Debug("BinggoStatistics", 
                     $"📊 统计增加: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
@@ -366,23 +366,28 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (orderDate == today)
                 {
                     BetMoneyToday -= amount;
-                    
-                    // 🔥 当期下注（如果是当前期号，参考 F5BotV2 第 696-699 行）
-                    if (order.IssueId == IssueidCur)
-                    {
-                        BetMoneyCur -= amount;
-                    }
                 }
-                // 🔥 如果不是今天的订单，只减掉总注，不减今日和当前（参考 F5BotV2 第 701-704 行）
+                
+                // 🔥 当期下注（只要是当前期号就减少，不依赖日期！修复延迟更新问题）
+                // 原逻辑：嵌套在 orderDate == today 内部，导致跨天订单或 TimeStampBet 为0时不减少
+                // 新逻辑：独立判断期号，确保当期统计立即更新
+                if (order.IssueId == IssueidCur)
+                {
+                    BetMoneyCur -= amount;
+                    _logService.Info("BinggoStatistics", 
+                        $"🔥 减少当期统计: 订单ID={order.Id} 期号={order.IssueId} 当前期号={IssueidCur} 金额={amount} 新值={BetMoneyCur}");
+                }
                 
                 _logService.Info("BinggoStatistics", 
                     $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {oldTotal}→{BetMoneyTotal} 今投 {oldToday}→{BetMoneyToday} 当前 {oldCur}→{BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
                 
                 // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示（重要！）
                 // 必须在主线程上触发，确保UI能正确更新
+                _logService.Info("BinggoStatistics", 
+                    $"🔔 准备触发 PropertyChanged 事件: 订阅者数量={PropertyChanged?.GetInvocationList()?.Length ?? 0} 当前线程={System.Threading.Thread.CurrentThread.ManagedThreadId}");
                 OnPropertyChanged(nameof(PanDescribe));
                 
-                _logService.Debug("BinggoStatistics", $"✅ 已触发 PanDescribe 属性变化通知，UI应该更新");
+                _logService.Info("BinggoStatistics", $"✅ 已触发 PanDescribe 属性变化通知（线程{System.Threading.Thread.CurrentThread.ManagedThreadId}）");
             }
             catch (Exception ex)
             {

@@ -193,6 +193,7 @@ namespace zhaocaimao
             InitializeDataBindings();
             InitializeAutoBetUIEvents();  // 🤖 绑定自动投注事件
             InitializeMemberContextMenu();  // 🔧 初始化会员表右键菜单（开发模式）
+            InitializeOrderContextMenu();  // 🔧 初始化订单表右键菜单（补单功能）
             
             // 🔧 订阅会员选择变化事件（开发模式-自动更新当前测试会员）
             dgvMembers.SelectionChanged += DgvMembers_SelectionChanged;
@@ -401,6 +402,8 @@ namespace zhaocaimao
                 
                 // 🔥 5. 设置开奖服务的业务依赖（用于结算和发送微信消息）
                 // 参考 F5BotV2：所有开奖相关逻辑统一在 BinggoLotteryService 中处理
+                // 注意：这里的设置会被 GroupBindingService.BindGroupCompleteAsync 中的设置覆盖
+                //      所以实际上这里的设置可能不生效，应该移除或合并
                 if (_lotteryService is BinggoLotteryService lotteryServiceImpl)
                 {
                     lotteryServiceImpl.SetBusinessDependencies(
@@ -3568,6 +3571,225 @@ namespace zhaocaimao
             }
         }
 
+        #endregion
+
+        #region 订单表右键菜单
+        
+        /// <summary>
+        /// 🔥 初始化会员表右键菜单（开发模式）
+        /// </summary>
+        private void InitializeMemberContextMenu()
+        {
+            // 🔥 如果需要在会员表添加右键菜单，可以在这里实现
+            // 目前使用的是现有的菜单事件处理器
+        }
+        
+        /// <summary>
+        /// 🔥 初始化订单表右键菜单（补单功能）
+        /// </summary>
+        private void InitializeOrderContextMenu()
+        {
+            // 创建右键菜单
+            var contextMenu = new ContextMenuStrip();
+            
+            // 🔥 补单父菜单
+            var menuSupplementOrder = new ToolStripMenuItem
+            {
+                Text = "补单",
+                Font = new Font("微软雅黑", 10F)
+            };
+            
+            // 🔥 线上补单（发送到微信）
+            var menuOnlineSupplement = new ToolStripMenuItem
+            {
+                Text = "线上补单",
+                Font = new Font("微软雅黑", 10F)
+            };
+            menuOnlineSupplement.Click += MenuOnlineSupplement_Click;
+            
+            // 🔥 离线补单（不发送到微信，仅记录）
+            var menuOfflineSupplement = new ToolStripMenuItem
+            {
+                Text = "离线补单",
+                Font = new Font("微软雅黑", 10F)
+            };
+            menuOfflineSupplement.Click += MenuOfflineSupplement_Click;
+            
+            // 添加子菜单
+            menuSupplementOrder.DropDownItems.Add(menuOnlineSupplement);
+            menuSupplementOrder.DropDownItems.Add(menuOfflineSupplement);
+            
+            // 添加到右键菜单
+            contextMenu.Items.Add(menuSupplementOrder);
+            
+            // 绑定到订单表
+            dgvOrders.ContextMenuStrip = contextMenu;
+        }
+        
+        /// <summary>
+        /// 🔥 订单表鼠标按下事件（用于右键菜单显示前选中行）
+        /// </summary>
+        private void DgvOrders_MouseDown(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                // 获取鼠标点击位置的行索引
+                var hitTest = dgvOrders.HitTest(e.X, e.Y);
+                if (hitTest.RowIndex >= 0)
+                {
+                    // 如果点击的行没有被选中，则选中它
+                    if (!dgvOrders.Rows[hitTest.RowIndex].Selected)
+                    {
+                        dgvOrders.ClearSelection();
+                        dgvOrders.Rows[hitTest.RowIndex].Selected = true;
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 线上补单（发送到微信）
+        /// 完全参考 F5BotV2 第 1189-1277 行
+        /// </summary>
+        private async void MenuOnlineSupplement_Click(object? sender, EventArgs e)
+        {
+            await PerformSupplementOrderAsync(sendToWeChat: true);
+        }
+        
+        /// <summary>
+        /// 🔥 离线补单（不发送到微信，仅记录）
+        /// </summary>
+        private async void MenuOfflineSupplement_Click(object? sender, EventArgs e)
+        {
+            await PerformSupplementOrderAsync(sendToWeChat: false);
+        }
+        
+        /// <summary>
+        /// 🔥 执行补单操作（通用方法，支持线上和离线）
+        /// 完全参考 F5BotV2 的补分逻辑
+        /// </summary>
+        private async Task PerformSupplementOrderAsync(bool sendToWeChat)
+        {
+            try
+            {
+                string type = sendToWeChat ? "线上补单" : "离线补单";
+                
+                // 🔥 1. 检查是否有选中的订单
+                if (dgvOrders.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要补单的订单！");
+                    return;
+                }
+                
+                // 🔥 2. 检查是否绑定了群
+                var groupWxId = _groupBindingService.CurrentBoundGroup?.Wxid;
+                if (string.IsNullOrEmpty(groupWxId))
+                {
+                    UIMessageBox.ShowWarning("没有绑定群组！不能补单！");
+                    return;
+                }
+                
+                // 🔥 3. 处理所有选中的订单
+                int successCount = 0;
+                int failCount = 0;
+                var messages = new System.Text.StringBuilder();
+                
+                foreach (DataGridViewRow row in dgvOrders.SelectedRows)
+                {
+                    if (row.DataBoundItem is not V2MemberOrder order)
+                        continue;
+                    
+                    // 🔥 4. 检查订单的群是否与当前绑定的群一致（参考 F5BotV2 第 1243-1248 行）
+                    if (order.GroupWxId != groupWxId)
+                    {
+                        var confirmResult = UIMessageBox.ShowAsk(
+                            $"订单 {order.IssueId} 与目前绑定的群组不一致！\n" +
+                            $"订单不是这个群的\n" +
+                            $"您确定要补该订单吗？");
+                        if (!confirmResult)
+                            continue;
+                    }
+                    
+                    // 🔥 5. 查找会员
+                    var member = _membersBindingList?.FirstOrDefault(m => 
+                        m.Wxid == order.Wxid && m.GroupWxId == order.GroupWxId);
+                    
+                    if (member == null)
+                    {
+                        failCount++;
+                        _logService.Warning("VxMain", 
+                            $"{type}失败: 没有在目前绑定的群中找到该会员 - 订单: {order.IssueId} - 会员: {order.Nickname}");
+                        messages.AppendLine($"❌ {order.Nickname} ({order.IssueId}) - 未找到会员");
+                        continue;
+                    }
+                    
+                    // 🔥 6. 执行补单（调用 OrderService）
+                    (bool success, string message, V2MemberOrder? newOrder) = await _orderService.CreateManualOrderAsync(
+                        member,
+                        order.IssueId,
+                        order.BetContent,
+                        (decimal)order.AmountTotal,  // 🔥 转换为 decimal
+                        sendToWeChat);  // 🔥 控制是否发送到微信
+                    
+                    if (success)
+                    {
+                        successCount++;
+                        _logService.Info("VxMain", 
+                            $"✅ {type}成功: {member.Nickname} - 期号: {order.IssueId} - 盈利: {newOrder?.NetProfit:F2}");
+                        
+                        // 🔥 7. 如果是线上补单，发送消息到微信（参考 F5BotV2 第 1267-1268 行）
+                        if (sendToWeChat && !string.IsNullOrEmpty(message))
+                        {
+                            try
+                            {
+                                await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
+                                _logService.Info("VxMain", $"📤 {type}消息已发送到微信群");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Error("VxMain", $"{type}消息发送失败", ex);
+                                messages.AppendLine($"⚠️ {order.Nickname} ({order.IssueId}) - 补单成功但消息发送失败");
+                                continue;
+                            }
+                        }
+                        
+                        messages.AppendLine($"✅ {order.Nickname} ({order.IssueId}) - {newOrder?.NetProfit:F2}元");
+                    }
+                    else
+                    {
+                        failCount++;
+                        _logService.Warning("VxMain", 
+                            $"❌ {type}失败: {member.Nickname} - 期号: {order.IssueId} - 原因: {message}");
+                        messages.AppendLine($"❌ {order.Nickname} ({order.IssueId}) - {message}");
+                    }
+                }
+                
+                // 🔥 8. 显示结果汇总
+                if (successCount > 0)
+                {
+                    UpdateStatistics();  // 刷新统计数据
+                    dgvOrders.Refresh();
+                    dgvMembers.Refresh();
+                    
+                    string summary = $"{type}完成！\n\n" +
+                        $"成功: {successCount} 单\n" +
+                        $"失败: {failCount} 单\n\n" +
+                        $"详细信息：\n{messages}";
+                    
+                    UIMessageBox.ShowSuccess(summary);
+                }
+                else if (failCount > 0)
+                {
+                    UIMessageBox.ShowError($"{type}全部失败！\n\n{messages}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"补单操作失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"补单失败：{ex.Message}");
+            }
+        }
+        
         #endregion
 
         #region 数据库表初始化

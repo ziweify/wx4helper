@@ -218,16 +218,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 补单（手动创建）
         /// </summary>
+        /// <param name="sendToWeChat">是否发送到微信（线上补单=true，离线补单=false）</param>
+        /// <returns>(成功, 微信消息内容, 订单对象)</returns>
         public async Task<(bool success, string message, V2MemberOrder? order)> CreateManualOrderAsync(
             V2Member member,
             int issueId,
             string betContent,
-            decimal amount)
+            decimal amount,
+            bool sendToWeChat = true)
         {
             try
             {
+                string type = sendToWeChat ? "线上补单" : "离线补单";
                 _logService.Info("BinggoOrderService", 
-                    $"补单: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
+                    $"{type}: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
                 
                 // 1. 验证补单
                 if (!_validator.ValidateManualOrder(member, issueId, amount, out string errorMessage))
@@ -255,13 +259,22 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     MemberState = member.State,  // 🔥 记录会员等级快照
                     Profit = 0,  // 稍后结算
                     IsSettled = false,
+                    TimeStampBet = DateTimeOffset.Now.ToUnixTimeSeconds(),  // 🔥 设置下注时间戳
                     CreatedAt = DateTime.Now
                 };
                 
-                // 4. 立即结算
+                // 4. 立即结算（与正常订单一样走结算流程）
                 await SettleSingleOrderAsync(order, lotteryData);
                 
-                // 5. 保存订单（插入到列表顶部，保持"最新在上"）
+                // 5. 更新会员余额（盈亏）
+                member.Balance += order.NetProfit;  // 🔥 补单也要更新余额
+                member.IncomeTotal += order.NetProfit;
+                if (order.CreatedAt.Date == DateTime.Now.Date)
+                {
+                    member.IncomeToday += order.NetProfit;
+                }
+                
+                // 6. 保存订单（插入到列表顶部，保持"最新在上"）
                 if (_ordersBindingList != null && _ordersBindingList.Count > 0)
                 {
                     _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
@@ -271,10 +284,31 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
                 }
                 
-                _logService.Info("BinggoOrderService", 
-                    $"✅ 补单成功: {member.Nickname} - {betContent} - {amount:F2}元 - 盈利: {order.Profit:F2}");
+                // 🔥 7. 更新全局统计（完全参考 F5BotV2）
+                if (_statisticsService != null && order.OrderType != OrderType.托)
+                {
+                    _statisticsService.OnOrderCreated(order);  // 增加总注、今投、当前
+                    _statisticsService.OnOrderSettled(order);  // 增加总盈、今盈
+                }
                 
-                return (true, $"补单成功，盈利: {order.Profit:F2}", order);
+                // 🔥 8. 生成补单微信消息（完全参考 F5BotV2 第 1261-1268 行）
+                // 格式：
+                //   ----补分名单----
+                //   {nickname}|{期号后3位}|{开奖号码}|{投注内容}|{押注金额}
+                //   ------补完留分------
+                //   {nickname} | {余额}
+                int issueShort = issueId % 1000;
+                string lotteryStr = lotteryData.ToLotteryString();  // "7,14,21,8,2 大单 龙"
+                string weChatMessage = $"----补分名单----\r" +
+                    $"{member.Nickname}|{issueShort}|{lotteryStr}|{betContent}|{order.AmountTotal - order.NetProfit}\r" +
+                    $"------补完留分------\r" +
+                    $"{member.Nickname} | {(int)member.Balance}";
+                
+                _logService.Info("BinggoOrderService", 
+                    $"✅ {type}成功: {member.Nickname} - {betContent} - {amount:F2}元 - 盈利: {order.NetProfit:F2} - 余额: {member.Balance:F2}");
+                
+                // 🔥 返回微信消息（如果是线上补单，调用者需要发送到微信；离线补单则只做记录）
+                return (true, weChatMessage, order);
             }
             catch (Exception ex)
             {

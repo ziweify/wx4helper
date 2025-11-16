@@ -819,7 +819,7 @@ namespace BaiShengVx3Plus
             dgvOrders.Font = new Font("微软雅黑", 10F);
             dgvOrders.GridColor = Color.FromArgb(80, 160, 255);
             dgvOrders.Location = new Point(0, 30);
-            dgvOrders.MultiSelect = false;
+            dgvOrders.MultiSelect = true;
             dgvOrders.Name = "dgvOrders";
             dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle11.BackColor = Color.FromArgb(235, 243, 255);
@@ -840,6 +840,7 @@ namespace BaiShengVx3Plus
             dgvOrders.Size = new Size(951, 332);
             dgvOrders.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvOrders.TabIndex = 1;
+            dgvOrders.MouseDown += DgvOrders_MouseDown;
             // 
             // pnlOrdersTop
             // 

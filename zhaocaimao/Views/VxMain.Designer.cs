@@ -753,7 +753,7 @@ namespace zhaocaimao
             dgvOrders.EnableHeadersVisualStyles = false;
             dgvOrders.Font = new Font("微软雅黑", 10F);
             dgvOrders.GridColor = Color.FromArgb(80, 160, 255);
-            dgvOrders.MultiSelect = false;
+            dgvOrders.MultiSelect = true;
             dgvOrders.Name = "dgvOrders";
             dgvOrders.Visible = true;  // 🔥 确保可见
             dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
@@ -775,6 +775,7 @@ namespace zhaocaimao
             dgvOrders.Size = new Size(745, 316);
             dgvOrders.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvOrders.TabIndex = 1;
+            dgvOrders.MouseDown += DgvOrders_MouseDown;
             // 
             // ucBinggoDataLast
             // 

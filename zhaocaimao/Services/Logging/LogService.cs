@@ -17,7 +17,7 @@ namespace zhaocaimao.Services.Logging
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly string _dbPath;
         private LogLevel _minimumLevel = LogLevel.Trace;
-        private const int MaxMemoryLogs = 1000;
+        private const int MaxMemoryLogs = 3000;  // 🔥 内存日志最大3000条
         private const int BatchSize = 100;
         private const int FlushIntervalMs = 1000;
 
@@ -118,7 +118,7 @@ namespace zhaocaimao.Services.Logging
             LogLevel? minLevel = null,
             string? source = null,
             string? keyword = null,
-            int limit = 1000)
+            int limit = 3000)  // 🔥 查询日志默认最多3000条
         {
             try
             {

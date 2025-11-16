@@ -133,7 +133,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             _membersBindingList = membersBindingList;
             _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 设置上下分 BindingList
             _statisticsService = statisticsService;  // 🔥 设置统计服务
-            _logService.Info("BinggoLotteryService", "✅ 业务依赖已设置");
+            
+            _logService.Info("BinggoLotteryService", 
+                $"✅ 业务依赖已设置 - 统计服务: {(statisticsService != null ? "已设置" : "null")}");
         }
         
         /// <summary>

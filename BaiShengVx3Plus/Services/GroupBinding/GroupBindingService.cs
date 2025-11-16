@@ -232,7 +232,8 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                         socketClient,
                         ordersBindingList,
                         membersBindingList,
-                        creditWithdrawsBindingList
+                        creditWithdrawsBindingList,
+                        statisticsService  // 🔥 传入统计服务！
                     );
                 }
                 
