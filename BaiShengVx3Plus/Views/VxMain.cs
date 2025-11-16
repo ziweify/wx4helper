@@ -1661,6 +1661,20 @@ namespace BaiShengVx3Plus
                 {
                     dgvMembers.DataSource = _membersBindingList;
                     dgvOrders.DataSource = _ordersBindingList;
+                    
+                    // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
+                    // 这样列头标题、列宽、对齐等配置才会生效
+                    if (dgvMembers.Columns.Count > 0)
+                    {
+                        dgvMembers.ConfigureFromModel<V2Member>();
+                        _logService.Info("VxMain", "✅ 会员表列配置已应用");
+                    }
+                    
+                    if (dgvOrders.Columns.Count > 0)
+                    {
+                        dgvOrders.ConfigureFromModel<V2MemberOrder>();
+                        _logService.Info("VxMain", "✅ 订单表列配置已应用");
+                    }
                 });
                 
                 // 🔥 7. 更新 UI 显示
@@ -3118,6 +3132,11 @@ namespace BaiShengVx3Plus
 
         /// <summary>
         /// 防抖保存设置（用户停止输入1秒后才保存）
+        /// 🔥 保存时机：
+        /// 1. 用户修改账号/密码后，停止输入1秒自动保存
+        /// 2. 用户修改平台时，立即保存
+        /// 3. 开启自动投注时，立即保存
+        /// 4. 窗口关闭时，强制保存（防止数据丢失）
         /// </summary>
         private void DebounceSaveSettings()
         {
@@ -3130,15 +3149,19 @@ namespace BaiShengVx3Plus
                 // 在UI线程上执行保存
                 this.Invoke(() =>
                 {
+                    _logService.Info("VxMain", "⏰ 防抖定时器触发：自动保存账号/密码设置");
                     SaveAutoBetSettings();
                     _saveTimer?.Dispose();
                     _saveTimer = null;
                 });
             }, null, 1000, System.Threading.Timeout.Infinite);
+            
+            _logService.Debug("VxMain", "⏳ 账号/密码已修改，将在1秒后自动保存（防抖机制）");
         }
 
         /// <summary>
         /// 从默认配置加载自动投注设置
+        /// 🔥 如果默认配置不存在，会创建一个新的默认配置（账号密码为空）
         /// </summary>
         private void LoadAutoBetSettings()
         {
@@ -3149,15 +3172,54 @@ namespace BaiShengVx3Plus
                 swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
                 
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                
                 if (defaultConfig != null)
                 {
                     // 加载平台（使用共享库统一转换）
                     var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
                     cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
 
-                    // 加载账号密码
+                    // 加载账号密码（如果为空，显示空白是正常的）
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
                     txtAutoBetPassword.Text = defaultConfig.Password ?? "";
+                    
+                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
+                }
+                else
+                {
+                    // 🔥 默认配置不存在，创建一个新的（账号密码为空）
+                    _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
+                    
+                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    var newConfig = new Models.AutoBet.BetConfig
+                    {
+                        ConfigName = "默认配置",
+                        Platform = platform.ToString(),
+                        PlatformUrl = platform switch
+                        {
+                            BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
+                            BetPlatform.云顶 => "https://www.yunding28.com",
+                            BetPlatform.海峡 => "https://www.haixia28.com",
+                            BetPlatform.红海 => "https://www.honghai28.com",
+                            _ => "https://yb666.fr.win2000.cc"
+                        },
+                        Username = "",  // 🔥 初始为空，用户需要手动输入
+                        Password = "",  // 🔥 初始为空，用户需要手动输入
+                        IsDefault = true,
+                        IsEnabled = false,
+                        AutoLogin = true,
+                        MinBetAmount = 1,
+                        MaxBetAmount = 10000
+                    };
+                    
+                    _autoBetService.SaveConfig(newConfig);
+                    
+                    // 加载到UI
+                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
+                    txtAutoBetUsername.Text = "";
+                    txtAutoBetPassword.Text = "";
+                    
+                    _logService.Info("VxMain", "✅ 已创建新的默认配置（账号密码为空，需要用户输入）");
                 }
                 
                 _logService.Info("VxMain", "✅ 自动投注设置加载完成");
@@ -3176,6 +3238,11 @@ namespace BaiShengVx3Plus
 
         /// <summary>
         /// 保存自动投注设置到默认配置
+        /// 🔥 保存时机：
+        /// 1. 用户修改账号/密码后，停止输入1秒自动保存（防抖机制）
+        /// 2. 用户修改平台时，立即保存
+        /// 3. 开启自动投注时，立即保存
+        /// 4. 窗口关闭时，强制保存（防止数据丢失）
         /// </summary>
         private void SaveAutoBetSettings()
         {
@@ -3232,6 +3299,19 @@ namespace BaiShengVx3Plus
                     var username = txtAutoBetUsername.Text;
                     var password = txtAutoBetPassword.Text;
                     
+                    // 🔥 检查是否有变化（避免不必要的保存）
+                    bool usernameChanged = defaultConfig.Username != username;
+                    bool passwordChanged = defaultConfig.Password != password;
+                    
+                    if (usernameChanged || passwordChanged)
+                    {
+                        _logService.Info("VxMain", $"📝 检测到账号/密码变化:");
+                        if (usernameChanged)
+                            _logService.Info("VxMain", $"   账号: {defaultConfig.Username ?? "(空)"} → {username ?? "(空)"}");
+                        if (passwordChanged)
+                            _logService.Info("VxMain", $"   密码: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "***")} → {(string.IsNullOrEmpty(password) ? "(空)" : "***")}");
+                    }
+                    
                     defaultConfig.Username = username;
                     defaultConfig.Password = password;
                     defaultConfig.LastUpdateTime = DateTime.Now;  // 🔥 强制触发更新
@@ -3239,15 +3319,12 @@ namespace BaiShengVx3Plus
                     // 保存到数据库
                     _autoBetService.SaveConfig(defaultConfig);
 
-                    _logService.Info("VxMain", "✅ 自动投注设置已保存");
-                    _logService.Info("VxMain", $"   用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
+                    _logService.Info("VxMain", "✅ 自动投注设置已保存到数据库");
+                    _logService.Info("VxMain", $"   - 平台: {defaultConfig.Platform}");
+                    _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
+                    _logService.Info("VxMain", $"   - 账号: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
+                    _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(password) ? "(空)" : "已设置")}");
                 }
-                
-                // 统一的日志输出
-                _logService.Info("VxMain", $"   - 平台: {defaultConfig.Platform}");
-                _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
-                _logService.Info("VxMain", $"   - 用户名: {(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
-                _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "******")}");
             }
             catch (Exception ex)
             {

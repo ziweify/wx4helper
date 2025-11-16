@@ -1661,6 +1661,20 @@ namespace zhaocaimao
                 {
                     dgvMembers.DataSource = _membersBindingList;
                     dgvOrders.DataSource = _ordersBindingList;
+                    
+                    // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
+                    // 这样列头标题、列宽、对齐等配置才会生效
+                    if (dgvMembers.Columns.Count > 0)
+                    {
+                        dgvMembers.ConfigureFromModel<V2Member>();
+                        _logService.Info("VxMain", "✅ 会员表列配置已应用");
+                    }
+                    
+                    if (dgvOrders.Columns.Count > 0)
+                    {
+                        dgvOrders.ConfigureFromModel<V2MemberOrder>();
+                        _logService.Info("VxMain", "✅ 订单表列配置已应用");
+                    }
                 });
                 
                 // 🔥 7. 更新 UI 显示
