@@ -53,3 +53,5 @@
 /BaiShengVx3Plus/libs/*.exe
 /BaiShengVx3Plus/bin
 /Loader/x64/Debug
+/zhaocaimao/obj
+/zhaocaimao/bin/Debug/net8.0-windows
