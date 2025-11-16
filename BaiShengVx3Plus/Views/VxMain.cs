@@ -249,6 +249,9 @@ namespace BaiShengVx3Plus
                     _globalDb = new SQLiteConnection(globalDbPath);
                     _logService.Info("VxMain", $"✅ 全局数据库已打开: {globalDbPath}");
                     
+                    // 🔥 配置为最可靠模式（数据完整性优先）
+                    ConfigureDatabaseReliability(_globalDb, "全局数据库");
+                    
                     // 🔥 使用统一的数据库初始化器创建全局表
                     var databaseInitializer = Program.ServiceProvider?.GetService<Services.Database.DatabaseInitializer>();
                     if (databaseInitializer != null)
@@ -278,6 +281,9 @@ namespace BaiShengVx3Plus
                     
                     _logService.Info("VxMain", $"初始化微信专属数据库: {wxDbPath}");
                     _db = new SQLiteConnection(wxDbPath);
+                    
+                    // 🔥 配置为最可靠模式（数据完整性优先）
+                    ConfigureDatabaseReliability(_db, "微信专属数据库");
                     
                     // 🔥 使用统一的数据库初始化器创建微信专属表
                     var databaseInitializer = Program.ServiceProvider?.GetService<Services.Database.DatabaseInitializer>();
@@ -325,6 +331,58 @@ namespace BaiShengVx3Plus
                 {
                     UIMessageBox.ShowError($"初始化数据库失败: {ex.Message}");
                 });
+            }
+        }
+        
+        /// <summary>
+        /// 配置数据库为最可靠模式
+        /// 🔥 可靠性优先于性能（适用于配置、订单、会员等关键数据）
+        /// </summary>
+        private void ConfigureDatabaseReliability(SQLiteConnection db, string dbName)
+        {
+            try
+            {
+                _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", $"🔧 配置 {dbName} 为最可靠模式...");
+                
+                // 1️⃣ 禁用 WAL 模式，使用传统 DELETE 日志
+                // 优点：数据立即写入主文件，工具兼容性好，备份简单
+                // 缺点：性能略低于 WAL（但对我们的场景影响很小）
+                db.Execute("PRAGMA journal_mode = DELETE");
+                var journalMode = db.ExecuteScalar<string>("PRAGMA journal_mode");
+                _logService.Info("VxMain", $"✅ 日志模式: {journalMode}");
+                _logService.Info("VxMain", $"   说明: 数据立即写入主文件，无需等待检查点");
+                
+                // 2️⃣ 设置为 FULL 同步模式
+                // 确保每次写入都刷新到磁盘（即使断电也不会丢数据）
+                db.Execute("PRAGMA synchronous = FULL");
+                var syncMode = db.ExecuteScalar<int>("PRAGMA synchronous");
+                var syncModeName = syncMode switch
+                {
+                    0 => "OFF (最快，最不安全)",
+                    1 => "NORMAL (一般)",
+                    2 => "FULL (最慢，最安全)",
+                    3 => "EXTRA (超级安全)",
+                    _ => $"未知({syncMode})"
+                };
+                _logService.Info("VxMain", $"✅ 同步模式: {syncModeName}");
+                _logService.Info("VxMain", $"   说明: 数据立即刷新到磁盘，防止断电丢失");
+                
+                // 3️⃣ 启用外键约束（数据一致性）
+                db.Execute("PRAGMA foreign_keys = ON");
+                var fkEnabled = db.ExecuteScalar<int>("PRAGMA foreign_keys");
+                _logService.Info("VxMain", $"✅ 外键约束: {(fkEnabled == 1 ? "已启用" : "未启用")}");
+                
+                // 4️⃣ 设置合理的缓存大小（平衡性能和内存）
+                db.Execute("PRAGMA cache_size = 2000");  // 约 8MB 缓存
+                _logService.Info("VxMain", $"✅ 缓存大小: 2000 页 (约 8MB)");
+                
+                _logService.Info("VxMain", $"✅ {dbName} 已配置为最可靠模式");
+                _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("VxMain", $"配置 {dbName} 参数失败: {ex.Message}");
             }
         }
         
@@ -3147,10 +3205,34 @@ namespace BaiShengVx3Plus
                 cbxPlatform.SelectedIndexChanged += (s, e) => SaveAutoBetSettings();
                 
                 // 文本框：延迟保存（防抖：用户停止输入1秒后再保存）
-                txtAutoBetUsername.TextChanged += (s, e) => DebounceSaveSettings();
-                txtAutoBetPassword.TextChanged += (s, e) => DebounceSaveSettings();
+                txtAutoBetUsername.TextChanged += (s, e) => 
+                {
+                    _logService.Debug("VxMain", $"🔍 账号文本变化: '{txtAutoBetUsername.Text}'");
+                    DebounceSaveSettings();
+                };
+                txtAutoBetPassword.TextChanged += (s, e) => 
+                {
+                    _logService.Debug("VxMain", $"🔍 密码文本变化: '{(string.IsNullOrEmpty(txtAutoBetPassword.Text) ? "(空)" : "***")}'");
+                    DebounceSaveSettings();
+                };
                 
-                _logService.Info("VxMain", "✅ 自动投注UI事件已绑定");
+                // 🔥 双重保险：失去焦点时立即保存（防止复制粘贴后立即关闭程序导致数据丢失）
+                txtAutoBetUsername.LostFocus += (s, e) => 
+                {
+                    _logService.Debug("VxMain", "🔍 账号失去焦点，取消防抖定时器并立即保存");
+                    _saveTimer?.Dispose();
+                    _saveTimer = null;
+                    SaveAutoBetSettings();
+                };
+                txtAutoBetPassword.LostFocus += (s, e) => 
+                {
+                    _logService.Debug("VxMain", "🔍 密码失去焦点，取消防抖定时器并立即保存");
+                    _saveTimer?.Dispose();
+                    _saveTimer = null;
+                    SaveAutoBetSettings();
+                };
+                
+                _logService.Info("VxMain", "✅ 自动投注UI事件已绑定（包含 TextChanged 和 LostFocus）");
             }
             catch (Exception ex)
             {

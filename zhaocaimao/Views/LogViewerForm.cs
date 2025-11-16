@@ -195,7 +195,8 @@ namespace zhaocaimao.Views
             try
             {
                 // 🔥 异步加载，不阻塞UI线程
-                var logs = await Task.Run(() => _logService.GetRecentLogs(100));
+                // 🔥 加载程序启动以来的所有日志（最多3000条）
+                var logs = await Task.Run(() => _logService.GetRecentLogs(3000));
                 
                 // 🔥 暂停绘制，提升性能
                 dgvLogs.SuspendLayout();

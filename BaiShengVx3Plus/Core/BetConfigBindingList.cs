@@ -90,6 +90,7 @@ namespace BaiShengVx3Plus.Core
                 if (item.Id > 0)
                 {
                     // 🔥 立即保存到数据库（在当前线程执行）
+                    // DELETE 日志模式下，数据立即写入主文件，无需额外刷新
                     item.LastUpdateTime = DateTime.Now;
                     _db.Update(item);
                     

@@ -87,7 +87,33 @@ namespace zhaocaimao.Services.AutoBet
         public void SetDatabase(SQLiteConnection db)
         {
             _db = db;
+            _log.Info("AutoBet", $"📦 设置数据库: {_db.DatabasePath}");
+            
+            // 🔥 配置 SQLite 为最可靠模式（数据完整性优先）
+            try
+            {
+                // 1️⃣ 禁用 WAL 模式，使用传统 DELETE 日志（数据立即写入主文件）
+                _db.Execute("PRAGMA journal_mode = DELETE");
+                var journalMode = _db.ExecuteScalar<string>("PRAGMA journal_mode");
+                _log.Info("AutoBet", $"✅ 日志模式: {journalMode} (数据立即持久化)");
+                
+                // 2️⃣ 设置为 FULL 同步模式（确保每次写入都刷新到磁盘）
+                _db.Execute("PRAGMA synchronous = FULL");
+                var syncMode = _db.ExecuteScalar<int>("PRAGMA synchronous");
+                _log.Info("AutoBet", $"✅ 同步模式: {syncMode} (FULL=2, 最高可靠性)");
+                
+                // 3️⃣ 启用外键约束（数据一致性）
+                _db.Execute("PRAGMA foreign_keys = ON");
+                _log.Info("AutoBet", "✅ 外键约束已启用");
+            }
+            catch (Exception ex)
+            {
+                _log.Warning("AutoBet", $"配置数据库参数失败: {ex.Message}");
+            }
+            
             _db.CreateTable<BetConfig>();
+            _log.Info("AutoBet", "✅ BetConfig 表已创建/确认");
+            
             // 🔥 BetOrderRecord 已删除，改用 BetRecord（由 BetRecordService 管理）
             
             // 🔥 创建配置 BindingList 并加载数据到内存
@@ -227,13 +253,17 @@ namespace zhaocaimao.Services.AutoBet
         /// </summary>
         public void SaveConfig(BetConfig config)
         {
-            if (_configs == null) return;
+            if (_configs == null)
+            {
+                _log.Error("AutoBet", "❌ SaveConfig 失败: _configs 为 null");
+                return;
+            }
             
             if (config.Id == 0)
             {
                 // 🔥 新配置：添加到 BindingList（自动保存到数据库）
                 _configs.Add(config);
-                _log.Info("AutoBet", $"配置已添加: {config.ConfigName}");
+                _log.Info("AutoBet", $"✅ 配置已添加: {config.ConfigName} (新ID={config.Id})");
             }
             else
             {
@@ -241,13 +271,21 @@ namespace zhaocaimao.Services.AutoBet
                 // 因为某些字段（如 Username, Password）是自动属性，不会触发 PropertyChanged
                 if (_db != null)
                 {
+                    var oldUsername = config.Username;
+                    var oldPassword = config.Password;
+                    
                     config.LastUpdateTime = DateTime.Now;
-                    _db.Update(config);  // 🔥 强制更新到数据库
-                    _log.Info("AutoBet", $"配置已更新并保存到数据库: {config.ConfigName}");
+                    int rowsAffected = _db.Update(config);  // 🔥 强制更新到数据库
+                    
+                    _log.Info("AutoBet", $"✅ 配置已更新到数据库: {config.ConfigName} (ID={config.Id})");
+                    _log.Info("AutoBet", $"   - 数据库路径: {_db.DatabasePath}");
+                    _log.Info("AutoBet", $"   - 影响行数: {rowsAffected}");
+                    _log.Info("AutoBet", $"   - 账号: {(string.IsNullOrEmpty(config.Username) ? "(空)" : config.Username)}");
+                    _log.Info("AutoBet", $"   - 密码: {(string.IsNullOrEmpty(config.Password) ? "(空)" : "已设置")}");
                 }
                 else
                 {
-                    _log.Warning("AutoBet", $"配置已更新但数据库未初始化: {config.ConfigName}");
+                    _log.Error("AutoBet", $"❌ SaveConfig 失败: _db 为 null，配置={config.ConfigName}");
                 }
             }
         }
