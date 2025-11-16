@@ -274,7 +274,7 @@ namespace zhaocaimao.Helpers
         }
         
         /// <summary>
-        /// 判断单个下注项是否中奖
+        /// 判断单个下注项是否中奖（🔥 完全参考 F5BotV2 LotteryNumber.cs 第 71-89 行）
         /// </summary>
         public static bool IsWin(BinggoBetItem betItem, BinggoLotteryData lotteryData)
         {
@@ -293,6 +293,7 @@ namespace zhaocaimao.Helpers
             
             // 获取对应车号的值
             int value = 0;
+            bool isPSum = false; // 是否为总和
             switch (betItem.CarNumber)
             {
                 case 1: value = lotteryData.P1?.Number ?? 0; break;
@@ -300,7 +301,10 @@ namespace zhaocaimao.Helpers
                 case 3: value = lotteryData.P3?.Number ?? 0; break;
                 case 4: value = lotteryData.P4?.Number ?? 0; break;
                 case 5: value = lotteryData.P5?.Number ?? 0; break;
-                case 6: value = lotteryData.PSum?.Number ?? 0; break;
+                case 6: 
+                    value = lotteryData.PSum?.Number ?? 0;
+                    isPSum = true; // 标记为总和
+                    break;
                 default: return false;
             }
             
@@ -308,9 +312,30 @@ namespace zhaocaimao.Helpers
             switch (betItem.PlayType)
             {
                 case BinggoPlayType.大:
-                    return value >= 41; // 总和大于等于41为大
+                    // 🔥 参考 F5BotV2: LotteryNumber.cs 第 71-89 行
+                    if (isPSum)
+                    {
+                        // P总（总和）：203 <= number <= 390 为大
+                        return value >= 203 && value <= 390;
+                    }
+                    else
+                    {
+                        // P1-P5（单个车号）：number > 40 为大
+                        return value > 40;
+                    }
+                    
                 case BinggoPlayType.小:
-                    return value <= 40;
+                    // 🔥 参考 F5BotV2: LotteryNumber.cs 第 71-89 行
+                    if (isPSum)
+                    {
+                        // P总（总和）：15 <= number <= 202 为小
+                        return value >= 15 && value <= 202;
+                    }
+                    else
+                    {
+                        // P1-P5（单个车号）：number <= 40 为小
+                        return value <= 40;
+                    }
                 case BinggoPlayType.单:
                     return value % 2 == 1;
                 case BinggoPlayType.双:
