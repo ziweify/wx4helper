@@ -74,11 +74,12 @@ namespace zhaocaimao
                         services.AddSingleton<IBinggoOrderService, BinggoOrderService>();
                         services.AddSingleton<BinggoStatisticsService>();
 
-                        // 自动投注服务（暂时不实现Socket部分）
-                        // services.AddSingleton<Services.AutoBet.BetRecordService>();
-                        // services.AddSingleton<Services.AutoBet.OrderMerger>();
-                        // services.AddSingleton<Services.AutoBet.BetQueueManager>();
-                        // services.AddSingleton<Services.AutoBet.AutoBetCoordinator>();
+                        // 自动投注服务
+                        services.AddSingleton<Services.AutoBet.BetRecordService>();
+                        services.AddSingleton<Services.AutoBet.OrderMerger>();
+                        services.AddSingleton<Services.AutoBet.BetQueueManager>();
+                        services.AddSingleton<Services.AutoBet.AutoBetService>();
+                        services.AddSingleton<Services.AutoBet.AutoBetCoordinator>();
 
                         // 消息处理
                         services.AddSingleton<MessageDispatcher>();

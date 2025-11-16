@@ -275,6 +275,10 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             // 根据昵称查找会员
             if (_membersBindingList == null)
             {
+                _logService.Error("AdminCommand", "❌ 会员列表未初始化！");
+                _logService.Error("AdminCommand", $"   数据库状态: {(_db != null ? "已初始化" : "未初始化")}");
+                _logService.Error("AdminCommand", $"   会员列表: null");
+                _logService.Error("AdminCommand", "   请检查：1. 是否已绑定群 2. BindGroupAsync 是否成功执行");
                 throw new Exception("#[警告]系统未初始化");
             }
             
@@ -340,6 +344,10 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             // 根据ID查找会员
             if (_membersBindingList == null)
             {
+                _logService.Error("AdminCommand", "❌ 会员列表未初始化！");
+                _logService.Error("AdminCommand", $"   数据库状态: {(_db != null ? "已初始化" : "未初始化")}");
+                _logService.Error("AdminCommand", $"   会员列表: null");
+                _logService.Error("AdminCommand", "   请检查：1. 是否已绑定群 2. BindGroupAsync 是否成功执行");
                 throw new Exception("#[警告]系统未初始化");
             }
             

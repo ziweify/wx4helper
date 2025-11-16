@@ -57,8 +57,10 @@
             pnlMain.MinimumSize = new Size(1, 1);
             pnlMain.Name = "pnlMain";
             pnlMain.Padding = new Padding(30);
-            pnlMain.RectColor = Color.FromArgb(216, 219, 227);
-            pnlMain.Size = new Size(450, 350);
+            // 🔥 金色招财猫主题
+            pnlMain.FillColor = Color.FromArgb(255, 248, 220);  // 淡金色背景
+            pnlMain.RectColor = Color.FromArgb(255, 193, 7);   // 金色边框
+            pnlMain.Size = new Size(450, 380);
             pnlMain.TabIndex = 0;
             pnlMain.Text = null;
             pnlMain.TextAlignment = ContentAlignment.MiddleCenter;
@@ -66,16 +68,17 @@
             // btnCancel
             // 
             btnCancel.Cursor = Cursors.Hand;
-            btnCancel.FillColor = Color.FromArgb(230, 80, 80);
-            btnCancel.FillHoverColor = Color.FromArgb(235, 115, 115);
-            btnCancel.FillPressColor = Color.FromArgb(200, 58, 58);
+            // 🔥 金色主题 - 取消按钮使用深金色
+            btnCancel.FillColor = Color.FromArgb(184, 134, 11);  // 深金色
+            btnCancel.FillHoverColor = Color.FromArgb(218, 165, 32);  // 金色悬停
+            btnCancel.FillPressColor = Color.FromArgb(153, 101, 21);  // 深金色按下
             btnCancel.Font = new Font("微软雅黑", 12F);
-            btnCancel.Location = new Point(240, 265);
+            btnCancel.Location = new Point(240, 295);
             btnCancel.MinimumSize = new Size(1, 1);
             btnCancel.Name = "btnCancel";
-            btnCancel.RectColor = Color.FromArgb(230, 80, 80);
-            btnCancel.RectHoverColor = Color.FromArgb(235, 115, 115);
-            btnCancel.RectPressColor = Color.FromArgb(200, 58, 58);
+            btnCancel.RectColor = Color.FromArgb(184, 134, 11);
+            btnCancel.RectHoverColor = Color.FromArgb(218, 165, 32);
+            btnCancel.RectPressColor = Color.FromArgb(153, 101, 21);
             btnCancel.Size = new Size(120, 45);
             btnCancel.TabIndex = 7;
             btnCancel.Text = "取消";
@@ -85,8 +88,15 @@
             // btnLogin
             // 
             btnLogin.Cursor = Cursors.Hand;
-            btnLogin.Font = new Font("微软雅黑", 12F);
-            btnLogin.Location = new Point(90, 265);
+            // 🔥 金色主题 - 登录按钮使用亮金色
+            btnLogin.FillColor = Color.FromArgb(255, 193, 7);  // 亮金色
+            btnLogin.FillHoverColor = Color.FromArgb(255, 215, 0);  // 金色悬停
+            btnLogin.FillPressColor = Color.FromArgb(218, 165, 32);  // 深金色按下
+            btnLogin.RectColor = Color.FromArgb(255, 193, 7);
+            btnLogin.RectHoverColor = Color.FromArgb(255, 215, 0);
+            btnLogin.RectPressColor = Color.FromArgb(218, 165, 32);
+            btnLogin.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
+            btnLogin.Location = new Point(90, 295);
             btnLogin.MinimumSize = new Size(1, 1);
             btnLogin.Name = "btnLogin";
             btnLogin.Size = new Size(120, 45);
@@ -97,8 +107,8 @@
             // chkRememberPassword
             // 
             chkRememberPassword.Font = new Font("微软雅黑", 10F);
-            chkRememberPassword.ForeColor = Color.FromArgb(48, 48, 48);
-            chkRememberPassword.Location = new Point(130, 215);
+            chkRememberPassword.ForeColor = Color.FromArgb(184, 134, 11);  // 金色文字
+            chkRememberPassword.Location = new Point(130, 245);
             chkRememberPassword.MinimumSize = new Size(1, 1);
             chkRememberPassword.Name = "chkRememberPassword";
             chkRememberPassword.Size = new Size(150, 29);
@@ -108,7 +118,8 @@
             // txtPassword
             // 
             txtPassword.Font = new Font("微软雅黑", 12F);
-            txtPassword.Location = new Point(130, 165);
+            txtPassword.RectColor = Color.FromArgb(255, 193, 7);  // 金色边框
+            txtPassword.Location = new Point(130, 195);
             txtPassword.Margin = new Padding(4, 5, 4, 5);
             txtPassword.MinimumSize = new Size(1, 16);
             txtPassword.Name = "txtPassword";
@@ -123,8 +134,8 @@
             // lblPassword
             // 
             lblPassword.Font = new Font("微软雅黑", 12F);
-            lblPassword.ForeColor = Color.FromArgb(48, 48, 48);
-            lblPassword.Location = new Point(50, 165);
+            lblPassword.ForeColor = Color.FromArgb(184, 134, 11);  // 金色文字
+            lblPassword.Location = new Point(50, 195);
             lblPassword.Name = "lblPassword";
             lblPassword.Size = new Size(80, 35);
             lblPassword.TabIndex = 3;
@@ -134,7 +145,8 @@
             // txtUsername
             // 
             txtUsername.Font = new Font("微软雅黑", 12F);
-            txtUsername.Location = new Point(130, 110);
+            txtUsername.RectColor = Color.FromArgb(255, 193, 7);  // 金色边框
+            txtUsername.Location = new Point(130, 140);
             txtUsername.Margin = new Padding(4, 5, 4, 5);
             txtUsername.MinimumSize = new Size(1, 16);
             txtUsername.Name = "txtUsername";
@@ -148,8 +160,8 @@
             // lblUsername
             // 
             lblUsername.Font = new Font("微软雅黑", 12F);
-            lblUsername.ForeColor = Color.FromArgb(48, 48, 48);
-            lblUsername.Location = new Point(50, 110);
+            lblUsername.ForeColor = Color.FromArgb(184, 134, 11);  // 金色文字
+            lblUsername.Location = new Point(50, 140);
             lblUsername.Name = "lblUsername";
             lblUsername.Size = new Size(80, 35);
             lblUsername.TabIndex = 1;
@@ -158,26 +170,27 @@
             // 
             // lblTitle
             // 
-            lblTitle.Font = new Font("微软雅黑", 18F, FontStyle.Bold, GraphicsUnit.Point, 134);
-            lblTitle.ForeColor = Color.FromArgb(48, 48, 48);
-            lblTitle.Location = new Point(30, 30);
+            // 🔥 金色招财猫主题 - 标题
+            lblTitle.Font = new Font("微软雅黑", 22F, FontStyle.Bold, GraphicsUnit.Point, 134);
+            lblTitle.ForeColor = Color.FromArgb(184, 134, 11);  // 深金色文字
+            lblTitle.Location = new Point(30, 25);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(390, 60);
+            lblTitle.Size = new Size(390, 70);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "百胜VX3Plus 系统登录";
+            lblTitle.Text = "💰 招财猫系统登录 💰";
             lblTitle.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // LoginForm
             // 
             AutoScaleMode = AutoScaleMode.None;
-            ClientSize = new Size(450, 385);
+            ClientSize = new Size(450, 415);
             Controls.Add(pnlMain);
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "LoginForm";
             ShowIcon = false;
             ShowInTaskbar = false;
-            Text = "系统登录";
+            Text = "招财猫 - 系统登录";
             ZoomScaleRect = new Rectangle(15, 15, 800, 450);
             Load += LoginForm_Load;
             pnlMain.ResumeLayout(false);

@@ -359,12 +359,21 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "✅ BetRecordService 已设置全局数据库（BetRecord）");
                 
                 // 📌 AdminCommandHandler: 设置会员 BindingList 和数据库
+                // 🔥 注意：此时 _membersBindingList 可能还是 null（需要先绑定群）
+                // 如果为 null，会在 BindGroupAsync 中重新设置
                 var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
                 if (adminCommandHandler != null && _db != null)
                 {
-                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
                     adminCommandHandler.SetDatabase(_db);
-                    _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表和数据库");
+                    if (_membersBindingList != null)
+                    {
+                        adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                        _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表和数据库");
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", "⚠️ AdminCommandHandler 已设置数据库，但会员列表尚未初始化（需要先绑定群）");
+                    }
                 }
                 
                 // 📌 微信专属数据库（business_{wxid}.db）- 绑定微信后才可用
@@ -1655,6 +1664,17 @@ namespace BaiShengVx3Plus
                 _membersBindingList = result.MembersBindingList;
                 _ordersBindingList = result.OrdersBindingList;
                 _creditWithdrawsBindingList = result.CreditWithdrawsBindingList;
+                
+                // 🔥 5.5. 重新设置 AdminCommandHandler 的引用（重要！）
+                // 因为在 InitializeBinggoServices 时，_membersBindingList 可能还是 null
+                // 现在绑定群成功后，_membersBindingList 已经有值了，需要重新设置
+                var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
+                if (adminCommandHandler != null && _db != null && _membersBindingList != null)
+                {
+                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                    adminCommandHandler.SetDatabase(_db);
+                    _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表和数据库（绑定群后）");
+                }
                 
                 // 🔥 6. 绑定到 DataGridView（UI 更新）
                 UpdateUIThreadSafe(() =>

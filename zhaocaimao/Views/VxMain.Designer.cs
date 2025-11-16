@@ -132,7 +132,8 @@ namespace zhaocaimao
             // 
             // ucBinggoDataCur
             // 
-            ucBinggoDataCur.BackColor = Color.FromArgb(243, 249, 255);
+            // 🔥 金色主题
+            ucBinggoDataCur.BackColor = Color.FromArgb(255, 248, 220);  // 淡金色背景
             ucBinggoDataCur.BorderStyle = BorderStyle.FixedSingle;
             ucBinggoDataCur.Location = new Point(0, 5);
             ucBinggoDataCur.Name = "ucBinggoDataCur";
@@ -141,7 +142,7 @@ namespace zhaocaimao
             // 
             // ucBinggoDataLast
             // 
-            ucBinggoDataLast.BackColor = Color.FromArgb(255, 248, 225);
+            ucBinggoDataLast.BackColor = Color.FromArgb(255, 248, 220);  // 淡金色背景
             ucBinggoDataLast.Location = new Point(3, 89);
             ucBinggoDataLast.Name = "ucBinggoDataLast";
             ucBinggoDataLast.Size = new Size(239, 107);
@@ -314,6 +315,11 @@ namespace zhaocaimao
             // 
             // btnStartBrowser
             // 
+            // 🔥 金色主题按钮
+            btnStartBrowser.FillColor = Color.FromArgb(255, 193, 7);  // 亮金色
+            btnStartBrowser.FillHoverColor = Color.FromArgb(255, 215, 0);
+            btnStartBrowser.RectColor = Color.FromArgb(255, 193, 7);
+            btnStartBrowser.RectHoverColor = Color.FromArgb(255, 215, 0);
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
             btnStartBrowser.Location = new Point(120, 240);
             btnStartBrowser.MinimumSize = new Size(1, 1);
@@ -326,6 +332,11 @@ namespace zhaocaimao
             // 
             // btnConfigManager
             // 
+            // 🔥 金色主题按钮
+            btnConfigManager.FillColor = Color.FromArgb(255, 193, 7);  // 亮金色
+            btnConfigManager.FillHoverColor = Color.FromArgb(255, 215, 0);
+            btnConfigManager.RectColor = Color.FromArgb(255, 193, 7);
+            btnConfigManager.RectHoverColor = Color.FromArgb(255, 215, 0);
             btnConfigManager.Font = new Font("微软雅黑", 9F);
             btnConfigManager.Location = new Point(120, 275);
             btnConfigManager.MinimumSize = new Size(1, 1);
@@ -497,7 +508,10 @@ namespace zhaocaimao
             pnl_fastsetting.Name = "pnl_fastsetting";
             pnl_fastsetting.Size = new Size(237, 305);
             pnl_fastsetting.TabIndex = 3;
-            pnl_fastsetting.Text = "快速设置";
+            // 🔥 金色招财猫主题
+            pnl_fastsetting.FillColor = Color.FromArgb(255, 248, 220);  // 淡金色背景
+            pnl_fastsetting.RectColor = Color.FromArgb(255, 193, 7);   // 金色边框
+            pnl_fastsetting.Text = "💰 快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
             // 
             // swi_OrdersTasking
@@ -984,7 +998,8 @@ namespace zhaocaimao
             // 
             // statusStrip
             // 
-            statusStrip.BackColor = Color.FromArgb(243, 249, 255);
+            // 🔥 金色主题状态栏
+            statusStrip.BackColor = Color.FromArgb(255, 248, 220);  // 淡金色背景
             statusStrip.Font = new Font("微软雅黑", 10F);
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { lblStatus });
@@ -1008,7 +1023,7 @@ namespace zhaocaimao
             Controls.Add(statusStrip);
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "VxMain";
-            Text = "百胜VX3Plus - 管理系统";
+            Text = "💰 招财猫 - 管理系统";
             ZoomScaleRect = new Rectangle(15, 15, 980, 762);
             Load += VxMain_Load;
             cmsMembers.ResumeLayout(false);

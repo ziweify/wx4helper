@@ -982,8 +982,8 @@ namespace zhaocaimao
         {
             try
             {
-                // 🔥 显示版本号
-                this.Text = Utils.VersionInfo.FullVersion;
+                // 🔥 显示版本号 - 招财猫主题
+                this.Text = $"💰 招财猫 {Utils.VersionInfo.FullVersion}";
                 _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 _logService.Info("VxMain", $"🚀 {Utils.VersionInfo.FullVersion}");
                 _logService.Info("VxMain", $"📅 构建日期: {Utils.VersionInfo.BuildDate}");

@@ -1095,6 +1095,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 1. 处理查询命令（查、流水、货单）- 参考 F5BotV2 第2174行
                 if (msg == "查" || msg == "流水" || msg == "货单")
                 {
+                    _logService.Info("BinggoLotteryService", 
+                        $"📋 收到查询命令: 会员={member.Nickname}({member.Wxid}), 消息内容=[{msg}], 长度={msg.Length}");
+                    
                     // 🔥 格式完全按照 F5BotV2 第2177-2180行（字节级别一致）
                     // @{member.nickname}\r流~~记录\r今日/本轮进货:{BetToday}/{BetCur}\r今日上/下:{CreditToday}/{WithdrawToday}\r今日盈亏:{IncomeToday}\r
                     string sendTxt = $"@{member.Nickname}\r流~~记录\r";
@@ -1104,7 +1107,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     sendTxt = sendTxt + $"今日盈亏:" + ((int)member.IncomeToday).ToString() + "\r";
                     
                     _logService.Info("BinggoLotteryService", 
-                        $"查询命令: {member.Nickname} - 今日下注:{member.BetToday}, 盈亏:{member.IncomeToday}");
+                        $"✅ 查询命令处理完成: {member.Nickname} - 今日下注:{member.BetToday}, 盈亏:{member.IncomeToday}, 回复消息长度={sendTxt.Length}");
+                    _logService.Debug("BinggoLotteryService", 
+                        $"📤 查询回复消息内容: {sendTxt.Replace("\r", "\\r")}");
                     
                     return (true, sendTxt, null);
                 }
@@ -1203,8 +1208,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         return (true, "系统初始化中，请稍后...", null);
                     }
                     
-                    // 🔥 检查是否已封盘（只能在开盘中取消）- 参考 F5BotV2 第2216行
-                    if (_currentStatus != BinggoLotteryStatus.开盘中)
+                    // 🔥 检查是否已封盘（在发送封盘消息"时间到!停止进仓!以此为准!"之前都可以取消）
+                    // 允许在"开盘中"和"即将封盘"状态取消，只有在"封盘中"状态（已发送封盘消息）之后才不能取消
+                    // 参考 F5BotV2 第2216行，但需要允许"即将封盘"状态也可以取消
+                    if (_currentStatus == BinggoLotteryStatus.封盘中 || 
+                        _currentStatus == BinggoLotteryStatus.开奖中 ||
+                        _currentStatus == BinggoLotteryStatus.等待中)
                     {
                         return (true, $"@{member.Nickname} 时间到!不能取消!", null);
                     }
@@ -1226,6 +1235,19 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     
                     // 🔥 取消最后一个订单（参考 F5BotV2 第2215行）
                     var ods = orders.Last();
+                    
+                    // 🔥 双重验证：确保只能取消当前期的订单（重要！）
+                    if (ods.IssueId != _currentIssueId)
+                    {
+                        _logService.Error("BinggoLotteryService", 
+                            $"❌ 取消订单期号不匹配！订单期号={ods.IssueId} 当前期号={_currentIssueId} 会员={member.Nickname} 订单ID={ods.Id}");
+                        // 🔥 简化回复：只显示期号后3位，不显示详细错误信息
+                        int issueShort = _currentIssueId % 1000;
+                        return (true, $"@{member.Nickname}\r{issueShort}没有可取消的订单", null);
+                    }
+                    
+                    _logService.Info("BinggoLotteryService", 
+                        $"✅ 取消订单验证通过: 会员={member.Nickname} 订单ID={ods.Id} 订单期号={ods.IssueId} 当前期号={_currentIssueId} 金额={ods.AmountTotal}");
                     
                     // 执行取消逻辑
                     ods.OrderStatus = OrderStatus.已取消;
