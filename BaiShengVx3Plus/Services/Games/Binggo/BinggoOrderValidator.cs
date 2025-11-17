@@ -16,12 +16,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
     public class BinggoOrderValidator
     {
         private readonly ILogService _logService;
-        private readonly BinggoGameSettings _settings;
+        private readonly IConfigurationService _configService;
         
-        public BinggoOrderValidator(ILogService logService, BinggoGameSettings settings)
+        public BinggoOrderValidator(ILogService logService, IConfigurationService configService)
         {
             _logService = logService;
-            _settings = settings;
+            _configService = configService;
         }
         
         /// <summary>
@@ -60,22 +60,24 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 4. 验证单注金额
-                _logService.Info("BinggoOrderValidator", $"🔍 开始验证单注金额限制: MinBet={_settings.MinBet}, MaxBet={_settings.MaxBet}");
+                float minBet = _configService.GetMinBet();
+                float maxBet = _configService.GetMaxBet();
+                _logService.Info("BinggoOrderValidator", $"🔍 开始验证单注金额限制: MinBet={minBet}, MaxBet={maxBet}");
                 
                 foreach (var item in betContent.Items)
                 {
                     _logService.Info("BinggoOrderValidator", $"   - 检查投注项: 车{item.CarNumber} {item.PlayType}, 金额={item.Amount}");
                     
-                    if (item.Amount < (decimal)_settings.MinBet)
+                    if (item.Amount < (decimal)minBet)
                     {
-                        errorMessage = $"单注金额不能小于 {_settings.MinBet} 元";
+                        errorMessage = $"单注金额不能小于 {minBet} 元";
                         _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
                     
-                    if (item.Amount > (decimal)_settings.MaxBet)
+                    if (item.Amount > (decimal)maxBet)
                     {
-                        errorMessage = $"单注金额不能超过 {_settings.MaxBet} 元";
+                        errorMessage = $"单注金额不能超过 {maxBet} 元";
                         _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
@@ -85,10 +87,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 5. 验证总金额
                 decimal totalAmount = betContent.TotalAmount;
+                float maxBetPerIssue = _configService.GetMaxBetPerIssue();
                 
-                if (totalAmount > (decimal)_settings.MaxBetPerIssue)
+                if (totalAmount > (decimal)maxBetPerIssue)
                 {
-                    errorMessage = $"单期总投注不能超过 {_settings.MaxBetPerIssue} 元";
+                    errorMessage = $"单期总投注不能超过 {maxBetPerIssue} 元";
                     return false;
                 }
                 
@@ -145,9 +148,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return false;
                 }
                 
-                if (amount > (decimal)_settings.MaxBet * 100) // 补单最大金额限制
+                float maxBet = _configService.GetMaxBet();
+                if (amount > (decimal)maxBet * 100) // 补单最大金额限制
                 {
-                    errorMessage = $"补单金额过大，最多 {_settings.MaxBet * 100} 元";
+                    errorMessage = $"补单金额过大，最多 {maxBet * 100} 元";
                     return false;
                 }
                 

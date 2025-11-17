@@ -39,8 +39,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
     public class BinggoLotteryService : IBinggoLotteryService
     {
         private readonly ILogService _logService;
-        private readonly BinggoGameSettings _settings;
         private readonly IConfigurationService _configService;
+        private readonly Services.Sound.SoundService? _soundService;  // 🔥 声音播放服务（可选）
         private SQLiteConnection? _db;
         private Core.BinggoLotteryDataBindingList? _bindingList;  // 🔥 UI 数据绑定
         
@@ -90,12 +90,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         public BinggoLotteryService(
             ILogService logService,
-            BinggoGameSettings settings,
-            IConfigurationService configService)
+            IConfigurationService configService,
+            Services.Sound.SoundService? soundService = null)  // 🔥 声音服务（可选）
         {
             _logService = logService;
-            _settings = settings;
             _configService = configService;
+            _soundService = soundService;
         }
         
         /// <summary>
@@ -251,7 +251,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 1. secondsToOpen = 距离开奖的真实倒计时（用于显示）
                 // 2. secondsToSeal = 距离封盘的倒计时（用于状态判断）
                 int secondsToOpen = BinggoTimeHelper.GetSecondsToOpen(localIssueId);
-                int secondsToSeal = secondsToOpen - _settings.SealSecondsAhead;
+                int secondsToSeal = secondsToOpen - _configService.GetSealSecondsAhead();
                 
                 lock (_lock)
                 {
@@ -614,7 +614,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _ = Task.Run(async () => await SendSealingReminderAsync(_currentIssueId, 15));
                 }
             }
-            else if (secondsToSeal > -_settings.SealSecondsAhead)
+            else if (secondsToSeal > -_configService.GetSealSecondsAhead())
             {
                 // 封盘中（0 到 -配置的封盘秒数，等待开奖）
                 newStatus = BinggoLotteryStatus.封盘中;
@@ -869,6 +869,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 _logService.Info("BinggoLotteryService", $"🎲 开奖处理: {issueId} - {data.ToLotteryString()}");
                 
+                // 🔥 播放开奖声音（参考 F5BotV2 第1411行）
+                _soundService?.PlayLotterySound();
+                
                 // 🔥 1. 获取当期所有订单（参考 F5BotV2 第 1420 行）
                 // 🔥 查询条件：期号匹配，且不是已取消/未知状态，且不是托单
                 var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
@@ -946,6 +949,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     profit: kvp.Value.profit
                 )).ToList();
 
+                // 🔥 播放开奖声音（参考 F5BotV2 第1411行：PlayMp3("mp3_kj.mp3")）
+                _soundService?.PlayLotterySound();
+                
                 // 🔥 3. 发送中奖名单和留分名单到微信群（参考 F5BotV2 第 1415-1474 行）
                 // 🔥 重要：无论是否有订单，都要发送这两个名单（参考 F5BotV2 第 1462、1474 行）
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
@@ -1849,6 +1855,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 _logService.Info("BinggoLotteryService", $"📢 发送封盘消息: 期号 {issueId}");
+                
+                // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
+                _soundService?.PlaySealingSound();
                 
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();

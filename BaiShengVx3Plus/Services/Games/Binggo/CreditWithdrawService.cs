@@ -21,17 +21,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private readonly ILogService _logService;
         private readonly IWeixinSocketClient? _socketClient;
         private readonly BinggoStatisticsService _statisticsService;
+        private readonly Services.Sound.SoundService? _soundService;  // 🔥 声音播放服务（可选）
 
         public CreditWithdrawService(
             SQLiteConnection db,
             ILogService logService,
             BinggoStatisticsService statisticsService,
-            IWeixinSocketClient? socketClient = null)
+            IWeixinSocketClient? socketClient = null,
+            Services.Sound.SoundService? soundService = null)  // 🔥 声音服务（可选）
         {
             _db = db;
             _logService = logService;
             _statisticsService = statisticsService;
             _socketClient = socketClient;
+            _soundService = soundService;
             
             // 确保表存在
             _db.CreateTable<V2CreditWithdraw>();
@@ -70,6 +73,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     member.Balance = balanceAfter;
                     member.CreditToday += request.Amount;
                     member.CreditTotal += request.Amount;
+                    
+                    // 🔥 播放上分声音（参考 F5BotV2 第2597行：PlayMp3("mp3_shang.mp3")）
+                    if (!isLoading)
+                    {
+                        _soundService?.PlayCreditUpSound();
+                    }
                 }
                 else if (request.Action == CreditWithdrawAction.下分)
                 {
@@ -89,6 +98,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     member.Balance = balanceAfter;
                     member.WithdrawToday += request.Amount;
                     member.WithdrawTotal += request.Amount;
+                    
+                    // 🔥 播放下分声音（参考 F5BotV2 第2599行：PlayMp3("mp3_xia.mp3")）
+                    if (!isLoading)
+                    {
+                        _soundService?.PlayCreditDownSound();
+                    }
                 }
                 else
                 {

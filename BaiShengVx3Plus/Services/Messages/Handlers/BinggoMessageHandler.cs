@@ -24,7 +24,6 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         private readonly ILogService _logService;
         private readonly IBinggoLotteryService _lotteryService;
         private readonly IBinggoOrderService _orderService;
-        private readonly BinggoGameSettings _settings;
         private readonly AdminCommandHandler _adminCommandHandler; // 🔥 新增：管理员命令处理器
         
         /// <summary>
@@ -36,13 +35,11 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             ILogService logService,
             IBinggoLotteryService lotteryService,
             IBinggoOrderService orderService,
-            BinggoGameSettings settings,
             AdminCommandHandler adminCommandHandler) // 🔥 新增：注入管理员命令处理器
         {
             _logService = logService;
             _lotteryService = lotteryService;
             _orderService = orderService;
-            _settings = settings;
             _adminCommandHandler = adminCommandHandler; // 🔥 新增
         }
         

@@ -36,6 +36,11 @@ namespace BaiShengVx3Plus.Contracts
         float GetMaxBet();
         
         /// <summary>
+        /// 🔥 获取单期最大投注总额
+        /// </summary>
+        float GetMaxBetPerIssue();
+        
+        /// <summary>
         /// 获取收单关闭时不发送系统消息状态
         /// </summary>
         bool Get收单关闭时不发送系统消息();

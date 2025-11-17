@@ -27,7 +27,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private readonly ILogService _logService;
         private readonly IBinggoLotteryService _lotteryService;
         private readonly BinggoOrderValidator _validator;
-        private readonly BinggoGameSettings _settings;
         private BinggoStatisticsService? _statisticsService; // 🔥 统计服务（可选，通过 SetStatisticsService 设置）
         private SQLiteConnection? _db;
         private V2OrderBindingList? _ordersBindingList;
@@ -36,13 +35,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         public BinggoOrderService(
             ILogService logService,
             IBinggoLotteryService lotteryService,
-            BinggoOrderValidator validator,
-            BinggoGameSettings settings)
+            BinggoOrderValidator validator)
         {
             _logService = logService;
             _lotteryService = lotteryService;
             _validator = validator;
-            _settings = settings;
         }
         
         /// <summary>

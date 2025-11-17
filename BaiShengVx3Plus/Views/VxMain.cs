@@ -38,8 +38,6 @@ namespace BaiShengVx3Plus
         private readonly IBinggoOrderService _orderService;
         private readonly BinggoStatisticsService _statisticsService; // 🔥 统计服务
         private readonly BinggoMessageHandler _binggoMessageHandler;
-        private readonly BinggoGameSettings _binggoSettings;
-        private readonly Services.Games.Binggo.BinggoGameSettingsService _binggoSettingsService; // 🎮 炳狗游戏配置服务
         private readonly Services.AutoBet.AutoBetService _autoBetService; // 🤖 自动投注服务
         private readonly Services.AutoBet.AutoBetCoordinator _autoBetCoordinator; // 🤖 自动投注协调器
         private readonly IConfigurationService _configService; // 📝 配置服务
@@ -123,8 +121,6 @@ namespace BaiShengVx3Plus
             IBinggoOrderService orderService, // 🎮 注入炳狗订单服务
             BinggoStatisticsService statisticsService, // 🔥 注入统计服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
-            BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
-            Services.Games.Binggo.BinggoGameSettingsService binggoSettingsService, // 🎮 注入炳狗游戏配置服务
             Services.AutoBet.AutoBetService autoBetService, // 🤖 注入自动投注服务
             Services.AutoBet.AutoBetCoordinator autoBetCoordinator, // 🤖 注入自动投注协调器
             IConfigurationService configService, // 📝 注入配置服务
@@ -144,8 +140,6 @@ namespace BaiShengVx3Plus
             _orderService = orderService;
             _statisticsService = statisticsService; // 🔥 统计服务
             _binggoMessageHandler = binggoMessageHandler;
-            _binggoSettings = binggoSettings;
-            _binggoSettingsService = binggoSettingsService; // 🎮 炳狗游戏配置服务
             _autoBetService = autoBetService; // 🤖 自动投注服务
             _autoBetCoordinator = autoBetCoordinator; // 🤖 自动投注协调器
             _configService = configService; // 📝 配置服务
@@ -619,9 +613,9 @@ namespace BaiShengVx3Plus
             try
             {
                 // 从配置加载到 UI
-                txtSealSeconds.Value = _binggoSettings.SealSecondsAhead;
-                txtMinBet.Value = (int)_binggoSettings.MinBet;
-                txtMaxBet.Value = (int)_binggoSettings.MaxBet;
+                txtSealSeconds.Value = _configService.GetSealSecondsAhead();
+                txtMinBet.Value = (int)_configService.GetMinBet();
+                txtMaxBet.Value = (int)_configService.GetMaxBet();
                 
                 // 🔥 绑定事件：用户修改快速设置时自动保存
                 txtSealSeconds.ValueChanged += (s, e) =>
@@ -659,7 +653,7 @@ namespace BaiShengVx3Plus
         /// </summary>
         private void UpdateAdminModeUI()
         {
-            bool isAdminMode = _binggoSettings.IsAdminMode;
+            bool isAdminMode = _configService.GetIsRunModeAdmin();
             
             // 管理模式下，txtCurrentContact 可编辑
             txtCurrentContact.ReadOnly = !isAdminMode;
@@ -682,7 +676,7 @@ namespace BaiShengVx3Plus
         /// </summary>
         private async void TxtCurrentContact_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Enter && _binggoSettings.IsAdminMode)
+            if (e.KeyCode == Keys.Enter && _configService.GetIsRunModeAdmin())
             {
                 string input = txtCurrentContact.Text.Trim();
                 if (string.IsNullOrEmpty(input))
@@ -745,7 +739,7 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                _binggoSettings.SealSecondsAhead = value;
+                _configService.SetSealSecondsAhead(value);
                 _logService.Info("VxMain", $"封盘提前秒数已更新: {value} 秒");
             }
             catch (Exception ex)
@@ -2199,7 +2193,6 @@ namespace BaiShengVx3Plus
                     _socketClient, 
                     _logService, 
                     _settingViewModel, 
-                    _binggoSettings, 
                     _configService,
                     SimulateMemberMessageAsync); // 🔧 开发模式：模拟消息回调
                 

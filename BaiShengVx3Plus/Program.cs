@@ -57,6 +57,7 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<Services.Database.DatabaseInitializer>();  // 🔥 数据库初始化器（必须在 LogService 之前）
                         services.AddSingleton<ILogService, LogService>();           // 日志服务（logs.db）
                         services.AddSingleton<IConfigurationService, Services.Configuration.ConfigurationService>(); // 配置服务
+                        services.AddSingleton<Services.Sound.SoundService>();        // 🔥 声音播放服务
                         
                         // 业务服务
                         // ✅ IAuthService 已删除，直接使用 BoterApi
@@ -70,16 +71,6 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<IMemberDataService, MemberDataService>();    // 会员数据访问服务
                             
                             // 🎮 游戏配置和服务
-                            // 🔥 BinggoGameSettings 现在是 AppConfiguration 的包装类
-                            services.AddSingleton<BinggoGameSettings>(sp => 
-                            {
-                                var configService = sp.GetRequiredService<ConfigurationService>();
-                                var appConfig = configService.GetType()
-                                    .GetField("_configuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                                    ?.GetValue(configService) as AppConfiguration;
-                                return new BinggoGameSettings(appConfig ?? new AppConfiguration());
-                            });
-                            services.AddSingleton<BaiShengVx3Plus.Services.Games.Binggo.BinggoGameSettingsService>();  // 🔥 已弃用，仅用于兼容
                             services.AddSingleton<BinggoOrderValidator>();              // 炳狗订单验证器
                             services.AddSingleton<AdminCommandHandler>();               // 🔥 管理员命令处理器
                             services.AddSingleton<BinggoMessageHandler>();              // 炳狗消息处理器
