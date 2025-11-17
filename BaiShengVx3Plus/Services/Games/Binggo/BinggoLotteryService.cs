@@ -574,15 +574,30 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 return;
             }
             
-            if (secondsToSeal > 30)
+            // 🔥 参考 F5BotV2 Line 1003-1028：只有当剩余时间 <= 300秒（5分钟）时，才变成"开盘中"
+            // 如果剩余时间 > 300秒，保持"等待中"状态
+            if (secondsToSeal > 30 && secondsToSeal <= 300)
             {
-                // 开盘中（距离封盘超过 30 秒）
+                // 开盘中（距离封盘超过 30 秒，但不超过 5 分钟）
                 newStatus = BinggoLotteryStatus.开盘中;
                 
                 // 🔥 只在第一次进入"开盘中"状态时执行 On开盘中 逻辑（参考 F5BotV2 第1139-1178行）
                 if (oldStatus != BinggoLotteryStatus.开盘中)
                 {
                     _ = Task.Run(async () => await OnOpeningAsync(_currentIssueId));
+                }
+            }
+            else if (secondsToSeal > 300)
+            {
+                // 🔥 等待中（距离封盘超过 5 分钟）- 参考 F5BotV2 Line 1017-1028
+                // 在剩余时间超过5分钟时，保持"等待中"状态，不允许投注
+                newStatus = BinggoLotteryStatus.等待中;
+                
+                // 🔥 只在第一次进入"等待中"状态时记录日志（避免重复日志）
+                if (oldStatus != BinggoLotteryStatus.等待中)
+                {
+                    _logService.Info("BinggoLotteryService", 
+                        $"⏳ 进入等待中状态: 期号 {_currentIssueId}, 剩余时间 {secondsToSeal}秒（超过5分钟，不允许投注）");
                 }
             }
             else if (secondsToSeal > 0)
@@ -1324,12 +1339,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (true, "系统初始化中，请稍后...", null);
                 }
                 
-                // 🔥 检查状态（只有"开盘中"和"即将封盘"可以下注）
+                // 🔥 检查状态（只有"开盘中"和"即将封盘"可以下注）- 参考 F5BotV2
+                // "等待中"状态不允许投注（剩余时间超过5分钟）
                 if (_currentStatus == BinggoLotteryStatus.封盘中 || 
-                    _currentStatus == BinggoLotteryStatus.开奖中)
+                    _currentStatus == BinggoLotteryStatus.开奖中 ||
+                    _currentStatus == BinggoLotteryStatus.等待中)
                 {
                     _logService.Info("BinggoLotteryService", 
-                        $"❌ 封盘状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
+                        $"❌ 状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
                     // 🔥 格式完全按照 F5BotV2 第2425行：{m.nickname}\r时间未到!不收货!
                     return (true, $"{member.Nickname}\r时间未到!不收货!", null);
                 }
