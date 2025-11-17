@@ -626,23 +626,20 @@ namespace BaiShengVx3Plus
                 // 🔥 绑定事件：用户修改快速设置时自动保存
                 txtSealSeconds.ValueChanged += (s, e) =>
                 {
-                    _binggoSettings.SealSecondsAhead = (int)txtSealSeconds.Value;
-                    _binggoSettingsService.SaveSettings();
-                    _logService.Info("VxMain", $"封盘提前秒数已更新并保存: {_binggoSettings.SealSecondsAhead} 秒");
+                    // 🔥 直接使用 ConfigurationService 保存（自动持久化到 appsettings.json）
+                    _configService.SetSealSecondsAhead((int)txtSealSeconds.Value);
                 };
                 
                 txtMinBet.ValueChanged += (s, e) =>
                 {
-                    _binggoSettings.MinBet = (float)txtMinBet.Value;
-                    _binggoSettingsService.SaveSettings();
-                    _logService.Info("VxMain", $"最小投注金额已更新并保存: {_binggoSettings.MinBet}");
+                    // 🔥 直接使用 ConfigurationService 保存（自动持久化到 appsettings.json）
+                    _configService.SetMinBet((float)txtMinBet.Value);
                 };
                 
                 txtMaxBet.ValueChanged += (s, e) =>
                 {
-                    _binggoSettings.MaxBet = (float)txtMaxBet.Value;
-                    _binggoSettingsService.SaveSettings();
-                    _logService.Info("VxMain", $"最大投注金额已更新并保存: {_binggoSettings.MaxBet}");
+                    // 🔥 直接使用 ConfigurationService 保存（自动持久化到 appsettings.json）
+                    _configService.SetMaxBet((float)txtMaxBet.Value);
                 };
                 
                 // 🔥 管理模式初始化（默认关闭）
@@ -3375,9 +3372,7 @@ namespace BaiShengVx3Plus
                         Password = "",  // 🔥 初始为空，用户需要手动输入
                         IsDefault = true,
                         IsEnabled = false,
-                        AutoLogin = true,
-                        MinBetAmount = 1,
-                        MaxBetAmount = 10000
+                        AutoLogin = true
                     };
                     
                     _autoBetService.SaveConfig(newConfig);
@@ -3439,9 +3434,7 @@ namespace BaiShengVx3Plus
                         Password = txtAutoBetPassword.Text,
                         IsDefault = true,
                         IsEnabled = false,
-                        AutoLogin = true,
-                        MinBetAmount = 1,
-                        MaxBetAmount = 10000
+                        AutoLogin = true
                     };
                     
                     _autoBetService.SaveConfig(defaultConfig);

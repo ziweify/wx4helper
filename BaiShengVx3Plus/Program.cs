@@ -14,7 +14,9 @@ using BaiShengVx3Plus.Services.Messages.Handlers;
 using BaiShengVx3Plus.Services.Games.Binggo;
 using BaiShengVx3Plus.Services;
 using BaiShengVx3Plus.Services.Api;
+using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Models.Games.Binggo;
+using BaiShengVx3Plus.Services.Configuration;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Views;
 
@@ -68,8 +70,16 @@ namespace BaiShengVx3Plus
                         services.AddSingleton<IMemberDataService, MemberDataService>();    // 会员数据访问服务
                             
                             // 🎮 游戏配置和服务
-                            services.AddSingleton(new BinggoGameSettings());            // 炳狗游戏配置
-                            services.AddSingleton<BaiShengVx3Plus.Services.Games.Binggo.BinggoGameSettingsService>();  // 炳狗游戏配置服务
+                            // 🔥 BinggoGameSettings 现在是 AppConfiguration 的包装类
+                            services.AddSingleton<BinggoGameSettings>(sp => 
+                            {
+                                var configService = sp.GetRequiredService<ConfigurationService>();
+                                var appConfig = configService.GetType()
+                                    .GetField("_configuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                                    ?.GetValue(configService) as AppConfiguration;
+                                return new BinggoGameSettings(appConfig ?? new AppConfiguration());
+                            });
+                            services.AddSingleton<BaiShengVx3Plus.Services.Games.Binggo.BinggoGameSettingsService>();  // 🔥 已弃用，仅用于兼容
                             services.AddSingleton<BinggoOrderValidator>();              // 炳狗订单验证器
                             services.AddSingleton<AdminCommandHandler>();               // 🔥 管理员命令处理器
                             services.AddSingleton<BinggoMessageHandler>();              // 炳狗消息处理器

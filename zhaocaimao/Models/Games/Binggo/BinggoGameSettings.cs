@@ -1,109 +1,134 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
-namespace zhaocaimao.Models.Games.Binggo
+namespace BaiShengVx3Plus.Models.Games.Binggo
 {
     /// <summary>
-    /// 炳狗游戏配置
+    /// 🔥 炳狗游戏配置（包装类）
+    /// 用于向后兼容，实际数据存储在 AppConfiguration 中
+    /// 
+    /// ⚠️ 注意：这个类不再独立保存到文件
+    /// 所有配置统一在 ConfigurationService 中管理
     /// </summary>
     public class BinggoGameSettings
     {
+        private readonly AppConfiguration _appConfig;
+        
         /// <summary>
-        /// 赔率配置 (例如：{"大": 1.95, "小": 1.95, "单": 1.95, "双": 1.95})
+        /// 构造函数：注入 AppConfiguration
         /// </summary>
-        public Dictionary<string, float> Odds { get; set; } = new()
+        public BinggoGameSettings(AppConfiguration appConfig)
         {
-            { "大", 1.95f },
-            { "小", 1.95f },
-            { "单", 1.95f },
-            { "双", 1.95f },
-            { "龙", 1.95f },
-            { "虎", 1.95f }
-        };
+            _appConfig = appConfig;
+        }
         
         /// <summary>
-        /// 最小单注金额
+        /// 无参构造函数：用于反序列化（已弃用）
         /// </summary>
-        public float MinBet { get; set; } = 1.0f;
-        
-        /// <summary>
-        /// 最大单注金额
-        /// </summary>
-        public float MaxBet { get; set; } = 10000.0f;
-        
-        /// <summary>
-        /// 单期最大投注总额
-        /// </summary>
-        public float MaxBetPerIssue { get; set; } = 50000.0f;
-        
-        /// <summary>
-        /// 提前封盘秒数（参考 F5BotV2: reduceCloseSeconds，默认 49 秒）
-        /// 用于计算：倒计时 = 开奖时间 - 当前时间 - 提前封盘秒数
-        /// </summary>
-        public int SealSecondsAhead { get; set; } = 49;
-        
-        /// <summary>
-        /// 每期时长（秒）
-        /// </summary>
-        public int IssueDuration { get; set; } = 300;
-        
-        /// <summary>
-        /// 是否启用自动开盘提示
-        /// </summary>
-        public bool AutoSendOpenNotice { get; set; } = true;
-        
-        /// <summary>
-        /// 是否启用自动开奖通知
-        /// </summary>
-        public bool AutoSendLotteryResult { get; set; } = true;
-        
-        /// <summary>
-        /// 是否启用自动结算通知
-        /// </summary>
-        public bool AutoSendSettlementNotice { get; set; } = true;
+        [System.Obsolete("请使用依赖注入的构造函数")]
+        public BinggoGameSettings()
+        {
+            _appConfig = new AppConfiguration();
+        }
         
         // ========================================
-        // 🔥 回复消息配置
+        // 🔥 所有属性都转发到 AppConfiguration
         // ========================================
         
-        /// <summary>
-        /// 下注成功回复
-        /// </summary>
-        public string ReplySuccess { get; set; } = "已进仓！";
+        public Dictionary<string, float> Odds
+        {
+            get => _appConfig.Odds;
+            set => _appConfig.Odds = value;
+        }
         
-        /// <summary>
-        /// 下注失败回复
-        /// </summary>
-        public string ReplyFailed { get; set; } = "客官我有点不明白！";
+        public float MinBet
+        {
+            get => _appConfig.MinBet;
+            set => _appConfig.MinBet = value;
+        }
         
-        /// <summary>
-        /// 余额不足回复
-        /// </summary>
-        public string ReplyInsufficientBalance { get; set; } = "客官你的荷包是否不足！";
+        public float MaxBet
+        {
+            get => _appConfig.MaxBet;
+            set => _appConfig.MaxBet = value;
+        }
         
-        /// <summary>
-        /// 已封盘回复
-        /// </summary>
-        public string ReplySealed { get; set; } = "已封盘，请等待下期！";
+        public float MaxBetPerIssue
+        {
+            get => _appConfig.MaxBetPerIssue;
+            set => _appConfig.MaxBetPerIssue = value;
+        }
         
-        /// <summary>
-        /// 开盘提示
-        /// </summary>
-        public string ReplyOpenNotice { get; set; } = "---------线下开始---------";
+        public int SealSecondsAhead
+        {
+            get => _appConfig.SealSecondsAhead;
+            set => _appConfig.SealSecondsAhead = value;
+        }
         
-        /// <summary>
-        /// 暂停服务回复
-        /// </summary>
-        public string ReplySuspended { get; set; } = "系统维护中，暂停服务！";
+        public int IssueDuration
+        {
+            get => _appConfig.IssueDuration;
+            set => _appConfig.IssueDuration = value;
+        }
         
-        // ========================================
-        // 🔥 管理模式配置
-        // ========================================
+        public bool AutoSendOpenNotice
+        {
+            get => _appConfig.AutoSendOpenNotice;
+            set => _appConfig.AutoSendOpenNotice = value;
+        }
         
-        /// <summary>
-        /// 是否启用管理模式
-        /// 管理模式下可以手动编辑绑定的联系人，实现手动绑定功能
-        /// </summary>
-        public bool IsAdminMode { get; set; } = false;
+        public bool AutoSendLotteryResult
+        {
+            get => _appConfig.AutoSendLotteryResult;
+            set => _appConfig.AutoSendLotteryResult = value;
+        }
+        
+        public bool AutoSendSettlementNotice
+        {
+            get => _appConfig.AutoSendSettlementNotice;
+            set => _appConfig.AutoSendSettlementNotice = value;
+        }
+        
+        public string ReplySuccess
+        {
+            get => _appConfig.ReplySuccess;
+            set => _appConfig.ReplySuccess = value;
+        }
+        
+        public string ReplyFailed
+        {
+            get => _appConfig.ReplyFailed;
+            set => _appConfig.ReplyFailed = value;
+        }
+        
+        public string ReplyInsufficientBalance
+        {
+            get => _appConfig.ReplyInsufficientBalance;
+            set => _appConfig.ReplyInsufficientBalance = value;
+        }
+        
+        public string ReplySealed
+        {
+            get => _appConfig.ReplySealed;
+            set => _appConfig.ReplySealed = value;
+        }
+        
+        public string ReplyOpenNotice
+        {
+            get => _appConfig.ReplyOpenNotice;
+            set => _appConfig.ReplyOpenNotice = value;
+        }
+        
+        public string ReplySuspended
+        {
+            get => _appConfig.ReplySuspended;
+            set => _appConfig.ReplySuspended = value;
+        }
+        
+        public bool IsAdminMode
+        {
+            get => _appConfig.IsRunModeAdmin;
+            set => _appConfig.IsRunModeAdmin = value;
+        }
     }
 }
 

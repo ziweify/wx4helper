@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
-using zhaocaimao.Contracts;
-using zhaocaimao.Models;
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Models;
 
-namespace zhaocaimao.Services.Configuration
+namespace BaiShengVx3Plus.Services.Configuration
 {
     /// <summary>
     /// 配置服务实现
@@ -47,9 +47,21 @@ namespace zhaocaimao.Services.Configuration
         
         public bool GetIsAutoBetEnabled() => _configuration.Is飞单开关;
         
-        public int GetSealSecondsAhead() => _configuration.N封盘提前秒数;
+        /// <summary>
+        /// 🔥 获取提前封盘秒数（统一使用 SealSecondsAhead）
+        /// </summary>
+        public int GetSealSecondsAhead() => _configuration.SealSecondsAhead;
         
         public bool Get收单关闭时不发送系统消息() => _configuration.收单关闭时不发送系统消息;
+        
+        // ========================================
+        // 🔥 游戏规则配置访问（从 BinggoGameSettings 迁移过来）
+        // ========================================
+        
+        public float GetMinBet() => _configuration.MinBet;
+        public float GetMaxBet() => _configuration.MaxBet;
+        public float GetMaxBetPerIssue() => _configuration.MaxBetPerIssue;
+        public Dictionary<string, float> GetOdds() => _configuration.Odds;
         
         public bool GetIsRunModeAdmin() => _configuration.IsRunModeAdmin;
         
@@ -105,20 +117,66 @@ namespace zhaocaimao.Services.Configuration
             }
         }
         
+        /// <summary>
+        /// 🔥 设置提前封盘秒数（统一使用 SealSecondsAhead）
+        /// </summary>
         public void SetSealSecondsAhead(int value)
         {
-            if (_configuration.N封盘提前秒数 != value)
+            if (_configuration.SealSecondsAhead != value)
             {
-                var oldValue = _configuration.N封盘提前秒数;
-                _configuration.N封盘提前秒数 = value;
+                var oldValue = _configuration.SealSecondsAhead;
+                _configuration.SealSecondsAhead = value;
                 
                 _logService.Info("ConfigurationService", $"封盘秒数已更新: {oldValue} → {value}");
                 
                 // 自动保存
                 SaveConfiguration();
                 
-                // 触发变更事件（使用 ViewModel 的属性名，不是 Model 的属性名）
+                // 触发变更事件
                 OnConfigurationChanged("SealSecondsAhead", oldValue, value);
+            }
+        }
+        
+        // ========================================
+        // 🔥 游戏规则配置设置（从 BinggoGameSettings 迁移过来）
+        // ========================================
+        
+        public void SetMinBet(float value)
+        {
+            if (_configuration.MinBet != value)
+            {
+                var oldValue = _configuration.MinBet;
+                _configuration.MinBet = value;
+                
+                _logService.Info("ConfigurationService", $"最小投注已更新: {oldValue} → {value}");
+                SaveConfiguration();
+                OnConfigurationChanged("MinBet", oldValue, value);
+            }
+        }
+        
+        public void SetMaxBet(float value)
+        {
+            if (_configuration.MaxBet != value)
+            {
+                var oldValue = _configuration.MaxBet;
+                _configuration.MaxBet = value;
+                
+                _logService.Info("ConfigurationService", $"最大投注已更新: {oldValue} → {value}");
+                SaveConfiguration();
+                OnConfigurationChanged("MaxBet", oldValue, value);
+            }
+        }
+        
+        public void SetMaxBetPerIssue(float value)
+        {
+            if (_configuration.MaxBetPerIssue != value)
+            {
+                var oldValue = _configuration.MaxBetPerIssue;
+                _configuration.MaxBetPerIssue = value;
+                
+                _logService.Info("ConfigurationService", $"单期最大投注已更新: {oldValue} → {value}");
+                SaveConfiguration();
+                OnConfigurationChanged("MaxBetPerIssue", oldValue, value);
             }
         }
         

@@ -26,6 +26,16 @@ namespace BaiShengVx3Plus.Contracts
         int GetSealSecondsAhead();
         
         /// <summary>
+        /// 🔥 获取最小投注金额
+        /// </summary>
+        float GetMinBet();
+        
+        /// <summary>
+        /// 🔥 获取最大投注金额
+        /// </summary>
+        float GetMaxBet();
+        
+        /// <summary>
         /// 获取收单关闭时不发送系统消息状态
         /// </summary>
         bool Get收单关闭时不发送系统消息();
@@ -73,6 +83,16 @@ namespace BaiShengVx3Plus.Contracts
         /// 设置提前封盘秒数
         /// </summary>
         void SetSealSecondsAhead(int value);
+        
+        /// <summary>
+        /// 🔥 设置最小投注金额
+        /// </summary>
+        void SetMinBet(float value);
+        
+        /// <summary>
+        /// 🔥 设置最大投注金额
+        /// </summary>
+        void SetMaxBet(float value);
         
         /// <summary>
         /// 设置收单关闭时不发送系统消息状态

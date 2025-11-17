@@ -381,8 +381,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             txtPlatformUrl.Text = config.PlatformUrl;
             txtUsername.Text = config.Username;
             txtPassword.Text = config.Password;
-            txtMinBetAmount.Text = config.MinBetAmount.ToString();
-            txtMaxBetAmount.Text = config.MaxBetAmount.ToString();
             chkEnabled.Checked = config.IsEnabled;
             chkAutoLogin.Checked = config.AutoLogin;
             chkShowBrowser.Checked = config.ShowBrowser;
@@ -403,8 +401,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             txtPlatformUrl.Text = "";
             txtUsername.Text = "";
             txtPassword.Text = "";
-            txtMinBetAmount.Text = "1";
-            txtMaxBetAmount.Text = "10000";
             chkEnabled.Checked = true;
             chkAutoLogin.Checked = true;
             chkShowBrowser.Checked = false;
@@ -473,9 +469,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                     Platform = "YunDing28",
                     PlatformUrl = "https://www.yunding28.com",
                     IsEnabled = true,
-                    AutoLogin = true,
-                    MinBetAmount = 1,
-                    MaxBetAmount = 10000
+                    AutoLogin = true
                 };
                 
                 _autoBetService.SaveConfig(newConfig);
@@ -577,8 +571,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 _selectedConfig.PlatformUrl = txtPlatformUrl.Text.Trim();
                 _selectedConfig.Username = txtUsername.Text.Trim();
                 _selectedConfig.Password = txtPassword.Text;
-                _selectedConfig.MinBetAmount = decimal.TryParse(txtMinBetAmount.Text, out var minAmount) ? minAmount : 1;
-                _selectedConfig.MaxBetAmount = decimal.TryParse(txtMaxBetAmount.Text, out var maxAmount) ? maxAmount : 10000;
                 _selectedConfig.IsEnabled = chkEnabled.Checked;
                 _selectedConfig.AutoLogin = chkAutoLogin.Checked;
                 _selectedConfig.ShowBrowser = chkShowBrowser.Checked;

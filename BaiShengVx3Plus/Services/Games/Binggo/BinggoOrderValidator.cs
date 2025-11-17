@@ -60,20 +60,28 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 4. 验证单注金额
+                _logService.Info("BinggoOrderValidator", $"🔍 开始验证单注金额限制: MinBet={_settings.MinBet}, MaxBet={_settings.MaxBet}");
+                
                 foreach (var item in betContent.Items)
                 {
+                    _logService.Info("BinggoOrderValidator", $"   - 检查投注项: 车{item.CarNumber} {item.PlayType}, 金额={item.Amount}");
+                    
                     if (item.Amount < (decimal)_settings.MinBet)
                     {
                         errorMessage = $"单注金额不能小于 {_settings.MinBet} 元";
+                        _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
                     
                     if (item.Amount > (decimal)_settings.MaxBet)
                     {
                         errorMessage = $"单注金额不能超过 {_settings.MaxBet} 元";
+                        _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
                 }
+                
+                _logService.Info("BinggoOrderValidator", "✅ 单注金额验证通过");
                 
                 // 5. 验证总金额
                 decimal totalAmount = betContent.TotalAmount;
