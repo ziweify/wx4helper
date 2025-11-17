@@ -2020,7 +2020,8 @@ namespace BaiShengVx3Plus
                     "1. 备份当前数据库（加密压缩）\n" +
                     "2. 清空所有订单数据\n" +
                     "3. 重置会员金额数据\n" +
-                    "4. 清空统计数据\n\n" +
+                    "4. 清空统计数据\n" +
+                    "5. 清空48小时之前的上下分记录\n\n" +
                     "会员基础信息（微信ID、昵称等）将保留"))
                 {
                     return;
@@ -2167,7 +2168,25 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "✅ 统计数据已清空");
                 
                 // ========================================
-                // 🔥 步骤5：刷新UI
+                // 🔥 步骤5：清空48小时之前的上下分记录（参考 F5BotV2 XMainView.cs Line 847-849）
+                // ========================================
+                
+                if (_creditWithdrawsBindingList != null)
+                {
+                    try
+                    {
+                        _creditWithdrawsBindingList.DeleteOldRecords(48);
+                        _logService.Info("VxMain", "✅ 48小时之前的上下分记录已清空");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", $"清空旧上下分记录失败: {ex.Message}", ex);
+                        // 不抛出异常，继续执行
+                    }
+                }
+                
+                // ========================================
+                // 🔥 步骤6：刷新UI
                 // ========================================
                 
                 UpdateUIThreadSafeAsync(() =>
@@ -2184,6 +2203,7 @@ namespace BaiShengVx3Plus
                     "✓ 订单数据已清空\n" +
                     "✓ 会员金额数据已重置\n" +
                     "✓ 统计数据已清空\n" +
+                    "✓ 48小时之前的上下分记录已清空\n" +
                     "✓ 会员基础信息已保留\n" +
                     "✓ 数据库已备份");
             }

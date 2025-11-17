@@ -3,6 +3,7 @@ using BaiShengVx3Plus.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
+using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace BaiShengVx3Plus.ViewModels
@@ -28,6 +29,11 @@ namespace BaiShengVx3Plus.ViewModels
             
             // 订阅 Service 的变更事件，自动更新 UI
             _configService.ConfigurationChanged += OnConfigurationChanged;
+            
+            // 🔥 订阅账号失效事件（参考 F5BotV2 BoterServices.cs Line 1117-1136）
+            var api = Services.Api.BoterApi.GetInstance();
+            api.OnAccountInvalid += HandleAccountInvalid;
+            api.OnAccountOffTime += HandleAccountOffTime;
         }
 
         // ========================================
@@ -160,6 +166,82 @@ namespace BaiShengVx3Plus.ViewModels
 
         //--绑定名利给--
         public event EventHandler? LoginSucceeded;
+        
+        /// <summary>
+        /// 🔥 处理账号失效（被其他地方登录）- 参考 F5BotV2 OnBoterInvalid
+        /// </summary>
+        private void HandleAccountInvalid(string message)
+        {
+            // 🔥 必须在 UI 线程显示对话框并停止程序运行（参考 F5BotV2 BoterServices.cs Line 1130-1136）
+            if (Application.MessageLoop)
+            {
+                MessageBox.Show(message, "账号失效", 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
+                // 🔥 停止程序运行（参考 F5BotV2，返回1表示停止）
+                Application.Exit();
+            }
+            else
+            {
+                // 如果不在 UI 线程，使用同步方式
+                if (Application.OpenForms.Count > 0)
+                {
+                    Application.OpenForms[0].Invoke(new Action(() =>
+                    {
+                        MessageBox.Show(message, "账号失效", 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Error);
+                        Application.Exit();
+                    }));
+                }
+                else
+                {
+                    // 如果没有打开的窗口，直接退出
+                    MessageBox.Show(message, "账号失效", 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Error);
+                    Application.Exit();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 处理账号过期 - 参考 F5BotV2 OnBoterOffTime
+        /// </summary>
+        private void HandleAccountOffTime(string message)
+        {
+            // 🔥 必须在 UI 线程显示对话框并停止程序运行（参考 F5BotV2 BoterServices.cs Line 1117-1125）
+            if (Application.MessageLoop)
+            {
+                MessageBox.Show(message, "账号过期", 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
+                // 🔥 停止程序运行（参考 F5BotV2，返回1表示停止）
+                Application.Exit();
+            }
+            else
+            {
+                // 如果不在 UI 线程，使用同步方式
+                if (Application.OpenForms.Count > 0)
+                {
+                    Application.OpenForms[0].Invoke(new Action(() =>
+                    {
+                        MessageBox.Show(message, "账号过期", 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Error);
+                        Application.Exit();
+                    }));
+                }
+                else
+                {
+                    // 如果没有打开的窗口，直接退出
+                    MessageBox.Show(message, "账号过期", 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Error);
+                    Application.Exit();
+                }
+            }
+        }
 
         [RelayCommand(CanExecute = nameof(CanLogin))]
         private async Task LoginAsync()
@@ -182,7 +264,19 @@ namespace BaiShengVx3Plus.ViewModels
                 }
                 else
                 {
-                    ErrorMessage = $"登录失败: {response.Msg}";
+                    // 🔥 检查账号失效（事件已在 BoterApi 中触发，这里只显示错误消息）
+                    if (response.Code == Services.Api.BoterApi.VERIFY_SIGN_OFFTIME)
+                    {
+                        ErrorMessage = "账号过期";
+                    }
+                    else if (response.Code == Services.Api.BoterApi.VERIFY_SIGN_INVALID)
+                    {
+                        ErrorMessage = "账号失效! 请重新登录\r\n请检查是否有在其他地方登录导致本次失效!";
+                    }
+                    else
+                    {
+                        ErrorMessage = $"登录失败: {response.Msg}";
+                    }
                 }
             }
             catch (Exception ex)

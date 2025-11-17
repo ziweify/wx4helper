@@ -29,6 +29,18 @@ namespace BaiShengVx3Plus.Shared.Helpers
             }
             return time;
         }
+        
+        /// <summary>
+        /// DateTime时间格式转换为10位不带毫秒的Unix时间戳
+        /// 🔥 参考 F5BotV2 LxTimestampHelper.ConvertDateTimeInt
+        /// </summary>
+        /// <param name="time">DateTime时间格式</param>
+        /// <returns>Unix时间戳格式（秒）</returns>
+        public static long ConvertDateTimeInt(DateTime time)
+        {
+            DateTime startTime = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1));
+            return (long)(time - startTime).TotalSeconds;
+        }
     }
 }
 
