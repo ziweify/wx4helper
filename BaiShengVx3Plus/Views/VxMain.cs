@@ -39,6 +39,7 @@ namespace BaiShengVx3Plus
         private readonly BinggoStatisticsService _statisticsService; // 🔥 统计服务
         private readonly BinggoMessageHandler _binggoMessageHandler;
         private readonly BinggoGameSettings _binggoSettings;
+        private readonly Services.Games.Binggo.BinggoGameSettingsService _binggoSettingsService; // 🎮 炳狗游戏配置服务
         private readonly Services.AutoBet.AutoBetService _autoBetService; // 🤖 自动投注服务
         private readonly Services.AutoBet.AutoBetCoordinator _autoBetCoordinator; // 🤖 自动投注协调器
         private readonly IConfigurationService _configService; // 📝 配置服务
@@ -123,6 +124,7 @@ namespace BaiShengVx3Plus
             BinggoStatisticsService statisticsService, // 🔥 注入统计服务
             BinggoMessageHandler binggoMessageHandler, // 🎮 注入炳狗消息处理器
             BinggoGameSettings binggoSettings, // 🎮 注入炳狗游戏配置
+            Services.Games.Binggo.BinggoGameSettingsService binggoSettingsService, // 🎮 注入炳狗游戏配置服务
             Services.AutoBet.AutoBetService autoBetService, // 🤖 注入自动投注服务
             Services.AutoBet.AutoBetCoordinator autoBetCoordinator, // 🤖 注入自动投注协调器
             IConfigurationService configService, // 📝 注入配置服务
@@ -143,6 +145,7 @@ namespace BaiShengVx3Plus
             _statisticsService = statisticsService; // 🔥 统计服务
             _binggoMessageHandler = binggoMessageHandler;
             _binggoSettings = binggoSettings;
+            _binggoSettingsService = binggoSettingsService; // 🎮 炳狗游戏配置服务
             _autoBetService = autoBetService; // 🤖 自动投注服务
             _autoBetCoordinator = autoBetCoordinator; // 🤖 自动投注协调器
             _configService = configService; // 📝 配置服务
@@ -588,6 +591,28 @@ namespace BaiShengVx3Plus
                 txtSealSeconds.Value = _binggoSettings.SealSecondsAhead;
                 txtMinBet.Value = (int)_binggoSettings.MinBet;
                 txtMaxBet.Value = (int)_binggoSettings.MaxBet;
+                
+                // 🔥 绑定事件：用户修改快速设置时自动保存
+                txtSealSeconds.ValueChanged += (s, e) =>
+                {
+                    _binggoSettings.SealSecondsAhead = (int)txtSealSeconds.Value;
+                    _binggoSettingsService.SaveSettings();
+                    _logService.Info("VxMain", $"封盘提前秒数已更新并保存: {_binggoSettings.SealSecondsAhead} 秒");
+                };
+                
+                txtMinBet.ValueChanged += (s, e) =>
+                {
+                    _binggoSettings.MinBet = (float)txtMinBet.Value;
+                    _binggoSettingsService.SaveSettings();
+                    _logService.Info("VxMain", $"最小投注金额已更新并保存: {_binggoSettings.MinBet}");
+                };
+                
+                txtMaxBet.ValueChanged += (s, e) =>
+                {
+                    _binggoSettings.MaxBet = (float)txtMaxBet.Value;
+                    _binggoSettingsService.SaveSettings();
+                    _logService.Info("VxMain", $"最大投注金额已更新并保存: {_binggoSettings.MaxBet}");
+                };
                 
                 // 🔥 管理模式初始化（默认关闭）
                 // chkAdminMode 在 Settings 窗口中，不在主窗口

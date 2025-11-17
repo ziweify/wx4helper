@@ -69,6 +69,7 @@ namespace BaiShengVx3Plus
                             
                             // 🎮 游戏配置和服务
                             services.AddSingleton(new BinggoGameSettings());            // 炳狗游戏配置
+                            services.AddSingleton<BaiShengVx3Plus.Services.Games.Binggo.BinggoGameSettingsService>();  // 炳狗游戏配置服务
                             services.AddSingleton<BinggoOrderValidator>();              // 炳狗订单验证器
                             services.AddSingleton<AdminCommandHandler>();               // 🔥 管理员命令处理器
                             services.AddSingleton<BinggoMessageHandler>();              // 炳狗消息处理器

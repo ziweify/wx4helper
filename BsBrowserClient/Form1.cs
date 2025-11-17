@@ -533,12 +533,64 @@ public partial class Form1 : Form
                     var username = loginData?["username"]?.ToString() ?? "";
                     var password = loginData?["password"]?.ToString() ?? "";
                     
-                    response.Success = await _platformScript!.LoginAsync(username, password);
+                    // 🔥 WebView2 操作必须在 UI 线程执行
+                    if (InvokeRequired)
+                    {
+                        var loginResult = await Task.Run(async () =>
+                        {
+                            var tcs = new TaskCompletionSource<bool>();
+                            Invoke(async () =>
+                            {
+                                try
+                                {
+                                    var result = await _platformScript!.LoginAsync(username, password);
+                                    tcs.SetResult(result);
+                                }
+                                catch (Exception ex)
+                                {
+                                    OnLogMessage($"❌ 登录失败: {ex.Message}");
+                                    tcs.SetResult(false);
+                                }
+                            });
+                            return await tcs.Task;
+                        });
+                        response.Success = loginResult;
+                    }
+                    else
+                    {
+                        response.Success = await _platformScript!.LoginAsync(username, password);
+                    }
                     response.Message = response.Success ? "登录成功" : "登录失败";
                     break;
                     
                 case "获取余额":
-                    var balance = await _platformScript!.GetBalanceAsync();
+                    // 🔥 WebView2 操作必须在 UI 线程执行
+                    decimal balance = -1;
+                    if (InvokeRequired)
+                    {
+                        balance = await Task.Run(async () =>
+                        {
+                            var tcs = new TaskCompletionSource<decimal>();
+                            Invoke(async () =>
+                            {
+                                try
+                                {
+                                    var result = await _platformScript!.GetBalanceAsync();
+                                    tcs.SetResult(result);
+                                }
+                                catch (Exception ex)
+                                {
+                                    OnLogMessage($"❌ 获取余额失败: {ex.Message}");
+                                    tcs.SetResult(-1);
+                                }
+                            });
+                            return await tcs.Task;
+                        });
+                    }
+                    else
+                    {
+                        balance = await _platformScript!.GetBalanceAsync();
+                    }
                     response.Success = balance >= 0;
                     response.Data = new { balance };
                     response.Message = response.Success ? $"余额: {balance}" : "获取余额失败";
@@ -546,6 +598,7 @@ public partial class Form1 : Form
                     
                 case "获取Cookie":
                     // 获取Cookie命令
+                    // 🔥 WebView2 操作必须在 UI 线程执行
                     try
                     {
                         if (_webView?.CoreWebView2 == null)
@@ -554,24 +607,68 @@ public partial class Form1 : Form
                             break;
                         }
                         
-                        var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
-                        var cookieDict = new Dictionary<string, string>();
-                        
-                        foreach (var cookie in allCookies)
+                        if (InvokeRequired)
                         {
-                            cookieDict[cookie.Name] = cookie.Value;
+                            var cookieResult = await Task.Run(async () =>
+                            {
+                                var tcs = new TaskCompletionSource<(bool success, object? data, string message)>();
+                                Invoke(async () =>
+                                {
+                                    try
+                                    {
+                                        var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+                                        var cookieDict = new Dictionary<string, string>();
+                                        
+                                        foreach (var cookie in allCookies)
+                                        {
+                                            cookieDict[cookie.Name] = cookie.Value;
+                                        }
+                                        
+                                        var data = new 
+                                        { 
+                                            url = _webView.CoreWebView2.Source,
+                                            cookies = cookieDict,
+                                            count = allCookies.Count
+                                        };
+                                        tcs.SetResult((true, data, $"获取成功,共{allCookies.Count}个Cookie"));
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        OnLogMessage($"❌ 获取Cookie失败: {ex.Message}");
+                                        tcs.SetResult((false, null, "获取Cookie失败"));
+                                    }
+                                });
+                                return await tcs.Task;
+                            });
+                            response.Success = cookieResult.success;
+                            response.Data = cookieResult.data;
+                            response.Message = cookieResult.message;
+                        }
+                        else
+                        {
+                            var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+                            var cookieDict = new Dictionary<string, string>();
+                            
+                            foreach (var cookie in allCookies)
+                            {
+                                cookieDict[cookie.Name] = cookie.Value;
+                            }
+                            
+                            response.Success = true;
+                            response.Data = new 
+                            { 
+                                url = _webView.CoreWebView2.Source,
+                                cookies = cookieDict,
+                                count = allCookies.Count
+                            };
+                            response.Message = $"获取成功,共{allCookies.Count}个Cookie";
                         }
                         
-                        response.Success = true;
-                        response.Data = new 
-                        { 
-                            url = _webView.CoreWebView2.Source,
-                            cookies = cookieDict,
-                            count = allCookies.Count
-                        };
-                        response.Message = $"获取成功,共{allCookies.Count}个Cookie";
-                        
-                        OnLogMessage($"📤 获取Cookie完成:共{allCookies.Count}个");
+                        if (response.Success)
+                        {
+                            var count = (response.Data as dynamic)?.count ?? 0;
+                            OnLogMessage($"📤 获取Cookie完成:共{count}个");
+                        }
                     }
                     catch (Exception cookieEx)
                     {
@@ -584,14 +681,44 @@ public partial class Form1 : Form
                     
                 case "获取盘口额度":
                     // 获取盘口额度命令
+                    // 🔥 WebView2 操作必须在 UI 线程执行
                     try
                     {
-                        var quotaBalance = await _platformScript!.GetBalanceAsync();
+                        decimal quotaBalance = -1;
+                        if (InvokeRequired)
+                        {
+                            quotaBalance = await Task.Run(async () =>
+                            {
+                                var tcs = new TaskCompletionSource<decimal>();
+                                Invoke(async () =>
+                                {
+                                    try
+                                    {
+                                        var result = await _platformScript!.GetBalanceAsync();
+                                        tcs.SetResult(result);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        OnLogMessage($"❌ 获取额度失败: {ex.Message}");
+                                        tcs.SetResult(-1);
+                                    }
+                                });
+                                return await tcs.Task;
+                            });
+                        }
+                        else
+                        {
+                            quotaBalance = await _platformScript!.GetBalanceAsync();
+                        }
+                        
                         response.Success = quotaBalance >= 0;
                         response.Data = new { balance = quotaBalance, quota = quotaBalance };
                         response.Message = response.Success ? $"盘口额度: {quotaBalance}元" : "获取额度失败";
                         
-                        OnLogMessage($"📊 盘口额度:{quotaBalance}元");
+                        if (response.Success)
+                        {
+                            OnLogMessage($"📊 盘口额度:{quotaBalance}元");
+                        }
                     }
                     catch (Exception quotaEx)
                     {
@@ -640,7 +767,42 @@ public partial class Form1 : Form
                         OnLogMessage($"📦 准备投注:期号={betIssueId} 共{betOrders.Count}项 {totalAmount}元", LogType.Bet);
                         
                         // 🔥 使用标准化订单列表，平台脚本将其转换为平台特定的格式
-                        var (success, orderId, platformResponse) = await _platformScript!.PlaceBetAsync(betOrders);
+                        // 🔥 WebView2 操作必须在 UI 线程执行
+                        bool success;
+                        string orderId;
+                        string platformResponse;
+                        
+                        if (InvokeRequired)
+                        {
+                            var result = await Task.Run(async () =>
+                            {
+                                var tcs = new TaskCompletionSource<(bool, string, string)>();
+                                Invoke(async () =>
+                                {
+                                    try
+                                    {
+                                        var betResult = await _platformScript!.PlaceBetAsync(betOrders);
+                                        tcs.SetResult(betResult);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        OnLogMessage($"❌ 投注失败: {ex.Message}", LogType.Bet);
+                                        tcs.SetResult((false, "", $"#投注异常: {ex.Message}"));
+                                    }
+                                });
+                                return await tcs.Task;
+                            });
+                            success = result.Item1;
+                            orderId = result.Item2;
+                            platformResponse = result.Item3;
+                        }
+                        else
+                        {
+                            var result = await _platformScript!.PlaceBetAsync(betOrders);
+                            success = result.success;
+                            orderId = result.orderId;
+                            platformResponse = result.platformResponse;
+                        }
                         
                         // 记录POST后时间
                         var postEndTime = DateTime.Now;

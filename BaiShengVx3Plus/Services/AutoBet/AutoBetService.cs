@@ -239,8 +239,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         IsBackground = true  // 🔥 后台线程，程序退出时自动结束
                     };
                     _monitorThread.Start();
-                    _log.Info("AutoBet", "✅ 后台监控线程已启动（延迟4秒启动，每2秒检查一次）");
-                    _log.Info("AutoBet", "   说明：使用专用线程，精确控制执行时机");
+                    _log.Info("AutoBet", "✅ 后台监控线程已启动（延迟6秒启动，每2秒检查一次）");
+                    _log.Info("AutoBet", "   说明：使用专用线程，精确控制执行时机；延迟6秒是为了让老浏览器有足够时间完成重连");
                 }
                 else
                 {
@@ -355,15 +355,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
             else
             {
-                // 🔥 程序启动时，强制将所有配置的 IsEnabled 设置为 false
-                // 避免上次异常退出时，配置状态遗留为 true，导致启动时自动启动浏览器
-                _log.Info("AutoBet", $"检查默认配置 IsEnabled 状态: {defaultConfig.IsEnabled}");
-                if (defaultConfig.IsEnabled)
-                {
-                    _log.Warning("AutoBet", "⚠️ 检测到默认配置 IsEnabled=true（可能是上次异常退出遗留）");
-                    _log.Warning("AutoBet", "   强制设置为 false，避免启动时自动启动浏览器");
-                    defaultConfig.IsEnabled = false;  // PropertyChanged 自动保存
-                }
+                // ✅ 不再强制重置 IsEnabled，保留用户上次的设置
+                // 原因：现在有"延迟2秒再次判断"机制，可以安全地保留 IsEnabled 状态
+                _log.Info("AutoBet", $"加载默认配置 IsEnabled 状态: {defaultConfig.IsEnabled}");
                 
                 // 🔥 检查并修复平台和URL的匹配
                 _log.Info("AutoBet", $"检查默认配置: 平台={defaultConfig.Platform}, URL={defaultConfig.PlatformUrl}");
@@ -570,11 +564,22 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     config.Browser = null;
                 }
                 
-                // 🔥 清除 ProcessId（让监控任务可以启动新浏览器）
+                // 🔥 检查并清除 ProcessId
                 if (config.ProcessId > 0)
                 {
-                    _log.Info("AutoBet", $"清除 ProcessId: {config.ProcessId}（允许重新启动）");
-                    config.ProcessId = 0;
+                    // 检查进程是否真的结束了
+                    if (IsProcessRunning(config.ProcessId))
+                    {
+                        _log.Warning("AutoBet", $"⚠️ 浏览器进程 {config.ProcessId} 仍在运行，但连接已断开");
+                        _log.Info("AutoBet", $"   可能原因：浏览器崩溃、网络问题、手动关闭窗口但进程未退出");
+                        _log.Info("AutoBet", $"   保留 ProcessId，监控任务将等待重连或进程自然退出");
+                        // 不清除 ProcessId，让监控任务继续等待进程退出
+                    }
+                    else
+                    {
+                        _log.Info("AutoBet", $"🔧 浏览器进程 {config.ProcessId} 已结束，清除 ProcessId");
+                        config.ProcessId = 0;
+                    }
                 }
                 
                 // 🔥 更新状态
@@ -1355,9 +1360,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
             {
                 _log.Info("AutoBet", "🚀 监控线程开始运行");
                 
-                // 🔥 延迟4秒启动（给老浏览器重连的时间）
-                _log.Info("AutoBet", "⏳ 延迟4秒启动监控（等待老浏览器重连）...");
-                Thread.Sleep(4000);
+                // 🔥 延迟6秒启动（给老浏览器重连的时间）
+                // 时序：Socket启动(1秒) + 等待重连(2秒) + 握手完成(1秒) + 额外缓冲(2秒) = 6秒
+                _log.Info("AutoBet", "⏳ 延迟6秒启动监控（等待老浏览器完成重连和握手）...");
+                Thread.Sleep(6000);
                 
                 _log.Info("AutoBet", "✅ 监控线程正式开始工作");
                 
@@ -1432,6 +1438,11 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         continue;
                     }
                     
+                    // 🔥 诊断日志：输出未连接配置的关键状态
+                    _log.Debug("AutoBet", $"🔍 检查配置 [{config.ConfigName}]:");
+                    _log.Debug("AutoBet", $"   IsEnabled={config.IsEnabled}, IsConnected={config.IsConnected}");
+                    _log.Debug("AutoBet", $"   ProcessId={config.ProcessId}, Browser={(config.Browser != null ? "存在" : "null")}");
+                    
                     // 🔥 如果 Browser 存在但未连接，移除它
                     if (config.Browser != null && !config.Browser.IsConnected)
                     {
@@ -1482,35 +1493,45 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     // 🔥 未连接，准备启动浏览器（已标记，不会重复）
                     _log.Info("AutoBet", $"📌 配置 [{config.ConfigName}] 飞单已开启但未连接");
                     
-                    // 🔥 异步处理（不阻塞定时器）
+                    // 🔥 异步处理（不阻塞监控线程）
                     int configId = config.Id;
                     string configName = config.ConfigName;
+                    int processId = config.ProcessId;
+                    
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            // 🔥 先等待2秒，给老浏览器重连的机会
-                            _log.Info("AutoBet", $"⏳ [{configName}] 等待2秒，给老浏览器重连的机会...");
+                            // 🔥 【核心优化】无论 ProcessId 是否为0，都先等待2秒给老浏览器重连的机会
+                            // 这是用户的核心需求：先延时2秒，再次判断，再启动
+                            _log.Info("AutoBet", $"⏳ [{configName}] 检测到未连接（ProcessId={processId}），延迟2秒再次检查连接状态...");
                             await Task.Delay(2000);
                             
-                            // 🔥 等待后再次检查连接状态
+                            // 🔥 【关键检查1】等待后再次检查连接状态
                             var cfgCheck = GetConfig(configId);
                             if (cfgCheck?.IsConnected == true)
                             {
-                                _log.Info("AutoBet", $"✅ [{configName}] 已在等待期间连接，无需启动浏览器");
+                                _log.Info("AutoBet", $"✅ [{configName}] 浏览器已在2秒内重连成功，取消启动");
                                 return;
                             }
                             
-                            // 🔥 再次检查 IsEnabled（可能用户在等待期间关闭了）
-                            var cfg = GetConfig(configId);
-                            if (cfg == null || !cfg.IsEnabled)
+                            // 🔥 【关键检查2】再次检查 IsEnabled（可能用户在等待期间关闭了）
+                            if (cfgCheck == null || !cfgCheck.IsEnabled)
                             {
                                 _log.Info("AutoBet", $"   [{configName}] IsEnabled=false，取消启动");
                                 return;
                             }
                             
+                            // 🔥 【关键检查3】如果还有进程ID，再次检查进程是否真的已结束
+                            if (cfgCheck.ProcessId > 0 && IsProcessRunning(cfgCheck.ProcessId))
+                            {
+                                _log.Warning("AutoBet", $"⚠️ [{configName}] 浏览器进程 {cfgCheck.ProcessId} 仍在运行但未连接");
+                                _log.Warning("AutoBet", $"   保留 ProcessId，等待下次检查");
+                                return;
+                            }
+                            
                             // 🔥 确认未连接且需要启动，启动浏览器
-                            _log.Info("AutoBet", $"🚀 [{configName}] 启动浏览器...");
+                            _log.Info("AutoBet", $"🚀 [{configName}] 延迟2秒后确认未连接，开始启动新浏览器");
                             await StartBrowserInternal(configId);
                         }
                         catch (Exception ex)
