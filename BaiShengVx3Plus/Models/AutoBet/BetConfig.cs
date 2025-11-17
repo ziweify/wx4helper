@@ -8,7 +8,7 @@ namespace BaiShengVx3Plus.Models.AutoBet
     /// 自动投注配置
     /// </summary>
     [Table("AutoBetConfigs")]
-    public class BetConfig : INotifyPropertyChanged
+    public partial class BetConfig : INotifyPropertyChanged, IDisposable
     {
     // ========================================
     // 🔥 持久化字段（需要保存到数据库）
@@ -124,6 +124,16 @@ namespace BaiShengVx3Plus.Models.AutoBet
             {
                 _isEnabled = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEnabled)));
+                
+                // 🔥 自动启动/停止监控（配置自管理模式）
+                if (_isEnabled)
+                {
+                    StartMonitoring();
+                }
+                else
+                {
+                    StopMonitoring();
+                }
             }
         }
     }
@@ -308,6 +318,24 @@ namespace BaiShengVx3Plus.Models.AutoBet
     // ========================================
     
     public event PropertyChangedEventHandler? PropertyChanged;
+    
+    // ========================================
+    // IDisposable 实现
+    // ========================================
+    
+    private bool _disposed = false;
+    
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        _disposed = true;
+        DisposeBrowserManagement();  // 调用部分类中的清理方法
+        GC.SuppressFinalize(this);
+    }
+    
+    // 部分方法：由 BetConfig.BrowserManagement.cs 实现
+    partial void DisposeBrowserManagement();
     }
 }
 

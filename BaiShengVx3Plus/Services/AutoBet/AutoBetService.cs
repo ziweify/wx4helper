@@ -226,27 +226,52 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
             }, _cancellationTokenSource.Token);
             
-            // 🔥 配置加载完成后，启动监控线程
-            // 使用专用线程 + while 循环，更好控制时间和执行顺序
-            lock (_lock)
+            // 🔥 给所有配置注入依赖（LogService 和 SocketServer）
+            InjectDependenciesToConfigs();
+            
+            _log.Info("AutoBet", "✅ 数据库设置完成，等待配置同步后启动监控");
+        }
+        
+        /// <summary>
+        /// 给所有配置注入依赖服务
+        /// </summary>
+        private void InjectDependenciesToConfigs()
+        {
+            if (_configs == null) return;
+            
+            foreach (var config in _configs)
             {
-                if (_monitorThread == null) // 🔥 防止重复启动监控任务
+                config.SetDependencies(_log, _socketServer);
+            }
+            
+            _log.Info("AutoBet", $"✅ 已为 {_configs.Count} 个配置注入依赖服务");
+        }
+        
+        /// <summary>
+        /// 启动监控（在所有配置初始化完成后调用）
+        /// 🔥 新架构：启动所有已启用配置的监控线程（每个配置独立）
+        /// </summary>
+        public void StartMonitoring()
+        {
+            if (_configs == null)
+            {
+                _log.Warning("AutoBet", "⚠️ 配置列表为空，无法启动监控");
+                return;
+            }
+            
+            _log.Info("AutoBet", "🚀 开始启动配置监控（配置自管理模式）...");
+            
+            int startedCount = 0;
+            foreach (var config in _configs)
+            {
+                if (config.IsEnabled)
                 {
-                    _monitorRunning = true;
-                    _monitorThread = new Thread(MonitorBrowsersLoop)
-                    {
-                        Name = "BrowserMonitor",
-                        IsBackground = true  // 🔥 后台线程，程序退出时自动结束
-                    };
-                    _monitorThread.Start();
-                    _log.Info("AutoBet", "✅ 后台监控线程已启动（立即启动，每2秒检查一次）");
-                    _log.Info("AutoBet", "   说明：监控线程立即开始工作，但检测到需要启动浏览器时，会先延迟2秒再次判断连接状态");
-                }
-                else
-                {
-                    _log.Warning("AutoBet", "⚠️ 监控线程已经在运行，跳过重复启动");
+                    config.StartMonitoring();  // 🔥 每个配置启动自己的监控线程
+                    startedCount++;
                 }
             }
+            
+            _log.Info("AutoBet", $"✅ 已启动 {startedCount} 个配置的监控线程");
         }
         
         #region 配置管理（从内存读取，不访问数据库）

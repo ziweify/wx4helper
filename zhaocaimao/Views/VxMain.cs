@@ -452,6 +452,10 @@ namespace BaiShengVx3Plus
                 // 🎚️ 加载应用配置（从 appsettings.json）
                 LoadAppConfiguration();
                 
+                // 🔥 配置同步完成后，启动监控线程
+                _logService.Info("VxMain", "🚀 配置初始化完成，启动自动投注监控线程...");
+                _autoBetService.StartMonitoring();
+                
                 // 2. 创建开奖数据 BindingList（使用全局数据库）
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
                 _lotteryDataBindingList.LoadFromDatabase(100); // 加载最近 100 期
@@ -3446,62 +3450,55 @@ namespace BaiShengVx3Plus
 
         /// <summary>
         /// 启用/禁用自动投注开关（使用 UI开关控件）
+        /// 职责：只修改应用级配置（appsettings.json），不启动或停止浏览器
+        /// 浏览器的启动由监控线程自动管理，或用户手动点击浏览器控制按钮
         /// </summary>
-        private async void swiAutoOrdersBet_ValueChanged(object? sender, bool value)
+        private void swiAutoOrdersBet_ValueChanged(object? sender, bool value)
         {
             try
             {
                 _logService.Info("VxMain", $"🎚️ 飞单开关触发: {value}");
                 
-                // ✅ 通过 Service 更新配置（会自动保存到文件 + 触发事件）
+                // ✅ 只修改应用级配置（会自动保存到 appsettings.json）
                 _configService.SetIsAutoBetEnabled(value);
                 
                 if (value) // 开启自动投注
                 {
                     // 先保存设置
                     SaveAutoBetSettings();
-
-                    // 启动自动投注
-                    _logService.Info("VxMain", "🚀 启动自动投注（飞单）...");
-                    //if (_groupBindingService.CurrentBoundGroup == null)
-                    //    throw new Exception("没有绑定群！自动投注程序不启动！");
-
+                    
+                    // ✅ 设置 BetConfig.IsEnabled = true（让监控线程启动浏览器）
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
-                        _logService.Info("VxMain", $"📋 使用默认配置: Id={defaultConfig.Id}, Name={defaultConfig.ConfigName}, Platform={defaultConfig.Platform}");
-                        var success = await _autoBetCoordinator.StartAsync(defaultConfig.Id);
-                        
-                        if (success)
-                        {
-                            _logService.Info("VxMain", "✅ 自动投注已启动");
-                            this.ShowSuccessTip("自动投注（飞单）已启动！");
-                        }
-                        else
-                        {
-                            _logService.Error("VxMain", "启动自动投注失败");
-                            swiAutoOrdersBet.Active = false;
-                            this.ShowErrorTip("启动自动投注失败，请检查配置！");
-                        }
+                        defaultConfig.IsEnabled = true;
+                        _autoBetService.SaveConfig(defaultConfig);
+                        _logService.Info("VxMain", $"✅ 已设置配置 [{defaultConfig.ConfigName}] IsEnabled=true");
+                        _logService.Info("VxMain", "   监控线程将在2秒内检测到并启动浏览器");
                     }
-                    else
-                    {
-                        _logService.Warning("VxMain", "未找到默认配置");
-                        swiAutoOrdersBet.Active = false;
-                        this.ShowErrorTip("未找到默认配置！");
-                    }
+                    
+                    _logService.Info("VxMain", "✅ 飞单功能已启用（浏览器由监控任务管理）");
+                    this.ShowSuccessTip("飞单功能已启用！");
                 }
                 else // 停止自动投注
                 {
-                    _logService.Info("VxMain", "⏹️ 停止自动投注（飞单）...");
-                    _autoBetCoordinator.Stop();
-                    _logService.Info("VxMain", "✅ 自动投注已停止");
+                    // ✅ 设置 BetConfig.IsEnabled = false（停止监控浏览器）
+                    var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                    if (defaultConfig != null)
+                    {
+                        defaultConfig.IsEnabled = false;
+                        _autoBetService.SaveConfig(defaultConfig);
+                        _logService.Info("VxMain", $"✅ 已设置配置 [{defaultConfig.ConfigName}] IsEnabled=false");
+                    }
+                    
+                    _logService.Info("VxMain", "🛑 飞单功能已禁用");
+                    this.ShowSuccessTip("飞单功能已禁用！");
                 }
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "切换自动投注失败", ex);
-                swiAutoOrdersBet.Active = false;
+                swiAutoOrdersBet.Active = !value;  // 恢复原值
                 this.ShowErrorTip($"操作失败: {ex.Message}");
             }
         }
@@ -3568,39 +3565,37 @@ namespace BaiShengVx3Plus
                 
                 _logService.Info("VxMain", $"✅ 应用配置已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
                 
+                // 🔥 同步应用级配置到 BetConfig.IsEnabled
+                // 这样监控线程才能正确检测到需要启动浏览器
+                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                if (defaultConfig != null)
+                {
+                    if (defaultConfig.IsEnabled != isAutoBetEnabled)
+                    {
+                        _logService.Info("VxMain", $"🔄 同步飞单开关状态: appsettings.json={isAutoBetEnabled}, BetConfig.IsEnabled={defaultConfig.IsEnabled}");
+                        _logService.Info("VxMain", $"   将 BetConfig.IsEnabled 同步为: {isAutoBetEnabled}");
+                        defaultConfig.IsEnabled = isAutoBetEnabled;
+                        _autoBetService.SaveConfig(defaultConfig);
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", $"✅ 飞单开关状态已同步: BetConfig.IsEnabled={defaultConfig.IsEnabled}");
+                    }
+                }
+                
                 // 🔥 重新绑定事件
                 swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
                 swi_OrdersTasking.ValueChanged += swi_OrdersTasking_ValueChanged;
                 _logService.Info("VxMain", "✅ UI 开关事件已重新绑定");
                 
-                // 🔥 如果飞单开关开启，手动触发启动（此时浏览器已有时间重连）
+                // ✅ 不再手动触发启动！
+                // 原因：配置中的 IsEnabled 已经保存了，监控线程会自动检测并启动
+                // 手动触发会绕过监控线程的 2 秒延迟机制，导致老浏览器还没连上就启动新的
                 if (isAutoBetEnabled)
                 {
-                    _logService.Info("VxMain", "🚀 检测到飞单开关开启，准备启动自动投注...");
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            // 额外等待 2 秒，确保 Socket 服务器完全就绪，浏览器有时间重连
-                            await Task.Delay(2000);
-                            _logService.Info("VxMain", "⏳ 已等待 2 秒，开始启动自动投注");
-                            
-                            // 切换到 UI 线程触发开关事件
-                            if (InvokeRequired)
-                            {
-                                Invoke(new Action(() => swiAutoOrdersBet_ValueChanged(null, true)));
-                            }
-                            else
-                            {
-                                swiAutoOrdersBet_ValueChanged(null, true);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logService.Error("VxMain", "延迟启动自动投注失败", ex);
-                        }
-                    });
+                    _logService.Info("VxMain", "✅ 检测到飞单开关已开启，监控线程将自动处理（延迟2秒，等待老浏览器重连）");
                 }
+                
             }
             catch (Exception ex)
             {
