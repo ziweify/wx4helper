@@ -1884,8 +1884,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 获取当期所有订单（参考 F5BotV2 第1228行）
                 var orders = _ordersBindingList?
                     .Where(p => p.IssueId == issueId && p.OrderStatus != OrderStatus.已取消)
-                    .OrderBy(o => o.Id)  // 排序（参考 F5BotV2 第1230行）
                     .ToList();
+                
+                // 🔥 排序（参考 F5BotV2 第1230行：orders_redly.Sort(new V2MemberOrderComparerDefault())）
+                // 确保同名订单在一起，显示更清晰
+                if (orders != null && orders.Count > 0)
+                {
+                    orders.Sort(new V2MemberOrderComparerDefault());
+                }
                 
                 if (orders != null && orders.Count > 0)
                 {

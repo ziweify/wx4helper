@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
@@ -323,6 +324,51 @@ namespace BaiShengVx3Plus.Models
             field = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+    }
+    
+    /// <summary>
+    /// 🔥 订单排序比较器（参考 F5BotV2 V2MemberOrderComparerDefault）
+    /// 排序规则：
+    /// 1. 首先按 IssueId 排序
+    /// 2. 然后按 Nickname.GetHashCode() 排序（名字的哈希值，确保同名订单在一起）
+    /// 3. 最后按 TimeStampBet 排序（下注时间戳）
+    /// </summary>
+    public class V2MemberOrderComparerDefault : IComparer<V2MemberOrder>
+    {
+        public int Compare(V2MemberOrder? x, V2MemberOrder? y)
+        {
+            if (x == null && y == null) return 0;
+            if (x == null) return 1;
+            if (y == null) return -1;
+            
+            if (object.ReferenceEquals(x, y))
+            {
+                return 0;
+            }
+            
+            // 🔥 首先按 IssueId 排序（参考 F5BotV2 Line 40-43）
+            if (x.IssueId > y.IssueId)
+                return 1;
+            if (x.IssueId < y.IssueId)
+                return -1;
+
+            // 🔥 然后按 Nickname.GetHashCode() 排序（参考 F5BotV2 Line 46-51）
+            // 确保同名订单在一起
+            int xHash = (x.Nickname ?? "").GetHashCode();
+            int yHash = (y.Nickname ?? "").GetHashCode();
+            if (xHash > yHash)
+                return 1;
+            if (xHash < yHash)
+                return -1;
+
+            // 🔥 最后按 TimeStampBet 排序（参考 F5BotV2 Line 53-56）
+            if (x.TimeStampBet > y.TimeStampBet)
+                return 1;
+            if (x.TimeStampBet < y.TimeStampBet)
+                return -1;
+
+            return 0;
         }
     }
 }
