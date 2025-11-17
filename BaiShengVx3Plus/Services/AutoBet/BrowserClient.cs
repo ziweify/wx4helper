@@ -143,7 +143,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = browserExePath,
-                        Arguments = $"--config-id {_configId} --config-name \"{configName}\" --port {port} --platform {platform} --url {platformUrl}",  // 🔥 添加配置名参数
+                        // 🔥 不传递 configId，只传递配置名（服务端用配置名匹配，configId 会导致数据库重建后连接失败）
+                        Arguments = $"--config-name \"{configName}\" --port {port} --platform {platform} --url {platformUrl}",
                         WorkingDirectory = browserDirectory, // 设置工作目录为浏览器所在目录
                         UseShellExecute = false,
                         CreateNoWindow = false // 显示浏览器窗口
@@ -409,24 +410,44 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 停止并清理资源
         /// </summary>
-        public void Dispose()
+        /// <param name="killProcess">是否终止浏览器进程（默认false，保持浏览器运行以便主程序重启后重连）</param>
+        public void Dispose(bool killProcess = false)
         {
             try
             {
-                // 🔥 清理连接引用（不关闭 Socket，由 AutoBetSocketServer 管理）
-                _connection = null;
+                // 🔥 关闭 TCP 连接（通知 AutoBetSocketServer 清理）
+                if (_connection != null)
+                {
+                    try
+                    {
+                        _connection.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[BrowserClient] Dispose connection 错误: {ex.Message}");
+                    }
+                    _connection = null;
+                }
                 
-                // 关闭进程
-                if (_process != null && !_process.HasExited)
+                // 🔥 只有明确要求时才关闭进程（例如用户点击"停止浏览器"按钮）
+                // 默认情况下保持浏览器运行，允许主程序重启后重连
+                if (killProcess && _process != null && !_process.HasExited)
                 {
                     _process.Kill();
+                    _process?.Dispose();
+                    _process = null;
                 }
-                _process?.Dispose();
             }
             catch
             {
                 // 忽略清理错误
             }
+        }
+        
+        void IDisposable.Dispose()
+        {
+            // IDisposable 接口实现：默认不杀进程
+            Dispose(killProcess: false);
         }
     }
 }

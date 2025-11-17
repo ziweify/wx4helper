@@ -55,6 +55,42 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
+        /// 🔥 更新连接映射（数据库重建场景：浏览器ConfigId和服务端ConfigId不同）
+        /// </summary>
+        public void UpdateConnectionMapping(int oldConfigId, int newConfigId)
+        {
+            lock (_connections)
+            {
+                if (_connections.TryGetValue(oldConfigId, out var connection))
+                {
+                    _log.Info("AutoBetServer", $"🔄 更新连接映射: {oldConfigId} → {newConfigId}");
+                    
+                    // 移除旧映射
+                    _connections.Remove(oldConfigId);
+                    
+                    // 如果新ID已有连接，关闭旧连接
+                    if (_connections.ContainsKey(newConfigId))
+                    {
+                        _log.Warning("AutoBetServer", $"⚠️ 新ID {newConfigId} 已有连接，关闭旧连接");
+                        _connections[newConfigId].Dispose();
+                    }
+                    
+                    // 更新连接的 ConfigId
+                    connection.ConfigId = newConfigId;
+                    
+                    // 添加新映射
+                    _connections[newConfigId] = connection;
+                    
+                    _log.Info("AutoBetServer", $"✅ 连接映射已更新: {oldConfigId} → {newConfigId}");
+                }
+                else
+                {
+                    _log.Warning("AutoBetServer", $"⚠️ 未找到旧连接: {oldConfigId}");
+                }
+            }
+        }
+        
+        /// <summary>
         /// 启动服务器
         /// </summary>
         public void Start()

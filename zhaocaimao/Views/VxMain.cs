@@ -1,24 +1,24 @@
-﻿using Sunny.UI;
-using zhaocaimao.ViewModels;
-using zhaocaimao.Models;
-using zhaocaimao.Contracts;
+using Sunny.UI;
+using BaiShengVx3Plus.ViewModels;
+using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Shared.Platform;
-using zhaocaimao.Contracts.Games;
-using zhaocaimao.Services.Messages;
-using zhaocaimao.Services.Messages.Handlers;
-using zhaocaimao.Services.Games.Binggo;
-using zhaocaimao.Services;
-using zhaocaimao.Models.Games.Binggo;
-using zhaocaimao.Models.Games.Binggo.Events;
-using zhaocaimao.Helpers;
-using zhaocaimao.Core;
-using zhaocaimao.Extensions;
+using BaiShengVx3Plus.Contracts.Games;
+using BaiShengVx3Plus.Services.Messages;
+using BaiShengVx3Plus.Services.Messages.Handlers;
+using BaiShengVx3Plus.Services.Games.Binggo;
+using BaiShengVx3Plus.Services;
+using BaiShengVx3Plus.Models.Games.Binggo;
+using BaiShengVx3Plus.Models.Games.Binggo.Events;
+using BaiShengVx3Plus.Helpers;
+using BaiShengVx3Plus.Core;
+using BaiShengVx3Plus.Extensions;
 using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using SQLite;
 
-namespace zhaocaimao
+namespace BaiShengVx3Plus
 {
     public partial class VxMain : UIForm
     {
@@ -236,7 +236,7 @@ namespace zhaocaimao
                 
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "招财猫",
+                    "BaiShengVx3Plus",
                     "Data");
                 Directory.CreateDirectory(dataDirectory);
                 
@@ -412,18 +412,26 @@ namespace zhaocaimao
                 _lotteryService.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
                 
-                // 📌 BetRecordService: 使用全局数据库（不依赖微信绑定）
-                var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
-                betRecordService?.SetDatabase(_globalDb);
-                _logService.Info("VxMain", "✅ BetRecordService 已设置全局数据库（BetRecord）");
+                // 📌 BetRecordService: 已在 AutoBetService.SetDatabase 中初始化
+                // 🔥 不再需要手动设置，BindingList 由 AutoBetService 管理
+                _logService.Info("VxMain", "✅ BetRecordService 将在 AutoBetService.SetDatabase 中自动初始化");
                 
                 // 📌 AdminCommandHandler: 设置会员 BindingList 和数据库
+                // 🔥 注意：此时 _membersBindingList 可能还是 null（需要先绑定群）
+                // 如果为 null，会在 BindGroupAsync 中重新设置
                 var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
                 if (adminCommandHandler != null && _db != null)
                 {
-                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
                     adminCommandHandler.SetDatabase(_db);
-                    _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表和数据库");
+                    if (_membersBindingList != null)
+                    {
+                        adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                        _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表和数据库");
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", "⚠️ AdminCommandHandler 已设置数据库，但会员列表尚未初始化（需要先绑定群）");
+                    }
                 }
                 
                 // 📌 微信专属数据库（business_{wxid}.db）- 绑定微信后才可用
@@ -491,7 +499,15 @@ namespace zhaocaimao
                 {
                     if (e.PropertyName == nameof(BinggoStatisticsService.PanDescribe))
                     {
-                        UpdateUIThreadSafeAsync(() => UpdateMemberInfoLabel());
+                        _logService.Info("VxMain", 
+                            $"📢 收到 PanDescribe 属性变化通知（线程{System.Threading.Thread.CurrentThread.ManagedThreadId}），准备更新 UI");
+                        // 🔥 使用同步更新，确保立即刷新 UI（特别是订单取消时）
+                        UpdateUIThreadSafe(() => 
+                        {
+                            _logService.Info("VxMain", 
+                                $"🎨 在 UI 线程中更新 lblMemberInfo（线程{System.Threading.Thread.CurrentThread.ManagedThreadId}）");
+                            UpdateMemberInfoLabel();
+                        });
                     }
                 };
                 
@@ -866,13 +882,6 @@ namespace zhaocaimao
         /// </summary>
         private void UpdateMemberInfoLabel()
         {
-            // 🔥 空值检查，防止空引用异常
-            if (lblMemberInfo == null || _statisticsService == null)
-            {
-                _logService.Warning("VxMain", "⚠️ UpdateMemberInfoLabel: lblMemberInfo 或 _statisticsService 为 null");
-                return;
-            }
-            
             // 🔥 更新统计数据缓存
             _currentStats.MemberCount = _membersBindingList?.Count ?? 0;
             _currentStats.OrderCount = _ordersBindingList?.Count ?? 0;
@@ -891,10 +900,7 @@ namespace zhaocaimao
             lblMemberInfo.Invalidate();
             
             // 订单信息标签（可选保留）
-            if (lblOrderInfo != null)
-            {
             lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
-            }
         }
         
         /// <summary>
@@ -1053,8 +1059,8 @@ namespace zhaocaimao
         {
             try
             {
-                // 🔥 显示版本号 - 招财猫主题
-                this.Text = $"💰 招财猫 {Utils.VersionInfo.FullVersion}";
+                // 🔥 显示版本号
+                this.Text = Utils.VersionInfo.FullVersion;
                 _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 _logService.Info("VxMain", $"🚀 {Utils.VersionInfo.FullVersion}");
                 _logService.Info("VxMain", $"📅 构建日期: {Utils.VersionInfo.BuildDate}");
@@ -1727,85 +1733,7 @@ namespace zhaocaimao
                 _ordersBindingList = result.OrdersBindingList;
                 _creditWithdrawsBindingList = result.CreditWithdrawsBindingList;
                 
-                // 🔥 6. 绑定到 DataGridView（UI 更新）
-                UpdateUIThreadSafe(() =>
-                {
-                    // 🔥 确保切换到数据管理标签页
-                    if (tabControlMain.SelectedTab != tabPageDataManagement)
-                    {
-                        tabControlMain.SelectedTab = tabPageDataManagement;
-                        _logService.Info("VxMain", "✅ 已切换到数据管理标签页");
-                    }
-                    
-                    // 🔥 确保表格可见
-                    dgvMembers.Visible = true;
-                    dgvOrders.Visible = true;
-                    pnlMembers.Visible = true;
-                    pnlOrders.Visible = true;
-                    splitContainerRight.Visible = true;
-                    
-                    // 🔥 记录数据数量（绑定前）
-                    int memberCount = _membersBindingList?.Count ?? 0;
-                    int orderCount = _ordersBindingList?.Count ?? 0;
-                    _logService.Info("VxMain", $"📊 准备绑定数据: 会员 {memberCount} 条, 订单 {orderCount} 条");
-                    
-                    // 🔥 绑定数据源
-                    dgvMembers.DataSource = null;  // 先清空，确保重新绑定
-                    dgvOrders.DataSource = null;
-                    
-                    dgvMembers.DataSource = _membersBindingList;
-                    dgvOrders.DataSource = _ordersBindingList;
-                    
-                    // 🔥 强制刷新表格
-                    dgvMembers.Refresh();
-                    dgvOrders.Refresh();
-                    
-                    // 🔥 等待一下，让列自动生成
-                    Application.DoEvents();
-                    
-                    // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
-                    // 这样列头标题、列宽、对齐等配置才会生效
-                    if (dgvMembers.Columns.Count > 0)
-                    {
-                        dgvMembers.ConfigureFromModel<V2Member>();
-                        _logService.Info("VxMain", $"✅ 会员表列配置已应用，共 {dgvMembers.Columns.Count} 列, {dgvMembers.Rows.Count} 行");
-                    }
-                    else
-                    {
-                        _logService.Warning("VxMain", "⚠️ 会员表列数为0，可能数据源未正确绑定");
-                        _logService.Warning("VxMain", $"   数据源类型: {_membersBindingList?.GetType().Name ?? "null"}");
-                        _logService.Warning("VxMain", $"   数据源数量: {_membersBindingList?.Count ?? 0}");
-                    }
-                    
-                    if (dgvOrders.Columns.Count > 0)
-                    {
-                        dgvOrders.ConfigureFromModel<V2MemberOrder>();
-                        _logService.Info("VxMain", $"✅ 订单表列配置已应用，共 {dgvOrders.Columns.Count} 列, {dgvOrders.Rows.Count} 行");
-                    }
-                    else
-                    {
-                        _logService.Warning("VxMain", "⚠️ 订单表列数为0，可能数据源未正确绑定");
-                        _logService.Warning("VxMain", $"   数据源类型: {_ordersBindingList?.GetType().Name ?? "null"}");
-                        _logService.Warning("VxMain", $"   数据源数量: {_ordersBindingList?.Count ?? 0}");
-                    }
-                    
-                    // 🔥 再次刷新，确保显示
-                    dgvMembers.Invalidate();
-                    dgvOrders.Invalidate();
-                    dgvMembers.Update();
-                    dgvOrders.Update();
-                    
-                    _logService.Info("VxMain", $"📊 数据绑定完成: 会员 {memberCount} 条, 订单 {orderCount} 条");
-                });
-                
-                // 🔥 7. 更新 UI 显示
-                UpdateUIThreadSafe(() =>
-                {
-                UpdateMemberInfoLabel();
-                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
-                });
-                
-                // 🔥 8. 重新设置 AdminCommandHandler 的引用（重要！）
+                // 🔥 5.5. 重新设置 AdminCommandHandler 的引用（重要！）
                 // 因为在 InitializeBinggoServices 时，_membersBindingList 可能还是 null
                 // 现在绑定群成功后，_membersBindingList 已经有值了，需要重新设置
                 var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
@@ -1815,6 +1743,31 @@ namespace zhaocaimao
                     adminCommandHandler.SetDatabase(_db);
                     _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表和数据库（绑定群后）");
                 }
+                
+                // 🔥 6. 绑定到 DataGridView（UI 更新）
+                UpdateUIThreadSafe(() =>
+                {
+                    dgvMembers.DataSource = _membersBindingList;
+                    dgvOrders.DataSource = _ordersBindingList;
+                    
+                    // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
+                    // 这样列头标题、列宽、对齐等配置才会生效
+                    if (dgvMembers.Columns.Count > 0)
+                    {
+                        dgvMembers.ConfigureFromModel<V2Member>();
+                        _logService.Info("VxMain", "✅ 会员表列配置已应用");
+                    }
+                    
+                    if (dgvOrders.Columns.Count > 0)
+                    {
+                        dgvOrders.ConfigureFromModel<V2MemberOrder>();
+                        _logService.Info("VxMain", "✅ 订单表列配置已应用");
+                    }
+                });
+                
+                // 🔥 7. 更新 UI 显示
+                UpdateMemberInfoLabel();
+                lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 加载完成";
                 
                 _logService.Info("VxMain", 
                     $"✅ 绑定群完成: {result.MemberCount} 个会员, {result.OrderCount} 个订单, {result.CreditWithdrawCount} 条上下分记录");
@@ -2013,7 +1966,7 @@ namespace zhaocaimao
                         // 🔥 使用 AppData\Local 目录存储备份
                         var backupDirectory = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "招财猫",
+                            "BaiShengVx3Plus",
                             "Data",
                             "Backup");
                         
@@ -3291,6 +3244,11 @@ namespace zhaocaimao
 
         /// <summary>
         /// 防抖保存设置（用户停止输入1秒后才保存）
+        /// 🔥 保存时机：
+        /// 1. 用户修改账号/密码后，停止输入1秒自动保存
+        /// 2. 用户修改平台时，立即保存
+        /// 3. 开启自动投注时，立即保存
+        /// 4. 窗口关闭时，强制保存（防止数据丢失）
         /// </summary>
         private void DebounceSaveSettings()
         {
@@ -3303,15 +3261,19 @@ namespace zhaocaimao
                 // 在UI线程上执行保存
                 this.Invoke(() =>
                 {
+                    _logService.Info("VxMain", "⏰ 防抖定时器触发：自动保存账号/密码设置");
                     SaveAutoBetSettings();
                     _saveTimer?.Dispose();
                     _saveTimer = null;
                 });
             }, null, 1000, System.Threading.Timeout.Infinite);
+            
+            _logService.Debug("VxMain", "⏳ 账号/密码已修改，将在1秒后自动保存（防抖机制）");
         }
 
         /// <summary>
         /// 从默认配置加载自动投注设置
+        /// 🔥 如果默认配置不存在，会创建一个新的默认配置（账号密码为空）
         /// </summary>
         private void LoadAutoBetSettings()
         {
@@ -3322,15 +3284,54 @@ namespace zhaocaimao
                 swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
                 
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                
                 if (defaultConfig != null)
                 {
                     // 加载平台（使用共享库统一转换）
                     var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
                     cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
 
-                    // 加载账号密码
+                    // 加载账号密码（如果为空，显示空白是正常的）
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
                     txtAutoBetPassword.Text = defaultConfig.Password ?? "";
+                    
+                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
+                }
+                else
+                {
+                    // 🔥 默认配置不存在，创建一个新的（账号密码为空）
+                    _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
+                    
+                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    var newConfig = new Models.AutoBet.BetConfig
+                    {
+                        ConfigName = "默认配置",
+                        Platform = platform.ToString(),
+                        PlatformUrl = platform switch
+                        {
+                            BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
+                            BetPlatform.云顶 => "https://www.yunding28.com",
+                            BetPlatform.海峡 => "https://www.haixia28.com",
+                            BetPlatform.红海 => "https://www.honghai28.com",
+                            _ => "https://yb666.fr.win2000.cc"
+                        },
+                        Username = "",  // 🔥 初始为空，用户需要手动输入
+                        Password = "",  // 🔥 初始为空，用户需要手动输入
+                        IsDefault = true,
+                        IsEnabled = false,
+                        AutoLogin = true,
+                        MinBetAmount = 1,
+                        MaxBetAmount = 10000
+                    };
+                    
+                    _autoBetService.SaveConfig(newConfig);
+                    
+                    // 加载到UI
+                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
+                    txtAutoBetUsername.Text = "";
+                    txtAutoBetPassword.Text = "";
+                    
+                    _logService.Info("VxMain", "✅ 已创建新的默认配置（账号密码为空，需要用户输入）");
                 }
                 
                 _logService.Info("VxMain", "✅ 自动投注设置加载完成");
@@ -3349,6 +3350,11 @@ namespace zhaocaimao
 
         /// <summary>
         /// 保存自动投注设置到默认配置
+        /// 🔥 保存时机：
+        /// 1. 用户修改账号/密码后，停止输入1秒自动保存（防抖机制）
+        /// 2. 用户修改平台时，立即保存
+        /// 3. 开启自动投注时，立即保存
+        /// 4. 窗口关闭时，强制保存（防止数据丢失）
         /// </summary>
         private void SaveAutoBetSettings()
         {
@@ -3405,6 +3411,19 @@ namespace zhaocaimao
                     var username = txtAutoBetUsername.Text;
                     var password = txtAutoBetPassword.Text;
                     
+                    // 🔥 检查是否有变化（避免不必要的保存）
+                    bool usernameChanged = defaultConfig.Username != username;
+                    bool passwordChanged = defaultConfig.Password != password;
+                    
+                    if (usernameChanged || passwordChanged)
+                    {
+                        _logService.Info("VxMain", $"📝 检测到账号/密码变化:");
+                        if (usernameChanged)
+                            _logService.Info("VxMain", $"   账号: {defaultConfig.Username ?? "(空)"} → {username ?? "(空)"}");
+                        if (passwordChanged)
+                            _logService.Info("VxMain", $"   密码: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "***")} → {(string.IsNullOrEmpty(password) ? "(空)" : "***")}");
+                    }
+                    
                     defaultConfig.Username = username;
                     defaultConfig.Password = password;
                     defaultConfig.LastUpdateTime = DateTime.Now;  // 🔥 强制触发更新
@@ -3412,15 +3431,12 @@ namespace zhaocaimao
                     // 保存到数据库
                     _autoBetService.SaveConfig(defaultConfig);
 
-                    _logService.Info("VxMain", "✅ 自动投注设置已保存");
-                    _logService.Info("VxMain", $"   用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
+                    _logService.Info("VxMain", "✅ 自动投注设置已保存到数据库");
+                    _logService.Info("VxMain", $"   - 平台: {defaultConfig.Platform}");
+                    _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
+                    _logService.Info("VxMain", $"   - 账号: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
+                    _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(password) ? "(空)" : "已设置")}");
                 }
-                
-                // 统一的日志输出
-                _logService.Info("VxMain", $"   - 平台: {defaultConfig.Platform}");
-                _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
-                _logService.Info("VxMain", $"   - 用户名: {(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
-                _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "******")}");
             }
             catch (Exception ex)
             {
@@ -3656,15 +3672,6 @@ namespace zhaocaimao
         #endregion
 
         #region 订单表右键菜单
-        
-        /// <summary>
-        /// 🔥 初始化会员表右键菜单（开发模式）
-        /// </summary>
-        private void InitializeMemberContextMenu()
-        {
-            // 🔥 如果需要在会员表添加右键菜单，可以在这里实现
-            // 目前使用的是现有的菜单事件处理器
-        }
         
         /// <summary>
         /// 🔥 初始化订单表右键菜单（补单功能）

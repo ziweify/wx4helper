@@ -2,18 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Core;
 using BaiShengVx3Plus.Models.AutoBet;
-using SQLite;
 
 namespace BaiShengVx3Plus.Services.AutoBet
 {
     /// <summary>
-    /// 投注记录服务
+    /// 投注记录服务（重构版 - 遵循 F5BotV2 设计）
+    /// 
+    /// 核心改变：
+    /// 1. ❌ 不再直接访问数据库
+    /// 2. ✅ 只操作 BetRecordBindingList
+    /// 3. ✅ 只负责业务逻辑，数据库操作由 BindingList 自动处理
     /// </summary>
     public class BetRecordService
     {
         private readonly ILogService _log;
-        private SQLiteConnection? _db;
+        private BetRecordBindingList? _records;
         
         public BetRecordService(ILogService log)
         {
@@ -21,30 +26,28 @@ namespace BaiShengVx3Plus.Services.AutoBet
         }
         
         /// <summary>
-        /// 设置数据库连接
+        /// 设置 BindingList（不再需要数据库连接）
         /// </summary>
-        public void SetDatabase(SQLiteConnection db)
+        public void SetBindingList(BetRecordBindingList records)
         {
-            _db = db;
-            _db.CreateTable<BetRecord>();
-            _log.Info("BetRecordService", "✅ 投注记录表已初始化");
+            _records = records;
+            _log.Info("BetRecordService", "✅ 投注记录服务已初始化（使用 BindingList）");
         }
         
         /// <summary>
         /// 创建投注记录
+        /// 🔥 只需添加到 BindingList，自动保存到数据库
         /// </summary>
         public BetRecord? Create(BetRecord record)
         {
-            if (_db == null)
+            if (_records == null)
             {
-                _log.Error("BetRecordService", "❌ 数据库未初始化，无法创建投注记录");
+                _log.Error("BetRecordService", "❌ BindingList 未初始化，无法创建投注记录");
                 return null;
             }
             
-            record.CreateTime = DateTime.Now;
-            record.SendTime = DateTime.Now;
-            
-            _db.Insert(record);
+            // 🔥 直接添加到 BindingList，自动触发数据库保存
+            _records.Add(record);
             
             _log.Info("BetRecordService", $"📝 创建投注记录:ID={record.Id} 来源={record.Source} 内容={record.BetContentStandard}");
             
@@ -53,24 +56,21 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         /// <summary>
         /// 更新投注记录
+        /// 🔥 直接修改对象属性，自动触发 PropertyChanged → 自动保存
         /// </summary>
         public void Update(BetRecord record)
         {
-            if (_db == null)
+            if (_records == null)
             {
-                _log.Error("BetRecordService", "❌ 数据库未初始化，无法更新投注记录");
+                _log.Error("BetRecordService", "❌ BindingList 未初始化，无法更新投注记录");
                 return;
             }
             
+            // 🔥 修改属性会自动触发 PropertyChanged → 自动保存
             record.UpdateTime = DateTime.Now;
             
-            // 计算耗时
-            if (record.PostStartTime.HasValue && record.PostEndTime.HasValue)
-            {
-                record.DurationMs = (int)(record.PostEndTime.Value - record.PostStartTime.Value).TotalMilliseconds;
-            }
-            
-            _db.Update(record);
+            // 触发通知（如果需要强制刷新 UI）
+            _records.NotifyItemChanged(record);
             
             _log.Info("BetRecordService", 
                 $"✅ 更新投注记录:ID={record.Id} 成功={record.Success} 耗时={record.DurationMs}ms");
@@ -82,19 +82,20 @@ namespace BaiShengVx3Plus.Services.AutoBet
         public void UpdateResult(int recordId, bool success, string? result, string? errorMessage, 
             DateTime? postStartTime, DateTime? postEndTime, string? orderNo)
         {
-            if (_db == null)
+            if (_records == null)
             {
-                _log.Error("BetRecordService", "❌ 数据库未初始化，无法更新投注结果");
+                _log.Error("BetRecordService", "❌ BindingList 未初始化，无法更新投注结果");
                 return;
             }
             
-            var record = _db.Get<BetRecord>(recordId);
+            var record = _records.GetById(recordId);
             if (record == null)
             {
                 _log.Warning("BetRecordService", $"⚠️ 投注记录不存在:ID={recordId}");
                 return;
             }
             
+            // 🔥 直接修改属性，自动触发保存
             record.Success = success;
             record.Result = result;
             record.ErrorMessage = errorMessage;
@@ -102,80 +103,67 @@ namespace BaiShengVx3Plus.Services.AutoBet
             record.PostEndTime = postEndTime;
             record.OrderNo = orderNo;
             
+            // Update 方法会触发 UpdateTime 和通知
             Update(record);
         }
         
         /// <summary>
         /// 获取投注记录
+        /// 🔥 直接从 BindingList 查询（内存），不访问数据库
         /// </summary>
         public BetRecord? GetById(int id)
         {
-            if (_db == null) return null;
-            
-            try
-            {
-                return _db.Get<BetRecord>(id);
-            }
-            catch
-            {
-                return null;
-            }
+            return _records?.GetById(id);
         }
         
         /// <summary>
         /// 获取指定期号的投注记录
+        /// 🔥 直接从 BindingList 查询（内存），不访问数据库
         /// </summary>
-        public List<BetRecord> GetByIssueId(int issueId)
+        public BetRecord[] GetByIssueId(int issueId)
         {
-            if (_db == null) return new List<BetRecord>();
+            if (_records == null) return Array.Empty<BetRecord>();
             
-            return _db.Table<BetRecord>()
-                .Where(r => r.IssueId == issueId)
-                .OrderByDescending(r => r.CreateTime)
-                .ToList();
+            return _records.GetByIssueId(issueId);
         }
         
         /// <summary>
         /// 获取指定配置的投注记录
+        /// 🔥 直接从 BindingList 查询（内存），不访问数据库
         /// </summary>
-        public List<BetRecord> GetByConfigId(int configId, int limit = 100)
+        public BetRecord[] GetByConfigId(int configId, int limit = 100)
         {
-            if (_db == null) return new List<BetRecord>();
+            if (_records == null) return Array.Empty<BetRecord>();
             
-            return _db.Table<BetRecord>()
-                .Where(r => r.ConfigId == configId)
+            return _records.GetByConfigId(configId)
                 .OrderByDescending(r => r.CreateTime)
                 .Take(limit)
-                .ToList();
+                .ToArray();
         }
         
         /// <summary>
         /// 获取指定配置和日期范围的投注记录
+        /// 🔥 直接从 BindingList 查询（内存），不访问数据库
         /// </summary>
-        public List<BetRecord> GetByConfigAndDateRange(int configId, DateTime startDate, DateTime endDate)
+        public BetRecord[] GetByConfigAndDateRange(int configId, DateTime startDate, DateTime endDate)
         {
-            if (_db == null) return new List<BetRecord>();
+            if (_records == null) return Array.Empty<BetRecord>();
             
-            return _db.Table<BetRecord>()
-                .Where(r => r.ConfigId == configId && 
-                           r.CreateTime >= startDate && 
-                           r.CreateTime <= endDate)
+            return _records.GetByConfigId(configId)
+                .Where(r => r.CreateTime >= startDate && r.CreateTime <= endDate)
                 .OrderByDescending(r => r.CreateTime)
-                .ToList();
+                .ToArray();
         }
         
         /// <summary>
         /// 检查是否存在待处理的投注（用于防重复）
+        /// 🔥 直接从 BindingList 查询（内存），不访问数据库
         /// </summary>
         public bool HasPendingBet(int configId, int issueId)
         {
-            if (_db == null) return false;
+            if (_records == null) return false;
             
-            return _db.Table<BetRecord>()
-                .Any(r => r.ConfigId == configId && 
-                         r.IssueId == issueId && 
-                         r.Success == null);  // Success=null 表示未返回结果
+            return _records.HasPendingBet(configId, issueId);
         }
     }
 }
-

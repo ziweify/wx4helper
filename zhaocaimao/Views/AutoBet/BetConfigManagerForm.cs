@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
-using zhaocaimao.Contracts;
-using zhaocaimao.Models.AutoBet;
-using zhaocaimao.Services.AutoBet;
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Models.AutoBet;
+using BaiShengVx3Plus.Services.AutoBet;
 using BaiShengVx3Plus.Shared.Platform;
 using Sunny.UI;
 
-namespace zhaocaimao.Views.AutoBet
+namespace BaiShengVx3Plus.Views.AutoBet
 {
     /// <summary>
     /// 自动投注配置管理器窗口
@@ -435,7 +435,7 @@ namespace zhaocaimao.Views.AutoBet
                     
                     // 🔥 列配置已移至 DataBindingComplete 事件中处理，避免 NullReferenceException
                     
-                    _logService.Info("ConfigManager", $"已加载{records.Count}条投注记录");
+                    _logService.Info("ConfigManager", $"已加载{records.Length}条投注记录");
                 }
                 else
                 {

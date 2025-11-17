@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using SQLite;
 
 namespace BaiShengVx3Plus.Models.AutoBet
@@ -6,10 +7,12 @@ namespace BaiShengVx3Plus.Models.AutoBet
     /// <summary>
     /// 投注记录表
     /// 记录所有投注行为（自动和手动）
+    /// 🔥 实现 INotifyPropertyChanged 以支持 BindingList 自动保存
     /// </summary>
     [Table("BetRecords")]
-    public class BetRecord
+    public class BetRecord : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
         

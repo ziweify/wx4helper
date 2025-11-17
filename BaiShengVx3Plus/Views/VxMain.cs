@@ -412,10 +412,9 @@ namespace BaiShengVx3Plus
                 _lotteryService.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
                 
-                // 📌 BetRecordService: 使用全局数据库（不依赖微信绑定）
-                var betRecordService = Program.ServiceProvider.GetService<Services.AutoBet.BetRecordService>();
-                betRecordService?.SetDatabase(_globalDb);
-                _logService.Info("VxMain", "✅ BetRecordService 已设置全局数据库（BetRecord）");
+                // 📌 BetRecordService: 已在 AutoBetService.SetDatabase 中初始化
+                // 🔥 不再需要手动设置，BindingList 由 AutoBetService 管理
+                _logService.Info("VxMain", "✅ BetRecordService 将在 AutoBetService.SetDatabase 中自动初始化");
                 
                 // 📌 AdminCommandHandler: 设置会员 BindingList 和数据库
                 // 🔥 注意：此时 _membersBindingList 可能还是 null（需要先绑定群）

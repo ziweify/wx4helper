@@ -169,7 +169,6 @@ namespace BsBrowserClient.Services
                 catch (Exception ex)
                 {
                     UpdateStatus(ConnectionStatus.断开);
-                    _onLog($"❌ 连接错误: {ex.Message}");
                     
                     // 清理连接
                     _reader?.Dispose();
@@ -180,8 +179,13 @@ namespace BsBrowserClient.Services
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         UpdateStatus(ConnectionStatus.重连中);
-                        _onLog("⏳ 1秒后重试连接...");
-                        await Task.Delay(1000, cancellationToken);  // 🔥 改为1秒快速重连
+                        // 🔥 改为200毫秒快速重连，避免错过主程序启动时机
+                        // 🔥 只在第一次失败时记录日志，避免日志刷屏
+                        if (Status == ConnectionStatus.断开)
+                        {
+                            _onLog($"❌ 连接失败: {ex.Message}，开始快速重连...");
+                        }
+                        await Task.Delay(200, cancellationToken);
                     }
                 }
             }

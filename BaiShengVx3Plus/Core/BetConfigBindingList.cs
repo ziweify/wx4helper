@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using BaiShengVx3Plus.Models.AutoBet;
+using BaiShengVx3Plus.Contracts;
 using SQLite;
 
 namespace BaiShengVx3Plus.Core
@@ -20,16 +21,23 @@ namespace BaiShengVx3Plus.Core
     {
         private readonly SQLiteConnection _db;
         private readonly SynchronizationContext? _syncContext;
+        private readonly object _dbLock = new object(); // 🔥 数据库操作锁
+        private readonly ILogService _log;
 
-        public BetConfigBindingList(SQLiteConnection db)
+        public BetConfigBindingList(SQLiteConnection db, ILogService log)
         {
             _db = db;
+            _log = log;
             
             // 🔥 捕获 UI 线程的 SynchronizationContext
             _syncContext = SynchronizationContext.Current;
             
             // 🔥 自动建表
-            _db.CreateTable<BetConfig>();
+            lock (_dbLock)
+            {
+                _db.CreateTable<BetConfig>();
+                _log.Info("BetConfig", "✅ BetConfig表已创建/验证");
+            }
         }
 
         /// <summary>
@@ -41,22 +49,25 @@ namespace BaiShengVx3Plus.Core
             // 🔥 步骤1: 数据库操作（立即执行，保证可靠写入）
             // ========================================
             
-            // 🔥 检查是否已存在（去重）
-            var existing = _db.Table<BetConfig>()
-                .FirstOrDefault(c => c.Id == item.Id);
+            lock (_dbLock) // 🔥 保护数据库操作，防止并发访问导致锁定
+            {
+                // 🔥 检查是否已存在（去重）
+                var existing = _db.Table<BetConfig>()
+                    .FirstOrDefault(c => c.Id == item.Id);
 
-            if (existing == null)
-            {
-                // 🔥 插入新记录
-                item.LastUpdateTime = DateTime.Now;
-                _db.Insert(item);
-                item.Id = (int)_db.ExecuteScalar<long>("SELECT last_insert_rowid()");
-            }
-            else
-            {
-                // 🔥 更新现有记录
-                item.LastUpdateTime = DateTime.Now;
-                _db.Update(item);
+                if (existing == null)
+                {
+                    // 🔥 插入新记录
+                    item.LastUpdateTime = DateTime.Now;
+                    _db.Insert(item);
+                    item.Id = (int)_db.ExecuteScalar<long>("SELECT last_insert_rowid()");
+                }
+                else
+                {
+                    // 🔥 更新现有记录
+                    item.LastUpdateTime = DateTime.Now;
+                    _db.Update(item);
+                }
             }
 
             // ========================================
@@ -89,13 +100,37 @@ namespace BaiShengVx3Plus.Core
             {
                 if (item.Id > 0)
                 {
-                    // 🔥 立即保存到数据库（在当前线程执行）
-                    // DELETE 日志模式下，数据立即写入主文件，无需额外刷新
-                    item.LastUpdateTime = DateTime.Now;
-                    _db.Update(item);
-                    
-                    // 🔥 线程安全地刷新 UI
-                    NotifyItemChanged(item);
+                    try
+                    {
+                        _log.Debug("BetConfig", $"🔔 属性变更: [{item.ConfigName}] {e?.PropertyName} (线程ID={System.Threading.Thread.CurrentThread.ManagedThreadId})");
+                        
+                        // 🔥 立即保存到数据库（在当前线程执行）
+                        // DELETE 日志模式下，数据立即写入主文件，无需额外刷新
+                        lock (_dbLock) // 🔥 保护数据库操作，防止并发访问导致锁定
+                        {
+                            item.LastUpdateTime = DateTime.Now;
+                            int affectedRows = _db.Update(item);
+                            _log.Debug("BetConfig", $"✅ 数据库已更新: [{item.ConfigName}] 影响行数={affectedRows}");
+                        }
+                        
+                        // 🔥 线程安全地刷新 UI
+                        NotifyItemChanged(item);
+                    }
+                    catch (SQLiteException sqlEx)
+                    {
+                        // 🔥 SQLite特定异常：记录完整的错误信息
+                        _log.Error("BetConfig", $"❌ SQLite保存配置失败: [{item.ConfigName}]", sqlEx);
+                        _log.Error("BetConfig", $"   SQLite错误代码: {sqlEx.Result}");
+                        _log.Error("BetConfig", $"   数据库路径: {_db.DatabasePath}");
+                        _log.Error("BetConfig", $"   线程ID: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        // 🔥 其他异常：记录完整的错误信息
+                        _log.Error("BetConfig", $"❌ 保存配置失败: [{item.ConfigName}]", ex);
+                        _log.Error("BetConfig", $"   异常类型: {ex.GetType().Name}");
+                        _log.Error("BetConfig", $"   线程ID: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+                    }
                 }
             };
         }
@@ -109,7 +144,10 @@ namespace BaiShengVx3Plus.Core
             
             if (item.Id > 0)
             {
-                _db.Delete(item);
+                lock (_dbLock) // 🔥 保护数据库操作
+                {
+                    _db.Delete(item);
+                }
             }
             
             base.RemoveItem(index);
@@ -121,14 +159,17 @@ namespace BaiShengVx3Plus.Core
         /// </summary>
         public void LoadFromDatabase()
         {
-            var configs = _db.Table<BetConfig>()
-                .OrderBy(c => c.Id)
-                .ToList();
-
-            foreach (var config in configs)
+            lock (_dbLock) // 🔥 保护数据库读取
             {
-                base.InsertItem(Count, config);
-                SubscribePropertyChanged(config);
+                var configs = _db.Table<BetConfig>()
+                    .OrderBy(c => c.Id)
+                    .ToList();
+
+                foreach (var config in configs)
+                {
+                    base.InsertItem(Count, config);
+                    SubscribePropertyChanged(config);
+                }
             }
         }
         

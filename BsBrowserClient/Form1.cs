@@ -528,6 +528,7 @@ public partial class Form1 : Form
                     break;
                     
                 case "登录":
+                case "Login":  // 🔥 兼容英文命令名
                     var loginData = command.Data as JObject;
                     var username = loginData?["username"]?.ToString() ?? "";
                     var password = loginData?["password"]?.ToString() ?? "";

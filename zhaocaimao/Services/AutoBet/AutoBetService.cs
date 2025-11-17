@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using zhaocaimao.Contracts;
-using zhaocaimao.Contracts.Games;
-using zhaocaimao.Models.AutoBet;  // 🔥 BetConfig, BetResult
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Games;
+using BaiShengVx3Plus.Models.AutoBet;  // 🔥 BetConfig, BetResult
 using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
 using SQLite;
 
-namespace zhaocaimao.Services.AutoBet
+namespace BaiShengVx3Plus.Services.AutoBet
 {
     /// <summary>
     /// 自动投注服务 - 管理配置和浏览器
@@ -19,6 +19,7 @@ namespace zhaocaimao.Services.AutoBet
         private SQLiteConnection? _db;
         private readonly ILogService _log;
         private IBinggoOrderService? _orderService;
+        private BetRecordService? _betRecordService;  // 🔥 投注记录服务
         
         // 🔥 已删除字典！配置对象自己管理 Browser 连接
         // private readonly Dictionary<int, BrowserClient> _browsers = new();  // ❌ 不需要了
@@ -49,10 +50,11 @@ namespace zhaocaimao.Services.AutoBet
         // 🔥 用于取消异步任务的 CancellationTokenSource
         private CancellationTokenSource? _cancellationTokenSource;
         
-        public AutoBetService(ILogService log, IBinggoOrderService orderService)
+        public AutoBetService(ILogService log, IBinggoOrderService orderService, BetRecordService betRecordService)
         {
             _log = log;
             _orderService = orderService;
+            _betRecordService = betRecordService;
             
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             _log.Info("AutoBet", "🚀 AutoBetService 构造函数执行");
@@ -111,14 +113,15 @@ namespace zhaocaimao.Services.AutoBet
                 _log.Warning("AutoBet", $"配置数据库参数失败: {ex.Message}");
             }
             
-            _db.CreateTable<BetConfig>();
-            _log.Info("AutoBet", "✅ BetConfig 表已创建/确认");
-            
-            // 🔥 BetOrderRecord 已删除，改用 BetRecord（由 BetRecordService 管理）
-            
             // 🔥 创建配置 BindingList 并加载数据到内存
-            _configs = new Core.BetConfigBindingList(_db);
+            _configs = new Core.BetConfigBindingList(_db, _log);
             _configs.LoadFromDatabase();
+            _log.Info("AutoBet", "✅ BetConfig BindingList 已创建并加载");
+            
+            // 🔥 创建投注记录 BindingList 并注入到 BetRecordService
+            var betRecordBindingList = new Core.BetRecordBindingList(_db);
+            _betRecordService?.SetBindingList(betRecordBindingList);
+            _log.Info("AutoBet", "✅ BetRecord BindingList 已创建并注入到服务");
             
             EnsureDefaultConfig();
             _log.Info("AutoBet", $"✅ 数据库已设置，已加载 {_configs.Count} 个配置到内存");
@@ -137,7 +140,12 @@ namespace zhaocaimao.Services.AutoBet
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     _log.Info("AutoBet", "🔍 检查是否有浏览器进程在运行（主程序重启场景）...");
                     
-                    var configsWithProcess = _configs?.Where(c => c.ProcessId > 0 && IsProcessRunning(c.ProcessId)).ToList();
+                    // 🔥 读取配置时也需要线程安全
+                    List<BetConfig>? configsWithProcess = null;
+                    lock (_lock)
+                    {
+                        configsWithProcess = _configs?.Where(c => c.ProcessId > 0 && IsProcessRunning(c.ProcessId)).ToList();
+                    }
                     
                     if (configsWithProcess != null && configsWithProcess.Count > 0)
                     {
@@ -147,10 +155,10 @@ namespace zhaocaimao.Services.AutoBet
                         {
                             _log.Info("AutoBet", $"   - [{config.ConfigName}] 进程ID: {config.ProcessId}");
                             
-                            // 等待浏览器重连（最多等待5秒）
+                            // 等待浏览器重连（最多等待2秒，本机连接应该很快）
                             _log.Info("AutoBet", $"   ⏳ 等待浏览器重连到 Socket 服务器...");
                             
-                            for (int i = 0; i < 10; i++)
+                            for (int i = 0; i < 4; i++)
                             {
                                 // 🔥 检查是否已取消
                                 if (_cancellationTokenSource?.Token.IsCancellationRequested == true)
@@ -197,8 +205,9 @@ namespace zhaocaimao.Services.AutoBet
                             
                             if (!config.IsConnected)
                             {
-                                _log.Warning("AutoBet", $"   ⚠️ [{config.ConfigName}] 浏览器进程在运行，但5秒内未重连");
-                                _log.Warning("AutoBet", $"      监控任务将继续检查，浏览器可能会稍后重连");
+                                _log.Warning("AutoBet", $"   ⚠️ [{config.ConfigName}] 浏览器进程在运行，但2秒内未重连");
+                                _log.Warning("AutoBet", $"      保留 ProcessId={config.ProcessId}，让监控任务继续等待（避免重复启动）");
+                                // 🔥 不清除 ProcessId！让 MonitorBrowsers 看到进程还在运行，避免重复启动
                             }
                         }
                     }
@@ -219,10 +228,21 @@ namespace zhaocaimao.Services.AutoBet
                 }
             }, _cancellationTokenSource.Token);
             
-            // 🔥 配置加载完成后，再启动监控任务（主要机制，负责检查配置状态并启动浏览器）
-            _monitorTimer = new System.Threading.Timer(MonitorBrowsers, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
-            _log.Info("AutoBet", "✅ 后台监控任务已启动（每2秒检查一次，主要机制）");
-            _log.Info("AutoBet", "   说明：监控任务负责检查配置状态并启动浏览器，界面只设置状态");
+            // 🔥 配置加载完成后，延迟4秒再启动监控任务
+            // 给主程序启动检查足够的时间等待老浏览器重连（1秒启动+2秒等待+1秒余量=4秒）
+            lock (_lock)
+            {
+                if (_monitorTimer == null) // 🔥 防止重复启动监控任务
+                {
+                    _monitorTimer = new System.Threading.Timer(MonitorBrowsers, null, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(2));
+                    _log.Info("AutoBet", "✅ 后台监控任务已启动（延迟4秒启动，每2秒检查一次）");
+                    _log.Info("AutoBet", "   说明：延迟启动是为了给老浏览器重连的时间，避免重复启动");
+                }
+                else
+                {
+                    _log.Warning("AutoBet", "⚠️ 监控任务已经在运行，跳过重复启动");
+                }
+            }
         }
         
         #region 配置管理（从内存读取，不访问数据库）
@@ -247,9 +267,14 @@ namespace zhaocaimao.Services.AutoBet
         }
         
         /// <summary>
-        /// 保存配置（自动保存到数据库）
-        /// 🔥 如果是新配置，添加到 BindingList（自动保存）
-        /// 🔥 如果是修改配置，直接修改对象（PropertyChanged 自动保存）
+        /// 保存配置（兼容方法 - 遵循 F5BotV2 设计）
+        /// 
+        /// 🔥 F5BotV2 设计原则：
+        /// 1. 新配置：添加到 BindingList → 自动保存
+        /// 2. 修改配置：PropertyChanged → 自动保存
+        /// 3. 不需要手动调用数据库操作！
+        /// 
+        /// 本方法仅作为向后兼容层保留
         /// </summary>
         public void SaveConfig(BetConfig config)
         {
@@ -261,32 +286,18 @@ namespace zhaocaimao.Services.AutoBet
             
             if (config.Id == 0)
             {
-                // 🔥 新配置：添加到 BindingList（自动保存到数据库）
+                // 🔥 新配置：添加到 BindingList（自动触发数据库保存）
                 _configs.Add(config);
                 _log.Info("AutoBet", $"✅ 配置已添加: {config.ConfigName} (新ID={config.Id})");
             }
             else
             {
-                // 🔥 修改现有配置：强制更新到数据库
-                // 因为某些字段（如 Username, Password）是自动属性，不会触发 PropertyChanged
-                if (_db != null)
-                {
-                    var oldUsername = config.Username;
-                    var oldPassword = config.Password;
-                    
-                    config.LastUpdateTime = DateTime.Now;
-                    int rowsAffected = _db.Update(config);  // 🔥 强制更新到数据库
-                    
-                    _log.Info("AutoBet", $"✅ 配置已更新到数据库: {config.ConfigName} (ID={config.Id})");
-                    _log.Info("AutoBet", $"   - 数据库路径: {_db.DatabasePath}");
-                    _log.Info("AutoBet", $"   - 影响行数: {rowsAffected}");
-                    _log.Info("AutoBet", $"   - 账号: {(string.IsNullOrEmpty(config.Username) ? "(空)" : config.Username)}");
-                    _log.Info("AutoBet", $"   - 密码: {(string.IsNullOrEmpty(config.Password) ? "(空)" : "已设置")}");
-                }
-                else
-                {
-                    _log.Error("AutoBet", $"❌ SaveConfig 失败: _db 为 null，配置={config.ConfigName}");
-                }
+                // 🔥 修改现有配置：BindingList 的 PropertyChanged 会自动保存
+                // 这里只需要更新 LastUpdateTime，触发一次保存
+                config.LastUpdateTime = DateTime.Now;
+                
+                _log.Info("AutoBet", $"✅ 配置已更新: {config.ConfigName} (ID={config.Id})");
+                _log.Info("AutoBet", $"   说明：BindingList 已自动保存到数据库（F5BotV2 设计）");
             }
         }
         
@@ -308,7 +319,10 @@ namespace zhaocaimao.Services.AutoBet
                 // 删除相关的投注记录（可选）
                 if (_db != null)
                 {
-                    _db.Execute("DELETE FROM BetRecord WHERE ConfigId = ?", id);
+                    lock (_configs) // 🔥 保护数据库操作
+                    {
+                        _db.Execute("DELETE FROM BetRecord WHERE ConfigId = ?", id);
+                    }
                 }
                 
                 _log.Info("AutoBet", $"配置已删除: {config.ConfigName}");
@@ -429,7 +443,7 @@ namespace zhaocaimao.Services.AutoBet
                 }
                 
                 int configId = config.Id;
-                _log.Info("AutoBet", $"✅ 配置信息: {config.ConfigName} (Id={configId}, {config.Platform})");
+                _log.Info("AutoBet", $"✅ 配置信息: {config.ConfigName} (ServerId={configId}, BrowserId={browserConfigId}, {config.Platform})");
                 _log.Info("AutoBet", $"   说明：配置名固定，但数据库重建后配置ID可能变化");
                 _log.Info("AutoBet", $"   当前连接状态: {(config.IsConnected ? "已连接" : "未连接")}");
                 
@@ -439,15 +453,25 @@ namespace zhaocaimao.Services.AutoBet
                 _log.Info("AutoBet", $"✅ 已保存进程ID: {processId}");
                 
                 // 🔥 从 AutoBetSocketServer 获取 ClientConnection
+                // 关键：必须使用浏览器握手时发送的 browserConfigId 去查找，因为 AutoBetSocketServer 是用它存储的
+                _log.Info("AutoBet", $"   查找连接使用的 BrowserConfigId: {browserConfigId}");
+                
                 var connection = _socketServer?.GetConnection(browserConfigId);
                 if (connection == null)
                 {
-                    _log.Error("AutoBet", $"❌ 无法获取 ClientConnection: {browserConfigId}");
+                    _log.Error("AutoBet", $"❌ 无法获取 ClientConnection: BrowserConfigId={browserConfigId}");
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     return;
                 }
                 
                 _log.Info("AutoBet", $"✅ 已获取 ClientConnection，连接状态: {connection.IsConnected}");
+                
+                // 🔥 如果浏览器和服务端的 configId 不同，需要在 AutoBetSocketServer 中更新映射
+                if (browserConfigId != configId)
+                {
+                    _log.Info("AutoBet", $"🔄 更新连接映射: BrowserId={browserConfigId} → ServerId={configId}");
+                    _socketServer?.UpdateConnectionMapping(browserConfigId, configId);
+                }
                 
                 // 🔥 配置对象自己管理 Browser！
                 BrowserClient? browserClient = config.Browser;
@@ -463,7 +487,21 @@ namespace zhaocaimao.Services.AutoBet
                 }
                 else
                 {
-                    _log.Info("AutoBet", $"📌 配置已有 Browser 实例，更新连接");
+                    _log.Info("AutoBet", $"📌 配置已有 Browser 实例，清理旧连接并附加新连接");
+                    // 🔥 清理旧连接（但不杀进程）
+                    try
+                    {
+                        var oldConnection = browserClient.GetConnection();
+                        if (oldConnection != null && oldConnection != connection)
+                        {
+                            _log.Info("AutoBet", $"   清理旧连接（准备附加新连接）");
+                            oldConnection.Dispose();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Warning("AutoBet", $"   清理旧连接时出错: {ex.Message}");
+                    }
                 }
                 
                 // 🔥 附加连接（无论新建还是已存在，都要更新连接）
@@ -1236,7 +1274,7 @@ namespace zhaocaimao.Services.AutoBet
             {
                 _log.Info("AutoBet", $"   正在关闭浏览器进程...");
                 
-                browserClient.Dispose();
+                browserClient.Dispose(killProcess: true);  // 🔥 明确要求杀死进程
                 config!.Browser = null;  // 🔥 配置对象清除 Browser 引用
                 config.Status = "已停止";
                 SaveConfig(config);

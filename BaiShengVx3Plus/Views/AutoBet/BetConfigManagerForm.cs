@@ -435,7 +435,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                     
                     // 🔥 列配置已移至 DataBindingComplete 事件中处理，避免 NullReferenceException
                     
-                    _logService.Info("ConfigManager", $"已加载{records.Count}条投注记录");
+                    _logService.Info("ConfigManager", $"已加载{records.Length}条投注记录");
                 }
                 else
                 {
