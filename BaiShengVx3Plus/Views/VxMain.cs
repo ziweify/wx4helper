@@ -2022,15 +2022,21 @@ namespace BaiShengVx3Plus
                         // 创建备份目录
                         Directory.CreateDirectory(backupDirectory);
                         
-                        // 🔥 关闭数据库连接（SQLite需要关闭连接才能复制文件）
-                        _db?.Close();
-                        _db?.Dispose();
-                        _db = null;
+                        // 🔥 备份数据库（SQLite支持在连接打开时复制文件，只要没有写操作）
+                        // 参考 F5BotV2：不需要关闭数据库连接
+                        // 先执行一次同步，确保所有数据写入磁盘（DELETE模式下不需要checkpoint）
+                        if (_db != null)
+                        {
+                            // DELETE模式下，数据已经写入主文件，只需要确保同步到磁盘
+                            _db.Execute("PRAGMA synchronous = FULL");
+                            // 执行一个简单的查询，触发同步
+                            _db.ExecuteScalar<int>("SELECT 1");
+                        }
                         
-                        // 等待文件释放
+                        // 等待文件系统刷新
                         await Task.Delay(100);
                         
-                        // 复制数据库文件
+                        // 复制数据库文件（数据库连接可以保持打开）
                         File.Copy(_currentDbPath, backupDbPath, true);
                         _logService.Info("VxMain", $"✅ 数据库已备份: {backupDbPath}");
                         
@@ -2049,26 +2055,11 @@ namespace BaiShengVx3Plus
                                 $"请手动使用WinRAR或7-Zip加密压缩此文件\n" +
                                 $"建议密码：您的登录密码");
                         }
-                        
-                        // 🔥 重新打开数据库
-                        _db = new SQLiteConnection(_currentDbPath);
-                        
-                        // 🔥 重新初始化微信专属表
-                        InitializeWxTables(_db);
                     }
                     catch (Exception ex)
                     {
                         _logService.Error("VxMain", "备份数据库失败", ex);
                         UIMessageBox.ShowError($"备份数据库失败：{ex.Message}\n\n已取消清空操作");
-                        
-                        // 重新打开数据库
-                        if (_db == null)
-                        {
-                            _db = new SQLiteConnection(_currentDbPath);
-                            
-                            // 🔥 重新初始化微信专属表
-                            InitializeWxTables(_db);
-                        }
                         return;
                     }
                 }
@@ -2077,50 +2068,63 @@ namespace BaiShengVx3Plus
                 // 🔥 步骤2：清空订单表
                 // ========================================
                 
-                if (_db != null)
+                // 🔥 确保数据库已打开
+                if (_db == null)
+                {
+                    _logService.Error("VxMain", "数据库未打开，无法清空数据");
+                    UIMessageBox.ShowError("数据库未打开，无法清空数据");
+                    return;
+                }
+                
+                try
                 {
                     _db.DeleteAll<Models.V2MemberOrder>();
                     _logService.Info("VxMain", "✅ 订单表已清空");
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清空订单表失败: {ex.Message}", ex);
+                    throw;
                 }
                 
                 // 清空UI订单列表
                 _ordersBindingList?.Clear();
                 
                 // ========================================
-                // 🔥 步骤3：重置会员金额数据（保留基础信息）
+                // 🔥 步骤3：重置会员金额数据（保留基础信息）- 参考 F5BotV2 Line 812-821
                 // ========================================
                 
                 if (_membersBindingList != null)
                 {
-                    foreach (var member in _membersBindingList)
+                    try
                     {
-                        // 🔥 清空金额数据
-                        member.Balance = 0f;
-                        member.BetCur = 0f;
-                        member.BetWait = 0f;
-                        member.BetToday = 0f;
-                        member.BetTotal = 0f;
-                        member.IncomeToday = 0f;
-                        member.IncomeTotal = 0f;
-                        member.CreditToday = 0f;
-                        member.CreditTotal = 0f;
-                        member.WithdrawToday = 0f;
-                        member.WithdrawTotal = 0f;
-                        
-                        // 🔥 保留基础信息（Wxid, Nickname, Account, DisplayName, State等）
-                        // 不需要做任何操作，它们会自动保留
-                    }
-                    
-                    // 🔥 更新数据库
-                    if (_db != null)
-                    {
+                        // 🔥 参考 F5BotV2：遍历会员列表，只修改金额字段
                         foreach (var member in _membersBindingList)
                         {
-                            _db.Update(member);
+                            // 🔥 清空金额数据（参考 F5BotV2 Line 814-821）
+                            member.BetToday = 0f;      // 今日流水
+                            member.BetTotal = 0f;      // 总流水
+                            member.CreditToday = 0f;    // 今日上分
+                            member.CreditTotal = 0f;    // 总上分
+                            member.IncomeToday = 0f;    // 今日盈亏
+                            member.IncomeTotal = 0f;    // 总盈亏
+                            member.WithdrawToday = 0f;   // 今日下分
+                            member.WithdrawTotal = 0f;   // 总下分
+                            member.Balance = 0f;         // 余额
+                            member.BetCur = 0f;          // 当期投注
+                            member.BetWait = 0f;         // 待结算
+                            
+                            // 🔥 保留基础信息（Wxid, Nickname, Account, DisplayName, State等）
+                            // BindingList 会自动保存（通过 PropertyChanged 事件）
                         }
+                        
+                        _logService.Info("VxMain", $"✅ {_membersBindingList.Count} 个会员的金额数据已重置");
                     }
-                    
-                    _logService.Info("VxMain", $"✅ {_membersBindingList.Count} 个会员的金额数据已重置");
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", $"重置会员金额数据失败: {ex.Message}", ex);
+                        throw;
+                    }
                 }
                 
                 // ========================================

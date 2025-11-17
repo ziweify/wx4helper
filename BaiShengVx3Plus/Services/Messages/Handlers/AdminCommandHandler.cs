@@ -145,24 +145,54 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
 
             try
             {
-                // 1. 获取群成员列表
-                var response = await _socketClient.SendAsync<dynamic>("GetChatRoomMembers", groupWxid);
-                if (response == null || response.members == null)
+                // 🔥 1. 获取群成员列表（参考 F5BotV2 Line 2638：GetMemberList）
+                // 使用 GetGroupContacts 命令，传入群ID作为参数
+                var response = await _socketClient.SendAsync<dynamic>("GetGroupContacts", groupWxid);
+                if (response == null)
                 {
-                    _logService.Warning("AdminCommand", "获取群成员列表失败");
+                    _logService.Warning("AdminCommand", "获取群成员列表失败：响应为空");
                     return (false, null);
                 }
 
-                string membersStr = response.members.ToString();
-                if (string.IsNullOrEmpty(membersStr))
+                // 🔥 GetGroupContacts 返回的是 JSON 数组，每个元素包含 member_wxid 字段
+                // 参考 WeixinX/WeixinX/Features.cpp Line 737-915
+                System.Collections.Generic.List<string> memberWxids = new System.Collections.Generic.List<string>();
+                
+                if (response is Newtonsoft.Json.Linq.JArray jArray)
+                {
+                    foreach (var item in jArray)
+                    {
+                        var memberWxid = item["member_wxid"]?.ToString();
+                        if (!string.IsNullOrEmpty(memberWxid))
+                        {
+                            memberWxids.Add(memberWxid);
+                        }
+                    }
+                }
+                else if (response is System.Collections.IEnumerable enumerable)
+                {
+                    foreach (var item in enumerable)
+                    {
+                        var memberWxid = item?.GetType().GetProperty("member_wxid")?.GetValue(item)?.ToString();
+                        if (!string.IsNullOrEmpty(memberWxid))
+                        {
+                            memberWxids.Add(memberWxid);
+                        }
+                    }
+                }
+                else
+                {
+                    _logService.Warning("AdminCommand", $"群成员列表格式不正确: {response.GetType().Name}");
+                    return (false, null);
+                }
+
+                if (memberWxids.Count == 0)
                 {
                     _logService.Warning("AdminCommand", "群成员列表为空");
                     return (false, null);
                 }
 
-                // 2. 解析成员列表（格式：wxid1^Gwxid2^Gwxid3）
-                string[] memberWxids = membersStr.Replace("^G", "|").Split('|');
-                _logService.Info("AdminCommand", $"群成员总数: {memberWxids.Length}");
+                _logService.Info("AdminCommand", $"群成员总数: {memberWxids.Count}");
 
                 // 3. 获取当前数据库中的会员列表
                 if (_membersBindingList == null || _db == null)
@@ -173,7 +203,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 
                 var existingMembers = _membersBindingList.ToList();
 
-                // 4. 检查每个成员是否已存在
+                // 🔥 4. 检查每个成员是否已存在（参考 F5BotV2 Line 2645-2697）
                 foreach (var wxid in memberWxids)
                 {
                     if (string.IsNullOrEmpty(wxid)) continue;
