@@ -118,14 +118,14 @@ namespace BaiShengVx3Plus.Models
         private string? _processedBy;
         private string? _processedTime;
 
-        [Browsable(false)]
+        [DataGridColumn(HeaderText = "处理人", Width = 100, Order = 7)]
         public string? ProcessedBy
         {
             get => _processedBy;
             set => SetField(ref _processedBy, value);
         }
 
-        [Browsable(false)]
+        [DataGridColumn(HeaderText = "处理时间", Width = 140, Order = 8)]
         public string? ProcessedTime
         {
             get => _processedTime;
@@ -166,6 +166,7 @@ namespace BaiShengVx3Plus.Models
             CreditWithdrawStatus.等待处理 => "等待处理",
             CreditWithdrawStatus.已同意 => "已同意",
             CreditWithdrawStatus.已拒绝 => "已拒绝",
+            CreditWithdrawStatus.忽略 => "忽略",
             _ => "未知"
         };
 
@@ -195,13 +196,14 @@ namespace BaiShengVx3Plus.Models
     }
 
     /// <summary>
-    /// 上下分状态枚举
+    /// 上下分状态枚举（参考 F5BotV2 V2MemberPayStatus）
     /// </summary>
     public enum CreditWithdrawStatus
     {
         等待处理 = 0,
         已同意 = 1,
-        已拒绝 = 2
+        已拒绝 = 2,
+        忽略 = 3
     }
 }
 

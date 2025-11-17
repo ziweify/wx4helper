@@ -466,7 +466,7 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "🎮 初始化微信专属服务...");
                 
-                // 📌 AdminCommandHandler: 设置会员 BindingList 和数据库
+                // 📌 AdminCommandHandler: 设置会员 BindingList、数据库、上下分服务和BindingList
                 var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
                 if (adminCommandHandler != null && _db != null)
                 {
@@ -474,7 +474,23 @@ namespace BaiShengVx3Plus
                     if (_membersBindingList != null)
                     {
                         adminCommandHandler.SetMembersBindingList(_membersBindingList);
-                        _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表和数据库");
+                        
+                        // 🔥 创建并设置 CreditWithdrawService（需要数据库、统计服务、Socket客户端、声音服务）
+                        var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
+                            _db,
+                            _logService,
+                            _statisticsService,
+                            _socketClient,
+                            Program.ServiceProvider.GetService<Services.Sound.SoundService>());
+                        adminCommandHandler.SetCreditWithdrawService(creditWithdrawService);
+                        
+                        // 🔥 设置上下分 BindingList
+                        if (_creditWithdrawsBindingList != null)
+                        {
+                            adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
+                        }
+                        
+                        _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表、数据库、上下分服务和BindingList");
                     }
                     else
                     {

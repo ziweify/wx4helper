@@ -1,14 +1,16 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using zhaocaimao.Contracts;
-using zhaocaimao.Models;
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Controls;
+using BaiShengVx3Plus.Models;
 using SQLite;
 using Sunny.UI;
 
-namespace zhaocaimao.Views
+namespace BaiShengVx3Plus.Views
 {
     /// <summary>
     /// 上下分管理窗口
@@ -73,6 +75,7 @@ namespace zhaocaimao.Views
             cmbStatus.Items.Add("等待处理");
             cmbStatus.Items.Add("已同意");
             cmbStatus.Items.Add("已拒绝");
+            cmbStatus.Items.Add("忽略");
             cmbStatus.SelectedIndex = 1;  // 默认显示"等待处理"
         }
 
@@ -149,13 +152,13 @@ namespace zhaocaimao.Views
                 }
             });
             
-            // 🔥 添加操作按钮列（同意、拒绝）
+            // 🔥 添加操作按钮列（同意、拒绝、忽略）- 参考 F5BotV2 CoinsOrderView.cs
             var btnAgreeColumn = new DataGridViewButtonColumn
             {
                 Name = "btnAgree",
                 HeaderText = "操作",
                 Text = "同意",
-                UseColumnTextForButtonValue = false,
+                UseColumnTextForButtonValue = true,  // 🔥 使用列文本作为按钮值
                 Width = 60
             };
             dgvRequests.Columns.Add(btnAgreeColumn);
@@ -165,39 +168,161 @@ namespace zhaocaimao.Views
                 Name = "btnReject",
                 HeaderText = "",
                 Text = "拒绝",
-                UseColumnTextForButtonValue = false,
+                UseColumnTextForButtonValue = true,  // 🔥 使用列文本作为按钮值
                 Width = 60
             };
             dgvRequests.Columns.Add(btnRejectColumn);
             
+            var btnIgnoreColumn = new DataGridViewButtonColumn
+            {
+                Name = "btnIgnore",
+                HeaderText = "",
+                Text = "忽略",
+                UseColumnTextForButtonValue = true,  // 🔥 使用列文本作为按钮值
+                Width = 60
+            };
+            dgvRequests.Columns.Add(btnIgnoreColumn);
+            
             // 🔥 单元格点击事件（处理按钮点击）
             dgvRequests.CellContentClick += DgvRequests_CellContentClick;
             
-            // 🔥 单元格格式化（按钮可见性控制）
+            // 🔥 单元格绘制事件（颜色显示）- 参考 F5BotV2 CoinsOrderView.cs Line 86-164
+            dgvRequests.CellPainting += DgvRequests_CellPainting;
+            
+            // 🔥 单元格格式化（按钮文本和状态控制）
             dgvRequests.CellFormatting += DgvRequests_CellFormatting;
         }
 
         /// <summary>
-        /// 单元格格式化（控制按钮显示）
+        /// 单元格绘制事件（颜色显示）- 参考 F5BotV2 CoinsOrderView.cs Line 86-164
+        /// </summary>
+        private void DgvRequests_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.RowIndex < _bindingSource.Count)
+            {
+                var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+                if (request == null) return;
+                
+                var column = dgvRequests.Columns[e.ColumnIndex];
+                var cellName = column.DataPropertyName;
+                
+                // 🔥 动作列颜色（参考 F5BotV2 Line 97-111）
+                if (cellName == "Action" || column.Name == "ActionText")
+                {
+                    if (request.Action == CreditWithdrawAction.上分)
+                    {
+                        e.CellStyle.BackColor = Color.Green;
+                        e.CellStyle.ForeColor = Color.Black;
+                    }
+                    else if (request.Action == CreditWithdrawAction.下分)
+                    {
+                        e.CellStyle.BackColor = Color.Red;
+                        e.CellStyle.ForeColor = Color.White;
+                    }
+                }
+                
+                // 🔥 状态列颜色（参考 F5BotV2 Line 112-131）
+                if (cellName == "Status" || column.Name == "StatusText")
+                {
+                    if (request.Status == CreditWithdrawStatus.等待处理)
+                    {
+                        e.CellStyle.BackColor = Color.Red;
+                        e.CellStyle.ForeColor = Color.White;
+                    }
+                    else if (request.Status == CreditWithdrawStatus.已同意)
+                    {
+                        e.CellStyle.BackColor = Color.Green;
+                        e.CellStyle.ForeColor = Color.White;
+                    }
+                    else if (request.Status == CreditWithdrawStatus.已拒绝)
+                    {
+                        e.CellStyle.BackColor = Color.LightGray;
+                        e.CellStyle.ForeColor = Color.Black;
+                    }
+                    else if (request.Status == CreditWithdrawStatus.忽略)
+                    {
+                        e.CellStyle.BackColor = Color.LightGray;
+                        e.CellStyle.ForeColor = Color.Black;
+                    }
+                }
+                
+                // 🔥 金额列颜色（参考 F5BotV2 Line 132-158）
+                if (cellName == "Amount")
+                {
+                    int amount = (int)request.Amount;
+                    if (amount > 0)
+                    {
+                        if (amount >= 10000)
+                        {
+                            e.CellStyle.BackColor = Color.Orange;
+                            e.CellStyle.ForeColor = Color.Black;
+                        }
+                        else if (amount >= 1000)
+                        {
+                            e.CellStyle.BackColor = Color.Green;
+                            e.CellStyle.ForeColor = Color.Black;
+                        }
+                        else if (amount >= 100)
+                        {
+                            e.CellStyle.BackColor = Color.LightGray;
+                            e.CellStyle.ForeColor = Color.Black;
+                        }
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 单元格格式化（控制按钮文本和状态）- 参考 F5BotV2
+        /// 🔥 操作后的按钮显示操作过的内容并设置为禁用状态
         /// </summary>
         private void DgvRequests_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (dgvRequests.Columns[e.ColumnIndex].Name == "btnAgree" || 
-                dgvRequests.Columns[e.ColumnIndex].Name == "btnReject")
+                dgvRequests.Columns[e.ColumnIndex].Name == "btnReject" ||
+                dgvRequests.Columns[e.ColumnIndex].Name == "btnIgnore")
             {
                 if (e.RowIndex >= 0 && e.RowIndex < _bindingSource.Count)
                 {
                     var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
                     if (request == null) return;
                     
-                    // 只有"等待处理"状态才显示按钮
-                    if (request.Status != CreditWithdrawStatus.等待处理)
+                    var cell = dgvRequests.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                    
+                    // 🔥 只有"等待处理"状态才显示按钮并启用
+                    if (request.Status == CreditWithdrawStatus.等待处理)
                     {
-                        e.Value = "";  // 隐藏按钮文本
+                        if (dgvRequests.Columns[e.ColumnIndex].Name == "btnAgree")
+                        {
+                            e.Value = "同意";
+                        }
+                        else if (dgvRequests.Columns[e.ColumnIndex].Name == "btnReject")
+                        {
+                            e.Value = "拒绝";
+                        }
+                        else if (dgvRequests.Columns[e.ColumnIndex].Name == "btnIgnore")
+                        {
+                            e.Value = "忽略";
+                        }
+                        cell.ReadOnly = false;  // 🔥 启用按钮
                     }
                     else
                     {
-                        e.Value = dgvRequests.Columns[e.ColumnIndex].Name == "btnAgree" ? "同意" : "拒绝";
+                        // 🔥 已处理：显示操作过的内容并禁用（参考 F5BotV2）
+                        if (request.Status == CreditWithdrawStatus.已同意)
+                        {
+                            e.Value = "已同意";
+                        }
+                        else if (request.Status == CreditWithdrawStatus.已拒绝)
+                        {
+                            e.Value = "已拒绝";
+                        }
+                        else if (request.Status == CreditWithdrawStatus.忽略)
+                        {
+                            e.Value = "已忽略";
+                        }
+                        cell.ReadOnly = true;  // 🔥 禁用按钮
+                        cell.Style.BackColor = Color.LightGray;  // 🔥 灰色背景表示禁用
                     }
                 }
             }
@@ -214,7 +339,8 @@ namespace zhaocaimao.Views
             
             // 🔥 只有点击按钮列时才处理
             if (dgvRequests.Columns[e.ColumnIndex].Name != "btnAgree" && 
-                dgvRequests.Columns[e.ColumnIndex].Name != "btnReject")
+                dgvRequests.Columns[e.ColumnIndex].Name != "btnReject" &&
+                dgvRequests.Columns[e.ColumnIndex].Name != "btnIgnore")
             {
                 // 点击其他列（备注、申请时间、金额等），直接返回，不弹框
                 return;
@@ -239,6 +365,11 @@ namespace zhaocaimao.Views
             {
                 // 拒绝
                 RejectRequest(request);
+            }
+            else if (dgvRequests.Columns[e.ColumnIndex].Name == "btnIgnore")
+            {
+                // 忽略
+                IgnoreRequest(request);
             }
         }
 
@@ -354,6 +485,48 @@ namespace zhaocaimao.Views
             }
         }
 
+        /// <summary>
+        /// 忽略申请 - 参考 F5BotV2 Line 1526-1542
+        /// </summary>
+        private void IgnoreRequest(V2CreditWithdraw request)
+        {
+            try
+            {
+                string actionName = request.Action == CreditWithdrawAction.上分 ? "上分" : "下分";
+                
+                if (!UIMessageBox.ShowAsk($"确定忽略【{request.Nickname}】的{actionName}申请吗？\n\n金额：{request.Amount:F2}"))
+                {
+                    return;
+                }
+                
+                // 🔥 更新申请状态为忽略（参考 F5BotV2 Line 1530）
+                request.Status = CreditWithdrawStatus.忽略;
+                request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                request.Notes = "管理员忽略";
+                
+                // 🔥 刷新 DataGridView 的按钮列
+                dgvRequests.InvalidateRow(dgvRequests.CurrentRow.Index);
+                
+                // 🔥 日志记录
+                _logService.Info("上下分管理", 
+                    $"忽略{actionName}申请\n" +
+                    $"会员：{request.Nickname}\n" +
+                    $"金额：{request.Amount:F2}\n" +
+                    $"处理人：{request.ProcessedBy}");
+                
+                // 🔥 更新统计（BindingList 变化会自动更新 DataGridView，无需手动刷新）
+                UpdateStats();
+                
+                this.ShowSuccessTip($"已忽略{actionName}申请");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("上下分管理", "忽略申请失败", ex);
+                UIMessageBox.ShowError($"处理失败：{ex.Message}");
+            }
+        }
+        
         /// <summary>
         /// 拒绝申请
         /// </summary>

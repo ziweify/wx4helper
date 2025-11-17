@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.ComponentModel;
-using zhaocaimao.Contracts;
-using zhaocaimao.Models;
-using zhaocaimao.Core;
+using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Core;
 using SQLite;
 
-namespace zhaocaimao.Services.Messages.Handlers
+namespace BaiShengVx3Plus.Services.Messages.Handlers
 {
     /// <summary>
     /// 管理员命令处理器 - 参考 F5BotV2/Boter/BoterServices.cs Line 2613-2830
@@ -19,6 +19,8 @@ namespace zhaocaimao.Services.Messages.Handlers
         private readonly IWeixinSocketClient _socketClient;
         private V2MemberBindingList? _membersBindingList;  // 🔥 直接使用 BindingList
         private SQLiteConnection? _db;  // 🔥 直接使用数据库连接
+        private Services.Games.Binggo.CreditWithdrawService? _creditWithdrawService;  // 🔥 上下分服务
+        private V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList
 
         public AdminCommandHandler(
             ILogService logService,
@@ -42,6 +44,22 @@ namespace zhaocaimao.Services.Messages.Handlers
         public void SetDatabase(SQLiteConnection? db)
         {
             _db = db;
+        }
+        
+        /// <summary>
+        /// 设置上下分服务（由外部设置）
+        /// </summary>
+        public void SetCreditWithdrawService(Services.Games.Binggo.CreditWithdrawService? service)
+        {
+            _creditWithdrawService = service;
+        }
+        
+        /// <summary>
+        /// 设置上下分 BindingList（由外部设置）
+        /// </summary>
+        public void SetCreditWithdrawsBindingList(V2CreditWithdrawBindingList? bindingList)
+        {
+            _creditWithdrawsBindingList = bindingList;
         }
 
         /// <summary>
@@ -145,24 +163,54 @@ namespace zhaocaimao.Services.Messages.Handlers
 
             try
             {
-                // 1. 获取群成员列表
-                var response = await _socketClient.SendAsync<dynamic>("GetChatRoomMembers", groupWxid);
-                if (response == null || response.members == null)
+                // 🔥 1. 获取群成员列表（参考 F5BotV2 Line 2638：GetMemberList）
+                // 使用 GetGroupContacts 命令，传入群ID作为参数
+                var response = await _socketClient.SendAsync<dynamic>("GetGroupContacts", groupWxid);
+                if (response == null)
                 {
-                    _logService.Warning("AdminCommand", "获取群成员列表失败");
+                    _logService.Warning("AdminCommand", "获取群成员列表失败：响应为空");
                     return (false, null);
                 }
 
-                string membersStr = response.members.ToString();
-                if (string.IsNullOrEmpty(membersStr))
+                // 🔥 GetGroupContacts 返回的是 JSON 数组，每个元素包含 member_wxid 字段
+                // 参考 WeixinX/WeixinX/Features.cpp Line 737-915
+                System.Collections.Generic.List<string> memberWxids = new System.Collections.Generic.List<string>();
+                
+                if (response is Newtonsoft.Json.Linq.JArray jArray)
+                {
+                    foreach (var item in jArray)
+                    {
+                        var memberWxid = item["member_wxid"]?.ToString();
+                        if (!string.IsNullOrEmpty(memberWxid))
+                        {
+                            memberWxids.Add(memberWxid);
+                        }
+                    }
+                }
+                else if (response is System.Collections.IEnumerable enumerable)
+                {
+                    foreach (var item in enumerable)
+                    {
+                        var memberWxid = item?.GetType().GetProperty("member_wxid")?.GetValue(item)?.ToString();
+                        if (!string.IsNullOrEmpty(memberWxid))
+                        {
+                            memberWxids.Add(memberWxid);
+                        }
+                    }
+                }
+                else
+                {
+                    _logService.Warning("AdminCommand", $"群成员列表格式不正确: {response.GetType().Name}");
+                    return (false, null);
+                }
+
+                if (memberWxids.Count == 0)
                 {
                     _logService.Warning("AdminCommand", "群成员列表为空");
                     return (false, null);
                 }
 
-                // 2. 解析成员列表（格式：wxid1^Gwxid2^Gwxid3）
-                string[] memberWxids = membersStr.Replace("^G", "|").Split('|');
-                _logService.Info("AdminCommand", $"群成员总数: {memberWxids.Length}");
+                _logService.Info("AdminCommand", $"群成员总数: {memberWxids.Count}");
 
                 // 3. 获取当前数据库中的会员列表
                 if (_membersBindingList == null || _db == null)
@@ -173,7 +221,7 @@ namespace zhaocaimao.Services.Messages.Handlers
                 
                 var existingMembers = _membersBindingList.ToList();
 
-                // 4. 检查每个成员是否已存在
+                // 🔥 4. 检查每个成员是否已存在（参考 F5BotV2 Line 2645-2697）
                 foreach (var wxid in memberWxids)
                 {
                     if (string.IsNullOrEmpty(wxid)) continue;
@@ -275,6 +323,10 @@ namespace zhaocaimao.Services.Messages.Handlers
             // 根据昵称查找会员
             if (_membersBindingList == null)
             {
+                _logService.Error("AdminCommand", "❌ 会员列表未初始化！");
+                _logService.Error("AdminCommand", $"   数据库状态: {(_db != null ? "已初始化" : "未初始化")}");
+                _logService.Error("AdminCommand", $"   会员列表: null");
+                _logService.Error("AdminCommand", "   请检查：1. 是否已绑定群 2. BindGroupAsync 是否成功执行");
                 throw new Exception("#[警告]系统未初始化");
             }
             
@@ -340,6 +392,10 @@ namespace zhaocaimao.Services.Messages.Handlers
             // 根据ID查找会员
             if (_membersBindingList == null)
             {
+                _logService.Error("AdminCommand", "❌ 会员列表未初始化！");
+                _logService.Error("AdminCommand", $"   数据库状态: {(_db != null ? "已初始化" : "未初始化")}");
+                _logService.Error("AdminCommand", $"   会员列表: null");
+                _logService.Error("AdminCommand", "   请检查：1. 是否已绑定群 2. BindGroupAsync 是否成功执行");
                 throw new Exception("#[警告]系统未初始化");
             }
             
@@ -389,7 +445,8 @@ namespace zhaocaimao.Services.Messages.Handlers
         }
 
         /// <summary>
-        /// 执行上下分操作
+        /// 执行上下分操作 - 参考 F5BotV2 Line 2759-2771, 2814-2824
+        /// 🔥 创建 V2CreditWithdraw 记录并调用 CreditWithdrawService 处理
         /// </summary>
         private async Task<bool> ExecuteCreditWithdraw(
             string groupWxid,
@@ -400,32 +457,81 @@ namespace zhaocaimao.Services.Messages.Handlers
         {
             try
             {
-                if (action == "上")
+                // 🔥 1. 创建上下分记录（参考 F5BotV2 Line 2759, 2814）
+                CreditWithdrawAction payAction = action == "上" ? CreditWithdrawAction.上分 : CreditWithdrawAction.下分;
+                long timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+                
+                var creditWithdraw = new V2CreditWithdraw
                 {
-                    // 上分：直接增加余额
-                    member.Balance += money;
-                    member.CreditToday += money;
-                    
-                    // BindingList 会自动同步到数据库，无需手动调用
-
-                    _logService.Info("AdminCommand", $"管理上分成功: {member.Nickname} +{money}, 余额={member.Balance}");
-                    return true;
+                    GroupWxId = groupWxid,
+                    Wxid = member.Wxid,
+                    Nickname = member.Nickname,
+                    Account = member.Account,
+                    Action = payAction,
+                    Amount = money,
+                    Status = CreditWithdrawStatus.等待处理,  // 🔥 初始状态为等待处理
+                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Timestamp = timestamp,
+                    Notes = note
+                };
+                
+                // 🔥 2. 添加到 BindingList（会自动保存到数据库）
+                if (_creditWithdrawsBindingList != null)
+                {
+                    _creditWithdrawsBindingList.Add(creditWithdraw);
                 }
-                else if (action == "下")
+                else if (_db != null)
                 {
-                    // 下分：减少余额（不检查余额，管理员下分可以为负）
-                    member.Balance -= money;
-                    member.WithdrawToday += money;
+                    // 如果没有 BindingList，直接插入数据库
+                    _db.Insert(creditWithdraw);
+                }
+                
+                // 🔥 3. 调用 CreditWithdrawService 处理（参考 F5BotV2 Line 2762, 2817）
+                // 这会自动处理余额、更新状态、发送通知等
+                if (_creditWithdrawService != null)
+                {
+                    var (success, errorMessage) = _creditWithdrawService.ProcessCreditWithdraw(
+                        creditWithdraw, 
+                        member, 
+                        isLoading: false);
                     
-                    // BindingList 会自动同步到数据库，无需手动调用
-
-                    _logService.Info("AdminCommand", $"管理下分成功: {member.Nickname} -{money}, 余额={member.Balance}");
+                    if (!success)
+                    {
+                        _logService.Error("AdminCommand", $"处理上下分失败: {errorMessage}");
+                        return false;
+                    }
+                    
+                    _logService.Info("AdminCommand", $"管理{action}分成功: {member.Nickname} {action}{money}, 余额={member.Balance}");
                     return true;
                 }
                 else
                 {
-                    // F5BotV2 Line 2777
-                    throw new Exception("#无效动作!");
+                    // 🔥 如果没有服务，直接处理（兼容旧逻辑）
+                    if (action == "上")
+                    {
+                        member.Balance += money;
+                        member.CreditToday += money;
+                        member.CreditTotal += money;
+                    }
+                    else if (action == "下")
+                    {
+                        member.Balance -= money;
+                        member.WithdrawToday += money;
+                        member.WithdrawTotal += money;
+                    }
+                    
+                    // 更新记录状态
+                    creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                    creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                    creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    
+                    if (_db != null)
+                    {
+                        _db.Update(creditWithdraw);
+                    }
+                    
+                    _logService.Info("AdminCommand", $"管理{action}分成功: {member.Nickname} {action}{money}, 余额={member.Balance}");
+                    return true;
                 }
             }
             catch (Exception ex)

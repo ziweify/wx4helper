@@ -19,6 +19,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         private readonly IWeixinSocketClient _socketClient;
         private V2MemberBindingList? _membersBindingList;  // 🔥 直接使用 BindingList
         private SQLiteConnection? _db;  // 🔥 直接使用数据库连接
+        private Services.Games.Binggo.CreditWithdrawService? _creditWithdrawService;  // 🔥 上下分服务
+        private V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分 BindingList
 
         public AdminCommandHandler(
             ILogService logService,
@@ -42,6 +44,22 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         public void SetDatabase(SQLiteConnection? db)
         {
             _db = db;
+        }
+        
+        /// <summary>
+        /// 设置上下分服务（由外部设置）
+        /// </summary>
+        public void SetCreditWithdrawService(Services.Games.Binggo.CreditWithdrawService? service)
+        {
+            _creditWithdrawService = service;
+        }
+        
+        /// <summary>
+        /// 设置上下分 BindingList（由外部设置）
+        /// </summary>
+        public void SetCreditWithdrawsBindingList(V2CreditWithdrawBindingList? bindingList)
+        {
+            _creditWithdrawsBindingList = bindingList;
         }
 
         /// <summary>
@@ -427,7 +445,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         }
 
         /// <summary>
-        /// 执行上下分操作
+        /// 执行上下分操作 - 参考 F5BotV2 Line 2759-2771, 2814-2824
+        /// 🔥 创建 V2CreditWithdraw 记录并调用 CreditWithdrawService 处理
         /// </summary>
         private async Task<bool> ExecuteCreditWithdraw(
             string groupWxid,
@@ -438,32 +457,81 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         {
             try
             {
-                if (action == "上")
+                // 🔥 1. 创建上下分记录（参考 F5BotV2 Line 2759, 2814）
+                CreditWithdrawAction payAction = action == "上" ? CreditWithdrawAction.上分 : CreditWithdrawAction.下分;
+                long timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+                
+                var creditWithdraw = new V2CreditWithdraw
                 {
-                    // 上分：直接增加余额
-                    member.Balance += money;
-                    member.CreditToday += money;
-                    
-                    // BindingList 会自动同步到数据库，无需手动调用
-
-                    _logService.Info("AdminCommand", $"管理上分成功: {member.Nickname} +{money}, 余额={member.Balance}");
-                    return true;
+                    GroupWxId = groupWxid,
+                    Wxid = member.Wxid,
+                    Nickname = member.Nickname,
+                    Account = member.Account,
+                    Action = payAction,
+                    Amount = money,
+                    Status = CreditWithdrawStatus.等待处理,  // 🔥 初始状态为等待处理
+                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Timestamp = timestamp,
+                    Notes = note
+                };
+                
+                // 🔥 2. 添加到 BindingList（会自动保存到数据库）
+                if (_creditWithdrawsBindingList != null)
+                {
+                    _creditWithdrawsBindingList.Add(creditWithdraw);
                 }
-                else if (action == "下")
+                else if (_db != null)
                 {
-                    // 下分：减少余额（不检查余额，管理员下分可以为负）
-                    member.Balance -= money;
-                    member.WithdrawToday += money;
+                    // 如果没有 BindingList，直接插入数据库
+                    _db.Insert(creditWithdraw);
+                }
+                
+                // 🔥 3. 调用 CreditWithdrawService 处理（参考 F5BotV2 Line 2762, 2817）
+                // 这会自动处理余额、更新状态、发送通知等
+                if (_creditWithdrawService != null)
+                {
+                    var (success, errorMessage) = _creditWithdrawService.ProcessCreditWithdraw(
+                        creditWithdraw, 
+                        member, 
+                        isLoading: false);
                     
-                    // BindingList 会自动同步到数据库，无需手动调用
-
-                    _logService.Info("AdminCommand", $"管理下分成功: {member.Nickname} -{money}, 余额={member.Balance}");
+                    if (!success)
+                    {
+                        _logService.Error("AdminCommand", $"处理上下分失败: {errorMessage}");
+                        return false;
+                    }
+                    
+                    _logService.Info("AdminCommand", $"管理{action}分成功: {member.Nickname} {action}{money}, 余额={member.Balance}");
                     return true;
                 }
                 else
                 {
-                    // F5BotV2 Line 2777
-                    throw new Exception("#无效动作!");
+                    // 🔥 如果没有服务，直接处理（兼容旧逻辑）
+                    if (action == "上")
+                    {
+                        member.Balance += money;
+                        member.CreditToday += money;
+                        member.CreditTotal += money;
+                    }
+                    else if (action == "下")
+                    {
+                        member.Balance -= money;
+                        member.WithdrawToday += money;
+                        member.WithdrawTotal += money;
+                    }
+                    
+                    // 更新记录状态
+                    creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                    creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                    creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    
+                    if (_db != null)
+                    {
+                        _db.Update(creditWithdraw);
+                    }
+                    
+                    _logService.Info("AdminCommand", $"管理{action}分成功: {member.Nickname} {action}{money}, 余额={member.Balance}");
+                    return true;
                 }
             }
             catch (Exception ex)
