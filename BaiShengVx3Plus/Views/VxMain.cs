@@ -317,7 +317,17 @@ namespace BaiShengVx3Plus
                 // 🔥 步骤3: 初始化炳狗服务
                 // ========================================
                 
-                InitializeBinggoServices();
+                // 🔥 根据初始化场景，选择初始化方法
+                if (wxid == "default")
+                {
+                    // 首次启动：初始化全局服务（只执行一次）
+                    InitializeGlobalServices();
+                }
+                else
+                {
+                    // 微信连接成功：只初始化微信专属服务
+                    InitializeWxServices();
+                }
                 
                 // ========================================
                 // 🔥 步骤4: 日志记录
@@ -390,23 +400,23 @@ namespace BaiShengVx3Plus
         }
         
         /// <summary>
-        /// 初始化炳狗游戏服务
+        /// 初始化全局服务（只在应用启动时执行一次）
+        /// 🔥 全局数据库相关的服务：AutoBetService, LotteryService
         /// </summary>
-        private void InitializeBinggoServices()
+        private void InitializeGlobalServices()
         {
             try
             {
-                _logService.Info("VxMain", "🎮 初始化炳狗服务...");
+                _logService.Info("VxMain", "🎮 初始化全局服务（仅执行一次）...");
                 
-                // 🔥 检查全局数据库是否已初始化（必须先初始化全局数据库）
+                // 🔥 检查全局数据库是否已初始化
                 if (_globalDb == null)
                 {
-                    _logService.Error("VxMain", "❌ 全局数据库未初始化，无法初始化炳狗服务！");
+                    _logService.Error("VxMain", "❌ 全局数据库未初始化，无法初始化全局服务！");
                     return;
                 }
                 
-                // 🔥 1. 设置数据库连接（双库结构）
-                // 📌 全局数据库（business.db）- 始终可用
+                // 🔥 1. 设置全局数据库连接
                 // - AutoBetService: AutoBetConfigs（飞单配置）
                 _autoBetService.SetDatabase(_globalDb);
                 _logService.Info("VxMain", "✅ AutoBetService 已设置全局数据库（AutoBetConfigs）");
@@ -416,12 +426,53 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
                 
                 // 📌 BetRecordService: 已在 AutoBetService.SetDatabase 中初始化
-                // 🔥 不再需要手动设置，BindingList 由 AutoBetService 管理
                 _logService.Info("VxMain", "✅ BetRecordService 将在 AutoBetService.SetDatabase 中自动初始化");
                 
+                // 🤖 数据库设置完成后，加载自动投注设置
+                LoadAutoBetSettings();
+                
+                // 🎚️ 加载应用配置（从 appsettings.json）
+                LoadAppConfiguration();
+                
+                // 🔥 配置自管理模式：启动监控线程
+                _logService.Info("VxMain", "🚀 启动自动投注监控线程（配置自管理模式）...");
+                _autoBetService.StartMonitoring();
+                _logService.Info("VxMain", "✅ 配置初始化完成");
+                
+                // 2. 创建开奖数据 BindingList（使用全局数据库）
+                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
+                _lotteryDataBindingList.LoadFromDatabase(100);
+                
+                // 3. 设置开奖服务的 BindingList（用于自动更新 UI）
+                _lotteryService.SetBindingList(_lotteryDataBindingList);
+                
+                // 6. 订阅开奖事件（UI 更新）
+                _lotteryService.LotteryOpened += OnLotteryOpened;
+                _lotteryService.StatusChanged += OnLotteryStatusChanged;
+                _lotteryService.IssueChanged += OnLotteryIssueChanged;
+                
+                _logService.Info("VxMain", "✅ 全局服务初始化完成");
+                
+                // 7. 初始化UI相关服务
+                InitializeUIServices();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化全局服务失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 初始化微信专属服务（每次切换微信时执行）
+        /// 🔥 微信专属数据库相关的服务：OrderService, AdminCommandHandler
+        /// </summary>
+        private void InitializeWxServices()
+        {
+            try
+            {
+                _logService.Info("VxMain", "🎮 初始化微信专属服务...");
+                
                 // 📌 AdminCommandHandler: 设置会员 BindingList 和数据库
-                // 🔥 注意：此时 _membersBindingList 可能还是 null（需要先绑定群）
-                // 如果为 null，会在 BindGroupAsync 中重新设置
                 var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
                 if (adminCommandHandler != null && _db != null)
                 {
@@ -437,7 +488,7 @@ namespace BaiShengVx3Plus
                     }
                 }
                 
-                // 📌 微信专属数据库（business_{wxid}.db）- 绑定微信后才可用
+                // 📌 微信专属数据库（business_{wxid}.db）
                 if (_db != null)
                 {
                     // - OrderService: V2MemberOrder（订单）
@@ -449,24 +500,7 @@ namespace BaiShengVx3Plus
                     _logService.Warning("VxMain", "⚠️ 微信专属数据库未初始化（未绑定微信），部分功能暂不可用");
                 }
                 
-                // 🤖 数据库设置完成后，重新加载自动投注设置
-                LoadAutoBetSettings();
-                
-                // 🎚️ 加载应用配置（从 appsettings.json）
-                LoadAppConfiguration();
-                
-                // 🔥 配置同步完成后，启动监控线程
-                _logService.Info("VxMain", "🚀 配置初始化完成，启动自动投注监控线程...");
-                _autoBetService.StartMonitoring();
-                
-                // 2. 创建开奖数据 BindingList（使用全局数据库）
-                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
-                _lotteryDataBindingList.LoadFromDatabase(100); // 加载最近 100 期
-                
-                // 3. 设置开奖服务的 BindingList（用于自动更新 UI）
-                _lotteryService.SetBindingList(_lotteryDataBindingList);
-                
-                // 4. 设置订单服务的 BindingList（可能为 null，服务内部会处理）
+                // 4. 设置订单服务的 BindingList
                 if (_db != null)
                 {
                     _orderService.SetOrdersBindingList(_ordersBindingList);
@@ -474,9 +508,6 @@ namespace BaiShengVx3Plus
                 }
                 
                 // 🔥 5. 设置开奖服务的业务依赖（用于结算和发送微信消息）
-                // 参考 F5BotV2：所有开奖相关逻辑统一在 BinggoLotteryService 中处理
-                // 注意：这里的设置会被 GroupBindingService.BindGroupCompleteAsync 中的设置覆盖
-                //      所以实际上这里的设置可能不生效，应该移除或合并
                 if (_lotteryService is BinggoLotteryService lotteryServiceImpl)
                 {
                     lotteryServiceImpl.SetBusinessDependencies(
@@ -485,22 +516,32 @@ namespace BaiShengVx3Plus
                         _socketClient,
                         _ordersBindingList,
                         _membersBindingList,
-                        _creditWithdrawsBindingList,  // 🔥 传递上下分 BindingList
-                        _statisticsService  // 🔥 添加统计服务参数（最后一个，可选）
+                        _creditWithdrawsBindingList,
+                        _statisticsService
                     );
                     
-                    // 🔥 设置数据库连接（用于上下分申请）- 仅在微信专属数据库可用时设置
+                    // 设置数据库连接（用于上下分申请）
                     if (_db != null)
                     {
                         lotteryServiceImpl.SetDatabaseForCreditWithdraw(_db);
                     }
                 }
                 
-                // 6. 订阅开奖事件（UI 更新，业务逻辑已在服务中处理）
-                _lotteryService.LotteryOpened += OnLotteryOpened;
-                _lotteryService.StatusChanged += OnLotteryStatusChanged;
-                _lotteryService.IssueChanged += OnLotteryIssueChanged;
-                
+                _logService.Info("VxMain", "✅ 微信专属服务初始化完成");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化微信专属服务失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 初始化UI相关服务（在全局服务初始化后调用）
+        /// </summary>
+        private void InitializeUIServices()
+        {
+            try
+            {
                 // 🔥 6. 订阅统计服务属性变化（自动更新 UI）
                 _statisticsService.PropertyChanged += (s, e) =>
                 {
@@ -508,7 +549,6 @@ namespace BaiShengVx3Plus
                     {
                         _logService.Info("VxMain", 
                             $"📢 收到 PanDescribe 属性变化通知（线程{System.Threading.Thread.CurrentThread.ManagedThreadId}），准备更新 UI");
-                        // 🔥 使用同步更新，确保立即刷新 UI（特别是订单取消时）
                         UpdateUIThreadSafe(() => 
                         {
                             _logService.Info("VxMain", 
@@ -519,19 +559,10 @@ namespace BaiShengVx3Plus
                 };
                 
                 // 6. 启动开奖服务
-                _ = _lotteryService.StartAsync();  // 异步启动，不等待
+                _ = _lotteryService.StartAsync();
                 
                 // 7. 🎨 绑定 UI 控件到开奖服务
                 _logService.Info("VxMain", "🎨 开始绑定 UI 控件到开奖服务...");
-                
-                if (ucBinggoDataCur == null)
-                {
-                    _logService.Error("VxMain", "❌ ucBinggoDataCur 为 null！");
-                }
-                if (ucBinggoDataLast == null)
-                {
-                    _logService.Error("VxMain", "❌ ucBinggoDataLast 为 null！");
-                }
                 
                 UpdateUIThreadSafeAsync(() =>
                 {
@@ -550,12 +581,12 @@ namespace BaiShengVx3Plus
                     }
                 });
                 
-                // 🔥 立即加载最近的开奖数据（确保上期数据显示）
+                // 🔥 立即加载最近的开奖数据
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await Task.Delay(500);  // 等待500ms，确保服务完全启动
+                        await Task.Delay(500);
                         _logService.Info("VxMain", "🎲 开始立即加载最近开奖数据...");
                         
                         var recentData = await _lotteryService.GetRecentLotteryDataAsync(5);
@@ -565,10 +596,6 @@ namespace BaiShengVx3Plus
                             _logService.Info("VxMain", $"   最新期号: {recentData[0].IssueId}");
                             _logService.Info("VxMain", $"   开奖号码: {recentData[0].ToLotteryString()}");
                         }
-                        else
-                        {
-                            _logService.Warning("VxMain", "⚠️ 立即加载失败，未获取到开奖数据");
-                        }
                     }
                     catch (Exception ex)
                     {
@@ -576,11 +603,11 @@ namespace BaiShengVx3Plus
                     }
                 });
                 
-                _logService.Info("VxMain", "✅ 炳狗服务初始化完成（含 UI 控件绑定）");
+                _logService.Info("VxMain", "✅ UI服务初始化完成");
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", $"炳狗服务初始化失败: {ex.Message}", ex);
+                _logService.Error("VxMain", "UI服务初始化失败", ex);
             }
         }
         

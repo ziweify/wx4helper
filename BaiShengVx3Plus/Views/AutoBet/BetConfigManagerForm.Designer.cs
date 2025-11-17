@@ -589,7 +589,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             tabAdvanced.Controls.Add(pnlAdvancedContent);
             tabAdvanced.Location = new Point(0, 40);
             tabAdvanced.Name = "tabAdvanced";
-            tabAdvanced.Size = new Size(200, 60);
+            tabAdvanced.Size = new Size(994, 675);
             tabAdvanced.TabIndex = 1;
             tabAdvanced.Text = "高级设置";
             // 
@@ -606,7 +606,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlAdvancedContent.Margin = new Padding(4, 5, 4, 5);
             pnlAdvancedContent.MinimumSize = new Size(1, 1);
             pnlAdvancedContent.Name = "pnlAdvancedContent";
-            pnlAdvancedContent.Size = new Size(200, 60);
+            pnlAdvancedContent.Size = new Size(994, 675);
             pnlAdvancedContent.TabIndex = 0;
             pnlAdvancedContent.Text = null;
             pnlAdvancedContent.TextAlignment = ContentAlignment.MiddleCenter;
@@ -818,7 +818,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             tabRecords.Controls.Add(pnlRecordsContent);
             tabRecords.Location = new Point(0, 40);
             tabRecords.Name = "tabRecords";
-            tabRecords.Size = new Size(994, 675);
+            tabRecords.Size = new Size(200, 60);
             tabRecords.TabIndex = 2;
             tabRecords.Text = "投注记录";
             // 
@@ -833,7 +833,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlRecordsContent.Margin = new Padding(4, 5, 4, 5);
             pnlRecordsContent.MinimumSize = new Size(1, 1);
             pnlRecordsContent.Name = "pnlRecordsContent";
-            pnlRecordsContent.Size = new Size(994, 675);
+            pnlRecordsContent.Size = new Size(200, 60);
             pnlRecordsContent.TabIndex = 0;
             pnlRecordsContent.Text = null;
             pnlRecordsContent.TextAlignment = ContentAlignment.MiddleCenter;
@@ -896,7 +896,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             dgvRecords.RowTemplate.Height = 29;
             dgvRecords.SelectedIndex = -1;
             dgvRecords.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvRecords.Size = new Size(706, 630);
+            dgvRecords.Size = new Size(706, 15);
             dgvRecords.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvRecords.TabIndex = 1;
             // 
@@ -913,7 +913,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlRecordsTop.Margin = new Padding(4, 5, 4, 5);
             pnlRecordsTop.MinimumSize = new Size(1, 1);
             pnlRecordsTop.Name = "pnlRecordsTop";
-            pnlRecordsTop.Size = new Size(994, 45);
+            pnlRecordsTop.Size = new Size(200, 45);
             pnlRecordsTop.TabIndex = 0;
             pnlRecordsTop.Text = null;
             pnlRecordsTop.TextAlignment = ContentAlignment.MiddleCenter;

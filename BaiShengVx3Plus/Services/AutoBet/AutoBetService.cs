@@ -249,7 +249,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         
         /// <summary>
         /// 启动监控（在所有配置初始化完成后调用）
-        /// 🔥 新架构：启动所有已启用配置的监控线程（每个配置独立）
+        /// 🔥 新架构：启动所有配置的监控线程（每个配置独立，监控线程内部检查 IsEnabled）
         /// </summary>
         public void StartMonitoring()
         {
@@ -264,11 +264,10 @@ namespace BaiShengVx3Plus.Services.AutoBet
             int startedCount = 0;
             foreach (var config in _configs)
             {
-                if (config.IsEnabled)
-                {
-                    config.StartMonitoring();  // 🔥 每个配置启动自己的监控线程
-                    startedCount++;
-                }
+                // 🔥 无论 IsEnabled 状态如何，都启动监控线程
+                // 监控线程内部会检查 IsEnabled，只有启用时才启动浏览器
+                config.StartMonitoring();
+                startedCount++;
             }
             
             _log.Info("AutoBet", $"✅ 已启动 {startedCount} 个配置的监控线程");

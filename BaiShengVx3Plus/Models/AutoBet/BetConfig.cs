@@ -125,15 +125,8 @@ namespace BaiShengVx3Plus.Models.AutoBet
                 _isEnabled = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEnabled)));
                 
-                // 🔥 自动启动/停止监控（配置自管理模式）
-                if (_isEnabled)
-                {
-                    StartMonitoring();
-                }
-                else
-                {
-                    StopMonitoring();
-                }
+                // 🔥 配置自管理模式：监控线程始终运行，内部检查 IsEnabled 状态
+                // 无需在 setter 中启动/停止监控线程
             }
         }
     }
