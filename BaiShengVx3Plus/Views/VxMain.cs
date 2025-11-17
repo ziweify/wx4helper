@@ -3598,33 +3598,12 @@ namespace BaiShengVx3Plus
                 swi_OrdersTasking.ValueChanged += swi_OrdersTasking_ValueChanged;
                 _logService.Info("VxMain", "✅ UI 开关事件已重新绑定");
                 
-                // 🔥 如果飞单开关开启，手动触发启动（此时浏览器已有时间重连）
+                // ✅ 不再手动触发启动！
+                // 原因：配置中的 IsEnabled 已经保存了，监控线程会自动检测并启动
+                // 手动触发会绕过监控线程的 2 秒延迟机制，导致老浏览器还没连上就启动新的
                 if (isAutoBetEnabled)
                 {
-                    _logService.Info("VxMain", "🚀 检测到飞单开关开启，准备启动自动投注...");
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            // 额外等待 2 秒，确保 Socket 服务器完全就绪，浏览器有时间重连
-                            await Task.Delay(2000);
-                            _logService.Info("VxMain", "⏳ 已等待 2 秒，开始启动自动投注");
-                            
-                            // 切换到 UI 线程触发开关事件
-                            if (InvokeRequired)
-                            {
-                                Invoke(new Action(() => swiAutoOrdersBet_ValueChanged(null, true)));
-                            }
-                            else
-                            {
-                                swiAutoOrdersBet_ValueChanged(null, true);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logService.Error("VxMain", "延迟启动自动投注失败", ex);
-                        }
-                    });
+                    _logService.Info("VxMain", "✅ 检测到飞单开关已开启，监控线程将自动处理（延迟2秒，等待老浏览器重连）");
                 }
             }
             catch (Exception ex)

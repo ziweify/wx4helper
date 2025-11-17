@@ -12,12 +12,12 @@ namespace BaiShengVx3Plus.Models.Games.Binggo
         /// </summary>
         public Dictionary<string, float> Odds { get; set; } = new()
         {
-            { "大", 1.95f },
-            { "小", 1.95f },
-            { "单", 1.95f },
-            { "双", 1.95f },
-            { "龙", 1.95f },
-            { "虎", 1.95f }
+            { "大", 1.97f },
+            { "小", 1.97f },
+            { "单", 1.97f },
+            { "双", 1.97f },
+            { "龙", 1.97f },
+            { "虎", 1.97f }
         };
         
         /// <summary>

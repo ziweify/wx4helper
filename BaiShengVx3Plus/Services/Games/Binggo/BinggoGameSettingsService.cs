@@ -21,9 +21,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             _logService = logService;
             _settings = settings;
             
-            // 配置文件路径：与其他配置文件放在一起
+            // 🔥 配置文件路径：统一使用 LocalApplicationData（与数据库、日志、图片等放在一起）
+            // LocalApplicationData = %AppData%\Local\BaiShengVx3Plus
             var appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "BaiShengVx3Plus"
             );
             

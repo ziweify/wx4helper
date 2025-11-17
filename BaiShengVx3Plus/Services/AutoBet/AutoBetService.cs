@@ -239,8 +239,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         IsBackground = true  // 🔥 后台线程，程序退出时自动结束
                     };
                     _monitorThread.Start();
-                    _log.Info("AutoBet", "✅ 后台监控线程已启动（延迟6秒启动，每2秒检查一次）");
-                    _log.Info("AutoBet", "   说明：使用专用线程，精确控制执行时机；延迟6秒是为了让老浏览器有足够时间完成重连");
+                    _log.Info("AutoBet", "✅ 后台监控线程已启动（立即启动，每2秒检查一次）");
+                    _log.Info("AutoBet", "   说明：监控线程立即开始工作，但检测到需要启动浏览器时，会先延迟2秒再次判断连接状态");
                 }
                 else
                 {
@@ -356,7 +356,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             else
             {
                 // ✅ 不再强制重置 IsEnabled，保留用户上次的设置
-                // 原因：现在有"延迟2秒再次判断"机制，可以安全地保留 IsEnabled 状态
+                // 原因：现在有"延迟2秒再次判断"机制和老浏览器重连机制，可以安全地保留 IsEnabled 状态
                 _log.Info("AutoBet", $"加载默认配置 IsEnabled 状态: {defaultConfig.IsEnabled}");
                 
                 // 🔥 检查并修复平台和URL的匹配
@@ -1358,14 +1358,8 @@ namespace BaiShengVx3Plus.Services.AutoBet
         {
             try
             {
-                _log.Info("AutoBet", "🚀 监控线程开始运行");
-                
-                // 🔥 延迟6秒启动（给老浏览器重连的时间）
-                // 时序：Socket启动(1秒) + 等待重连(2秒) + 握手完成(1秒) + 额外缓冲(2秒) = 6秒
-                _log.Info("AutoBet", "⏳ 延迟6秒启动监控（等待老浏览器完成重连和握手）...");
-                Thread.Sleep(6000);
-                
-                _log.Info("AutoBet", "✅ 监控线程正式开始工作");
+                _log.Info("AutoBet", "🚀 监控线程立即开始运行（用户需求：立即启动，但检测到需要启动浏览器时，先延迟2秒再次判断）");
+                _log.Info("AutoBet", "✅ 监控线程已启动，开始循环检查...");
                 
                 // 🔥 主循环：每2秒检查一次
                 while (_monitorRunning)
