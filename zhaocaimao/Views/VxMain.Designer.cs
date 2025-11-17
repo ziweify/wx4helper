@@ -1205,7 +1205,7 @@ namespace zhaocaimao
         private TabPage tabPageLottery;
         private TabPage tabPageSettings;
         private Sunny.UI.UIPanel pnlRightSidebar;
-        
+
         private Sunny.UI.UISplitContainer splitContainerMain;
         private Sunny.UI.UIPanel pnlLeft;
         private Sunny.UI.UIDataGridView dgvContacts;

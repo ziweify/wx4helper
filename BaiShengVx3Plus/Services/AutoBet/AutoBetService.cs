@@ -488,13 +488,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 _log.Info("AutoBet", $"✅ 已获取 ClientConnection，连接状态: {connection.IsConnected}");
                 
-                // 🔥 如果浏览器和服务端的 configId 不同，需要在 AutoBetSocketServer 中更新映射
-                if (browserConfigId != configId)
-                {
-                    _log.Info("AutoBet", $"🔄 更新连接映射: BrowserId={browserConfigId} → ServerId={configId}");
-                    _socketServer?.UpdateConnectionMapping(browserConfigId, configId);
-                }
-                
                 // 🔥 配置对象自己管理 Browser！
                 BrowserClient? browserClient = config.Browser;
                 
@@ -524,6 +517,24 @@ namespace BaiShengVx3Plus.Services.AutoBet
                     {
                         _log.Warning("AutoBet", $"   清理旧连接时出错: {ex.Message}");
                     }
+                }
+                
+                // 🔥 如果浏览器和服务端的 configId 不同，需要在 AutoBetSocketServer 中更新映射
+                // 🔥 注意：必须在 AttachConnection 之前更新映射，确保 GetConnection 能正确获取
+                if (browserConfigId != configId)
+                {
+                    _log.Info("AutoBet", $"🔄 更新连接映射: BrowserId={browserConfigId} → ServerId={configId}");
+                    _socketServer?.UpdateConnectionMapping(browserConfigId, configId);
+                    
+                    // 🔥 更新映射后，重新从服务器获取连接（因为映射已更新）
+                    connection = _socketServer?.GetConnection(configId);
+                    if (connection == null)
+                    {
+                        _log.Error("AutoBet", $"❌ 更新映射后无法获取连接: ConfigId={configId}");
+                        _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        return;
+                    }
+                    _log.Info("AutoBet", $"✅ 已重新获取连接（映射更新后）");
                 }
                 
                 // 🔥 附加连接（无论新建还是已存在，都要更新连接）
@@ -1001,7 +1012,29 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// </summary>
         public BrowserClient? GetBrowserClient(int configId)
         {
-            return GetConfig(configId)?.Browser;
+            var config = GetConfig(configId);
+            if (config == null)
+            {
+                _log.Warning("AutoBet", $"❌ GetBrowserClient: 配置不存在 ConfigId={configId}");
+                return null;
+            }
+            
+            var browserClient = config.Browser;
+            if (browserClient == null)
+            {
+                _log.Warning("AutoBet", $"❌ GetBrowserClient: BrowserClient 为 null ConfigId={configId}");
+                return null;
+            }
+            
+            // 🔥 诊断连接状态
+            var connection = browserClient.GetConnection();
+            _log.Info("AutoBet", $"📊 GetBrowserClient 诊断: ConfigId={configId}");
+            _log.Info("AutoBet", $"   BrowserClient 存在: {browserClient != null}");
+            _log.Info("AutoBet", $"   Connection 存在: {connection != null}");
+            _log.Info("AutoBet", $"   Connection.IsConnected: {connection?.IsConnected ?? false}");
+            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");
+            
+            return browserClient;
         }
         
         /// <summary>
