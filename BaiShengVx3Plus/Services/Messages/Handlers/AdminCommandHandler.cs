@@ -445,8 +445,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         }
 
         /// <summary>
-        /// 执行上下分操作 - 参考 F5BotV2 Line 2759-2771, 2814-2824
-        /// 🔥 创建 V2CreditWithdraw 记录并调用 CreditWithdrawService 处理
+        /// 执行上下分操作（参考 F5BotV2 Line 2759-2762, 2814-2817）
+        /// 🔥 创建上下分记录并调用服务处理
         /// </summary>
         private async Task<bool> ExecuteCreditWithdraw(
             string groupWxid,
@@ -491,8 +491,8 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 if (_creditWithdrawService != null)
                 {
                     var (success, errorMessage) = _creditWithdrawService.ProcessCreditWithdraw(
-                        creditWithdraw, 
-                        member, 
+                        creditWithdraw,
+                        member,
                         isLoading: false);
                     
                     if (!success)
@@ -511,27 +511,46 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     {
                         member.Balance += money;
                         member.CreditToday += money;
-                        member.CreditTotal += money;
+                        creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                        creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                        creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        
+                        if (_creditWithdrawsBindingList != null)
+                        {
+                            // BindingList 会自动保存
+                        }
+                        else if (_db != null)
+                        {
+                            _db.Update(creditWithdraw);
+                        }
+                        
+                        _logService.Info("AdminCommand", $"管理上分成功: {member.Nickname} +{money}, 余额={member.Balance}");
+                        return true;
                     }
                     else if (action == "下")
                     {
                         member.Balance -= money;
                         member.WithdrawToday += money;
-                        member.WithdrawTotal += money;
+                        creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                        creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                        creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        
+                        if (_creditWithdrawsBindingList != null)
+                        {
+                            // BindingList 会自动保存
+                        }
+                        else if (_db != null)
+                        {
+                            _db.Update(creditWithdraw);
+                        }
+                        
+                        _logService.Info("AdminCommand", $"管理下分成功: {member.Nickname} -{money}, 余额={member.Balance}");
+                        return true;
                     }
-                    
-                    // 更新记录状态
-                    creditWithdraw.Status = CreditWithdrawStatus.已同意;
-                    creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                    creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    
-                    if (_db != null)
+                    else
                     {
-                        _db.Update(creditWithdraw);
+                        throw new Exception("#无效动作!");
                     }
-                    
-                    _logService.Info("AdminCommand", $"管理{action}分成功: {member.Nickname} {action}{money}, 余额={member.Balance}");
-                    return true;
                 }
             }
             catch (Exception ex)

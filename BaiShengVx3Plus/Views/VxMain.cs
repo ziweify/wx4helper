@@ -466,7 +466,7 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "🎮 初始化微信专属服务...");
                 
-                // 📌 AdminCommandHandler: 设置会员 BindingList、数据库、上下分服务和BindingList
+                // 📌 AdminCommandHandler: 设置会员 BindingList、数据库、上下分服务和 BindingList
                 var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
                 if (adminCommandHandler != null && _db != null)
                 {
@@ -475,7 +475,7 @@ namespace BaiShengVx3Plus
                     {
                         adminCommandHandler.SetMembersBindingList(_membersBindingList);
                         
-                        // 🔥 创建并设置 CreditWithdrawService（需要数据库、统计服务、Socket客户端、声音服务）
+                        // 🔥 创建并设置上下分服务（参考 F5BotV2）
                         var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
                             _db,
                             _logService,
@@ -490,7 +490,7 @@ namespace BaiShengVx3Plus
                             adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
                         }
                         
-                        _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表、数据库、上下分服务和BindingList");
+                        _logService.Info("VxMain", "✅ AdminCommandHandler 已设置会员列表、数据库、上下分服务和 BindingList");
                     }
                     else
                     {
@@ -1804,7 +1804,23 @@ namespace BaiShengVx3Plus
                 {
                     adminCommandHandler.SetMembersBindingList(_membersBindingList);
                     adminCommandHandler.SetDatabase(_db);
-                    _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表和数据库（绑定群后）");
+                    
+                    // 🔥 创建并设置上下分服务（参考 F5BotV2）
+                    var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
+                        _db,
+                        _logService,
+                        _statisticsService,
+                        _socketClient,
+                        Program.ServiceProvider.GetService<Services.Sound.SoundService>());
+                    adminCommandHandler.SetCreditWithdrawService(creditWithdrawService);
+                    
+                    // 🔥 设置上下分 BindingList
+                    if (_creditWithdrawsBindingList != null)
+                    {
+                        adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
+                    }
+                    
+                    _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表、数据库、上下分服务和 BindingList（绑定群后）");
                 }
                 
                 // 🔥 6. 绑定到 DataGridView（UI 更新）
@@ -3127,12 +3143,21 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "创建新的上下分管理窗口");
                 
                 // 🔥 创建新的上下分管理窗口（非模态）
+                // 🔥 创建上下分服务（参考 F5BotV2）
+                var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
+                    _db,
+                    _logService,
+                    _statisticsService,
+                    _socketClient,
+                    Program.ServiceProvider.GetService<Services.Sound.SoundService>());
+                
                 _creditWithdrawManageForm = new Views.CreditWithdrawManageForm(
-                    _db, 
-                    _logService, 
+                    _db,
+                    _logService,
                     _socketClient,
                     _creditWithdrawsBindingList,
-                    _membersBindingList);
+                    _membersBindingList,
+                    creditWithdrawService);
                 
                 // 🔥 订阅关闭事件，清理引用并刷新统计
                 _creditWithdrawManageForm.FormClosed += (s, args) =>

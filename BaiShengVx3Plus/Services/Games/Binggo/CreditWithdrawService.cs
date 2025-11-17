@@ -254,6 +254,43 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         }
 
         /// <summary>
+        /// 🔥 忽略上下分申请（参考 F5BotV2 Line 1526-1542）
+        /// </summary>
+        public (bool success, string? errorMessage) IgnoreCreditWithdraw(V2CreditWithdraw request)
+        {
+            try
+            {
+                if (request.Status != CreditWithdrawStatus.等待处理)
+                {
+                    return (false, "该申请已处理");
+                }
+
+                // 更新申请状态为忽略
+                request.Status = CreditWithdrawStatus.忽略;
+                request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                request.Notes = "管理员忽略";
+
+                // 保存到数据库
+                _db.Update(request);
+
+                // 日志记录
+                _logService.Info("CreditWithdrawService",
+                    $"忽略申请\n" +
+                    $"会员：{request.Nickname}\n" +
+                    $"金额：{request.Amount:F2}\n" +
+                    $"处理人：{request.ProcessedBy}");
+
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("CreditWithdrawService", "忽略申请失败", ex);
+                return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
         /// 🔥 拒绝上下分申请
         /// </summary>
         public (bool success, string? errorMessage) RejectCreditWithdraw(V2CreditWithdraw request)

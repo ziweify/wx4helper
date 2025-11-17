@@ -114,11 +114,11 @@ namespace BaiShengVx3Plus.Models
             set => SetField(ref _notes, value);
         }
 
-        // 🔥 新增字段：处理人和处理时间
+        // 🔥 新增字段：处理人和处理时间（参考 F5BotV2）
         private string? _processedBy;
         private string? _processedTime;
 
-        [DataGridColumn(HeaderText = "处理人", Width = 100, Order = 7)]
+        [DataGridColumn(HeaderText = "处理人", Width = 90, Order = 7)]
         public string? ProcessedBy
         {
             get => _processedBy;
@@ -145,7 +145,7 @@ namespace BaiShengVx3Plus.Models
                     _ => "未知"
                 };
                 
-                // 🔥 如果已处理，显示处理结果
+                // 🔥 如果已处理，显示处理结果（参考 F5BotV2）
                 if (Status == CreditWithdrawStatus.已同意)
                 {
                     return $"{actionText}-已同意";
@@ -154,12 +154,16 @@ namespace BaiShengVx3Plus.Models
                 {
                     return $"{actionText}-已拒绝";
                 }
+                else if (Status == CreditWithdrawStatus.忽略)
+                {
+                    return $"{actionText}-已忽略";
+                }
                 
                 return actionText;
             }
         }
 
-        // 🔥 辅助属性：状态文本
+        // 🔥 辅助属性：状态文本（参考 F5BotV2）
         [Browsable(false)]
         public string StatusText => Status switch
         {
@@ -203,7 +207,7 @@ namespace BaiShengVx3Plus.Models
         等待处理 = 0,
         已同意 = 1,
         已拒绝 = 2,
-        忽略 = 3
+        忽略 = 3  // 🔥 参考 F5BotV2 Line 1526-1542
     }
 }
 
