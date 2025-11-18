@@ -2230,7 +2230,7 @@ namespace F5BotV2.Boter
 
                         return 0;
                     }
-                    else if(msg == "全部取消")
+                    else if(msg == "全部取消" || msg == "全部取消")
                     {
                         //查找订单
                         var orders = v2memberOderbindlite.Where(p => p.IssueId == issueid

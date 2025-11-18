@@ -1249,6 +1249,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     
                     var orders = _orderService.GetPendingOrdersForMemberAndIssue(member.Wxid, _currentIssueId)
                         .Where(o => o.OrderStatus != OrderStatus.已取消 && o.OrderStatus != OrderStatus.已完成)
+                        .OrderByDescending(o => o.Id)  // 🔥 按订单ID降序排序，确保最新的在前面
                         .ToList();
                     
                     if (orders == null || orders.Count == 0)
@@ -1256,8 +1257,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         return (true, $"@{member.Nickname}\r当前期号无待处理订单", null);
                     }
                     
-                    // 🔥 取消最后一个订单（参考 F5BotV2 第2215行）
-                    var ods = orders.Last();
+                    // 🔥 取消最新的一个订单（参考 F5BotV2 第2215行）
+                    // 由于已经按 Id 降序排序，First() 就是最新的订单
+                    var ods = orders.First();
                     
                     // 🔥 双重验证：确保只能取消当前期的订单（重要！）
                     if (ods.IssueId != _currentIssueId)

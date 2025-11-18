@@ -209,8 +209,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
                 
                 // 🔥 7. 更新全局统计（实时增减，参考 F5BotV2 第 538-573 行：OnMemberOrderCreate）
-                // 注意：托单不计算在内（已在前面判断）
-                if (_statisticsService != null && order.OrderType != OrderType.托)
+                // 注意：托单不计入统计（参考 F5BotV2 Line 548）
+                if (_statisticsService != null && order.OrderType != OrderType.托 && order.OrderStatus != OrderStatus.已取消)
                 {
                     _statisticsService.OnOrderCreated(order);
                 }
@@ -313,7 +313,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         $"🔒 [补单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
                     
                     // 5.3 更新全局统计（完全参考 F5BotV2）
-                    if (_statisticsService != null && order.OrderType != OrderType.托)
+                    // 注意：托单不计入统计（参考 F5BotV2 Line 548, 626）
+                    if (_statisticsService != null && order.OrderType != OrderType.托 && order.OrderStatus != OrderStatus.已取消)
                     {
                         _statisticsService.OnOrderCreated(order);  // 增加总注、今投、当前
                         _statisticsService.OnOrderSettled(order);  // 增加总盈、今盈
@@ -495,7 +496,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     
                     // 6.2 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
                     var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
-                    if (member != null && order.OrderType != OrderType.托)  // 🔥 托单不更新会员数据
+                    if (member != null)  // 🔥 托单也正常结算（更新余额）
                     {
                         _logService.Info("BinggoOrderService", 
                             $"🔒 [开奖] {member.Nickname} - 结算前余额: {member.Balance:F2}, 待结算: {member.BetWait:F2}");
@@ -516,8 +517,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             $"🔒 [开奖] {member.Nickname} - 结算后余额: {member.Balance:F2}, 待结算: {member.BetWait:F2}, 今日盈亏: {member.IncomeToday:F2}");
                         
                         // 🔥 更新全局盈利统计（参考 F5BotV2 第 626-635 行：OnMemberOrderFinish）
-                        // 注意：只更新盈利，不更新投注金额（投注金额在下单时已更新）
-                        if (_statisticsService != null)
+                        // 注意：托单不计入统计（参考 F5BotV2 Line 626）
+                        if (_statisticsService != null && order.OrderType != OrderType.托)
                         {
                             _statisticsService.OnOrderSettled(order);
                         }

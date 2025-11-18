@@ -100,9 +100,17 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         member.CreditTotal += request.Amount;
                         
                         // 🔥 播放上分声音（参考 F5BotV2 第2597行：PlayMp3("mp3_shang.mp3")）
-                        if (!isLoading)
+                        if (!isLoading && _soundService != null)
                         {
-                            _soundService?.PlayCreditUpSound();
+                            try
+                            {
+                                _soundService.PlayCreditUpSound();
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("CreditWithdrawService", $"播放上分声音失败: {ex.Message}");
+                                // 继续执行，不影响主流程
+                            }
                         }
                     }
                     else if (request.Action == CreditWithdrawAction.下分)
@@ -116,8 +124,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             
                             if (!isLoading && _socketClient != null)
                             {
-                                string errorMsg = $"@{member.Nickname} 存储不足!";
-                                _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                                try
+                                {
+                                    string errorMsg = $"@{member.Nickname} 存储不足!";
+                                    _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logService.Warning("CreditWithdrawService", $"发送余额不足消息失败: {ex.Message}");
+                                    // 继续执行，不影响主流程
+                                }
                             }
                             return (false, "余额不足");
                         }
@@ -128,9 +144,17 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         member.WithdrawTotal += request.Amount;
                         
                         // 🔥 播放下分声音（参考 F5BotV2 第2599行：PlayMp3("mp3_xia.mp3")）
-                        if (!isLoading)
+                        if (!isLoading && _soundService != null)
                         {
-                            _soundService?.PlayCreditDownSound();
+                            try
+                            {
+                                _soundService.PlayCreditDownSound();
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("CreditWithdrawService", $"播放下分声音失败: {ex.Message}");
+                                // 继续执行，不影响主流程
+                            }
                         }
                     }
                     else
