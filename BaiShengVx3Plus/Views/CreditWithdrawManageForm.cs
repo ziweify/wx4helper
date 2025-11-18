@@ -79,6 +79,51 @@ namespace BaiShengVx3Plus.Views
             cmbStatus.Items.Add("忽略");
             cmbStatus.SelectedIndex = 1;  // 默认显示"等待处理"
         }
+        
+        /// <summary>
+        /// 🔥 格式化枚举列显示（显示中文而不是数字）
+        /// </summary>
+        private void DgvRequests_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            try
+            {
+                // 格式化"动作"列（Action 枚举）
+                if (dgvRequests.Columns[e.ColumnIndex].DataPropertyName == "Action" && e.Value != null)
+                {
+                    if (e.Value is CreditWithdrawAction action)
+                    {
+                        e.Value = action switch
+                        {
+                            CreditWithdrawAction.上分 => "上分",
+                            CreditWithdrawAction.下分 => "下分",
+                            _ => "未知"
+                        };
+                        e.FormattingApplied = true;
+                    }
+                }
+                
+                // 格式化"状态"列（Status 枚举）
+                if (dgvRequests.Columns[e.ColumnIndex].DataPropertyName == "Status" && e.Value != null)
+                {
+                    if (e.Value is CreditWithdrawStatus status)
+                    {
+                        e.Value = status switch
+                        {
+                            CreditWithdrawStatus.等待处理 => "等待处理",
+                            CreditWithdrawStatus.已同意 => "已同意",
+                            CreditWithdrawStatus.已拒绝 => "已拒绝",
+                            CreditWithdrawStatus.忽略 => "忽略",
+                            _ => "未知"
+                        };
+                        e.FormattingApplied = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("CreditWithdrawManageForm", "格式化单元格失败", ex);
+            }
+        }
 
         /// <summary>
         /// 配置DataGridView列
@@ -111,7 +156,7 @@ namespace BaiShengVx3Plus.Views
                 },
                 new DataGridViewTextBoxColumn 
                 { 
-                    DataPropertyName = "ActionText", 
+                    DataPropertyName = "Action", 
                     HeaderText = "动作", 
                     Width = 70 
                 },
@@ -128,7 +173,7 @@ namespace BaiShengVx3Plus.Views
                 },
                 new DataGridViewTextBoxColumn 
                 { 
-                    DataPropertyName = "StatusText", 
+                    DataPropertyName = "Status", 
                     HeaderText = "状态", 
                     Width = 80 
                 },
@@ -152,6 +197,9 @@ namespace BaiShengVx3Plus.Views
                     AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
                 }
             });
+            
+            // 🔥 设置枚举列的格式化
+            dgvRequests.CellFormatting += DgvRequests_CellFormatting;
             
             // 🔥 添加操作按钮列（同意、忽略、拒绝）- 参考 F5BotV2 Line 82-104
             var btnAgreeColumn = new DataGridViewButtonColumn

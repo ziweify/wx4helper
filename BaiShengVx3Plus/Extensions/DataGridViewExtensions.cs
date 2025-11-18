@@ -28,6 +28,7 @@ namespace BaiShengVx3Plus.Extensions
         /// 2. DisplayNameAttribute（标准特性）
         /// 3. BrowsableAttribute（控制可见性）
         /// 4. DisplayFormatAttribute（标准格式化）
+        /// 5. 🔥 自动处理枚举类型的中文显示
         /// </summary>
         public static void ConfigureFromModel<T>(this DataGridView dgv)
         {
@@ -54,6 +55,24 @@ namespace BaiShengVx3Plus.Extensions
                     // 备用：使用标准特性
                     ApplyStandardAttributes(column, prop);
                 }
+                
+                // 🔥 检查是否是枚举类型，如果是则标记需要特殊处理
+                if (prop.PropertyType.IsEnum || 
+                    (Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum ?? false))
+                {
+                    column.Tag = new EnumColumnInfo
+                    {
+                        PropertyType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType,
+                        IsEnum = true
+                    };
+                }
+            }
+            
+            // 🔥 注册 CellFormatting 事件处理枚举显示（只注册一次）
+            if (!dgv.Tag?.ToString()?.Contains("EnumFormattingRegistered") ?? true)
+            {
+                dgv.CellFormatting += DataGridView_CellFormatting_EnumHandler;
+                dgv.Tag = (dgv.Tag?.ToString() ?? "") + "EnumFormattingRegistered";
             }
             
             // 🔥 第二遍：按 Order 排序列
@@ -203,6 +222,76 @@ namespace BaiShengVx3Plus.Extensions
             if (dgv.Columns[columnName] is DataGridViewColumn column)
             {
                 column.Visible = true;
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 枚举列信息（用于 Column.Tag）
+        /// </summary>
+        private class EnumColumnInfo
+        {
+            public Type? PropertyType { get; set; }
+            public bool IsEnum { get; set; }
+        }
+        
+        /// <summary>
+        /// 🔥 CellFormatting 事件处理器：自动显示枚举的中文名称
+        /// 
+        /// 原理：
+        /// 1. DataGridView 默认显示枚举的 ToString()（如："未知"、"上分"、"下分"）
+        /// 2. 但某些情况下可能显示数值（0、1、2）
+        /// 3. 通过 CellFormatting 事件统一转换为中文名称
+        /// 
+        /// 示例：
+        /// - CreditWithdrawAction.上分 → "上分"
+        /// - CreditWithdrawStatus.已同意 → "已同意"
+        /// - MemberState.管理 → "管理"
+        /// </summary>
+        private static void DataGridView_CellFormatting_EnumHandler(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (sender is not DataGridView dgv) return;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            
+            try
+            {
+                // 检查列是否标记为枚举列
+                var column = dgv.Columns[e.ColumnIndex];
+                if (column.Tag is EnumColumnInfo enumInfo && enumInfo.IsEnum && enumInfo.PropertyType != null)
+                {
+                    // 获取单元格的原始值
+                    var cellValue = e.Value;
+                    
+                    if (cellValue != null)
+                    {
+                        // 🔥 关键：将枚举值转换为中文名称
+                        if (cellValue.GetType() == enumInfo.PropertyType || 
+                            cellValue.GetType().IsEnum)
+                        {
+                            // 直接使用枚举的 ToString()（C# 会自动返回枚举的名称，如"上分"）
+                            e.Value = cellValue.ToString();
+                            e.FormattingApplied = true;
+                        }
+                        else if (cellValue is int or long)
+                        {
+                            // 如果是数值，转换为枚举再转换为字符串
+                            var numericValue = Convert.ToInt32(cellValue);
+                            var enumValue = Enum.ToObject(enumInfo.PropertyType, numericValue);
+                            e.Value = enumValue.ToString();
+                            e.FormattingApplied = true;
+                        }
+                    }
+                    else
+                    {
+                        // 如果值为 null，显示空字符串
+                        e.Value = "";
+                        e.FormattingApplied = true;
+                    }
+                }
+            }
+            catch
+            {
+                // 如果转换失败，保持原值不变
+                // 不抛出异常，避免影响 DataGridView 的正常显示
             }
         }
     }

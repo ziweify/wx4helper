@@ -66,7 +66,14 @@ namespace BaiShengVx3Plus.Models
         public CreditWithdrawAction Action
         {
             get => _action;
-            set => SetField(ref _action, value);
+            set
+            {
+                if (SetField(ref _action, value))
+                {
+                    // 🔥 当 Action 改变时，通知 ActionText 也改变了
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActionText)));
+                }
+            }
         }
 
         [DataGridColumn(HeaderText = "金额", Width = 100, Order = 3, 
