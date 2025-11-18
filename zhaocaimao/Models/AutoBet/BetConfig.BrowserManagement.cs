@@ -18,7 +18,7 @@ namespace zhaocaimao.Models.AutoBet
         private bool _isStartingBrowser; // 🔥 正在启动浏览器的标志，防止重复启动
         private readonly object _browserLock = new object();
         private ILogService? _logService;
-        private AutoBetSocketServer? _socketServer;
+        // 🔥 控件方式：不再需要 Socket 服务器
         
         #endregion
         
@@ -27,10 +27,10 @@ namespace zhaocaimao.Models.AutoBet
         /// <summary>
         /// 设置依赖服务（在 AutoBetService 中调用）
         /// </summary>
-        public void SetDependencies(ILogService logService, AutoBetSocketServer socketServer)
+        public void SetDependencies(ILogService logService, AutoBetSocketServer? socketServer = null)
         {
             _logService = logService;
-            _socketServer = socketServer;
+            // 🔥 控件方式：不再需要 Socket 服务器，保留参数以兼容接口
         }
         
         #endregion
@@ -111,7 +111,7 @@ namespace zhaocaimao.Models.AutoBet
                 }
                 
                 _logService?.Info("BetConfig", $"🛑 [{ConfigName}] 用户手动停止浏览器");
-                Browser.Dispose(killProcess: true);
+                Browser?.Dispose();
                 Browser = null;
                 ProcessId = 0;
             }
@@ -221,62 +221,13 @@ namespace zhaocaimao.Models.AutoBet
                 }
             }
             
-            // 4. 检查进程是否还在运行
-            if (ProcessId > 0)
-            {
-                if (IsProcessRunning(ProcessId))
-                {
-                    _logService?.Debug("BetConfig", $"⏳ [{ConfigName}] 浏览器进程 {ProcessId} 仍在运行，等待重连...");
-                    return false;
-                }
-                else
-                {
-                    // 进程已结束，清除 ProcessId
-                    _logService?.Info("BetConfig", $"🔧 [{ConfigName}] 浏览器进程 {ProcessId} 已结束，清除 ProcessId");
-                    ProcessId = 0;
-                }
-            }
+            // 4. 控件方式：不需要检查进程，直接检查控件状态
+            // ProcessId 在控件方式下不再使用
             
             return true;  // 所有条件都满足，应该启动浏览器
         }
         
-        /// <summary>
-        /// 检查进程是否还在运行
-        /// </summary>
-        private bool IsProcessRunning(int processId)
-        {
-            try
-            {
-                var process = System.Diagnostics.Process.GetProcessById(processId);
-                bool hasExited = process.HasExited;
-                
-                if (!hasExited)
-                {
-                    try
-                    {
-                        var _ = process.ProcessName;  // 尝试访问进程名，验证进程是否真实存在
-                    }
-                    catch
-                    {
-                        return false;
-                    }
-                }
-                return !hasExited;
-            }
-            catch (ArgumentException)
-            {
-                return false;  // 进程不存在
-            }
-            catch (InvalidOperationException)
-            {
-                return false;  // 进程已退出
-            }
-            catch (Exception ex)
-            {
-                _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 检查进程 {processId} 时发生异常: {ex.Message}");
-                return false;
-            }
-        }
+        // 🔥 控件方式：不再需要检查进程
         
         #endregion
         
@@ -309,63 +260,35 @@ namespace zhaocaimao.Models.AutoBet
                 _logService?.Info("BetConfig", $"   URL: {PlatformUrl}");
                 _logService?.Info("BetConfig", $"   显示窗口: {ShowBrowserWindow}");
                 
-                // 清理旧的 ProcessId
-                if (ProcessId > 0)
+                // 控件方式：不需要清理 ProcessId
+                
+                // 🔥 直接创建浏览器控件对象
+                var newBrowserControl = new UserControls.BetBrowserControl();
+                
+                // 订阅日志事件
+                newBrowserControl.OnLog += (msg) => _logService?.Info("BetConfig", $"[{ConfigName}] {msg}");
+                
+                // 🔥 初始化浏览器控件（异步调用）
+                try
                 {
-                    _logService?.Info("BetConfig", $"🔧 [{ConfigName}] 清除旧的 ProcessId: {ProcessId}");
-                    ProcessId = 0;
-                }
-                
-                // 创建浏览器客户端
-                var newBrowser = new BrowserClient(configId: Id);
-                
-                // 🔥 启动浏览器进程（异步调用）
-                bool started = await newBrowser.StartAsync(
-                    port: 0,  // 0 = 使用默认端口
-                    configName: ConfigName,
-                    platform: Platform,
-                    platformUrl: PlatformUrl
-                );
-                
-                if (started)
-                {
+                    await newBrowserControl.InitializeAsync(Id, ConfigName, Platform, PlatformUrl);
+                    
                     // 🔥 启动成功后再设置到 Browser 属性
                     lock (_browserLock)
                     {
-                        Browser = newBrowser;
+                        Browser = newBrowserControl;
                     }
                     
-                    // 获取进程ID并保存
-                    if (newBrowser.IsProcessRunning)
-                    {
-                        try
-                        {
-                            var processField = newBrowser.GetType().GetField("_process", 
-                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                            if (processField != null)
-                            {
-                                var process = processField.GetValue(newBrowser) as System.Diagnostics.Process;
-                                if (process != null && !process.HasExited)
-                                {
-                                    ProcessId = process.Id;
-                                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器进程已启动: PID={ProcessId}");
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 获取进程ID失败: {ex.Message}");
-                        }
-                    }
+                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器控件已创建并初始化");
                     
-                    // 🔥 等待浏览器连接到 Socket 服务器（最多等待5秒）
-                    _logService?.Info("BetConfig", $"⏳ [{ConfigName}] 等待浏览器连接到 Socket 服务器...");
+                    // 🔥 控件方式：直接检查是否已初始化（不需要等待 Socket 连接）
+                    _logService?.Info("BetConfig", $"⏳ [{ConfigName}] 等待浏览器控件完全初始化...");
                     for (int i = 0; i < 10; i++)
                     {
                         await Task.Delay(500);  // 每500ms检查一次
                         if (IsConnected)
                         {
-                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器已连接！等待时间: {i * 0.5}秒");
+                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器控件已初始化！等待时间: {i * 0.5}秒");
                             break;
                         }
                     }
@@ -376,7 +299,7 @@ namespace zhaocaimao.Models.AutoBet
                         _logService?.Info("BetConfig", $"🔐 [{ConfigName}] 自动登录: {Username}");
                         try
                         {
-                            var loginResult = await newBrowser.SendCommandAsync("Login", new
+                            var loginResult = await newBrowserControl.ExecuteCommandAsync("Login", new
                             {
                                 username = Username,
                                 password = Password
@@ -404,10 +327,11 @@ namespace zhaocaimao.Models.AutoBet
                         _logService?.Info("BetConfig", $"ℹ️ [{ConfigName}] 未配置账号密码，跳过自动登录");
                     }
                 }
-                else
+                catch (Exception initEx)
                 {
-                    _logService?.Error("BetConfig", $"❌ [{ConfigName}] 浏览器启动失败");
-                    newBrowser.Dispose(killProcess: true);
+                    _logService?.Error("BetConfig", $"❌ [{ConfigName}] 浏览器控件初始化失败", initEx);
+                    newBrowserControl?.Dispose();
+                    throw;
                 }
             }
             catch (Exception ex)
@@ -415,36 +339,21 @@ namespace zhaocaimao.Models.AutoBet
                 _logService?.Error("BetConfig", $"❌ [{ConfigName}] 启动浏览器时发生异常", ex);
                 lock (_browserLock)
                 {
-                    Browser?.Dispose(killProcess: true);
+                    Browser?.Dispose();
                     Browser = null;
                 }
             }
         }
         
         /// <summary>
-        /// 浏览器断开连接的事件处理
+        /// 浏览器断开连接的事件处理（控件方式下不再需要）
         /// </summary>
         private void OnBrowserDisconnected(object? sender, EventArgs e)
         {
-            _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器断开连接");
+            _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器控件断开连接");
             
             lock (_browserLock)
             {
-                // 检查进程是否真的结束了
-                if (ProcessId > 0)
-                {
-                    if (IsProcessRunning(ProcessId))
-                    {
-                        _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器进程 {ProcessId} 仍在运行，但连接已断开");
-                        _logService?.Info("BetConfig", $"   保留 ProcessId，监控线程将等待重连或进程退出");
-                    }
-                    else
-                    {
-                        _logService?.Info("BetConfig", $"🔧 [{ConfigName}] 浏览器进程 {ProcessId} 已结束，清除 ProcessId");
-                        ProcessId = 0;
-                    }
-                }
-                
                 // 清空浏览器对象引用，监控线程会自动重启
                 Browser = null;
             }
@@ -468,7 +377,7 @@ namespace zhaocaimao.Models.AutoBet
                 if (Browser != null)
                 {
                     _logService?.Info("BetConfig", $"🧹 [{ConfigName}] 清理浏览器资源");
-                    Browser.Dispose(killProcess: true);
+                    Browser?.Dispose();
                     Browser = null;
                 }
             }

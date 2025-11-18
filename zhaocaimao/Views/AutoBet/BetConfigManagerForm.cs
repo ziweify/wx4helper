@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -1082,14 +1082,19 @@ namespace zhaocaimao.Views.AutoBet
                     return new CommandResponse { Success = false, Message = "AutoBetService未初始化" };
                 }
                 
-                // 通过AutoBetService的BrowserClient发送命令
-                var browserClient = autoBetService.GetBrowserClient(configId);
-                if (browserClient == null)
+                // 通过AutoBetService的浏览器控件发送命令
+                var browserControl = autoBetService.GetBrowserControl(configId);
+                if (browserControl == null)
                 {
-                    return new CommandResponse { Success = false, Message = "浏览器客户端未连接" };
+                    return new CommandResponse { Success = false, Message = "浏览器控件未连接" };
                 }
                 
-                var result = await browserClient.SendCommandAsync(command, data);
+                if (!browserControl.IsInitialized)
+                {
+                    return new CommandResponse { Success = false, Message = "浏览器控件未初始化" };
+                }
+                
+                var result = await browserControl.ExecuteCommandAsync(command, data);
                 
                 return new CommandResponse
                 {

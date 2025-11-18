@@ -250,17 +250,17 @@ namespace zhaocaimao.Models.AutoBet
     public int ProcessId { get; set; } = 0;
         
         /// <summary>
-        /// 🔥 浏览器客户端（运行时对象，不保存到数据库）
-        /// 配置对象自己管理与浏览器的连接！
+        /// 🔥 浏览器控件对象（运行时对象，不保存到数据库）
+        /// 配置对象直接管理浏览器控件，方便操控！
         /// </summary>
         [Ignore]
-        public Services.AutoBet.BrowserClient? Browser { get; set; }
+        public UserControls.BetBrowserControl? Browser { get; set; }
         
         /// <summary>
-        /// 🔥 是否已连接到浏览器
+        /// 🔥 是否已连接到浏览器（控件是否已初始化）
         /// </summary>
         [Ignore]
-        public bool IsConnected => Browser?.IsConnected ?? false;
+        public bool IsConnected => Browser?.IsInitialized ?? false;
         
     /// <summary>
     /// 显示浏览器窗口（兼容属性）
