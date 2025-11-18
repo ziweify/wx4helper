@@ -19,6 +19,10 @@ namespace BaiShengVx3Plus.Services.Sound
         private readonly ILogService _logService;
         private readonly string _soundDirectory;
         
+        // 🔥 关键修复：保持 MP3Play 对象的引用，防止被垃圾回收（参考 F5BotV2 实际运行机制）
+        // MCI 的 play 命令是异步的，如果对象被回收，MCI 会自动关闭，导致声音只播放开头
+        private MP3Play? _currentPlayer;
+        
         public SoundService(ILogService logService)
         {
             _logService = logService;
@@ -40,6 +44,7 @@ namespace BaiShengVx3Plus.Services.Sound
         
         /// <summary>
         /// 播放 MP3 文件（参考 F5BotV2 第 2550-2555 行）
+        /// 🔥 关键修复：保持 MP3Play 对象引用，防止被垃圾回收导致声音中断
         /// </summary>
         /// <param name="fileName">文件名（如：mp3_fp.mp3）</param>
         public void PlayMp3(string fileName)
@@ -54,10 +59,21 @@ namespace BaiShengVx3Plus.Services.Sound
                     return;
                 }
                 
-                // 🔥 参考 F5BotV2 第 2550-2555 行：播放一次性，不等待
-                MP3Play player = new MP3Play();
-                player.FileName = filePath;
-                player.play();
+                // 🔥 关键修复：停止当前播放（如果有），防止声音重叠
+                if (_currentPlayer != null)
+                {
+                    try
+                    {
+                        _currentPlayer.StopT();
+                    }
+                    catch { }
+                }
+                
+                // 🔥 创建新的播放器并保持引用（防止被垃圾回收）
+                // 参考 F5BotV2 第 2552-2554 行：创建对象 → 设置文件 → 播放
+                _currentPlayer = new MP3Play();
+                _currentPlayer.FileName = filePath;
+                _currentPlayer.play();
                 
                 _logService.Info("SoundService", $"🔊 播放声音: {fileName}");
             }
