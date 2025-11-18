@@ -95,8 +95,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return false;
                 }
                 
-                // 6. 验证余额（如果不是托或管理）
-                if (member.State != MemberState.托 && member.State != MemberState.管理)
+                // 6. 验证余额
+                // 🔥 重要：托单也要验证余额！（托单是正常玩家，走正常流程）
+                // 只有管理员不验证余额（管理员不扣钱）
+                if (member.State != MemberState.管理)
                 {
                     if ((decimal)member.Balance < totalAmount)
                     {
