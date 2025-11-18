@@ -60,6 +60,14 @@ namespace BaiShengVx3Plus
             };
             sendTestMessageItem.Click += MenuSendTestMessage_Click;
             
+            var sendMessageSimulatorItem = new ToolStripMenuItem
+            {
+                Text = "📱 发送消息（模拟窗口）",
+                Name = "menuSendMessageSimulator",
+                ShortcutKeys = Keys.Control | Keys.M
+            };
+            sendMessageSimulatorItem.Click += MenuSendMessageSimulator_Click;
+            
             var setCurrentMemberItem = new ToolStripMenuItem
             {
                 Text = "设为当前测试会员",
@@ -68,6 +76,7 @@ namespace BaiShengVx3Plus
             setCurrentMemberItem.Click += MenuSetCurrentMember_Click;
             
             _devOptionsMenuItem.DropDownItems.Add(sendTestMessageItem);
+            _devOptionsMenuItem.DropDownItems.Add(sendMessageSimulatorItem);
             _devOptionsMenuItem.DropDownItems.Add(setCurrentMemberItem);
             
             cmsMembers.Items.Add(_devOptionsMenuItem);
@@ -160,6 +169,56 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", $"处理测试消息失败: {ex.Message}", ex);
                 UIMessageBox.ShowError($"处理测试消息失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 菜单项：发送消息（模拟窗口）
+        /// 打开微信风格的消息模拟窗口，以会员身份发送测试消息
+        /// </summary>
+        private void MenuSendMessageSimulator_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 🔥 再次检查开发模式（防作弊）
+                if (!_configService.GetIsRunModeDev())
+                {
+                    _logService.Warning("VxMain", "⚠️ 非开发模式，无法打开消息模拟器");
+                    UIMessageBox.ShowWarning("请先在设置中启用开发模式！");
+                    return;
+                }
+                
+                // 🔥 获取选中的会员
+                if (dgvMembers.CurrentRow?.DataBoundItem is not V2Member member)
+                {
+                    _logService.Warning("VxMain", "未选中会员");
+                    UIMessageBox.ShowWarning("请先选择一个会员！");
+                    return;
+                }
+                
+                // 🔥 检查是否已绑定群
+                if (_groupBindingService.CurrentBoundGroup == null)
+                {
+                    _logService.Warning("VxMain", "未绑定群组");
+                    UIMessageBox.ShowWarning("请先绑定一个群组！");
+                    return;
+                }
+                
+                _logService.Info("VxMain", $"📱 打开消息模拟窗口: {member.Nickname} ({member.Wxid})");
+                
+                // 🔥 获取或创建消息模拟窗口（单例模式，同一会员只能开一个窗口）
+                var simulatorForm = BaiShengVx3Plus.Views.Dev.MessageSimulatorForm.GetOrCreate(
+                    member,
+                    SimulateMemberMessageAsync,  // ← 复用已有方法！
+                    _logService);
+                
+                // 🔥 显示为非模态窗口
+                simulatorForm.Show(this);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"打开消息模拟窗口失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"打开消息模拟窗口失败！\n\n{ex.Message}");
             }
         }
         
