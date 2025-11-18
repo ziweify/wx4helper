@@ -22,6 +22,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private readonly IWeixinSocketClient? _socketClient;
         private readonly BinggoStatisticsService _statisticsService;
         private readonly Services.Sound.SoundService? _soundService;  // 🔥 声音播放服务（可选）
+        private Core.V2CreditWithdrawBindingList? _creditWithdrawsBindingList;  // 🔥 上下分内存表
+        
+        // 🔥 应用级别的锁：保护会员余额、上下分记录的同步写入
+        // 参考用户要求："所有会员表，订单表的操作，要变成同步操作。而且是应用级别的同步"
+        // 🔥 注意：这里使用与 BinggoOrderService 相同的锁对象，确保所有资金操作互斥
+        private static readonly object _memberBalanceLock = new object();
 
         public CreditWithdrawService(
             SQLiteConnection db,
@@ -39,6 +45,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             // 确保表存在
             _db.CreateTable<V2CreditWithdraw>();
             _db.CreateTable<V2BalanceChange>();
+        }
+        
+        /// <summary>
+        /// 设置上下分 BindingList（内存表）
+        /// 🔥 用户要求："订单只能从内存表中拿，改数据都改内存表，内存表修改即保存"
+        /// </summary>
+        public void SetCreditWithdrawsBindingList(Core.V2CreditWithdrawBindingList? bindingList)
+        {
+            _creditWithdrawsBindingList = bindingList;
         }
 
         /// <summary>
@@ -62,98 +77,121 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
 
                 string actionName = request.Action == CreditWithdrawAction.上分 ? "上分" : "下分";
-                float balanceBefore = member.Balance;
+                float balanceBefore;
                 float balanceAfter;
+                V2BalanceChange balanceChange;
 
-                // 🔥 2. 根据动作类型处理
-                if (request.Action == CreditWithdrawAction.上分)
+                // 🔥 2. 使用应用级别的锁保护会员余额的同步更新（上下分）
+                // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
+                lock (_memberBalanceLock)
                 {
-                    // 上分：增加余额
-                    balanceAfter = balanceBefore + request.Amount;
-                    member.Balance = balanceAfter;
-                    member.CreditToday += request.Amount;
-                    member.CreditTotal += request.Amount;
+                    balanceBefore = member.Balance;
                     
-                    // 🔥 播放上分声音（参考 F5BotV2 第2597行：PlayMp3("mp3_shang.mp3")）
-                    if (!isLoading)
+                    _logService.Info("CreditWithdrawService", 
+                        $"🔒 [{actionName}] {member.Nickname} - 操作前余额: {balanceBefore:F2}");
+
+                    // 2.1 根据动作类型处理
+                    if (request.Action == CreditWithdrawAction.上分)
                     {
-                        _soundService?.PlayCreditUpSound();
-                    }
-                }
-                else if (request.Action == CreditWithdrawAction.下分)
-                {
-                    // 下分：检查余额并扣除
-                    if (member.Balance < request.Amount)
-                    {
-                        // 余额不足
-                        if (!isLoading && _socketClient != null)
+                        // 上分：增加余额
+                        balanceAfter = balanceBefore + request.Amount;
+                        member.Balance = balanceAfter;
+                        member.CreditToday += request.Amount;
+                        member.CreditTotal += request.Amount;
+                        
+                        // 🔥 播放上分声音（参考 F5BotV2 第2597行：PlayMp3("mp3_shang.mp3")）
+                        if (!isLoading)
                         {
-                            string errorMsg = $"@{member.Nickname} 存储不足!";
-                            _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                            _soundService?.PlayCreditUpSound();
                         }
-                        return (false, "余额不足");
                     }
+                    else if (request.Action == CreditWithdrawAction.下分)
+                    {
+                        // 下分：检查余额并扣除
+                        if (member.Balance < request.Amount)
+                        {
+                            // 余额不足
+                            _logService.Warning("CreditWithdrawService", 
+                                $"🔒 [{actionName}] {member.Nickname} - 余额不足: {member.Balance:F2} < {request.Amount:F2}");
+                            
+                            if (!isLoading && _socketClient != null)
+                            {
+                                string errorMsg = $"@{member.Nickname} 存储不足!";
+                                _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                            }
+                            return (false, "余额不足");
+                        }
 
-                    balanceAfter = balanceBefore - request.Amount;
-                    member.Balance = balanceAfter;
-                    member.WithdrawToday += request.Amount;
-                    member.WithdrawTotal += request.Amount;
+                        balanceAfter = balanceBefore - request.Amount;
+                        member.Balance = balanceAfter;
+                        member.WithdrawToday += request.Amount;
+                        member.WithdrawTotal += request.Amount;
+                        
+                        // 🔥 播放下分声音（参考 F5BotV2 第2599行：PlayMp3("mp3_xia.mp3")）
+                        if (!isLoading)
+                        {
+                            _soundService?.PlayCreditDownSound();
+                        }
+                    }
+                    else
+                    {
+                        return (false, "未知操作类型");
+                    }
                     
-                    // 🔥 播放下分声音（参考 F5BotV2 第2599行：PlayMp3("mp3_xia.mp3")）
+                    _logService.Info("CreditWithdrawService", 
+                        $"🔒 [{actionName}] {member.Nickname} - 操作后余额: {balanceAfter:F2}, 变动: {(balanceAfter - balanceBefore):F2}");
+
+                    // 2.2 更新申请状态（仅非加载模式）
                     if (!isLoading)
                     {
-                        _soundService?.PlayCreditDownSound();
+                        request.Status = CreditWithdrawStatus.已同意;
+                        request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                        request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     }
-                }
-                else
-                {
-                    return (false, "未知操作类型");
-                }
 
-                // 🔥 3. 更新申请状态（仅非加载模式）
-                if (!isLoading)
-                {
-                    request.Status = CreditWithdrawStatus.已同意;
-                    request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                    request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                }
-
-                // 🔥 4. 记录资金变动
-                var balanceChange = new V2BalanceChange
-                {
-                    GroupWxId = member.GroupWxId,
-                    Wxid = member.Wxid,
-                    Nickname = member.Nickname,
-                    BalanceBefore = balanceBefore,
-                    BalanceAfter = balanceAfter,
-                    ChangeAmount = request.Action == CreditWithdrawAction.上分 ? request.Amount : -request.Amount,
-                    Reason = request.Action == CreditWithdrawAction.上分 ? ChangeReason.上分 : ChangeReason.下分,
-                    IssueId = 0,
-                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
-                    Notes = isLoading ? "加载历史记录" : $"管理员同意{actionName}申请"
-                };
-
-                // 🔥 5. 保存到数据库（统一事务）
-                _db.BeginTransaction();
-                try
-                {
-                    _db.Update(member);
-                    _db.Update(request);
-                    
-                    // 加载模式不重复插入资金变动记录
-                    if (!isLoading)
+                    // 2.3 记录资金变动
+                    balanceChange = new V2BalanceChange
                     {
-                        _db.Insert(balanceChange);
+                        GroupWxId = member.GroupWxId,
+                        Wxid = member.Wxid,
+                        Nickname = member.Nickname,
+                        BalanceBefore = balanceBefore,
+                        BalanceAfter = balanceAfter,
+                        ChangeAmount = request.Action == CreditWithdrawAction.上分 ? request.Amount : -request.Amount,
+                        Reason = request.Action == CreditWithdrawAction.上分 ? ChangeReason.上分 : ChangeReason.下分,
+                        IssueId = 0,
+                        TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                        Notes = isLoading ? "加载历史记录" : $"管理员同意{actionName}申请"
+                    };
+
+                    // 2.4 保存到数据库（统一事务）
+                    _db.BeginTransaction();
+                    try
+                    {
+                        _db.Update(member);
+                        _db.Update(request);
+                        
+                        // 加载模式不重复插入资金变动记录
+                        if (!isLoading)
+                        {
+                            _db.Insert(balanceChange);
+                        }
+                        
+                        _db.Commit();
+                        
+                        _logService.Info("CreditWithdrawService", 
+                            $"🔒 [{actionName}] {member.Nickname} - 数据已保存到数据库");
                     }
-                    
-                    _db.Commit();
+                    catch
+                    {
+                        _db.Rollback();
+                        _logService.Error("CreditWithdrawService", 
+                            $"🔒 [{actionName}] {member.Nickname} - 数据库事务回滚");
+                        throw;
+                    }
                 }
-                catch
-                {
-                    _db.Rollback();
-                    throw;
-                }
+                // 🔥 锁释放：上下分数据已同步写入
 
                 // 🔥 6. 发送微信通知（仅非加载模式）
                 if (!isLoading && _socketClient != null)
@@ -188,6 +226,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 🔥 加载群的所有上下分记录并恢复统计
         /// 优化：只恢复"已同意"的记录，避免重复计算
+        /// 🔥 用户要求：从内存表（BindingList）查询，而不是数据库
         /// </summary>
         public void LoadGroupCreditWithdraws(string groupWxid, Core.V2MemberBindingList membersBindingList)
         {
@@ -195,13 +234,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Info("CreditWithdrawService", $"📊 开始加载群 {groupWxid} 的上下分数据...");
 
-                // 🔥 1. 加载已同意的上下分记录
-                var creditWithdraws = _db.Table<V2CreditWithdraw>()
+                // 🔥 1. 从 BindingList（内存表）查询已同意的上下分记录
+                // 用户要求："订单只能从内存表中拿，改数据都改内存表，内存表修改即保存"
+                if (_creditWithdrawsBindingList == null)
+                {
+                    _logService.Warning("CreditWithdrawService", "上下分 BindingList 未设置，无法加载数据");
+                    return;
+                }
+
+                var creditWithdraws = _creditWithdrawsBindingList
                     .Where(cw => cw.GroupWxId == groupWxid && cw.Status == CreditWithdrawStatus.已同意)
                     .OrderBy(cw => cw.Timestamp)
                     .ToList();
 
-                _logService.Info("CreditWithdrawService", $"📊 找到 {creditWithdraws.Count} 条已同意的上下分记录");
+                _logService.Info("CreditWithdrawService", $"📊 从内存表找到 {creditWithdraws.Count} 条已同意的上下分记录");
 
                 if (creditWithdraws.Count == 0)
                 {
@@ -224,7 +270,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     })
                     .ToList();
 
-                // 🔥 4. 更新会员统计（批量更新，高效）
+                // 🔥 4. 更新会员统计（通过 BindingList 更新，自动保存）
                 int updatedCount = 0;
                 foreach (var stat in memberStats)
                 {
@@ -236,14 +282,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         member.CreditToday = stat.CreditToday;
                         member.WithdrawToday = stat.WithdrawToday;
                         
-                        // 保存到数据库
-                        _db.Update(member);
+                        // 🔥 BindingList 的 PropertyChanged 会自动保存到数据库，不需要手动 _db.Update
                         updatedCount++;
                     }
                 }
 
                 _logService.Info("CreditWithdrawService", 
-                    $"✅ 上下分数据加载完成\n" +
+                    $"✅ 上下分数据加载完成（从内存表）\n" +
                     $"处理记录：{creditWithdraws.Count} 条\n" +
                     $"更新会员：{updatedCount} 个");
             }

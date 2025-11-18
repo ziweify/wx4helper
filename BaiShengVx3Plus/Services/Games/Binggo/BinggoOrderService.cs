@@ -32,6 +32,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private V2OrderBindingList? _ordersBindingList;
         private V2MemberBindingList? _membersBindingList;
         
+        // 🔥 应用级别的锁：保护会员余额、订单、资金相关表的同步写入
+        // 参考用户要求："所有会员表，订单表的操作，要变成同步操作。而且是应用级别的同步"
+        private static readonly object _memberBalanceLock = new object();
+        
         public BinggoOrderService(
             ILogService logService,
             IBinggoLotteryService lotteryService,
@@ -159,33 +163,47 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     BetAmount = betContent.TotalAmount
                 };
                 
-                // 4. 扣除余额（如果不是托或管理）
-                if (member.State != MemberState.托 && member.State != MemberState.管理)
+                // 🔥 4. 使用应用级别的锁保护会员余额和订单的同步更新
+                // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
+                // 参考 F5BotV2: V2Member.AddOrder 方法（第430-439行）
+                lock (_memberBalanceLock)
                 {
-                    member.Balance -= (float)betContent.TotalAmount;
+                    // 4.1 扣除余额（如果不是托或管理）
+                    if (member.State != MemberState.托 && member.State != MemberState.管理)
+                    {
+                        _logService.Info("BinggoOrderService", 
+                            $"🔒 [下单] {member.Nickname} - 扣除前余额: {member.Balance:F2}");
+                        
+                        member.Balance -= (float)betContent.TotalAmount;
+                        
+                        _logService.Info("BinggoOrderService", 
+                            $"🔒 [下单] {member.Nickname} - 扣除 {betContent.TotalAmount:F2}，扣除后余额: {member.Balance:F2}");
+                    }
+                    
+                    // 4.2 增加待结算金额和统计（参考 F5BotV2 第 546 行）
+                    // 注意：托单不计算在内（已在前面判断）
+                    member.BetWait += (float)betContent.TotalAmount;
+                    member.BetToday += (float)betContent.TotalAmount;
+                    member.BetTotal += (float)betContent.TotalAmount;
+                    member.BetCur += (float)betContent.TotalAmount;  // 本期下注
+                    
                     _logService.Info("BinggoOrderService", 
-                        $"扣除余额: {member.Nickname} - {betContent.TotalAmount:F2}，剩余: {member.Balance:F2}");
+                        $"🔒 [下单] {member.Nickname} - 待结算: {member.BetWait:F2}, 今日下注: {member.BetToday:F2}");
+                    
+                    // 4.3 保存订单（插入到列表顶部，保持"最新在上"）
+                    if (_ordersBindingList != null && _ordersBindingList.Count > 0)
+                    {
+                        _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                    }
+                    else
+                    {
+                        _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
+                    }
+                    
+                    _logService.Info("BinggoOrderService", 
+                        $"🔒 [下单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
                 }
-                
-                // 🔥 5. 增加待结算金额和统计（参考 F5BotV2 第 546 行）
-                // 注意：托单不计算在内（已在前面判断）
-                member.BetWait += (float)betContent.TotalAmount;
-                member.BetToday += (float)betContent.TotalAmount;
-                member.BetTotal += (float)betContent.TotalAmount;
-                member.BetCur += (float)betContent.TotalAmount;  // 本期下注
-                
-                _logService.Info("BinggoOrderService", 
-                    $"📊 统计更新: {member.Nickname} - 待结算 {member.BetWait:F2} - 今日下注 {member.BetToday:F2}");
-                
-                // 6. 保存订单（插入到列表顶部，保持"最新在上"）
-                if (_ordersBindingList != null && _ordersBindingList.Count > 0)
-                {
-                    _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
-                }
-                else
-                {
-                    _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
-                }
+                // 🔥 锁释放：会员余额、订单数据已同步写入
                 
                 _logService.Info("BinggoOrderService", 
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
@@ -263,30 +281,45 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 4. 立即结算（与正常订单一样走结算流程）
                 await SettleSingleOrderAsync(order, lotteryData);
                 
-                // 5. 更新会员余额（盈亏）
-                member.Balance += order.NetProfit;  // 🔥 补单也要更新余额
-                member.IncomeTotal += order.NetProfit;
-                if (order.CreatedAt.Date == DateTime.Now.Date)
+                // 🔥 5. 使用应用级别的锁保护会员余额和订单的同步更新（补单）
+                // 参考用户要求："所有会员表，订单表的操作，要变成同步操作"
+                lock (_memberBalanceLock)
                 {
-                    member.IncomeToday += order.NetProfit;
+                    _logService.Info("BinggoOrderService", 
+                        $"🔒 [补单] {member.Nickname} - 补单前余额: {member.Balance:F2}");
+                    
+                    // 5.1 更新会员余额（盈亏）
+                    member.Balance += order.NetProfit;  // 🔥 补单也要更新余额
+                    member.IncomeTotal += order.NetProfit;
+                    if (order.CreatedAt.Date == DateTime.Now.Date)
+                    {
+                        member.IncomeToday += order.NetProfit;
+                    }
+                    
+                    _logService.Info("BinggoOrderService", 
+                        $"🔒 [补单] {member.Nickname} - 补单后余额: {member.Balance:F2}, 盈亏: {order.NetProfit:F2}");
+                    
+                    // 5.2 保存订单（插入到列表顶部，保持"最新在上"）
+                    if (_ordersBindingList != null && _ordersBindingList.Count > 0)
+                    {
+                        _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                    }
+                    else
+                    {
+                        _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
+                    }
+                    
+                    _logService.Info("BinggoOrderService", 
+                        $"🔒 [补单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
+                    
+                    // 5.3 更新全局统计（完全参考 F5BotV2）
+                    if (_statisticsService != null && order.OrderType != OrderType.托)
+                    {
+                        _statisticsService.OnOrderCreated(order);  // 增加总注、今投、当前
+                        _statisticsService.OnOrderSettled(order);  // 增加总盈、今盈
+                    }
                 }
-                
-                // 6. 保存订单（插入到列表顶部，保持"最新在上"）
-                if (_ordersBindingList != null && _ordersBindingList.Count > 0)
-                {
-                    _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
-                }
-                else
-                {
-                    _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
-                }
-                
-                // 🔥 7. 更新全局统计（完全参考 F5BotV2）
-                if (_statisticsService != null && order.OrderType != OrderType.托)
-                {
-                    _statisticsService.OnOrderCreated(order);  // 增加总注、今投、当前
-                    _statisticsService.OnOrderSettled(order);  // 增加总盈、今盈
-                }
+                // 🔥 锁释放：补单数据已同步写入
                 
                 // 🔥 8. 生成补单微信消息（完全参考 F5BotV2 第 1261-1268 行）
                 // 格式：
@@ -448,36 +481,49 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
                 
-                // 🔥 6. 显式更新订单到数据库（确保状态保存）
-                // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder
-                UpdateOrder(order);
-                
-                // 7. 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
-                var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
-                if (member != null && order.OrderType != OrderType.托)  // 🔥 托单不更新会员数据
+                // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
+                // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
+                // 参考 F5BotV2: V2Member.OpenLottery 方法（第446-457行）
+                lock (_memberBalanceLock)
                 {
-                    // 🔥 关键逻辑（参考 F5BotV2 V2Member.OpenLottery）：
-                    // Balance += order.Profit (加上总赢金额，包含本金)
-                    // IncomeToday += (order.Profit - order.AmountTotal)  (今日盈亏 = 纯利)
-                    // IncomeTotal += (order.Profit - order.AmountTotal)  (总盈亏 = 纯利)
-                    
-                    member.Balance += order.Profit;  // 🔥 加上总赢金额
-                    member.IncomeToday += order.NetProfit;  // 🔥 今日盈亏（纯利）
-                    member.IncomeTotal += order.NetProfit;  // 🔥 总盈亏（纯利）
-                    
-                    // 🔥 扣除待结算金额（参考 F5BotV2 第 633 行: m.BetWait = m.BetWait - order.AmountTotal）
-                    member.BetWait -= order.AmountTotal;
+                    // 6.1 显式更新订单到数据库（确保状态保存）
+                    // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder
+                    UpdateOrder(order);
                     
                     _logService.Info("BinggoOrderService", 
-                        $"✅ 会员更新: {member.Nickname} - 余额 {member.Balance:F2} - 今日盈亏 {member.IncomeToday:F2} - 待结算 {member.BetWait:F2}");
+                        $"🔒 [开奖] 订单已更新: OrderId={order.Id}, Profit={order.Profit:F2}, NetProfit={order.NetProfit:F2}");
                     
-                    // 🔥 更新全局盈利统计（参考 F5BotV2 第 626-635 行：OnMemberOrderFinish）
-                    // 注意：只更新盈利，不更新投注金额（投注金额在下单时已更新）
-                    if (_statisticsService != null)
+                    // 6.2 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
+                    var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
+                    if (member != null && order.OrderType != OrderType.托)  // 🔥 托单不更新会员数据
                     {
-                        _statisticsService.OnOrderSettled(order);
+                        _logService.Info("BinggoOrderService", 
+                            $"🔒 [开奖] {member.Nickname} - 结算前余额: {member.Balance:F2}, 待结算: {member.BetWait:F2}");
+                        
+                        // 🔥 关键逻辑（参考 F5BotV2 V2Member.OpenLottery）：
+                        // Balance += order.Profit (加上总赢金额，包含本金)
+                        // IncomeToday += (order.Profit - order.AmountTotal)  (今日盈亏 = 纯利)
+                        // IncomeTotal += (order.Profit - order.AmountTotal)  (总盈亏 = 纯利)
+                        
+                        member.Balance += order.Profit;  // 🔥 加上总赢金额
+                        member.IncomeToday += order.NetProfit;  // 🔥 今日盈亏（纯利）
+                        member.IncomeTotal += order.NetProfit;  // 🔥 总盈亏（纯利）
+                        
+                        // 🔥 扣除待结算金额（参考 F5BotV2 第 633 行: m.BetWait = m.BetWait - order.AmountTotal）
+                        member.BetWait -= order.AmountTotal;
+                        
+                        _logService.Info("BinggoOrderService", 
+                            $"🔒 [开奖] {member.Nickname} - 结算后余额: {member.Balance:F2}, 待结算: {member.BetWait:F2}, 今日盈亏: {member.IncomeToday:F2}");
+                        
+                        // 🔥 更新全局盈利统计（参考 F5BotV2 第 626-635 行：OnMemberOrderFinish）
+                        // 注意：只更新盈利，不更新投注金额（投注金额在下单时已更新）
+                        if (_statisticsService != null)
+                        {
+                            _statisticsService.OnOrderSettled(order);
+                        }
                     }
                 }
+                // 🔥 锁释放：订单状态、会员余额已同步更新
                 
                 await Task.CompletedTask;
             }
@@ -491,20 +537,34 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         /// <summary>
         /// 获取指定期号的待投注订单（用于自动投注）
+        /// 🔥 关键：
+        /// 1. 从 BindingList（内存表）查询，而不是数据库
+        /// 2. 排除托单（OrderType.托）
+        /// 参考 F5BotV2：托单不应该投注到平台，只用于显示和统计
         /// </summary>
         public IEnumerable<V2MemberOrder> GetPendingOrdersForIssue(int issueId)
         {
-            if (_db == null) return Enumerable.Empty<V2MemberOrder>();
+            if (_ordersBindingList == null) return Enumerable.Empty<V2MemberOrder>();
             
             try
             {
-                var orders = _db.Table<V2MemberOrder>()
+                // 🔥 从 BindingList（内存表）查询，而不是数据库
+                // 用户要求："订单只能从内存表中拿，改数据都改内存表，内存表修改即保存"
+                var allOrders = _ordersBindingList
                     .Where(o => o.IssueId == issueId && o.OrderStatus == OrderStatus.待处理)
                     .ToList();
                 
-                _logService.Info("BinggoOrderService", $"📋 查询待投注订单:期号{issueId} 找到{orders.Count}个");
+                // 🔥 排除托单（参考 F5BotV2）
+                var validOrders = allOrders
+                    .Where(o => o.OrderType != OrderType.托)
+                    .ToList();
                 
-                return orders;
+                int tuoOrders = allOrders.Count - validOrders.Count;
+                
+                _logService.Info("BinggoOrderService", 
+                    $"📋 查询待投注订单（从内存表）:期号{issueId} 总计{allOrders.Count}个，有效{validOrders.Count}个，托单{tuoOrders}个（已排除）");
+                
+                return validOrders;
             }
             catch (Exception ex)
             {
@@ -516,18 +576,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         /// <summary>
         /// 获取指定会员、指定期号的待处理订单（用于取消命令）
+        /// 🔥 从 BindingList（内存表）查询，而不是数据库
         /// </summary>
         public IEnumerable<V2MemberOrder> GetPendingOrdersForMemberAndIssue(string wxid, int issueId)
         {
-            if (_db == null) return Enumerable.Empty<V2MemberOrder>();
+            if (_ordersBindingList == null) return Enumerable.Empty<V2MemberOrder>();
             
             try
             {
-                var orders = _db.Table<V2MemberOrder>()
+                // 🔥 从 BindingList（内存表）查询
+                var orders = _ordersBindingList
                     .Where(o => o.Wxid == wxid && o.IssueId == issueId && o.OrderStatus == OrderStatus.待处理)
                     .ToList();
                 
-                _logService.Info("BinggoOrderService", $"📋 查询待处理订单:会员{wxid} 期号{issueId} 找到{orders.Count}个");
+                _logService.Info("BinggoOrderService", $"📋 查询待处理订单（从内存表）:会员{wxid} 期号{issueId} 找到{orders.Count}个");
                 
                 return orders;
             }

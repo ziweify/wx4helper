@@ -123,8 +123,51 @@ namespace zhaocaimao.Models.AutoBet
                 _isEnabled = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEnabled)));
                 
-                // 🔥 配置自管理模式：监控线程始终运行，内部检查 IsEnabled 状态
-                // 无需在 setter 中启动/停止监控线程
+                // 🔥 直接管理浏览器：IsEnabled 变化时立即启动/停止浏览器
+                if (value)
+                {
+                    // 启用：立即启动浏览器
+                    _logService?.Info("BetConfig", $"🔥 [{ConfigName}] IsEnabled setter 被触发！value=true，准备启动浏览器");
+                    
+                    // 🔥 立即在 UI 线程中启动（避免异步导致的延迟）
+                    try
+                    {
+                        // 🔥 直接检查浏览器状态（不使用 Task.Run，避免异步延迟）
+                        if (IsConnected)
+                        {
+                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器已存在且已连接，无需启动");
+                            return;
+                        }
+                        
+                        // 🔥 立即启动浏览器（异步执行，但不等待）
+                        _logService?.Info("BetConfig", $"🚀 [{ConfigName}] 浏览器不存在或未初始化，立即启动...");
+                        
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await StartBrowserManuallyAsync();
+                                _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器启动完成");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService?.Error("BetConfig", $"❌ [{ConfigName}] 自动启动浏览器失败", ex);
+                            }
+                        });
+                        
+                        _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器启动任务已创建");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService?.Error("BetConfig", $"❌ [{ConfigName}] IsEnabled setter 异常", ex);
+                    }
+                }
+                else
+                {
+                    // 禁用：停止浏览器
+                    _logService?.Info("BetConfig", $"🛑 [{ConfigName}] IsEnabled=false，停止浏览器");
+                    StopBrowserManually();
+                }
             }
         }
     }

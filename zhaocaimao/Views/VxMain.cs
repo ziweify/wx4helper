@@ -428,10 +428,41 @@ namespace zhaocaimao
                 // 🎚️ 加载应用配置（从 appsettings.json）
                 LoadAppConfiguration();
                 
-                // 🔥 配置自管理模式：启动监控线程
-                _logService.Info("VxMain", "🚀 启动自动投注监控线程（配置自管理模式）...");
-                _autoBetService.StartMonitoring();
+                // 🔥 浏览器由 IsEnabled 属性直接管理，无需监控线程
                 _logService.Info("VxMain", "✅ 配置初始化完成");
+                
+                // 🔥 检查是否有启用的配置需要立即启动浏览器
+                // 注意：此时 LoadAppConfiguration 还未执行，需要再次检查
+                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                if (defaultConfig != null)
+                {
+                    _logService.Info("VxMain", $"📊 默认配置状态: IsEnabled={defaultConfig.IsEnabled}, IsConnected={defaultConfig.IsConnected}");
+                    
+                    if (defaultConfig.IsEnabled && !defaultConfig.IsConnected)
+                    {
+                        _logService.Info("VxMain", $"🚀 [InitializeGlobalServices] 检测到飞单开关已开启，但浏览器未启动，立即启动浏览器...");
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await defaultConfig.StartBrowserManuallyAsync();
+                                _logService.Info("VxMain", $"✅ [InitializeGlobalServices] 浏览器启动请求已完成");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Error("VxMain", $"❌ [InitializeGlobalServices] 启动浏览器失败", ex);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", $"ℹ️ [InitializeGlobalServices] 无需启动浏览器: IsEnabled={defaultConfig.IsEnabled}, IsConnected={defaultConfig.IsConnected}");
+                    }
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ [InitializeGlobalServices] 未找到默认配置");
+                }
                 
                 // 2. 创建开奖数据 BindingList（使用全局数据库）
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
@@ -3570,14 +3601,15 @@ namespace zhaocaimao
                     // 先保存设置
                     SaveAutoBetSettings();
                     
-                    // ✅ 设置 BetConfig.IsEnabled = true（让监控线程启动浏览器）
+                    // ✅ 设置 BetConfig.IsEnabled = true（立即启动浏览器）
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
+                        // 🔥 IsEnabled 的 setter 会自动启动浏览器（异步执行）
                         defaultConfig.IsEnabled = true;
                         _autoBetService.SaveConfig(defaultConfig);
                         _logService.Info("VxMain", $"✅ 已设置配置 [{defaultConfig.ConfigName}] IsEnabled=true");
-                        _logService.Info("VxMain", "   监控线程将在2秒内检测到并启动浏览器");
+                        _logService.Info("VxMain", "   浏览器将立即启动（由 IsEnabled setter 触发）");
                         
                         // 🔥 启动 AutoBetCoordinator（订阅封盘事件，处理订单投注）
                         _ = Task.Run(async () =>
@@ -3687,23 +3719,56 @@ namespace zhaocaimao
                 _logService.Info("VxMain", $"✅ 应用配置已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
                 
                 // 🔥 同步应用级配置到 BetConfig.IsEnabled
-                // 这样监控线程才能正确检测到需要启动浏览器
                 var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
+                    // 🔥 同步 IsEnabled 状态（无论是否相等，都要确保浏览器已启动）
+                    _logService.Info("VxMain", $"📊 [LoadAppConfiguration] 配置状态检查:");
+                    _logService.Info("VxMain", $"   appsettings.json.Is飞单开关 = {isAutoBetEnabled}");
+                    _logService.Info("VxMain", $"   BetConfig.IsEnabled = {defaultConfig.IsEnabled}");
+                    _logService.Info("VxMain", $"   BetConfig.IsConnected = {defaultConfig.IsConnected}");
+                    _logService.Info("VxMain", $"   Browser object = {(defaultConfig.Browser != null ? "存在" : "null")}");
+                    
                     if (defaultConfig.IsEnabled != isAutoBetEnabled)
                     {
-                        _logService.Info("VxMain", $"🔄 同步飞单开关状态: appsettings.json={isAutoBetEnabled}, BetConfig.IsEnabled={defaultConfig.IsEnabled}");
-                        _logService.Info("VxMain", $"   将 BetConfig.IsEnabled 同步为: {isAutoBetEnabled}");
+                        _logService.Info("VxMain", $"🔄 [LoadAppConfiguration] IsEnabled 状态不一致，同步为: {isAutoBetEnabled}");
                         defaultConfig.IsEnabled = isAutoBetEnabled;
                         _autoBetService.SaveConfig(defaultConfig);
+                        _logService.Info("VxMain", $"✅ [LoadAppConfiguration] IsEnabled 已同步并保存");
                     }
                     else
                     {
-                        _logService.Info("VxMain", $"✅ 飞单开关状态已同步: BetConfig.IsEnabled={defaultConfig.IsEnabled}");
+                        _logService.Info("VxMain", $"✅ [LoadAppConfiguration] IsEnabled 状态已一致: {defaultConfig.IsEnabled}");
                     }
                     
-                    // 🔥 如果飞单开关已开启，启动 AutoBetCoordinator（订阅封盘事件）
+                    // 🔥 【关键】无论 IsEnabled 是否变化，都要检查浏览器是否需要启动
+                    if (isAutoBetEnabled && !defaultConfig.IsConnected)
+                    {
+                        _logService.Info("VxMain", $"🔥🔥🔥 [LoadAppConfiguration] 飞单已开启但浏览器未启动！");
+                        _logService.Info("VxMain", $"   立即启动浏览器...");
+                        
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                _logService.Info("VxMain", $"🚀 [LoadAppConfiguration] Task.Run 开始执行");
+                                await defaultConfig.StartBrowserManuallyAsync();
+                                _logService.Info("VxMain", $"✅ [LoadAppConfiguration] 浏览器启动请求已完成");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Error("VxMain", $"❌ [LoadAppConfiguration] 启动浏览器失败", ex);
+                            }
+                        });
+                        
+                        _logService.Info("VxMain", $"✅ [LoadAppConfiguration] 浏览器启动任务已创建（异步执行）");
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", $"ℹ️ [LoadAppConfiguration] 无需启动浏览器：IsAutoBetEnabled={isAutoBetEnabled}, IsConnected={defaultConfig.IsConnected}");
+                    }
+                    
+                    // 🔥 如果飞单开关已开启，启动 AutoBetCoordinator
                     if (isAutoBetEnabled)
                     {
                         _logService.Info("VxMain", "✅ 检测到飞单开关已开启，启动 AutoBetCoordinator...");

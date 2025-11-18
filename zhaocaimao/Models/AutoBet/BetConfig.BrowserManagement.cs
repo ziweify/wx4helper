@@ -13,12 +13,10 @@ namespace zhaocaimao.Models.AutoBet
     {
         #region 私有字段（运行时状态，不持久化）
         
-        private Thread? _monitorThread;
-        private bool _monitorRunning;
         private bool _isStartingBrowser; // 🔥 正在启动浏览器的标志，防止重复启动
         private readonly object _browserLock = new object();
         private ILogService? _logService;
-        // 🔥 控件方式：不再需要 Socket 服务器
+        // 🔥 控件方式：不再需要 Socket 服务器和监控线程
         
         #endregion
         
@@ -31,6 +29,9 @@ namespace zhaocaimao.Models.AutoBet
         {
             _logService = logService;
             // 🔥 控件方式：不再需要 Socket 服务器，保留参数以兼容接口
+            
+            // 🔥 诊断日志：记录依赖注入
+            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 依赖服务已注入");
         }
         
         #endregion
@@ -38,62 +39,11 @@ namespace zhaocaimao.Models.AutoBet
         #region 公共方法：生命周期管理
         
         /// <summary>
-        /// 启动监控线程（当 IsEnabled 变为 true 时自动调用）
-        /// </summary>
-        public void StartMonitoring()
-        {
-            lock (_browserLock)
-            {
-                if (_monitorThread != null && _monitorThread.IsAlive)
-                {
-                    _logService?.Info("BetConfig", $"⚠️ [{ConfigName}] 监控线程已在运行，无需重复启动");
-                    return;
-                }
-                
-                _monitorRunning = true;
-                _monitorThread = new Thread(MonitorLoop)
-                {
-                    Name = $"BrowserMonitor-{ConfigName}-{Id}",
-                    IsBackground = true
-                };
-                _monitorThread.Start();
-                
-                _logService?.Info("BetConfig", $"✅ [{ConfigName}] 监控线程已启动");
-            }
-        }
-        
-        /// <summary>
-        /// 停止监控线程（当 IsEnabled 变为 false 时自动调用）
-        /// </summary>
-        public void StopMonitoring()
-        {
-            lock (_browserLock)
-            {
-                if (_monitorThread == null) return;
-                
-                _logService?.Info("BetConfig", $"⏹️ [{ConfigName}] 停止监控线程...");
-                _monitorRunning = false;
-                
-                // 等待线程退出（最多3秒）
-                if (_monitorThread.IsAlive)
-                {
-                    if (!_monitorThread.Join(3000))
-                    {
-                        _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 监控线程未在3秒内退出");
-                    }
-                }
-                
-                _monitorThread = null;
-                _logService?.Info("BetConfig", $"✅ [{ConfigName}] 监控线程已停止");
-            }
-        }
-        
-        /// <summary>
-        /// 启动浏览器（公共方法，供用户手动调用）
+        /// 启动浏览器（公共方法，供用户手动调用或 IsEnabled 变化时自动调用）
         /// </summary>
         public async Task StartBrowserManuallyAsync()
         {
-            _logService?.Info("BetConfig", $"🖱️ [{ConfigName}] 用户手动启动浏览器");
+            _logService?.Info("BetConfig", $"🚀 [{ConfigName}] 启动浏览器");
             await StartBrowserInternalAsync();
         }
         
@@ -117,117 +67,41 @@ namespace zhaocaimao.Models.AutoBet
             }
         }
         
-        #endregion
-        
-        #region 私有方法：监控循环
-        
         /// <summary>
-        /// 监控循环：只监控自己的连接状态
+        /// 显示浏览器控件（如果 ShowBrowserWindow 为 true）
         /// </summary>
-        private void MonitorLoop()
+        private void ShowBrowserControl()
         {
-            try
+            if (!ShowBrowserWindow)
             {
-                _logService?.Info("BetConfig", $"🚀 [{ConfigName}] 监控线程开始运行（检查间隔：2秒）");
-                
-                while (_monitorRunning)
-                {
-                    try
-                    {
-                        // 检查是否需要启动浏览器
-                        if (ShouldStartBrowser())
-                        {
-                            // 延迟2秒，给老浏览器重连的机会
-                            _logService?.Info("BetConfig", $"⏳ [{ConfigName}] 检测到未连接，延迟2秒再次检查...");
-                            Thread.Sleep(2000);
-                            
-                            // 再次检查（可能在等待期间已连接）
-                            if (_monitorRunning && ShouldStartBrowser())
-                            {
-                                // 🔥 确认需要启动后，设置正在启动标志
-                                _isStartingBrowser = true;
-                                
-                                // 🔥 在后台线程中调用异步方法
-                                _ = Task.Run(async () =>
-                                {
-                                    try
-                                    {
-                                        await StartBrowserInternalAsync();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logService?.Error("BetConfig", $"❌ [{ConfigName}] 启动浏览器时异常", ex);
-                                    }
-                                    finally
-                                    {
-                                        // 🔥 清除正在启动标志
-                                        _isStartingBrowser = false;
-                                    }
-                                });
-                            }
-                        }
-                        
-                        // 🔥 统一使用2秒间隔，给浏览器足够时间连接
-                        Thread.Sleep(2000);
-                    }
-                    catch (ThreadInterruptedException)
-                    {
-                        break;  // 线程被中断，退出循环
-                    }
-                    catch (Exception ex)
-                    {
-                        _logService?.Error("BetConfig", $"[{ConfigName}] 监控任务执行异常", ex);
-                        Thread.Sleep(2000);
-                    }
-                }
-                
-                _logService?.Info("BetConfig", $"⏹️ [{ConfigName}] 监控线程已退出");
-            }
-            catch (Exception ex)
-            {
-                _logService?.Error("BetConfig", $"[{ConfigName}] 监控线程异常退出", ex);
-            }
-        }
-        
-        /// <summary>
-        /// 判断是否应该启动浏览器
-        /// </summary>
-        private bool ShouldStartBrowser()
-        {
-            // 0. 🔥 检查是否正在启动（防止重复启动）
-            if (_isStartingBrowser)
-            {
-                return false;
+                _logService?.Info("BetConfig", $"ℹ️ [{ConfigName}] ShowBrowserWindow=false，不显示浏览器窗口");
+                return;
             }
             
-            // 1. 检查配置是否启用
-            if (!IsEnabled)
-            {
-                return false;
-            }
-            
-            // 2. 检查是否已连接
-            if (IsConnected)
-            {
-                return false;
-            }
-            
-            // 3. 检查浏览器对象是否存在
             lock (_browserLock)
             {
-                if (Browser != null)
+                if (Browser == null || !Browser.IsInitialized)
                 {
-                    return false;  // 浏览器对象存在，可能正在启动或连接中
+                    _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器未初始化，无法显示");
+                    return;
+                }
+                
+                // 🔥 显示浏览器控件
+                // 注意：这里需要将控件添加到某个窗体中才能显示
+                // 如果控件已经在窗体中，只需要设置 Visible = true
+                if (Browser.Parent == null)
+                {
+                    _logService?.Info("BetConfig", $"ℹ️ [{ConfigName}] 浏览器控件未添加到窗体，需要手动添加到窗体才能显示");
+                    // TODO: 如果需要自动显示，可以创建一个浏览器窗口窗体
+                }
+                else
+                {
+                    Browser.Visible = true;
+                    Browser.BringToFront();
+                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器控件已显示");
                 }
             }
-            
-            // 4. 控件方式：不需要检查进程，直接检查控件状态
-            // ProcessId 在控件方式下不再使用
-            
-            return true;  // 所有条件都满足，应该启动浏览器
         }
-        
-        // 🔥 控件方式：不再需要检查进程
         
         #endregion
         
@@ -238,19 +112,32 @@ namespace zhaocaimao.Models.AutoBet
         /// </summary>
         private async Task StartBrowserInternalAsync()
         {
-            // 🔥 不能在 lock 内使用 await，所以先检查再锁定
-            bool shouldStart = false;
-            lock (_browserLock)
+            // 🔥 检查是否正在启动（防止重复启动）
+            if (_isStartingBrowser)
             {
-                if (Browser != null)
-                {
-                    _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器已存在，跳过重复启动");
-                    return;
-                }
-                shouldStart = true;  // 标记需要启动
+                _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器正在启动中，跳过重复启动");
+                return;
             }
             
-            if (!shouldStart) return;
+            // 🔥 检查浏览器是否已存在
+            lock (_browserLock)
+            {
+                if (Browser != null && Browser.IsInitialized)
+                {
+                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器已存在且已初始化，无需重复启动");
+                    return;
+                }
+                
+                // 如果浏览器存在但未初始化，清理它
+                if (Browser != null && !Browser.IsInitialized)
+                {
+                    _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器存在但未初始化，清理后重新创建");
+                    Browser.Dispose();
+                    Browser = null;
+                }
+                
+                _isStartingBrowser = true;  // 标记正在启动
+            }
             
             try
             {
@@ -273,59 +160,60 @@ namespace zhaocaimao.Models.AutoBet
                 {
                     await newBrowserControl.InitializeAsync(Id, ConfigName, Platform, PlatformUrl);
                     
-                    // 🔥 启动成功后再设置到 Browser 属性
+                    // 🔥 启动成功后再设置到 Browser 属性（立即设置，不等待完全初始化）
                     lock (_browserLock)
                     {
                         Browser = newBrowserControl;
                     }
                     
-                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器控件已创建并初始化");
+                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器控件已创建并开始初始化");
                     
-                    // 🔥 控件方式：直接检查是否已初始化（不需要等待 Socket 连接）
-                    _logService?.Info("BetConfig", $"⏳ [{ConfigName}] 等待浏览器控件完全初始化...");
-                    for (int i = 0; i < 10; i++)
-                    {
-                        await Task.Delay(500);  // 每500ms检查一次
-                        if (IsConnected)
-                        {
-                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器控件已初始化！等待时间: {i * 0.5}秒");
-                            break;
-                        }
-                    }
+                    // 🔥 立即完成，不等待初始化循环
+                    // 浏览器控件初始化是异步的，但不需要等待，可以立即使用
+                    // 如果需要显示窗口，会在 ShowBrowserControl 中处理
                     
-                    // 🔥 自动登录（如果配置了账号密码）
-                    if (AutoLogin && !string.IsNullOrEmpty(Username))
+                    // 🔥 自动登录（如果配置了账号密码，在后台执行，不阻塞启动）
+                    _ = Task.Run(async () =>
                     {
-                        _logService?.Info("BetConfig", $"🔐 [{ConfigName}] 自动登录: {Username}");
-                        try
+                        // 等待浏览器引擎初始化完成（最多等待3秒）
+                        for (int i = 0; i < 6; i++)
                         {
-                            var loginResult = await newBrowserControl.ExecuteCommandAsync("Login", new
+                            await Task.Delay(500);
+                            if (newBrowserControl.IsInitialized)
                             {
-                                username = Username,
-                                password = Password
-                            });
-                            
-                            if (loginResult.Success)
-                            {
-                                _logService?.Info("BetConfig", $"✅ [{ConfigName}] 登录成功");
-                                Status = "已登录";
-                            }
-                            else
-                            {
-                                _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 登录失败: {loginResult.ErrorMessage}");
-                                Status = "登录失败";
+                                break;
                             }
                         }
-                        catch (Exception ex)
+                        
+                        if (AutoLogin && !string.IsNullOrEmpty(Username))
                         {
-                            _logService?.Error("BetConfig", $"❌ [{ConfigName}] 自动登录异常", ex);
-                            Status = "登录异常";
+                            _logService?.Info("BetConfig", $"🔐 [{ConfigName}] 自动登录: {Username}");
+                            try
+                            {
+                                var loginResult = await newBrowserControl.ExecuteCommandAsync("Login", new
+                                {
+                                    username = Username,
+                                    password = Password
+                                });
+                                
+                                if (loginResult.Success)
+                                {
+                                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 登录成功");
+                                    Status = "已登录";
+                                }
+                                else
+                                {
+                                    _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 登录失败: {loginResult.ErrorMessage}");
+                                    Status = "登录失败";
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService?.Error("BetConfig", $"❌ [{ConfigName}] 自动登录异常", ex);
+                                Status = "登录异常";
+                            }
                         }
-                    }
-                    else
-                    {
-                        _logService?.Info("BetConfig", $"ℹ️ [{ConfigName}] 未配置账号密码，跳过自动登录");
-                    }
+                    });
                 }
                 catch (Exception initEx)
                 {
@@ -342,6 +230,11 @@ namespace zhaocaimao.Models.AutoBet
                     Browser?.Dispose();
                     Browser = null;
                 }
+            }
+            finally
+            {
+                // 清除启动标志
+                _isStartingBrowser = false;
             }
         }
         
@@ -368,9 +261,6 @@ namespace zhaocaimao.Models.AutoBet
         /// </summary>
         partial void DisposeBrowserManagement()
         {
-            // 停止监控线程
-            StopMonitoring();
-            
             // 关闭浏览器
             lock (_browserLock)
             {

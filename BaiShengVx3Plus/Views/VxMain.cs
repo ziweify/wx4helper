@@ -3210,22 +3210,23 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                if (_db == null || _membersBindingList == null)
+                if (_db == null || _membersBindingList == null || _creditWithdrawsBindingList == null)
                 {
-                    _logService.Warning("VxMain", "数据库或会员列表未初始化，跳过上下分数据加载");
+                    _logService.Warning("VxMain", "数据库、会员列表或上下分列表未初始化，跳过上下分数据加载");
                     return;
                 }
                 
                 // 🔥 1. 确保表存在
                 _db.CreateTable<V2CreditWithdraw>();
                 
-                // 🔥 2. 加载该群的所有上下分记录
-                var creditWithdraws = _db.Table<V2CreditWithdraw>()
+                // 🔥 2. 从 BindingList（内存表）加载该群的所有上下分记录
+                // 用户要求："订单只能从内存表中拿，改数据都改内存表，内存表修改即保存"
+                var creditWithdraws = _creditWithdrawsBindingList
                     .Where(cw => cw.GroupWxId == groupWxid)
                     .OrderBy(cw => cw.Timestamp)
                     .ToList();
                 
-                _logService.Info("VxMain", $"📊 加载了 {creditWithdraws.Count} 条上下分记录");
+                _logService.Info("VxMain", $"📊 从内存表加载了 {creditWithdraws.Count} 条上下分记录");
                 
                 if (creditWithdraws.Count == 0)
                 {

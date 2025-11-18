@@ -37,13 +37,7 @@ namespace zhaocaimao.Services.AutoBet
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
         private Core.BetConfigBindingList? _configs;
         
-        // 🔥 后台监控任务：自动启动浏览器（如果配置需要但未连接）
-        private Thread? _monitorThread;
-        private bool _monitorRunning = false;
         private readonly object _lock = new object();
-        
-        // 🔥 记录正在启动的配置（防止重复启动）
-        private readonly HashSet<int> _startingConfigs = new();
         
         // 🔥 用于取消异步任务的 CancellationTokenSource
         private CancellationTokenSource? _cancellationTokenSource;
@@ -236,18 +230,34 @@ namespace zhaocaimao.Services.AutoBet
                 return;
             }
             
-            _log.Info("AutoBet", "🚀 开始启动配置监控（配置自管理模式）...");
+            _log.Info("AutoBet", "ℹ️ 监控线程已废弃，浏览器由 IsEnabled 属性直接管理");
             
-            int startedCount = 0;
+            // 🔥 检查是否有启用的配置需要启动浏览器
+            int enabledCount = 0;
             foreach (var config in _configs)
             {
-                // 🔥 无论 IsEnabled 状态如何，都启动监控线程
-                // 监控线程内部会检查 IsEnabled，只有启用时才启动浏览器
-                config.StartMonitoring();
-                startedCount++;
+                if (config.IsEnabled && !config.IsConnected)
+                {
+                    enabledCount++;
+                    _log.Info("AutoBet", $"🚀 检测到配置 [{config.ConfigName}] 已启用但浏览器未启动，立即启动...");
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await config.StartBrowserManuallyAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Error("AutoBet", $"❌ 启动浏览器失败: {config.ConfigName}", ex);
+                        }
+                    });
+                }
             }
             
-            _log.Info("AutoBet", $"✅ 已启动 {startedCount} 个配置的监控线程");
+            if (enabledCount > 0)
+            {
+                _log.Info("AutoBet", $"✅ 已为 {enabledCount} 个配置启动浏览器");
+            }
         }
         
         #region 配置管理（从内存读取，不访问数据库）
@@ -528,18 +538,8 @@ namespace zhaocaimao.Services.AutoBet
                 if (config.IsEnabled)
                 {
                     // 🔥 前置并发控制：检查是否已经在启动中
-                    bool alreadyStarting = false;
-                    lock (_lock)
-                    {
-                        alreadyStarting = _startingConfigs.Contains(configId);
-                    }
-                    
-                    if (alreadyStarting)
-                    {
-                        _log.Info("AutoBet", $"⏳ [{config.ConfigName}] 配置已在启动中，跳过事件驱动恢复");
-                        _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                        return;
-                    }
+                    // 🔥 监控线程已移除，不再需要并发控制
+                    // 浏览器由 IsEnabled 属性直接管理，内部已有防重复启动机制
                     
                     _log.Info("AutoBet", $"配置已启用，监控任务将在2秒内检查并恢复连接...");
                     _log.Info("AutoBet", "   说明：恢复由监控任务统一处理，避免与事件驱动重复启动");
@@ -1038,17 +1038,9 @@ namespace zhaocaimao.Services.AutoBet
         private async Task<bool> StartBrowserInternal(int configId)
         {
             // 🔥 并发控制：防止同一配置被重复启动
-            bool shouldStart = false;
-            lock (_lock)
-            {
-                if (_startingConfigs.Contains(configId))
-                {
-                    _log.Warning("AutoBet", $"⏳ 配置 {configId} 正在启动中，跳过重复启动");
-                    return false;
-                }
-                _startingConfigs.Add(configId);
-                shouldStart = true;  // 标记已添加，需要在 finally 中移除
-            }
+            // 🔥 监控线程已移除，不再需要并发控制
+            // 浏览器由 IsEnabled 属性直接管理，内部已有防重复启动机制
+            bool shouldStart = true;
             
             try
             {
@@ -1174,14 +1166,7 @@ namespace zhaocaimao.Services.AutoBet
             }
             finally
             {
-                // 🔥 移除启动标记（确保即使异常也能清除）
-                if (shouldStart)
-                {
-                    lock (_lock)
-                    {
-                        _startingConfigs.Remove(configId);
-                    }
-                }
+                // 🔥 监控线程已移除，不再需要移除启动标记
             }
         }
         
@@ -1278,185 +1263,7 @@ namespace zhaocaimao.Services.AutoBet
         
         #endregion
         
-        /// <summary>
-        /// 🔥 监控线程循环（使用专用线程 + while 循环，精确控制时机）
-        /// </summary>
-        private void MonitorBrowsersLoop()
-        {
-            try
-            {
-                _log.Info("AutoBet", "🚀 监控线程立即开始运行（用户需求：立即启动，但检测到需要启动浏览器时，先延迟2秒再次判断）");
-                _log.Info("AutoBet", "✅ 监控线程已启动，开始循环检查...");
-                
-                // 🔥 主循环：每2秒检查一次
-                while (_monitorRunning)
-                {
-                    try
-                    {
-                        // 🔥 执行监控任务
-                        MonitorBrowsers();
-                    }
-                    catch (Exception ex)
-                    {
-                        _log.Error("AutoBet", "监控任务执行异常", ex);
-                    }
-                    
-                    // 🔥 等待2秒再执行下一次
-                    // 注意：这里是任务执行完后等待2秒，不是从上次开始计时
-                    Thread.Sleep(2000);
-                }
-                
-                _log.Info("AutoBet", "⏹️ 监控线程已停止");
-            }
-            catch (ThreadAbortException)
-            {
-                _log.Info("AutoBet", "⏹️ 监控线程被中止");
-            }
-            catch (Exception ex)
-            {
-                _log.Error("AutoBet", "监控线程异常退出", ex);
-            }
-        }
-        
-        /// <summary>
-        /// 🔥 后台监控任务：主要机制（负责检查配置状态并启动浏览器）
-        /// 
-        /// 职责：
-        /// 1. 从内存读取所有配置（不访问数据库）
-        /// 2. 如果 IsEnabled=true 且 IsConnected=false
-        /// 3. 检查进程是否还在运行（如果在运行，等待重连）
-        /// 4. 如果进程不在运行，启动新浏览器
-        /// 
-        /// 工作流程：
-        /// - 界面打开飞单开关 → 设置 config.IsEnabled = true
-        /// - 监控任务检测到 IsEnabled=true 且 IsConnected=false → 启动浏览器
-        /// - 事件驱动（OnBrowserDisconnected）作为辅助，处理连接断开后的自动恢复
-        /// 
-        /// 🔥 现在由专用线程调用，不再是 Timer 回调
-        /// </summary>
-        private void MonitorBrowsers()
-        {
-            try
-            {
-                if (_configs == null) return;
-                
-                // 🔥 从内存读取所有启用的配置（不访问数据库）
-                var enabledConfigs = _configs.Where(c => c.IsEnabled).ToList();
-                
-                if (enabledConfigs.Count == 0)
-                {
-                    // 优化：没有启用的配置，直接返回（避免无效检查）
-                    return;
-                }
-                
-                // 🔥 简化日志：只在有问题时才输出
-                foreach (var config in enabledConfigs)
-                {
-                    // 🔥 检查连接状态（配置对象自己管理）
-                    if (config.IsConnected)
-                    {
-                        // 已连接，跳过
-                        continue;
-                    }
-                    
-                    // 🔥 诊断日志：输出未连接配置的关键状态
-                    _log.Debug("AutoBet", $"🔍 检查配置 [{config.ConfigName}]:");
-                    _log.Debug("AutoBet", $"   IsEnabled={config.IsEnabled}, IsConnected={config.IsConnected}");
-                    _log.Debug("AutoBet", $"   ProcessId={config.ProcessId}, Browser={(config.Browser != null ? "存在" : "null")}");
-                    
-                    // 🔥 如果 Browser 存在但未初始化，移除它（控件方式）
-                    if (config.Browser != null && !config.Browser.IsInitialized)
-                    {
-                        _log.Warning("AutoBet", $"⚠️ 配置 [{config.ConfigName}] Browser控件存在但未初始化");
-                        
-                        // 🔥 移除失效的 Browser，允许重新启动
-                        config.Browser = null;
-                        _log.Info("AutoBet", $"   🔧 已移除失效的 Browser");
-                    }
-                    
-                    // 控件方式：不需要检查进程
-                    
-                    // 🔥 前置并发控制：立即标记"正在启动"（在 Task.Run 之前）
-                    bool shouldStart = false;
-                    lock (_lock)
-                    {
-                        if (!_startingConfigs.Contains(config.Id))
-                        {
-                            _startingConfigs.Add(config.Id);  // 🔥 立即标记，防止竞态
-                            shouldStart = true;
-                        }
-                    }
-                    
-                    if (!shouldStart)
-                    {
-                        _log.Debug("AutoBet", $"⏳ 配置 [{config.ConfigName}] 正在启动中，跳过");
-                        continue;
-                    }
-                    
-                    // 🔥 未连接，准备启动浏览器（已标记，不会重复）
-                    _log.Info("AutoBet", $"📌 配置 [{config.ConfigName}] 飞单已开启但未连接");
-                    
-                    // 🔥 异步处理（不阻塞监控线程）
-                    int configId = config.Id;
-                    string configName = config.ConfigName;
-                    int processId = config.ProcessId;
-                    
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            // 🔥 【核心优化】无论 ProcessId 是否为0，都先等待2秒给老浏览器重连的机会
-                            // 这是用户的核心需求：先延时2秒，再次判断，再启动
-                            _log.Info("AutoBet", $"⏳ [{configName}] 检测到未连接（ProcessId={processId}），延迟2秒再次检查连接状态...");
-                            await Task.Delay(2000);
-                            
-                            // 🔥 【关键检查1】等待后再次检查连接状态
-                            var cfgCheck = GetConfig(configId);
-                            if (cfgCheck?.IsConnected == true)
-                            {
-                                _log.Info("AutoBet", $"✅ [{configName}] 浏览器已在2秒内重连成功，取消启动");
-                                return;
-                            }
-                            
-                            // 🔥 【关键检查2】再次检查 IsEnabled（可能用户在等待期间关闭了）
-                            if (cfgCheck == null || !cfgCheck.IsEnabled)
-                            {
-                                _log.Info("AutoBet", $"   [{configName}] IsEnabled=false，取消启动");
-                                return;
-                            }
-                            
-                            // 🔥 【关键检查3】如果还有进程ID，再次检查进程是否真的已结束
-                            if (cfgCheck.ProcessId > 0 && IsProcessRunning(cfgCheck.ProcessId))
-                            {
-                                _log.Warning("AutoBet", $"⚠️ [{configName}] 浏览器进程 {cfgCheck.ProcessId} 仍在运行但未连接");
-                                _log.Warning("AutoBet", $"   保留 ProcessId，等待下次检查");
-                                return;
-                            }
-                            
-                            // 🔥 确认未连接且需要启动，启动浏览器
-                            _log.Info("AutoBet", $"🚀 [{configName}] 延迟2秒后确认未连接，开始启动新浏览器");
-                            await StartBrowserInternal(configId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _log.Error("AutoBet", $"监控任务启动浏览器失败: ConfigId={configId}", ex);
-                        }
-                        finally
-                        {
-                            // 移除启动标记
-                            lock (_lock)
-                            {
-                                _startingConfigs.Remove(configId);
-                            }
-                        }
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.Error("AutoBet", "监控任务异常", ex);
-            }
-        }
+        // 🔥 监控线程已移除，浏览器由 IsEnabled 属性直接管理
         
         /// <summary>
         /// 🔥 检查进程是否还在运行
@@ -1532,23 +1339,7 @@ namespace zhaocaimao.Services.AutoBet
                     _log.Info("AutoBet", "✅ 异步任务已取消");
                 }
                 
-                // 🔥 步骤2: 停止监控线程（防止新的任务启动）
-                if (_monitorThread != null)
-                {
-                    _log.Info("AutoBet", "⏹️ 停止监控线程...");
-                    _monitorRunning = false;  // 🔥 设置标志，让线程自然退出
-                    
-                    // 🔥 等待线程结束（最多等待3秒）
-                    if (!_monitorThread.Join(3000))
-                    {
-                        _log.Warning("AutoBet", "⚠️ 监控线程未在3秒内结束，继续释放资源");
-                    }
-                    else
-                    {
-                        _log.Info("AutoBet", "✅ 监控线程已停止");
-                    }
-                    _monitorThread = null;
-                }
+                // 🔥 监控线程已移除，无需停止
                 
                 // 🔥 步骤4: 停止 Socket 服务器（停止接受新连接）
                 if (_socketServer != null)
