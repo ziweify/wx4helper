@@ -185,6 +185,10 @@ namespace BaiShengVx3Plus.Services.GroupBinding
         /// 🔥 完整的群组绑定流程（核心业务逻辑）
         /// 
         /// 职责：编排所有业务逻辑，返回结果 DTO，View 层只负责 UI 更新
+        /// 
+        /// 🔥 关键修复 2025-11-18：支持传入已有 BindingList（避免引用断裂）
+        /// - 如果传入已有实例 → 使用 Clear() + Add() 更新数据
+        /// - 如果传入 null → 创建新实例（首次绑定）
         /// </summary>
         public async Task<GroupBindingResult> BindGroupCompleteAsync(
             WxContact contact,
@@ -193,7 +197,10 @@ namespace BaiShengVx3Plus.Services.GroupBinding
             IBinggoOrderService orderService,
             BinggoStatisticsService statisticsService,
             IMemberDataService memberDataService,
-            IBinggoLotteryService lotteryService)
+            IBinggoLotteryService lotteryService,
+            V2MemberBindingList? existingMembersBindingList = null,
+            V2OrderBindingList? existingOrdersBindingList = null,
+            V2CreditWithdrawBindingList? existingCreditWithdrawsBindingList = null)
         {
             var result = new GroupBindingResult { Group = contact };
             
@@ -205,12 +212,21 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 BindGroup(contact);
                 SetDatabase(db);
                 
-                // 🔥 2. 创建 BindingList（绑定到数据库）
-                var membersBindingList = new V2MemberBindingList(db, contact.Wxid);
-                var ordersBindingList = new V2OrderBindingList(db);
-                var creditWithdrawsBindingList = new V2CreditWithdrawBindingList(db);
+                // 🔥 2. 复用已有 BindingList 或创建新实例
+                bool isFirstTimeBinding = existingMembersBindingList == null;
                 
-                _logService.Info("GroupBindingService", "✅ BindingList 已创建");
+                var membersBindingList = existingMembersBindingList ?? new V2MemberBindingList(db, contact.Wxid);
+                var ordersBindingList = existingOrdersBindingList ?? new V2OrderBindingList(db);
+                var creditWithdrawsBindingList = existingCreditWithdrawsBindingList ?? new V2CreditWithdrawBindingList(db);
+                
+                if (isFirstTimeBinding)
+                {
+                    _logService.Info("GroupBindingService", "✅ BindingList 首次创建");
+                }
+                else
+                {
+                    _logService.Info("GroupBindingService", "✅ 复用已有 BindingList（避免引用断裂）");
+                }
                 
                 // 🔥 3. 设置各种服务依赖
                 orderService.SetMembersBindingList(membersBindingList);
@@ -242,6 +258,11 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 // 🔥 4. 从数据库加载订单数据（订单不需要与服务器同步）
                 await Task.Run(() =>
                 {
+                    // 🔥 关键修复：如果是复用已有实例，先 Clear() 再加载
+                    if (!isFirstTimeBinding)
+                    {
+                        ordersBindingList.Clear();
+                    }
                     ordersBindingList.LoadFromDatabase();
                 });
                 
@@ -250,6 +271,11 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 // 🔥 4.5. 从数据库加载上下分数据
                 await Task.Run(() =>
                 {
+                    // 🔥 关键修复：如果是复用已有实例，先 Clear() 再加载
+                    if (!isFirstTimeBinding)
+                    {
+                        creditWithdrawsBindingList.Clear();
+                    }
                     creditWithdrawsBindingList.LoadFromDatabase(contact.Wxid);
                 });
                 
@@ -307,6 +333,11 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                     
                     await Task.Run(() =>
                     {
+                        // 🔥 关键修复：如果是复用已有实例，先 Clear() 再加载
+                        if (!isFirstTimeBinding)
+                        {
+                            membersBindingList.Clear();
+                        }
                         membersBindingList.LoadFromDatabase();
                     });
                     _logService.Info("GroupBindingService", $"从数据库加载: {membersBindingList.Count} 个会员");
@@ -325,6 +356,13 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                     _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
                     
                     // 🔥 8. 加载合并后的完整列表
+                    // 🔥 关键修复：如果是复用已有实例，先 Clear() 再 Add
+                    if (!isFirstTimeBinding)
+                    {
+                        membersBindingList.Clear();
+                        _logService.Info("GroupBindingService", "已清空会员列表，准备重新加载");
+                    }
+                    
                     foreach (var member in mergedMembers)
                     {
                         membersBindingList.Add(member);

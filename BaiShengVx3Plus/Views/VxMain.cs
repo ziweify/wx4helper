@@ -1742,6 +1742,10 @@ namespace BaiShengVx3Plus
         /// 1. 调用服务层完成所有业务逻辑
         /// 2. 只负责 UI 更新和显示
         /// 3. 保持 View 层精简
+        /// 
+        /// 🔥 关键修复 2025-11-18：使用 Clear+Add 模式，避免引用断裂
+        /// - 首次绑定：创建 BindingList 并绑定到 DataSource
+        /// - 后续绑定：传入已有实例，服务内部使用 Clear+Add 更新
         /// </summary>
         private async Task BindGroupAsync(WxContact contact)
         {
@@ -1757,13 +1761,25 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 🔥 1. 清空旧数据并清零统计
-                UpdateUIThreadSafe(() =>
+                // 🔥 1. 判断是否首次绑定
+                bool isFirstTimeBinding = _membersBindingList == null;
+                
+                if (isFirstTimeBinding)
                 {
-                    _membersBindingList?.Clear();
-                    _ordersBindingList?.Clear();
+                    _logService.Info("VxMain", "✅ 首次绑定群，创建 BindingList");
+                    
+                    // 首次创建 BindingList
+                    _membersBindingList = new V2MemberBindingList(_db, contact.Wxid);
+                    _ordersBindingList = new V2OrderBindingList(_db);
+                    _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);
+                }
+                else
+                {
+                    _logService.Info("VxMain", "✅ 复用已有 BindingList（避免引用断裂）");
+                    
+                    // 清零统计（数据会在 GroupBindingService 中重新加载）
                     _statisticsService.UpdateStatistics(setZero: true);
-                });
+                }
                 
                 // 🔥 2. 更新 UI 状态
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
@@ -1772,7 +1788,7 @@ namespace BaiShengVx3Plus
                 dgvContacts.Refresh();
                 lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在加载数据...";
                 
-                // 🔥 3. 调用服务层完成所有业务逻辑
+                // 🔥 3. 调用服务层完成所有业务逻辑（传入已有 BindingList）
                 var result = await _groupBindingService.BindGroupCompleteAsync(
                     contact,
                     _db,
@@ -1780,7 +1796,11 @@ namespace BaiShengVx3Plus
                     _orderService,
                     _statisticsService,
                     _memberDataService,
-                    _lotteryService
+                    _lotteryService,
+                    // 🔥 关键修复：传入已有实例
+                    existingMembersBindingList: _membersBindingList,
+                    existingOrdersBindingList: _ordersBindingList,
+                    existingCreditWithdrawsBindingList: _creditWithdrawsBindingList
                 );
                 
                 // 🔥 4. 处理结果
@@ -1791,58 +1811,38 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 🔥 5. 更新 View 层的 BindingList 引用
-                _membersBindingList = result.MembersBindingList;
-                _ordersBindingList = result.OrdersBindingList;
-                _creditWithdrawsBindingList = result.CreditWithdrawsBindingList;
+                // 🔥 5. 确保所有服务引用同一个 BindingList 实例
+                SetAllServicesBindingList();
                 
-                // 🔥 5.5. 重新设置 AdminCommandHandler 的引用（重要！）
-                // 因为在 InitializeBinggoServices 时，_membersBindingList 可能还是 null
-                // 现在绑定群成功后，_membersBindingList 已经有值了，需要重新设置
-                var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
-                if (adminCommandHandler != null && _db != null && _membersBindingList != null)
+                // 🔥 6. 只在首次绑定时设置 DataSource
+                if (isFirstTimeBinding)
                 {
-                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
-                    adminCommandHandler.SetDatabase(_db);
-                    
-                    // 🔥 创建并设置上下分服务（参考 F5BotV2）
-                    var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
-                        _db,
-                        _logService,
-                        _statisticsService,
-                        _socketClient,
-                        Program.ServiceProvider.GetService<Services.Sound.SoundService>());
-                    adminCommandHandler.SetCreditWithdrawService(creditWithdrawService);
-                    
-                    // 🔥 设置上下分 BindingList
-                    if (_creditWithdrawsBindingList != null)
+                    UpdateUIThreadSafe(() =>
                     {
-                        adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
-                    }
-                    
-                    _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表、数据库、上下分服务和 BindingList（绑定群后）");
+                        dgvMembers.DataSource = _membersBindingList;
+                        dgvOrders.DataSource = _ordersBindingList;
+                        
+                        _logService.Info("VxMain", "✅ 首次绑定 DataSource 到 UI");
+                        
+                        // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
+                        // 这样列头标题、列宽、对齐等配置才会生效
+                        if (dgvMembers.Columns.Count > 0)
+                        {
+                            dgvMembers.ConfigureFromModel<V2Member>();
+                            _logService.Info("VxMain", "✅ 会员表列配置已应用");
+                        }
+                        
+                        if (dgvOrders.Columns.Count > 0)
+                        {
+                            dgvOrders.ConfigureFromModel<V2MemberOrder>();
+                            _logService.Info("VxMain", "✅ 订单表列配置已应用");
+                        }
+                    });
                 }
-                
-                // 🔥 6. 绑定到 DataGridView（UI 更新）
-                UpdateUIThreadSafe(() =>
+                else
                 {
-                    dgvMembers.DataSource = _membersBindingList;
-                    dgvOrders.DataSource = _ordersBindingList;
-                    
-                    // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
-                    // 这样列头标题、列宽、对齐等配置才会生效
-                    if (dgvMembers.Columns.Count > 0)
-                    {
-                        dgvMembers.ConfigureFromModel<V2Member>();
-                        _logService.Info("VxMain", "✅ 会员表列配置已应用");
-                    }
-                    
-                    if (dgvOrders.Columns.Count > 0)
-                    {
-                        dgvOrders.ConfigureFromModel<V2MemberOrder>();
-                        _logService.Info("VxMain", "✅ 订单表列配置已应用");
-                    }
-                });
+                    _logService.Info("VxMain", "✅ 复用已有 DataSource，UI 自动同步（BindingList 特性）");
+                }
                 
                 // 🔥 7. 更新 UI 显示
                 UpdateMemberInfoLabel();
@@ -1857,6 +1857,75 @@ namespace BaiShengVx3Plus
                 UIMessageBox.ShowError($"绑定群失败！\n\n{ex.Message}");
                 throw;
             }
+        }
+        
+        /// <summary>
+        /// 🔥 统一设置所有服务的 BindingList 引用
+        /// 
+        /// 关键修复 2025-11-18：确保所有服务都引用同一个 BindingList 实例
+        /// 避免引用断裂导致的数据不同步问题
+        /// </summary>
+        private void SetAllServicesBindingList()
+        {
+            if (_membersBindingList == null || _ordersBindingList == null || _creditWithdrawsBindingList == null)
+            {
+                _logService.Warning("VxMain", "BindingList 未初始化，无法设置服务引用");
+                return;
+            }
+            
+            _logService.Info("VxMain", "🔗 开始统一设置所有服务的 BindingList 引用...");
+            
+            // 1️⃣ AdminCommandHandler
+            var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
+            if (adminCommandHandler != null && _db != null)
+            {
+                adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                adminCommandHandler.SetDatabase(_db);
+                
+                // 创建并设置上下分服务（参考 F5BotV2）
+                var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
+                    _db,
+                    _logService,
+                    _statisticsService,
+                    _socketClient,
+                    Program.ServiceProvider.GetService<Services.Sound.SoundService>());
+                creditWithdrawService.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
+                adminCommandHandler.SetCreditWithdrawService(creditWithdrawService);
+                adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
+                
+                _logService.Info("VxMain", "✅ AdminCommandHandler 已设置 BindingList");
+            }
+            
+            // 2️⃣ BinggoOrderService
+            if (_orderService != null)
+            {
+                _orderService.SetMembersBindingList(_membersBindingList);
+                _orderService.SetOrdersBindingList(_ordersBindingList);
+                _logService.Info("VxMain", "✅ BinggoOrderService 已设置 BindingList");
+            }
+            
+            // 3️⃣ BinggoStatisticsService
+            if (_statisticsService != null)
+            {
+                _statisticsService.SetBindingLists(_membersBindingList, _ordersBindingList);
+                _logService.Info("VxMain", "✅ BinggoStatisticsService 已设置 BindingList");
+            }
+            
+            // 4️⃣ BinggoLotteryService（已在 GroupBindingService 中设置）
+            // 无需重复设置，因为 GroupBindingService.BindGroupCompleteAsync 已经调用了
+            // lotteryService.SetBusinessDependencies(...)
+            
+            // 5️⃣ MemberDataService
+            if (_memberDataService is Services.MemberDataService mds)
+            {
+                mds.SetMembersBindingList(_membersBindingList);
+                _logService.Info("VxMain", "✅ MemberDataService 已设置 BindingList");
+            }
+            
+            _logService.Info("VxMain", "🔗 所有服务的 BindingList 引用已统一设置完成");
+            _logService.Info("VxMain", $"   会员表 HashCode: {_membersBindingList.GetHashCode()}");
+            _logService.Info("VxMain", $"   订单表 HashCode: {_ordersBindingList.GetHashCode()}");
+            _logService.Info("VxMain", $"   上下分表 HashCode: {_creditWithdrawsBindingList.GetHashCode()}");
         }
 
         /// <summary>
