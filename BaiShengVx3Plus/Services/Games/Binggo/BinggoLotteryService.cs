@@ -1860,10 +1860,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             try
             {
+                // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
+                // 声音是本地提示，不依赖群绑定状态，应该始终播放
+                _soundService?.PlaySealingSound();
+                
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
-                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘消息");
+                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘消息（但声音已播放）");
                     return;
                 }
                 
@@ -1874,9 +1878,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 _logService.Info("BinggoLotteryService", $"📢 发送封盘消息: 期号 {issueId}");
-                
-                // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
-                _soundService?.PlaySealingSound();
                 
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();

@@ -264,9 +264,19 @@ namespace BaiShengVx3Plus.Views
             // 让 CellPainting 控制单元格颜色，RowPostPaint 绘制选中蒙板
             
             // 🔥 设置只读，不允许直接修改数据
-            dgvRequests.ReadOnly = false;  // 按钮列需要点击
+            dgvRequests.ReadOnly = false;  // 不能整个设为只读，按钮列需要点击
             dgvRequests.AllowUserToAddRows = false;
             dgvRequests.AllowUserToDeleteRows = false;
+            dgvRequests.EditMode = DataGridViewEditMode.EditProgrammatically;  // 🔥 只允许程序编辑，不允许用户双击编辑
+            
+            // 🔥 将所有非按钮列设置为只读
+            foreach (DataGridViewColumn column in dgvRequests.Columns)
+            {
+                if (!(column is DataGridViewButtonColumn))
+                {
+                    column.ReadOnly = true;  // 🔥 非按钮列全部只读
+                }
+            }
         }
 
         /// <summary>
@@ -354,6 +364,9 @@ namespace BaiShengVx3Plus.Views
                     row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Green;  // 🔥 选中时也保持绿色
                     row.Cells[e.ColumnIndex].Style.ForeColor = Color.White;
                     row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.White;
+                    
+                    // 🔥 禁用按钮（已处理）
+                    DisableButtonsForProcessedRequest(row);
                 }
                 else if (request.Status == CreditWithdrawStatus.忽略)
                 {
@@ -361,6 +374,9 @@ namespace BaiShengVx3Plus.Views
                     row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.LightGray;  // 🔥 选中时也保持浅灰色
                     row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
                     row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                    
+                    // 🔥 禁用按钮（已处理）
+                    DisableButtonsForProcessedRequest(row);
                 }
                 else if (request.Status == CreditWithdrawStatus.已拒绝)
                 {
@@ -368,6 +384,9 @@ namespace BaiShengVx3Plus.Views
                     row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Orange;  // 🔥 选中时也保持橙色
                     row.Cells[e.ColumnIndex].Style.ForeColor = Color.White;
                     row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.White;
+                    
+                    // 🔥 禁用按钮（已处理）
+                    DisableButtonsForProcessedRequest(row);
                 }
             }
             
@@ -948,6 +967,42 @@ namespace BaiShengVx3Plus.Views
         }
 
         #region 美化效果 - 鼠标事件
+
+        /// <summary>
+        /// 禁用已处理请求的按钮（设置为灰色只读状态）
+        /// </summary>
+        private void DisableButtonsForProcessedRequest(DataGridViewRow row)
+        {
+            // 🔥 禁用"同意"按钮
+            if (row.Cells["btnAgree"] is DataGridViewButtonCell btnAgree)
+            {
+                btnAgree.ReadOnly = true;
+                btnAgree.Style.BackColor = Color.Gray;
+                btnAgree.Style.SelectionBackColor = Color.Gray;
+                btnAgree.Style.ForeColor = Color.DarkGray;
+                btnAgree.Style.SelectionForeColor = Color.DarkGray;
+            }
+            
+            // 🔥 禁用"忽略"按钮
+            if (row.Cells["btnIgnore"] is DataGridViewButtonCell btnIgnore)
+            {
+                btnIgnore.ReadOnly = true;
+                btnIgnore.Style.BackColor = Color.Gray;
+                btnIgnore.Style.SelectionBackColor = Color.Gray;
+                btnIgnore.Style.ForeColor = Color.DarkGray;
+                btnIgnore.Style.SelectionForeColor = Color.DarkGray;
+            }
+            
+            // 🔥 禁用"拒绝"按钮
+            if (row.Cells["btnReject"] is DataGridViewButtonCell btnReject)
+            {
+                btnReject.ReadOnly = true;
+                btnReject.Style.BackColor = Color.Gray;
+                btnReject.Style.SelectionBackColor = Color.Gray;
+                btnReject.Style.ForeColor = Color.DarkGray;
+                btnReject.Style.SelectionForeColor = Color.DarkGray;
+            }
+        }
 
         /// <summary>
         /// 鼠标进入单元格：记录行索引并刷新
