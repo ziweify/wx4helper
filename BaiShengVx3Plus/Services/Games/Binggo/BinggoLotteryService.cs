@@ -888,15 +888,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _soundService?.PlayLotterySound();
                 
                 // 🔥 1. 获取当期所有订单（参考 F5BotV2 第 1420 行）
-                // 🔥 查询条件：期号匹配，且不是已取消/未知状态，且不是托单
+                // 🔥 查询条件：期号匹配，且不是已取消/未知状态
+                // 🔥 重要：托单也要正常发送到微信（显示在中~名单和留~名单中）
                 var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
                 _logService.Info("BinggoLotteryService", $"📋 订单列表总数: {allOrders.Count}");
                 
                 var orders = allOrders
                     .Where(o => o.IssueId == issueId 
                         && o.OrderStatus != OrderStatus.已取消 
-                        && o.OrderStatus != OrderStatus.未知
-                        && o.OrderType != OrderType.托)  // 托单不显示
+                        && o.OrderStatus != OrderStatus.未知)
                     .ToList();
                 
                 _logService.Info("BinggoLotteryService", $"📋 期号 {issueId} 的待结算订单数: {orders.Count}");
@@ -1279,20 +1279,23 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _orderService.UpdateOrder(ods);
                     
                     // 🔥 退款给会员（参考 F5BotV2 第2301行）
-                    member.Balance += ods.AmountTotal;
+                    // 只有管理员不退款（因为下单时也没扣钱）
+                    if (member.State != MemberState.管理)
+                    {
+                        member.Balance += ods.AmountTotal;
+                        _logService.Info("BinggoLotteryService", 
+                            $"💰 退款: {member.Nickname} - 退款 {ods.AmountTotal:F2}，退款后余额: {member.Balance:F2}");
+                    }
                     
                     // 🔥 减掉会员统计（参考 F5BotV2 第2302-2304行：OrderCancel 方法）
-                    // 注意：托单不计算在内，但这里已经通过订单类型判断了
-                    if (ods.OrderType != OrderType.托)
-                    {
-                        member.BetCur -= ods.AmountTotal;
-                        member.BetToday -= ods.AmountTotal;
-                        member.BetTotal -= ods.AmountTotal;
-                        member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
-                        
-                        _logService.Info("BinggoLotteryService", 
-                            $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
-                    }
+                    // 🔥 重要：托单也要减掉统计！（因为下单时增加了统计）
+                    member.BetCur -= ods.AmountTotal;
+                    member.BetToday -= ods.AmountTotal;
+                    member.BetTotal -= ods.AmountTotal;
+                    member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
+                    
+                    _logService.Info("BinggoLotteryService", 
+                        $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
                     
                     _logService.Info("BinggoLotteryService", 
                         $"✅ 取消订单: {member.Nickname} - 期号:{_currentIssueId} - 订单ID:{ods.Id}");

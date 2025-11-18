@@ -154,7 +154,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     NetProfit = 0,  // 未结算
                     Odds = 1.97f,  // 🔥 修复：赔率（参考 F5BotV2 默认值）
                     OrderStatus = OrderStatus.待处理,  // 🔥 初始状态为待处理，等待自动投注
-                    OrderType = OrderType.待定,  // 🔥 初始类型为待定，投注后才确定盘内/盘外
+                    // 🔥 订单类型根据会员等级初始化（参考 F5BotV2）
+                    // 托单：不投注到平台，但正常扣钱、正常结算
+                    OrderType = member.State == MemberState.托 ? OrderType.托 : OrderType.待定,
                     MemberState = member.State,  // 🔥 记录会员等级快照（订单创建时的会员状态）
                     IsSettled = false,
                     
@@ -168,8 +170,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 参考 F5BotV2: V2Member.AddOrder 方法（第430-439行）
                 lock (_memberBalanceLock)
                 {
-                    // 4.1 扣除余额（如果不是托或管理）
-                    if (member.State != MemberState.托 && member.State != MemberState.管理)
+                    // 4.1 扣除余额
+                    // 🔥 重要：托单也要扣钱！（用户要求："托照样正常结算，什么都是走正常流程的，仅仅不投注而已"）
+                    // 只有管理员不扣钱
+                    if (member.State != MemberState.管理)
                     {
                         _logService.Info("BinggoOrderService", 
                             $"🔒 [下单] {member.Nickname} - 扣除前余额: {member.Balance:F2}");
@@ -181,7 +185,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                     
                     // 4.2 增加待结算金额和统计（参考 F5BotV2 第 546 行）
-                    // 注意：托单不计算在内（已在前面判断）
+                    // 🔥 重要：托单也要增加统计！（会员个人统计）
                     member.BetWait += (float)betContent.TotalAmount;
                     member.BetToday += (float)betContent.TotalAmount;
                     member.BetTotal += (float)betContent.TotalAmount;

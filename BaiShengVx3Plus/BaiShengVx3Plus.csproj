@@ -50,6 +50,10 @@
     <None Include="libs\bgzst.png" Condition="Exists('libs\bgzst.png')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- 🔥 复制声音文件到输出目录 -->
+    <None Include="sound\*.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <!-- 添加 BsBrowserClient 项目引用 -->

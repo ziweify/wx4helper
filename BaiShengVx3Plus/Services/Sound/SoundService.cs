@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Windows.Forms;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Utils;
 
@@ -21,14 +22,19 @@ namespace BaiShengVx3Plus.Services.Sound
         public SoundService(ILogService logService)
         {
             _logService = logService;
-            // 🔥 声音文件目录：程序目录下的 sound 文件夹（参考 F5BotV2）
-            _soundDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sound");
+            // 🔥 声音文件目录：EXE 所在目录下的 sound 文件夹（参考 F5BotV2）
+            // 使用 Application.StartupPath 获取 EXE 所在的绝对路径
+            _soundDirectory = Path.Combine(Application.StartupPath, "sound");
             
             // 确保目录存在
             if (!Directory.Exists(_soundDirectory))
             {
                 Directory.CreateDirectory(_soundDirectory);
                 _logService.Info("SoundService", $"✅ 创建声音文件目录: {_soundDirectory}");
+            }
+            else
+            {
+                _logService.Info("SoundService", $"✅ 声音文件目录: {_soundDirectory}");
             }
         }
         
