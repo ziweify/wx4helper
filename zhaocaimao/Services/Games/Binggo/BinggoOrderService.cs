@@ -27,7 +27,6 @@ namespace zhaocaimao.Services.Games.Binggo
         private readonly ILogService _logService;
         private readonly IBinggoLotteryService _lotteryService;
         private readonly BinggoOrderValidator _validator;
-        private readonly BinggoGameSettings _settings;
         private BinggoStatisticsService? _statisticsService; // 🔥 统计服务（可选，通过 SetStatisticsService 设置）
         private SQLiteConnection? _db;
         private V2OrderBindingList? _ordersBindingList;
@@ -36,13 +35,11 @@ namespace zhaocaimao.Services.Games.Binggo
         public BinggoOrderService(
             ILogService logService,
             IBinggoLotteryService lotteryService,
-            BinggoOrderValidator validator,
-            BinggoGameSettings settings)
+            BinggoOrderValidator validator)
         {
             _logService = logService;
             _lotteryService = lotteryService;
             _validator = validator;
-            _settings = settings;
         }
         
         /// <summary>
@@ -451,10 +448,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
                 
-                // 🔥 6. 显式更新订单到数据库（确保状态保存）
-                // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder
-                UpdateOrder(order);
-                
+                // 🔥 步骤1: 修改内存对象（在锁外执行，避免长时间锁定）
                 // 7. 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
                 var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
                 if (member != null && order.OrderType != OrderType.托)  // 🔥 托单不更新会员数据
@@ -481,6 +475,22 @@ namespace zhaocaimao.Services.Games.Binggo
                         _statisticsService.OnOrderSettled(order);
                     }
                 }
+                
+                // 🔥 步骤2: 使用锁保护数据库写入（确保订单和会员的更新是原子的）
+                Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
+                {
+                    // 更新订单到数据库
+                    if (_db != null)
+                    {
+                        _db.Update(order);
+                    }
+                    
+                    // 显式更新会员到数据库（确保原子性）
+                    if (member != null && member.Id > 0 && _db != null)
+                    {
+                        _db.Update(member);
+                    }
+                });
                 
                 await Task.CompletedTask;
             }
@@ -542,7 +552,16 @@ namespace zhaocaimao.Services.Games.Binggo
         }
         
         /// <summary>
+        /// 获取数据库连接（用于需要直接访问数据库的场景）
+        /// </summary>
+        public SQLiteConnection? GetDatabase()
+        {
+            return _db;
+        }
+        
+        /// <summary>
         /// 更新订单（用于投注后更新状态）
+        /// 🔥 使用锁保护数据库写入
         /// </summary>
         public void UpdateOrder(V2MemberOrder order)
         {
@@ -550,7 +569,11 @@ namespace zhaocaimao.Services.Games.Binggo
             
             try
             {
-                _db.Update(order);
+                // 🔥 使用锁保护数据库写入
+                Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
+                {
+                    _db.Update(order);
+                });
                 
                 // 同步更新 BindingList（如果设置了）
                 if (_ordersBindingList != null)

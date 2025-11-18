@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using zhaocaimao.Models;
+using zhaocaimao.Shared.Helpers;
 using SQLite;
 
 namespace zhaocaimao.Core
@@ -89,8 +90,9 @@ namespace zhaocaimao.Core
         }
 
         /// <summary>
-        /// 从数据库加载所有上下分申请
+        /// 从数据库加载上下分申请
         /// 🔥 必须在 UI 线程调用
+        /// 🔥 只加载当日的数据（参考用户需求）
         /// </summary>
         public void LoadFromDatabase(string? groupWxid = null)
         {
@@ -100,7 +102,13 @@ namespace zhaocaimao.Core
                 base.RemoveItem(0);
             }
             
-            var query = _db.Table<V2CreditWithdraw>().OrderByDescending(c => c.Timestamp);
+            // 🔥 计算今日0点的时间戳
+            var todayStart = DateTime.Now.Date;
+            var todayStartTimestamp = TimestampHelper.ConvertDateTimeInt(todayStart);
+            
+            var query = _db.Table<V2CreditWithdraw>()
+                .Where(c => c.Timestamp >= todayStartTimestamp)  // 🔥 只加载当日数据
+                .OrderByDescending(c => c.Timestamp);
             
             // 如果指定了群ID，只加载该群的数据
             var creditWithdraws = string.IsNullOrEmpty(groupWxid)
@@ -111,6 +119,30 @@ namespace zhaocaimao.Core
             {
                 base.InsertItem(Count, item);
                 SubscribePropertyChanged(item);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 删除48小时之前的数据（参考 F5BotV2 XMainView.cs Line 847-849）
+        /// </summary>
+        public void DeleteOldRecords(int hoursBefore = 48)
+        {
+            try
+            {
+                // 🔥 计算48小时之前的时间戳（参考 F5BotV2）
+                var timestampDeleteBefore = TimestampHelper.ConvertDateTimeInt(
+                    DateTime.Now.AddHours(-hoursBefore));
+                
+                // 🔥 删除48小时之前的所有记录
+                var deletedCount = _db.Execute(
+                    "DELETE FROM V2CreditWithdraw WHERE Timestamp <= ?", 
+                    timestampDeleteBefore);
+                
+                System.Diagnostics.Debug.WriteLine($"✅ 已删除 {deletedCount} 条48小时之前的上下分记录");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ 删除旧记录失败: {ex.Message}");
             }
         }
 

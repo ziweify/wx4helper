@@ -57,32 +57,36 @@ namespace zhaocaimao.Core
             var existing = _db.Table<V2Member>()
                 .FirstOrDefault(m => m.GroupWxId == item.GroupWxId && m.Wxid == item.Wxid);
 
-            if (existing == null)
+            // 🔥 使用锁保护数据库写入
+            Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
             {
-                // 🔥 插入新记录（一行代码）
-                _db.Insert(item);
-                item.Id = _db.ExecuteScalar<long>("SELECT last_insert_rowid()");
-            }
-            else
-            {
-                // 🔥 更新现有记录（保留业务数据，更新基本信息）
-                item.Id = existing.Id;
-                item.Balance = existing.Balance;
-                item.State = existing.State;
-                item.BetCur = existing.BetCur;
-                item.BetWait = existing.BetWait;
-                item.IncomeToday = existing.IncomeToday;
-                item.CreditToday = existing.CreditToday;
-                item.BetToday = existing.BetToday;
-                item.WithdrawToday = existing.WithdrawToday;
-                item.BetTotal = existing.BetTotal;
-                item.CreditTotal = existing.CreditTotal;
-                item.WithdrawTotal = existing.WithdrawTotal;
-                item.IncomeTotal = existing.IncomeTotal;
-                
-                // 更新基本信息（昵称、备注等）
-                _db.Update(item);
-            }
+                if (existing == null)
+                {
+                    // 🔥 插入新记录（一行代码）
+                    _db.Insert(item);
+                    item.Id = _db.ExecuteScalar<long>("SELECT last_insert_rowid()");
+                }
+                else
+                {
+                    // 🔥 更新现有记录（保留业务数据，更新基本信息）
+                    item.Id = existing.Id;
+                    item.Balance = existing.Balance;
+                    item.State = existing.State;
+                    item.BetCur = existing.BetCur;
+                    item.BetWait = existing.BetWait;
+                    item.IncomeToday = existing.IncomeToday;
+                    item.CreditToday = existing.CreditToday;
+                    item.BetToday = existing.BetToday;
+                    item.WithdrawToday = existing.WithdrawToday;
+                    item.BetTotal = existing.BetTotal;
+                    item.CreditTotal = existing.CreditTotal;
+                    item.WithdrawTotal = existing.WithdrawTotal;
+                    item.IncomeTotal = existing.IncomeTotal;
+                    
+                    // 更新基本信息（昵称、备注等）
+                    _db.Update(item);
+                }
+            });
 
             // ========================================
             // 🔥 步骤2: UI 更新（在 UI 线程执行）
@@ -114,8 +118,11 @@ namespace zhaocaimao.Core
             {
                 if (item.Id > 0)
                 {
-                    // 🔥 立即保存到数据库（在当前线程执行）
-                    _db.Update(item);
+                    // 🔥 使用锁保护数据库写入
+                    Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
+                    {
+                        _db.Update(item);
+                    });
                     
                     // 🔥 线程安全地刷新 UI
                     NotifyItemChanged(item);

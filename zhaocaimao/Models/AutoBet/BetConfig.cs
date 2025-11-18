@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using SQLite;
 
@@ -20,8 +20,6 @@ namespace zhaocaimao.Models.AutoBet
     private string _password = "";
     private bool _isEnabled = true;
     private bool _showBrowserWindow = false;
-    private decimal _minBetAmount = 1;
-    private decimal _maxBetAmount = 10000;
     private bool _autoLogin = true;
     private string? _notes;
     private bool _isDefault = false;
@@ -125,15 +123,8 @@ namespace zhaocaimao.Models.AutoBet
                 _isEnabled = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEnabled)));
                 
-                // 🔥 自动启动/停止监控（配置自管理模式）
-                if (_isEnabled)
-                {
-                    StartMonitoring();
-                }
-                else
-                {
-                    StopMonitoring();
-                }
+                // 🔥 配置自管理模式：监控线程始终运行，内部检查 IsEnabled 状态
+                // 无需在 setter 中启动/停止监控线程
             }
         }
     }
@@ -150,38 +141,6 @@ namespace zhaocaimao.Models.AutoBet
             {
                 _showBrowserWindow = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowBrowserWindow)));
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 🔥 最小投注金额（单注）
-    /// </summary>
-    public decimal MinBetAmount
-    {
-        get => _minBetAmount;
-        set
-        {
-            if (_minBetAmount != value)
-            {
-                _minBetAmount = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MinBetAmount)));
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 🔥 最大投注金额（单注）
-    /// </summary>
-    public decimal MaxBetAmount
-    {
-        get => _maxBetAmount;
-        set
-        {
-            if (_maxBetAmount != value)
-            {
-                _maxBetAmount = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MaxBetAmount)));
             }
         }
     }

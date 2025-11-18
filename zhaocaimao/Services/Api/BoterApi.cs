@@ -19,6 +19,11 @@ namespace zhaocaimao.Services.Api
     /// </summary>
     public class BoterApi
     {
+        // 🔥 参考 F5BotV2 BoterApi.cs Line 20-22
+        public static int VERIFY_SIGN_OFFTIME = 10000;  // 账户过期
+        public static int VERIFY_SIGN_INVALID = 10001;  // 无效令牌（账号被其他地方登录）
+        public static int VERIFY_SIGN_SUCCESS = 0;      // 成功
+        
         private static BoterApi? _instance;
         private static readonly object _lock = new object();
         
@@ -29,6 +34,10 @@ namespace zhaocaimao.Services.Api
         public string User { get; private set; } = string.Empty;
         public string Password { get; private set; } = string.Empty;  // 🔥 保存密码（用于数据库备份加密）
         public DateTime OffTime { get; set; }
+        
+        // 🔥 账号失效事件（供外部订阅）
+        public event Action<string>? OnAccountInvalid;
+        public event Action<string>? OnAccountOffTime;
         
         private BoterApi()
         {
@@ -89,6 +98,21 @@ namespace zhaocaimao.Services.Api
                 else
                 {
                     Console.WriteLine($"❌ 登录失败: Code={LoginApiResponse?.Code}, Msg={LoginApiResponse?.Msg}");
+                    
+                    // 🔥 检查账号失效（参考 F5BotV2 BoterServices.cs Line 1081-1088）
+                    if (LoginApiResponse != null)
+                    {
+                        if (LoginApiResponse.Code == VERIFY_SIGN_OFFTIME)
+                        {
+                            // 账号过期
+                            OnAccountOffTime?.Invoke("账号过期");
+                        }
+                        else if (LoginApiResponse.Code == VERIFY_SIGN_INVALID)
+                        {
+                            // 账号失效（被其他地方登录）
+                            OnAccountInvalid?.Invoke("账号失效! 请重新登录\r\n请检查是否有在其他地方登录导致本次失效!");
+                        }
+                    }
                 }
                 
                 return LoginApiResponse ?? new BsApiResponse<BsApiUser>
@@ -158,6 +182,18 @@ namespace zhaocaimao.Services.Api
                 {
                     response.Code = hret.Code;
                     response.Msg = hret.Msg;
+                    
+                    // 🔥 检查账号失效（参考 F5BotV2 BoterServices.cs Line 1081-1088）
+                    if (hret.Code == VERIFY_SIGN_OFFTIME)
+                    {
+                        // 账号过期
+                        OnAccountOffTime?.Invoke("账号过期");
+                    }
+                    else if (hret.Code == VERIFY_SIGN_INVALID)
+                    {
+                        // 账号失效（被其他地方登录）
+                        OnAccountInvalid?.Invoke("账号失效! 请重新登录\r\n请检查是否有在其他地方登录导致本次失效!");
+                    }
                     
                     if (hret.Data != null)
                     {

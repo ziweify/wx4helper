@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using BaiShengVx3Plus.Contracts;
-using BaiShengVx3Plus.Core;
-using BaiShengVx3Plus.Models.AutoBet;
+using zhaocaimao.Contracts;
+using zhaocaimao.Core;
+using zhaocaimao.Models.AutoBet;
 
-namespace BaiShengVx3Plus.Services.AutoBet
+namespace zhaocaimao.Services.AutoBet
 {
     /// <summary>
     /// 投注记录服务（重构版 - 遵循 F5BotV2 设计）

@@ -290,7 +290,8 @@ namespace zhaocaimao.Services.AutoBet
             finally
             {
                 // 清理连接
-                if (configId > 0)
+                // 🔥 修复：即使 configId=0 也要清理连接并触发断开事件
+                if (configId >= 0)  // 🔥 改为 >= 0（允许 configId=0）
                 {
                     lock (_connections)
                     {

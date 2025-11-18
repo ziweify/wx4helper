@@ -14,7 +14,6 @@ namespace zhaocaimao.Views
     {
         private readonly IWeixinSocketClient _socketClient;
         private readonly ILogService _logService;
-        private readonly BinggoGameSettings _binggoSettings; // 🔥 游戏设置
         private readonly SettingViewModel _settingVmodel;
         private readonly IConfigurationService _configService; // 📝 配置服务
         
@@ -27,7 +26,6 @@ namespace zhaocaimao.Views
             IWeixinSocketClient socketClient, 
             ILogService logService,
             SettingViewModel setting,
-            BinggoGameSettings binggoSettings, // 🔥 注入游戏设置
             IConfigurationService configService, // 📝 注入配置服务
             Func<string, string, Task<(bool, string?, string?)>>? simulateMessageCallback = null) // 🔧 模拟消息回调
         {
@@ -35,7 +33,6 @@ namespace zhaocaimao.Views
             _socketClient = socketClient;
             _logService = logService;
             _settingVmodel = setting;
-            _binggoSettings = binggoSettings;
             _configService = configService;
             _simulateMessageCallback = simulateMessageCallback;
             
@@ -112,11 +109,8 @@ namespace zhaocaimao.Views
         /// </summary>
         private void LoadGameSettings()
         {
-            // 🔥 管理模式（系统设置）
-            if (chkRunModeAdminSettings != null)
-            {
-                chkRunModeAdminSettings.Checked = _binggoSettings.IsAdminMode;
-            }
+            // 🔥 管理模式（系统设置）- 已通过数据绑定自动加载
+            // chkRunModeAdminSettings 已绑定到 _settingVmodel.Is管理模式
             
             _logService.Info("SettingsForm", "✅ 系统设置已加载");
         }
@@ -145,14 +139,11 @@ namespace zhaocaimao.Views
         /// </summary>
         private void SaveGameSettings()
         {
-            // 🔥 管理模式（系统设置）
-            if (chkRunModeAdminSettings != null)
-            {
-                _binggoSettings.IsAdminMode = chkRunModeAdminSettings.Checked;
-            }
+            // 🔥 管理模式（系统设置）- 已通过数据绑定自动保存
+            // chkRunModeAdminSettings 已绑定到 _settingVmodel.Is管理模式
             
             _logService.Info("SettingsForm", 
-                $"✅ 系统设置已保存: 管理模式={_binggoSettings.IsAdminMode}");
+                $"✅ 系统设置已保存: 管理模式={_configService.GetIsRunModeAdmin()}");
         }
 
         private void UpdateConnectionStatus()

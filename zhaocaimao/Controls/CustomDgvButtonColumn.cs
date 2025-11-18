@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 
-namespace BaiShengVx3Plus.Controls
+namespace zhaocaimao.Controls
 {
     /// <summary>
     /// 自定义DataGridView按钮单元格 - 支持禁用状态

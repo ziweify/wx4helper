@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace BaiShengVx3Plus.Models.Games.Binggo
+namespace zhaocaimao.Models.Games.Binggo
 {
     /// <summary>
     /// 🔥 炳狗游戏配置（包装类）

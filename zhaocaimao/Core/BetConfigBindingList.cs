@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using zhaocaimao.Models.AutoBet;
-using BaiShengVx3Plus.Contracts;
+using zhaocaimao.Contracts;
 using SQLite;
 
 namespace zhaocaimao.Core

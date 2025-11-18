@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
-using BaiShengVx3Plus.Models.AutoBet;
+using zhaocaimao.Models.AutoBet;
 using SQLite;
 
-namespace BaiShengVx3Plus.Core
+namespace zhaocaimao.Core
 {
     /// <summary>
     /// 投注记录 BindingList（遵循 F5BotV2 设计模式）

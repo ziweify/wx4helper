@@ -39,8 +39,8 @@ namespace zhaocaimao.Services.Games.Binggo
     public class BinggoLotteryService : IBinggoLotteryService
     {
         private readonly ILogService _logService;
-        private readonly BinggoGameSettings _settings;
         private readonly IConfigurationService _configService;
+        private readonly Services.Sound.SoundService? _soundService;  // 🔥 声音播放服务（可选）
         private SQLiteConnection? _db;
         private Core.BinggoLotteryDataBindingList? _bindingList;  // 🔥 UI 数据绑定
         
@@ -90,12 +90,12 @@ namespace zhaocaimao.Services.Games.Binggo
         
         public BinggoLotteryService(
             ILogService logService,
-            BinggoGameSettings settings,
-            IConfigurationService configService)
+            IConfigurationService configService,
+            Services.Sound.SoundService? soundService = null)  // 🔥 声音服务（可选）
         {
             _logService = logService;
-            _settings = settings;
             _configService = configService;
+            _soundService = soundService;
         }
         
         /// <summary>
@@ -251,7 +251,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 1. secondsToOpen = 距离开奖的真实倒计时（用于显示）
                 // 2. secondsToSeal = 距离封盘的倒计时（用于状态判断）
                 int secondsToOpen = BinggoTimeHelper.GetSecondsToOpen(localIssueId);
-                int secondsToSeal = secondsToOpen - _settings.SealSecondsAhead;
+                int secondsToSeal = secondsToOpen - _configService.GetSealSecondsAhead();
                 
                 lock (_lock)
                 {
@@ -574,15 +574,30 @@ namespace zhaocaimao.Services.Games.Binggo
                 return;
             }
             
-            if (secondsToSeal > 30)
+            // 🔥 参考 F5BotV2 Line 1003-1028：只有当剩余时间 <= 300秒（5分钟）时，才变成"开盘中"
+            // 如果剩余时间 > 300秒，保持"等待中"状态
+            if (secondsToSeal > 30 && secondsToSeal <= 300)
             {
-                // 开盘中（距离封盘超过 30 秒）
+                // 开盘中（距离封盘超过 30 秒，但不超过 5 分钟）
                 newStatus = BinggoLotteryStatus.开盘中;
                 
                 // 🔥 只在第一次进入"开盘中"状态时执行 On开盘中 逻辑（参考 F5BotV2 第1139-1178行）
                 if (oldStatus != BinggoLotteryStatus.开盘中)
                 {
                     _ = Task.Run(async () => await OnOpeningAsync(_currentIssueId));
+                }
+            }
+            else if (secondsToSeal > 300)
+            {
+                // 🔥 等待中（距离封盘超过 5 分钟）- 参考 F5BotV2 Line 1017-1028
+                // 在剩余时间超过5分钟时，保持"等待中"状态，不允许投注
+                newStatus = BinggoLotteryStatus.等待中;
+                
+                // 🔥 只在第一次进入"等待中"状态时记录日志（避免重复日志）
+                if (oldStatus != BinggoLotteryStatus.等待中)
+                {
+                    _logService.Info("BinggoLotteryService", 
+                        $"⏳ 进入等待中状态: 期号 {_currentIssueId}, 剩余时间 {secondsToSeal}秒（超过5分钟，不允许投注）");
                 }
             }
             else if (secondsToSeal > 0)
@@ -614,7 +629,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     _ = Task.Run(async () => await SendSealingReminderAsync(_currentIssueId, 15));
                 }
             }
-            else if (secondsToSeal > -_settings.SealSecondsAhead)
+            else if (secondsToSeal > -_configService.GetSealSecondsAhead())
             {
                 // 封盘中（0 到 -配置的封盘秒数，等待开奖）
                 newStatus = BinggoLotteryStatus.封盘中;
@@ -869,6 +884,9 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 _logService.Info("BinggoLotteryService", $"🎲 开奖处理: {issueId} - {data.ToLotteryString()}");
                 
+                // 🔥 播放开奖声音（参考 F5BotV2 第1411行）
+                _soundService?.PlayLotterySound();
+                
                 // 🔥 1. 获取当期所有订单（参考 F5BotV2 第 1420 行）
                 // 🔥 查询条件：期号匹配，且不是已取消/未知状态，且不是托单
                 var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
@@ -946,6 +964,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     profit: kvp.Value.profit
                 )).ToList();
 
+                // 🔥 播放开奖声音（参考 F5BotV2 第1411行：PlayMp3("mp3_kj.mp3")）
+                _soundService?.PlayLotterySound();
+                
                 // 🔥 3. 发送中奖名单和留分名单到微信群（参考 F5BotV2 第 1415-1474 行）
                 // 🔥 重要：无论是否有订单，都要发送这两个名单（参考 F5BotV2 第 1462、1474 行）
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
@@ -1251,9 +1272,8 @@ namespace zhaocaimao.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", 
                         $"✅ 取消订单验证通过: 会员={member.Nickname} 订单ID={ods.Id} 订单期号={ods.IssueId} 当前期号={_currentIssueId} 金额={ods.AmountTotal}");
                     
-                    // 执行取消逻辑
+                    // 🔥 步骤1: 修改内存对象（在锁外执行，避免长时间锁定）
                     ods.OrderStatus = OrderStatus.已取消;
-                    _orderService.UpdateOrder(ods);
                     
                     // 🔥 退款给会员（参考 F5BotV2 第2301行）
                     member.Balance += ods.AmountTotal;
@@ -1269,6 +1289,25 @@ namespace zhaocaimao.Services.Games.Binggo
                         
                         _logService.Info("BinggoLotteryService", 
                             $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
+                    }
+                    
+                    // 🔥 步骤2: 使用锁保护数据库写入（确保订单和会员的更新是原子的）
+                    if (_db != null)
+                    {
+                        Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
+                        {
+                            _db.Update(ods);  // 直接更新订单
+                            // 显式更新会员到数据库（确保原子性）
+                            if (member.Id > 0)
+                            {
+                                _db.Update(member);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        // 如果没有数据库连接，只更新订单（通过UpdateOrder）
+                        _orderService.UpdateOrder(ods);
                     }
                     
                     _logService.Info("BinggoLotteryService", 
@@ -1318,12 +1357,14 @@ namespace zhaocaimao.Services.Games.Binggo
                     return (true, "系统初始化中，请稍后...", null);
                 }
                 
-                // 🔥 检查状态（只有"开盘中"和"即将封盘"可以下注）
+                // 🔥 检查状态（只有"开盘中"和"即将封盘"可以下注）- 参考 F5BotV2
+                // "等待中"状态不允许投注（剩余时间超过5分钟）
                 if (_currentStatus == BinggoLotteryStatus.封盘中 || 
-                    _currentStatus == BinggoLotteryStatus.开奖中)
+                    _currentStatus == BinggoLotteryStatus.开奖中 ||
+                    _currentStatus == BinggoLotteryStatus.等待中)
                 {
                     _logService.Info("BinggoLotteryService", 
-                        $"❌ 封盘状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
+                        $"❌ 状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
                     // 🔥 格式完全按照 F5BotV2 第2425行：{m.nickname}\r时间未到!不收货!
                     return (true, $"{member.Nickname}\r时间未到!不收货!", null);
                 }
@@ -1850,6 +1891,9 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 _logService.Info("BinggoLotteryService", $"📢 发送封盘消息: 期号 {issueId}");
                 
+                // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
+                _soundService?.PlaySealingSound();
+                
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();
                 int issueShort = issueId % 1000;
@@ -1858,8 +1902,14 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 获取当期所有订单（参考 F5BotV2 第1228行）
                 var orders = _ordersBindingList?
                     .Where(p => p.IssueId == issueId && p.OrderStatus != OrderStatus.已取消)
-                    .OrderBy(o => o.Id)  // 排序（参考 F5BotV2 第1230行）
                     .ToList();
+                
+                // 🔥 排序（参考 F5BotV2 第1230行：orders_redly.Sort(new V2MemberOrderComparerDefault())）
+                // 确保同名订单在一起，显示更清晰
+                if (orders != null && orders.Count > 0)
+                {
+                    orders.Sort(new V2MemberOrderComparerDefault());
+                }
                 
                 if (orders != null && orders.Count > 0)
                 {

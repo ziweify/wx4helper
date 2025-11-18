@@ -162,8 +162,8 @@ namespace zhaocaimao.Services.AutoBet
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = browserExePath,
-                        // 🔥 不传递 configId，只传递配置名（服务端用配置名匹配，configId 会导致数据库重建后连接失败）
-                        Arguments = $"--config-name \"{configName}\" --port {port} --platform {platform} --url {platformUrl}",
+                        // 🔥 传递 configId，用于HTTP API获取配置（账号、密码等）
+                        Arguments = $"--config-id {_configId} --config-name \"{configName}\" --port {port} --platform {platform} --url {platformUrl}",
                         WorkingDirectory = browserDirectory, // 设置工作目录为浏览器所在目录
                         UseShellExecute = false,
                         CreateNoWindow = false // 显示浏览器窗口

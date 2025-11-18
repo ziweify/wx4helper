@@ -22,6 +22,7 @@ namespace zhaocaimao.Services.AutoBet
         private readonly BetRecordService _betRecordService;
         private readonly OrderMerger _orderMerger;
         private readonly BetQueueManager _betQueueManager;
+        private readonly IConfigurationService _configService;  // 🔥 配置服务（全局游戏规则）
         private readonly ILogService _log;
         
         private bool _isAutoBetEnabled = false;
@@ -38,6 +39,7 @@ namespace zhaocaimao.Services.AutoBet
             BetRecordService betRecordService,
             OrderMerger orderMerger,
             BetQueueManager betQueueManager,
+            IConfigurationService configService,
             ILogService log)
         {
             _autoBetService = autoBetService;
@@ -46,6 +48,7 @@ namespace zhaocaimao.Services.AutoBet
             _betRecordService = betRecordService;
             _orderMerger = orderMerger;
             _betQueueManager = betQueueManager;
+            _configService = configService;
             _log = log;
         }
         
@@ -248,26 +251,31 @@ namespace zhaocaimao.Services.AutoBet
                     }
                     
                     // 🔥 完全参照 F5BotV2 逻辑：只要有一项不符合，整条拒绝（第 2444-2461 行）
+                    // 🔥 在循环外获取配置值（避免变量名冲突）
+                    float minBet = _configService.GetMinBet();
+                    float maxBet = _configService.GetMaxBet();
+                    
                     string? firstInvalidItem = null;
                     foreach (var item in mergeResult.BetItems)
                     {
                         var itemKey = $"{item.Car}{item.Play}";  // 如: P1大
                         
-                        // 检查最小金额限制（参考 F5BotV2 第 2450-2455 行）
-                        if (item.MoneySum < config.MinBetAmount)
+                        // 🔥 使用全局游戏配置进行验证（参考 F5BotV2 第 2450-2455 行）
+                        
+                        if (item.MoneySum < (decimal)minBet)
                         {
                             // 🔥 F5BotV2 原文：@{memberOrder.nickname} 进仓失败!{key}不能小于{this._appSetting.wxMinBet}
-                            firstInvalidItem = $"{itemKey}不能小于{config.MinBetAmount}";
-                            _log.Warning("AutoBet", $"⚠️ 进仓失败! {itemKey} 金额 {item.MoneySum}元 不能小于 {config.MinBetAmount}元");
+                            firstInvalidItem = $"{itemKey}不能小于{minBet}";
+                            _log.Warning("AutoBet", $"⚠️ 进仓失败! {itemKey} 金额 {item.MoneySum}元 不能小于 {minBet}元");
                             break;
                         }
                         
                         // 检查最大金额限制（参考 F5BotV2 第 2456-2461 行）
-                        if (item.MoneySum > config.MaxBetAmount)
+                        if (item.MoneySum > (decimal)maxBet)
                         {
                             // 🔥 F5BotV2 原文：@{memberOrder.nickname} 进仓失败!{key}超限,当前{betitem.moneySum},剩余:{maxLimit}
-                            firstInvalidItem = $"{itemKey}超限,当前{item.MoneySum},最大{config.MaxBetAmount}";
-                            _log.Warning("AutoBet", $"⚠️ 进仓失败! {itemKey} 金额 {item.MoneySum}元 超过最大限制 {config.MaxBetAmount}元");
+                            firstInvalidItem = $"{itemKey}超限,当前{item.MoneySum},最大{maxBet}";
+                            _log.Warning("AutoBet", $"⚠️ 进仓失败! {itemKey} 金额 {item.MoneySum}元 超过最大限制 {maxBet}元");
                             break;
                         }
                     }
@@ -278,7 +286,9 @@ namespace zhaocaimao.Services.AutoBet
                         _log.Error("AutoBet", $"❌ 进仓失败! {firstInvalidItem}");
                         _log.Error("AutoBet", $"   订单数量: {mergeResult.OrderIds.Count}个");
                         _log.Error("AutoBet", $"   合并内容: {mergeResult.BetContentStandard}");
-                        _log.Error("AutoBet", $"💡 请在【配置管理】中调整【最小金额】({config.MinBetAmount}元)和【最大金额】({config.MaxBetAmount}元)");
+                        float minBetLimit = _configService.GetMinBet();
+                        float maxBetLimit = _configService.GetMaxBet();
+                        _log.Error("AutoBet", $"💡 请在【快速设置】中调整【最小投注】({minBetLimit}元)和【最大投注】({maxBetLimit}元)");
                         
                         // 🔥 注意：订单保持 `待处理` 状态，不进行投注，不修改订单状态
                         // 下次封盘时如果金额仍不符合，会继续拒绝
@@ -286,8 +296,7 @@ namespace zhaocaimao.Services.AutoBet
                         
                         return;
                     }
-                    
-                    _log.Info("AutoBet", $"✅ 投注金额验证通过（限制: {config.MinBetAmount}-{config.MaxBetAmount}元）");
+                    _log.Info("AutoBet", $"✅ 投注金额验证通过（限制: {minBet}-{maxBet}元）");
                     
                     // 4. 创建投注记录
                     _log.Info("AutoBet", $"📋 创建投注记录...");

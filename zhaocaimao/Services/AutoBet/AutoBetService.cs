@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using BaiShengVx3Plus.Contracts;
-using BaiShengVx3Plus.Contracts.Games;
+using zhaocaimao.Contracts;
+using zhaocaimao.Contracts.Games;
 using zhaocaimao.Models.AutoBet;  // 🔥 BetConfig, BetResult
-using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
+using zhaocaimao.Shared.Models;  // 🔥 使用共享的模型
 using SQLite;
 
 namespace zhaocaimao.Services.AutoBet
@@ -31,7 +31,7 @@ namespace zhaocaimao.Services.AutoBet
         private AutoBetHttpServer? _httpServer;
         
         // 待投注订单队列（配置ID → 订单队列）
-        private readonly Dictionary<int, Queue<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>> _orderQueues = new();
+        private readonly Dictionary<int, Queue<zhaocaimao.Shared.Models.BetStandardOrderList>> _orderQueues = new();
         
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
@@ -249,7 +249,7 @@ namespace zhaocaimao.Services.AutoBet
         
         /// <summary>
         /// 启动监控（在所有配置初始化完成后调用）
-        /// 🔥 新架构：启动所有已启用配置的监控线程（每个配置独立）
+        /// 🔥 新架构：启动所有配置的监控线程（每个配置独立，监控线程内部检查 IsEnabled）
         /// </summary>
         public void StartMonitoring()
         {
@@ -264,11 +264,10 @@ namespace zhaocaimao.Services.AutoBet
             int startedCount = 0;
             foreach (var config in _configs)
             {
-                if (config.IsEnabled)
-                {
-                    config.StartMonitoring();  // 🔥 每个配置启动自己的监控线程
-                    startedCount++;
-                }
+                // 🔥 无论 IsEnabled 状态如何，都启动监控线程
+                // 监控线程内部会检查 IsEnabled，只有启用时才启动浏览器
+                config.StartMonitoring();
+                startedCount++;
             }
             
             _log.Info("AutoBet", $"✅ 已启动 {startedCount} 个配置的监控线程");
@@ -489,13 +488,6 @@ namespace zhaocaimao.Services.AutoBet
                 
                 _log.Info("AutoBet", $"✅ 已获取 ClientConnection，连接状态: {connection.IsConnected}");
                 
-                // 🔥 如果浏览器和服务端的 configId 不同，需要在 AutoBetSocketServer 中更新映射
-                if (browserConfigId != configId)
-                {
-                    _log.Info("AutoBet", $"🔄 更新连接映射: BrowserId={browserConfigId} → ServerId={configId}");
-                    _socketServer?.UpdateConnectionMapping(browserConfigId, configId);
-                }
-                
                 // 🔥 配置对象自己管理 Browser！
                 BrowserClient? browserClient = config.Browser;
                 
@@ -525,6 +517,24 @@ namespace zhaocaimao.Services.AutoBet
                     {
                         _log.Warning("AutoBet", $"   清理旧连接时出错: {ex.Message}");
                     }
+                }
+                
+                // 🔥 如果浏览器和服务端的 configId 不同，需要在 AutoBetSocketServer 中更新映射
+                // 🔥 注意：必须在 AttachConnection 之前更新映射，确保 GetConnection 能正确获取
+                if (browserConfigId != configId)
+                {
+                    _log.Info("AutoBet", $"🔄 更新连接映射: BrowserId={browserConfigId} → ServerId={configId}");
+                    _socketServer?.UpdateConnectionMapping(browserConfigId, configId);
+                    
+                    // 🔥 更新映射后，重新从服务器获取连接（因为映射已更新）
+                    connection = _socketServer?.GetConnection(configId);
+                    if (connection == null)
+                    {
+                        _log.Error("AutoBet", $"❌ 更新映射后无法获取连接: ConfigId={configId}");
+                        _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        return;
+                    }
+                    _log.Info("AutoBet", $"✅ 已重新获取连接（映射更新后）");
                 }
                 
                 // 🔥 附加连接（无论新建还是已存在，都要更新连接）
@@ -847,7 +857,7 @@ namespace zhaocaimao.Services.AutoBet
             {
                 // 🔥 将字符串格式的 betContentStandard 解析为 BetStandardOrderList
                 // 格式："1大10,2大10,3大10,4大10"
-                var betOrders = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
+                var betOrders = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
                 
                 if (betOrders == null || betOrders.Count == 0)
                 {
@@ -958,13 +968,13 @@ namespace zhaocaimao.Services.AutoBet
         /// <summary>
         /// 添加订单到队列（供 HTTP 接口查询）
         /// </summary>
-        public void QueueBetOrder(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
+        public void QueueBetOrder(int configId, zhaocaimao.Shared.Models.BetStandardOrderList orders)
         {
             lock (_orderQueues)
             {
                 if (!_orderQueues.ContainsKey(configId))
                 {
-                    _orderQueues[configId] = new Queue<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
+                    _orderQueues[configId] = new Queue<zhaocaimao.Shared.Models.BetStandardOrderList>();
                 }
                 
                 _orderQueues[configId].Enqueue(orders);
@@ -977,7 +987,7 @@ namespace zhaocaimao.Services.AutoBet
         /// <summary>
         /// 获取待处理订单（HTTP API 调用）
         /// </summary>
-        public BaiShengVx3Plus.Shared.Models.BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
+        public zhaocaimao.Shared.Models.BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
         {
             lock (_orderQueues)
             {
@@ -1002,7 +1012,29 @@ namespace zhaocaimao.Services.AutoBet
         /// </summary>
         public BrowserClient? GetBrowserClient(int configId)
         {
-            return GetConfig(configId)?.Browser;
+            var config = GetConfig(configId);
+            if (config == null)
+            {
+                _log.Warning("AutoBet", $"❌ GetBrowserClient: 配置不存在 ConfigId={configId}");
+                return null;
+            }
+            
+            var browserClient = config.Browser;
+            if (browserClient == null)
+            {
+                _log.Warning("AutoBet", $"❌ GetBrowserClient: BrowserClient 为 null ConfigId={configId}");
+                return null;
+            }
+            
+            // 🔥 诊断连接状态
+            var connection = browserClient.GetConnection();
+            _log.Info("AutoBet", $"📊 GetBrowserClient 诊断: ConfigId={configId}");
+            _log.Info("AutoBet", $"   BrowserClient 存在: {browserClient != null}");
+            _log.Info("AutoBet", $"   Connection 存在: {connection != null}");
+            _log.Info("AutoBet", $"   Connection.IsConnected: {connection?.IsConnected ?? false}");
+            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");
+            
+            return browserClient;
         }
         
         /// <summary>
@@ -1020,7 +1052,7 @@ namespace zhaocaimao.Services.AutoBet
                 }
                 
                 // 从队列移除已处理的订单
-                BaiShengVx3Plus.Shared.Models.BetStandardOrderList? orders = null;
+                zhaocaimao.Shared.Models.BetStandardOrderList? orders = null;
                 lock (_orderQueues)
                 {
                     if (_orderQueues.TryGetValue(configId, out var queue) && queue.Count > 0)
@@ -1286,7 +1318,7 @@ namespace zhaocaimao.Services.AutoBet
         /// <summary>
         /// 投注
         /// </summary>
-        public async Task<BetResult> PlaceBet(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
+        public async Task<BetResult> PlaceBet(int configId, zhaocaimao.Shared.Models.BetStandardOrderList orders)
         {
             var config = GetConfig(configId);
             if (config == null)

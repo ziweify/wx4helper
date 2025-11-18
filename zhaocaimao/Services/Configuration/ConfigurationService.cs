@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text.Json;
-using BaiShengVx3Plus.Contracts;
-using BaiShengVx3Plus.Models;
+using zhaocaimao.Contracts;
+using zhaocaimao.Models;
 
-namespace BaiShengVx3Plus.Services.Configuration
+namespace zhaocaimao.Services.Configuration
 {
     /// <summary>
     /// 配置服务实现

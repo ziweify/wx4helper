@@ -9,32 +9,123 @@
     <AssemblyName>招财猫</AssemblyName>
     <Product>招财猫智能投注系统</Product>
     <Version>1.0.0</Version>
+    <!-- 以管理员权限运行（需要在C:\images\创建文件夹） -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
+  <!-- 排除文档文件夹，防止被编译 -->
   <ItemGroup>
-    <!-- UI Framework -->
-    <PackageReference Include="SunnyUI" Version="3.6.9" />
-    
-    <!-- Browser Control -->
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
-    
-    <!-- JSON -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Remove="0-资料\**" />
+    <EmbeddedResource Remove="0-资料\**" />
+    <None Remove="0-资料\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="libs\1165z-ivqi2-001.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Only reference Shared project -->
-    <ProjectReference Include="..\BaiShengVx3Plus.Shared\BaiShengVx3Plus.Shared.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <!-- Additional packages needed -->
-    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
+    <PackageReference Include="SunnyUI" Version="3.6.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
 
-</Project>
+  <ItemGroup>
+    <ProjectReference Include="..\zhaocaimao.Shared\zhaocaimao.Shared.csproj" />
+  </ItemGroup>
 
+  <ItemGroup>
+    <!-- 自动复制 SQLite 原生 DLL 到输出目录 -->
+    <None Include="libs\e_sqlite3.dll" Condition="Exists('libs\e_sqlite3.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="libs\sqlite3.dll" Condition="Exists('libs\sqlite3.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- 复制开奖走势图模板 -->
+    <None Include="libs\bgzst.png" Condition="Exists('libs\bgzst.png')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- 添加 BsBrowserClient 项目引用 -->
+  <ItemGroup>
+    <ProjectReference Include="..\BsBrowserClient\BsBrowserClient.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- 编译后自动复制 BsBrowserClient 的输出文件 -->
+  <Target Name="CopyBrowserClient" AfterTargets="Build">
+    <PropertyGroup>
+      <BrowserClientSourcePath>$(MSBuildProjectDirectory)\..\BsBrowserClient\bin\$(Configuration)\net8.0-windows</BrowserClientSourcePath>
+      <!-- 🔥 修改：生成到主程序同一文件夹，而不是子目录 -->
+      <BrowserClientDestPath>$(OutputPath)</BrowserClientDestPath>
+      <BrowserClientVersionFile>$(BrowserClientDestPath)\.browserversion</BrowserClientVersionFile>
+    </PropertyGroup>
+    
+    <!-- 创建目标目录 -->
+    <MakeDir Directories="$(BrowserClientDestPath)" />
+    
+    <!-- 检查版本号是否变化（通过检查 WebView2 版本） -->
+    <PropertyGroup>
+      <CurrentWebView2Version>1.0.2651.64</CurrentWebView2Version>
+      <NeedFullCopy>false</NeedFullCopy>
+    </PropertyGroup>
+    
+    <!-- 读取上次复制的版本号 -->
+    <ReadLinesFromFile File="$(BrowserClientVersionFile)" Condition="Exists('$(BrowserClientVersionFile)')">
+      <Output TaskParameter="Lines" PropertyName="LastWebView2Version" />
+    </ReadLinesFromFile>
+    
+    <!-- 判断是否需要完整复制 -->
+    <PropertyGroup>
+      <NeedFullCopy Condition="!Exists('$(BrowserClientVersionFile)') OR '$(LastWebView2Version)' != '$(CurrentWebView2Version)'">true</NeedFullCopy>
+    </PropertyGroup>
+    
+    <!-- 情况1：需要完整复制（首次或版本变化） -->
+    <ItemGroup Condition="'$(NeedFullCopy)' == 'true'">
+      <AllBrowserFiles Include="$(BrowserClientSourcePath)\**\*.*" />
+    </ItemGroup>
+    
+    <Message Text="🔄 首次复制或版本变化，复制所有文件..." Importance="high" Condition="'$(NeedFullCopy)' == 'true'" />
+    
+    <Copy SourceFiles="@(AllBrowserFiles)" DestinationFolder="$(BrowserClientDestPath)\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(NeedFullCopy)' == 'true'" />
+    
+    <!-- 写入版本号文件 -->
+    <WriteLinesToFile File="$(BrowserClientVersionFile)" Lines="$(CurrentWebView2Version)" Overwrite="true" Condition="'$(NeedFullCopy)' == 'true'" />
+    
+    <Message Text="✅ 完整复制完成: @(AllBrowserFiles-&gt;Count()) 个文件" Importance="high" Condition="'$(NeedFullCopy)' == 'true'" />
+    
+    <!-- 情况2：增量复制（我们的代码 + WebView2依赖） -->
+    <ItemGroup Condition="'$(NeedFullCopy)' == 'false'">
+      <!-- 我们的代码文件 -->
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.exe" />
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.dll" />
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.pdb" />
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.deps.json" />
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\BsBrowserClient.runtimeconfig.json" />
+      <!-- 共享库 -->
+      <OurCodeFiles Include="$(MSBuildProjectDirectory)\..\zhaocaimao.Shared\bin\$(Configuration)\net8.0\zhaocaimao.Shared.dll" />
+      <OurCodeFiles Include="$(MSBuildProjectDirectory)\..\zhaocaimao.Shared\bin\$(Configuration)\net8.0\zhaocaimao.Shared.pdb" />
+      <!-- WebView2 依赖 -->
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\Microsoft.Web.WebView2.Core.dll" />
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\Microsoft.Web.WebView2.WinForms.dll" />
+      <!-- 第三方依赖 -->
+      <OurCodeFiles Include="$(BrowserClientSourcePath)\Newtonsoft.Json.dll" />
+    </ItemGroup>
+    
+    <Message Text="⚡ 增量复制我们的代码文件..." Importance="high" Condition="'$(NeedFullCopy)' == 'false'" />
+    
+    <Copy SourceFiles="@(OurCodeFiles)" DestinationFolder="$(BrowserClientDestPath)" SkipUnchangedFiles="false" Condition="'$(NeedFullCopy)' == 'false'" />
+    
+    <Message Text="✅ 增量复制完成: @(OurCodeFiles-&gt;Count()) 个文件" Importance="high" Condition="'$(NeedFullCopy)' == 'false'" />
+  </Target>
+
+</Project>

@@ -1,15 +1,15 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
-using BaiShengVx3Plus.Contracts;
-using BaiShengVx3Plus.Models.AutoBet;
-using BaiShengVx3Plus.Services.AutoBet;
-using BaiShengVx3Plus.Shared.Platform;
+using zhaocaimao.Contracts;
+using zhaocaimao.Models.AutoBet;
+using zhaocaimao.Services.AutoBet;
+using zhaocaimao.Shared.Platform;
 using Sunny.UI;
 
-namespace BaiShengVx3Plus.Views.AutoBet
+namespace zhaocaimao.Views.AutoBet
 {
     /// <summary>
     /// 自动投注配置管理器窗口
@@ -381,8 +381,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             txtPlatformUrl.Text = config.PlatformUrl;
             txtUsername.Text = config.Username;
             txtPassword.Text = config.Password;
-            txtMinBetAmount.Text = config.MinBetAmount.ToString();
-            txtMaxBetAmount.Text = config.MaxBetAmount.ToString();
             chkEnabled.Checked = config.IsEnabled;
             chkAutoLogin.Checked = config.AutoLogin;
             chkShowBrowser.Checked = config.ShowBrowser;
@@ -403,8 +401,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             txtPlatformUrl.Text = "";
             txtUsername.Text = "";
             txtPassword.Text = "";
-            txtMinBetAmount.Text = "1";
-            txtMaxBetAmount.Text = "10000";
             chkEnabled.Checked = true;
             chkAutoLogin.Checked = true;
             chkShowBrowser.Checked = false;
@@ -473,9 +469,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                     Platform = "YunDing28",
                     PlatformUrl = "https://www.yunding28.com",
                     IsEnabled = true,
-                    AutoLogin = true,
-                    MinBetAmount = 1,
-                    MaxBetAmount = 10000
+                    AutoLogin = true
                 };
                 
                 _autoBetService.SaveConfig(newConfig);
@@ -577,8 +571,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 _selectedConfig.PlatformUrl = txtPlatformUrl.Text.Trim();
                 _selectedConfig.Username = txtUsername.Text.Trim();
                 _selectedConfig.Password = txtPassword.Text;
-                _selectedConfig.MinBetAmount = decimal.TryParse(txtMinBetAmount.Text, out var minAmount) ? minAmount : 1;
-                _selectedConfig.MaxBetAmount = decimal.TryParse(txtMaxBetAmount.Text, out var maxAmount) ? maxAmount : 10000;
                 _selectedConfig.IsEnabled = chkEnabled.Checked;
                 _selectedConfig.AutoLogin = chkAutoLogin.Checked;
                 _selectedConfig.ShowBrowser = chkShowBrowser.Checked;
@@ -916,7 +908,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         
                         // 2. 解析投注内容
                         var originalContent = cmdParam; // "1234大10"
-                        var standardContent = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
+                        var standardContent = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
                         var totalAmount = CalculateTotalAmount(standardContent);
                         
                         _logService.Info("CommandPanel", $"投注解析:原始={originalContent} 标准={standardContent} 金额={totalAmount}");

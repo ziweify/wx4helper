@@ -1,7 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace BaiShengVx3Plus.Models
+namespace zhaocaimao.Models
 {
     /// <summary>
     /// 应用程序配置（纯数据模型）

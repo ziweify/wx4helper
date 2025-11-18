@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using SQLite;
 
-namespace BaiShengVx3Plus.Models.AutoBet
+namespace zhaocaimao.Models.AutoBet
 {
     /// <summary>
     /// 投注记录表

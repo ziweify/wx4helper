@@ -45,9 +45,12 @@ namespace zhaocaimao.Core
             // ========================================
             if (item.Id == 0)
             {
-                // 🔥 插入新记录（一行代码）
-                _db.Insert(item);
-                item.Id = _db.ExecuteScalar<long>("SELECT last_insert_rowid()");
+                // 🔥 使用锁保护数据库写入
+                Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
+                {
+                    _db.Insert(item);
+                    item.Id = _db.ExecuteScalar<long>("SELECT last_insert_rowid()");
+                });
             }
 
             // ========================================
@@ -81,8 +84,11 @@ namespace zhaocaimao.Core
             {
                 if (item.Id > 0)
                 {
-                    // 🔥 立即保存到数据库（在当前线程执行）
-                    _db.Update(item);
+                    // 🔥 使用锁保护数据库写入
+                    Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
+                    {
+                        _db.Update(item);
+                    });
                     
                     // 🔥 线程安全地刷新 UI
                     NotifyItemChanged(item);

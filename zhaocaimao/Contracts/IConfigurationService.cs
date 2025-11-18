@@ -1,4 +1,4 @@
-namespace BaiShengVx3Plus.Contracts
+﻿namespace zhaocaimao.Contracts
 {
     /// <summary>
     /// 配置服务接口
@@ -34,6 +34,11 @@ namespace BaiShengVx3Plus.Contracts
         /// 🔥 获取最大投注金额
         /// </summary>
         float GetMaxBet();
+        
+        /// <summary>
+        /// 🔥 获取单期最大投注总额
+        /// </summary>
+        float GetMaxBetPerIssue();
         
         /// <summary>
         /// 获取收单关闭时不发送系统消息状态

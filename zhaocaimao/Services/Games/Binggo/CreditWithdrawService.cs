@@ -21,17 +21,20 @@ namespace zhaocaimao.Services.Games.Binggo
         private readonly ILogService _logService;
         private readonly IWeixinSocketClient? _socketClient;
         private readonly BinggoStatisticsService _statisticsService;
+        private readonly Services.Sound.SoundService? _soundService;  // 🔥 声音播放服务（可选）
 
         public CreditWithdrawService(
             SQLiteConnection db,
             ILogService logService,
             BinggoStatisticsService statisticsService,
-            IWeixinSocketClient? socketClient = null)
+            IWeixinSocketClient? socketClient = null,
+            Services.Sound.SoundService? soundService = null)  // 🔥 声音服务（可选）
         {
             _db = db;
             _logService = logService;
             _statisticsService = statisticsService;
             _socketClient = socketClient;
+            _soundService = soundService;
             
             // 确保表存在
             _db.CreateTable<V2CreditWithdraw>();
@@ -70,6 +73,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     member.Balance = balanceAfter;
                     member.CreditToday += request.Amount;
                     member.CreditTotal += request.Amount;
+                    
+                    // 🔥 播放上分声音（参考 F5BotV2 第2597行：PlayMp3("mp3_shang.mp3")）
+                    if (!isLoading)
+                    {
+                        _soundService?.PlayCreditUpSound();
+                    }
                 }
                 else if (request.Action == CreditWithdrawAction.下分)
                 {
@@ -89,6 +98,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     member.Balance = balanceAfter;
                     member.WithdrawToday += request.Amount;
                     member.WithdrawTotal += request.Amount;
+                    
+                    // 🔥 播放下分声音（参考 F5BotV2 第2599行：PlayMp3("mp3_xia.mp3")）
+                    if (!isLoading)
+                    {
+                        _soundService?.PlayCreditDownSound();
+                    }
                 }
                 else
                 {
@@ -119,26 +134,29 @@ namespace zhaocaimao.Services.Games.Binggo
                     Notes = isLoading ? "加载历史记录" : $"管理员同意{actionName}申请"
                 };
 
-                // 🔥 5. 保存到数据库（统一事务）
-                _db.BeginTransaction();
-                try
+                // 🔥 5. 保存到数据库（统一事务 + 锁保护）
+                Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
                 {
-                    _db.Update(member);
-                    _db.Update(request);
-                    
-                    // 加载模式不重复插入资金变动记录
-                    if (!isLoading)
+                    _db.BeginTransaction();
+                    try
                     {
-                        _db.Insert(balanceChange);
+                        _db.Update(member);
+                        _db.Update(request);
+                        
+                        // 加载模式不重复插入资金变动记录
+                        if (!isLoading)
+                        {
+                            _db.Insert(balanceChange);
+                        }
+                        
+                        _db.Commit();
                     }
-                    
-                    _db.Commit();
-                }
-                catch
-                {
-                    _db.Rollback();
-                    throw;
-                }
+                    catch
+                    {
+                        _db.Rollback();
+                        throw;
+                    }
+                });
 
                 // 🔥 6. 发送微信通知（仅非加载模式）
                 if (!isLoading && _socketClient != null)
@@ -235,6 +253,43 @@ namespace zhaocaimao.Services.Games.Binggo
             catch (Exception ex)
             {
                 _logService.Error("CreditWithdrawService", "加载上下分数据失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 🔥 忽略上下分申请（参考 F5BotV2 Line 1526-1542）
+        /// </summary>
+        public (bool success, string? errorMessage) IgnoreCreditWithdraw(V2CreditWithdraw request)
+        {
+            try
+            {
+                if (request.Status != CreditWithdrawStatus.等待处理)
+                {
+                    return (false, "该申请已处理");
+                }
+
+                // 更新申请状态为忽略
+                request.Status = CreditWithdrawStatus.忽略;
+                request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                request.Notes = "管理员忽略";
+
+                // 保存到数据库
+                _db.Update(request);
+
+                // 日志记录
+                _logService.Info("CreditWithdrawService",
+                    $"忽略申请\n" +
+                    $"会员：{request.Nickname}\n" +
+                    $"金额：{request.Amount:F2}\n" +
+                    $"处理人：{request.ProcessedBy}");
+
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("CreditWithdrawService", "忽略申请失败", ex);
+                return (false, ex.Message);
             }
         }
 
