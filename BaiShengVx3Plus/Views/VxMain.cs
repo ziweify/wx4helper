@@ -3578,6 +3578,20 @@ namespace BaiShengVx3Plus
                         _autoBetService.SaveConfig(defaultConfig);
                         _logService.Info("VxMain", $"✅ 已设置配置 [{defaultConfig.ConfigName}] IsEnabled=true");
                         _logService.Info("VxMain", "   监控线程将在2秒内检测到并启动浏览器");
+                        
+                        // 🔥 启动 AutoBetCoordinator（订阅封盘事件，处理订单投注）
+                        _ = Task.Run(async () =>
+                        {
+                            var success = await _autoBetCoordinator.StartAsync(defaultConfig.Id);
+                            if (success)
+                            {
+                                _logService.Info("VxMain", $"✅ AutoBetCoordinator 已启动，已订阅封盘事件");
+                            }
+                            else
+                            {
+                                _logService.Error("VxMain", "❌ AutoBetCoordinator 启动失败");
+                            }
+                        });
                     }
                     
                     _logService.Info("VxMain", "✅ 飞单功能已启用（浏览器由监控任务管理）");
@@ -3585,6 +3599,10 @@ namespace BaiShengVx3Plus
                 }
                 else // 停止自动投注
                 {
+                    // 🔥 先停止 AutoBetCoordinator（取消订阅封盘事件）
+                    _autoBetCoordinator.Stop();
+                    _logService.Info("VxMain", "✅ AutoBetCoordinator 已停止，已取消订阅封盘事件");
+                    
                     // ✅ 设置 BetConfig.IsEnabled = false（停止监控浏览器）
                     var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
@@ -3684,6 +3702,24 @@ namespace BaiShengVx3Plus
                     {
                         _logService.Info("VxMain", $"✅ 飞单开关状态已同步: BetConfig.IsEnabled={defaultConfig.IsEnabled}");
                     }
+                    
+                    // 🔥 如果飞单开关已开启，启动 AutoBetCoordinator（订阅封盘事件）
+                    if (isAutoBetEnabled)
+                    {
+                        _logService.Info("VxMain", "✅ 检测到飞单开关已开启，启动 AutoBetCoordinator...");
+                        _ = Task.Run(async () =>
+                        {
+                            var success = await _autoBetCoordinator.StartAsync(defaultConfig.Id);
+                            if (success)
+                            {
+                                _logService.Info("VxMain", $"✅ AutoBetCoordinator 已启动，已订阅封盘事件");
+                            }
+                            else
+                            {
+                                _logService.Error("VxMain", "❌ AutoBetCoordinator 启动失败");
+                            }
+                        });
+                    }
                 }
                 
                 // 🔥 重新绑定事件
@@ -3691,12 +3727,10 @@ namespace BaiShengVx3Plus
                 swi_OrdersTasking.ValueChanged += swi_OrdersTasking_ValueChanged;
                 _logService.Info("VxMain", "✅ UI 开关事件已重新绑定");
                 
-                // ✅ 不再手动触发启动！
-                // 原因：配置中的 IsEnabled 已经保存了，监控线程会自动检测并启动
-                // 手动触发会绕过监控线程的 2 秒延迟机制，导致老浏览器还没连上就启动新的
+                // ✅ 监控线程会自动检测并启动浏览器（延迟2秒，等待老浏览器重连）
                 if (isAutoBetEnabled)
                 {
-                    _logService.Info("VxMain", "✅ 检测到飞单开关已开启，监控线程将自动处理（延迟2秒，等待老浏览器重连）");
+                    _logService.Info("VxMain", "✅ 监控线程将自动处理浏览器启动（延迟2秒，等待老浏览器重连）");
                 }
             }
             catch (Exception ex)

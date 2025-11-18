@@ -27,17 +27,33 @@ namespace zhaocaimao.Services.AutoBet
         private readonly int _configId;
         private Process? _process;
         private AutoBetSocketServer.ClientConnection? _connection;  // 🔥 改为使用 ClientConnection
+        private readonly object _connectionLock = new object(); // 🔥 线程安全：保护连接的访问和更新
         
         // 🔥 响应等待机制
         private readonly Dictionary<string, TaskCompletionSource<Newtonsoft.Json.Linq.JObject>> _pendingResponses = new();
         private readonly object _responseLock = new();
         
-        public bool IsConnected => _connection != null && _connection.IsConnected;
+        public bool IsConnected
+        {
+            get
+            {
+                lock (_connectionLock)
+                {
+                    return _connection != null && _connection.IsConnected;
+                }
+            }
+        }
         
         /// <summary>
         /// 🔥 获取底层连接对象（用于诊断）
         /// </summary>
-        public AutoBetSocketServer.ClientConnection? GetConnection() => _connection;
+        public AutoBetSocketServer.ClientConnection? GetConnection()
+        {
+            lock (_connectionLock)
+            {
+                return _connection;
+            }
+        }
         
         /// <summary>
         /// 检查进程是否还在运行
@@ -105,8 +121,11 @@ namespace zhaocaimao.Services.AutoBet
         /// </summary>
         public void AttachConnection(AutoBetSocketServer.ClientConnection? connection)
         {
-            // 🔥 直接使用 ClientConnection，不再创建新的 reader/writer
-            _connection = connection;
+            lock (_connectionLock)
+            {
+                // 🔥 直接使用 ClientConnection，不再创建新的 reader/writer
+                _connection = connection;
+            }
             
             // 🔥 连接已附加，IsConnected 属性会自动反映真实状态
         }
@@ -177,21 +196,27 @@ namespace zhaocaimao.Services.AutoBet
         /// </summary>
         public async Task<BetResult> SendCommandAsync(string command, object? data = null)
         {
-            // 🔥 详细的连接状态检查
-            Console.WriteLine($"[BrowserClient] SendCommandAsync 调用:");
-            Console.WriteLine($"  - ConfigId: {_configId}");
-            Console.WriteLine($"  - _connection == null: {_connection == null}");
-            Console.WriteLine($"  - _connection?.IsConnected: {_connection?.IsConnected}");
-            Console.WriteLine($"  - IsConnected: {IsConnected}");
-            
-            if (!IsConnected)
+            // 🔥 获取连接的本地引用（线程安全）
+            AutoBetSocketServer.ClientConnection? connection;
+            lock (_connectionLock)
             {
-                Console.WriteLine($"[BrowserClient] ❌ 连接检查失败，返回错误");
-                return new BetResult
+                connection = _connection;
+                
+                // 🔥 详细的连接状态检查
+                Console.WriteLine($"[BrowserClient] SendCommandAsync 调用:");
+                Console.WriteLine($"  - ConfigId: {_configId}");
+                Console.WriteLine($"  - _connection == null: {_connection == null}");
+                Console.WriteLine($"  - _connection?.IsConnected: {_connection?.IsConnected}");
+                
+                if (connection == null || !connection.IsConnected)
                 {
-                    Success = false,
-                    ErrorMessage = "未连接到浏览器"
-                };
+                    Console.WriteLine($"[BrowserClient] ❌ 连接检查失败，返回错误");
+                    return new BetResult
+                    {
+                        Success = false,
+                        ErrorMessage = "未连接到浏览器"
+                    };
+                }
             }
             
             try
@@ -217,7 +242,8 @@ namespace zhaocaimao.Services.AutoBet
                 Console.WriteLine($"[BrowserClient] 发送命令:{command} ConfigId:{_configId}");
                 Console.WriteLine($"[BrowserClient] 发送数据:{json.Substring(0, Math.Min(200, json.Length))}...");
                 
-                var sendSuccess = await _connection!.SendCommandAsync(command, data);
+                // 🔥 使用本地连接引用（即使_connection被替换，这里仍使用当前快照）
+                var sendSuccess = await connection.SendCommandAsync(command, data);
                 if (!sendSuccess)
                 {
                     Console.WriteLine($"[BrowserClient] ❌ 发送命令失败");
@@ -415,18 +441,28 @@ namespace zhaocaimao.Services.AutoBet
         {
             try
             {
-                // 🔥 关闭 TCP 连接（通知 AutoBetSocketServer 清理）
-                if (_connection != null)
+                // 🔥 关闭 TCP 连接（通知 AutoBetSocketServer 清理）- 线程安全
+                AutoBetSocketServer.ClientConnection? connectionToDispose = null;
+                lock (_connectionLock)
+                {
+                    if (_connection != null)
+                    {
+                        connectionToDispose = _connection;
+                        _connection = null;
+                    }
+                }
+                
+                // 🔥 在锁外执行 Dispose（避免死锁）
+                if (connectionToDispose != null)
                 {
                     try
                     {
-                        _connection.Dispose();
+                        connectionToDispose.Dispose();
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[BrowserClient] Dispose connection 错误: {ex.Message}");
                     }
-                    _connection = null;
                 }
                 
                 // 🔥 只有明确要求时才关闭进程（例如用户点击"停止浏览器"按钮）

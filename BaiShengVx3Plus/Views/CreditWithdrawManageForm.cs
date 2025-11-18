@@ -461,10 +461,11 @@ namespace BaiShengVx3Plus.Views
                 request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
                 request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 
-                // 🔥 刷新 DataGridView 的 ActionText 列（因为它是计算属性）
-                if (dgvRequests.Columns["ActionText"] != null)
+                // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
+                int index = _bindingSource.IndexOf(request);
+                if (index >= 0)
                 {
-                    dgvRequests.InvalidateColumn(dgvRequests.Columns["ActionText"].Index);
+                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
                 }
                 
                 // 🔥 记录到资金变动表
@@ -538,10 +539,11 @@ namespace BaiShengVx3Plus.Views
                     return;
                 }
                 
-                // 🔥 刷新 DataGridView 的 ActionText 列（因为它是计算属性）
-                if (dgvRequests.Columns["ActionText"] != null)
+                // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
+                int index = _bindingSource.IndexOf(request);
+                if (index >= 0)
                 {
-                    dgvRequests.InvalidateColumn(dgvRequests.Columns["ActionText"].Index);
+                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
                 }
                 
                 // 🔥 更新统计（BindingList 变化会自动更新 DataGridView，无需手动刷新）
@@ -576,10 +578,11 @@ namespace BaiShengVx3Plus.Views
                 request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 request.Notes = "管理员拒绝";
                 
-                // 🔥 刷新 DataGridView 的 ActionText 列（因为它是计算属性）
-                if (dgvRequests.Columns["ActionText"] != null)
+                // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
+                int index = _bindingSource.IndexOf(request);
+                if (index >= 0)
                 {
-                    dgvRequests.InvalidateColumn(dgvRequests.Columns["ActionText"].Index);
+                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
                 }
                 
                 // 🔥 发送微信通知
