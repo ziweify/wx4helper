@@ -3395,7 +3395,7 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "📋 加载自动投注设置（临时解绑事件）...");
                 swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
                 
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 
                 if (defaultConfig != null)
                 {
@@ -3470,7 +3470,7 @@ namespace BaiShengVx3Plus
         {
             try
             {
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig == null)
                 {
                     // 🔥 如果默认配置不存在，创建一个新的
@@ -3572,7 +3572,7 @@ namespace BaiShengVx3Plus
                     SaveAutoBetSettings();
                     
                     // ✅ 设置 BetConfig.IsEnabled = true（让监控线程启动浏览器）
-                    var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                    var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
                         defaultConfig.IsEnabled = true;
@@ -3605,7 +3605,7 @@ namespace BaiShengVx3Plus
                     _logService.Info("VxMain", "✅ AutoBetCoordinator 已停止，已取消订阅封盘事件");
                     
                     // ✅ 设置 BetConfig.IsEnabled = false（停止监控浏览器）
-                    var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                    var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
                         defaultConfig.IsEnabled = false;
@@ -3689,7 +3689,7 @@ namespace BaiShengVx3Plus
                 
                 // 🔥 同步应用级配置到 BetConfig.IsEnabled
                 // 这样监控线程才能正确检测到需要启动浏览器
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
                     if (defaultConfig.IsEnabled != isAutoBetEnabled)
@@ -3772,7 +3772,7 @@ namespace BaiShengVx3Plus
 
                 _logService.Info("VxMain", "🚀 手动启动浏览器...");
 
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
                     var success = await _autoBetService.StartBrowser(defaultConfig.Id);

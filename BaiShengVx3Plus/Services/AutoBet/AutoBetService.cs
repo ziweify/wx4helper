@@ -27,12 +27,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
         // Socket 服务器（双向通信：心跳、状态推送、远程控制）
         private AutoBetSocketServer? _socketServer;
         
-        // HTTP 服务器（主数据交互：配置、订单、结果）
-        private AutoBetHttpServer? _httpServer;
-        
-        // 待投注订单队列（配置ID → 订单队列）
-        private readonly Dictionary<int, Queue<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>> _orderQueues = new();
-        
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
         private Core.BetConfigBindingList? _configs;
@@ -67,17 +61,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
             _log.Info("AutoBet", "✅ AutoBetService 初始化完成");
             _log.Info("AutoBet", $"   Socket 服务器状态: {(_socketServer.IsRunning ? "运行中" : "未运行")}");
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            
-            // 启动 HTTP 服务器（端口 8888，用于数据交互和调试）
-            _httpServer = new AutoBetHttpServer(
-                log: log,
-                port: 8888,
-                getConfig: GetConfig,
-                saveConfig: SaveConfig,
-                orderService: orderService,
-                handleResult: HandleBetResult
-            );
-            _httpServer.Start();
         }
         
         /// <summary>
@@ -276,13 +259,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
         #region 配置管理（从内存读取，不访问数据库）
         
         /// <summary>
-        /// 获取所有配置（从内存读取）
-        /// 🔥 监控任务调用此方法，不访问数据库
+        /// 获取配置 BindingList（返回引用，实时同步）
+        /// 🔥 用于数据绑定和查询，修改会自动同步到数据库
+        /// 🔥 架构设计：服务持有数据，UI 只引用（不持有副本）
         /// </summary>
-        public List<BetConfig> GetConfigs()
+        public Core.BetConfigBindingList? GetConfigsBindingList()
         {
-            if (_configs == null) return new List<BetConfig>();
-            return _configs.ToList();
+            return _configs;
         }
         
         /// <summary>
@@ -965,47 +948,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
             }
         }
         
-        /// <summary>
-        /// 添加订单到队列（供 HTTP 接口查询）
-        /// </summary>
-        public void QueueBetOrder(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
-        {
-            lock (_orderQueues)
-            {
-                if (!_orderQueues.ContainsKey(configId))
-                {
-                    _orderQueues[configId] = new Queue<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
-                }
-                
-                _orderQueues[configId].Enqueue(orders);
-                var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
-                var totalAmount = orders.GetTotalAmount();
-                _log.Info("AutoBet", $"📝 订单已加入队列: 配置{configId} 期号{issueId} 共{orders.Count}项 {totalAmount}元");
-            }
-        }
-        
-        /// <summary>
-        /// 获取待处理订单（HTTP API 调用）
-        /// </summary>
-        public BaiShengVx3Plus.Shared.Models.BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
-        {
-            lock (_orderQueues)
-            {
-                if (!_orderQueues.TryGetValue(configId, out var queue) || queue.Count == 0)
-                {
-                    return null;
-                }
-                
-                // 如果指定了期号，查找对应期号的订单
-                if (issueId.HasValue)
-                {
-                    return queue.FirstOrDefault(o => o.Count > 0 && o[0].IssueId == issueId.Value);
-                }
-                
-                // 否则返回队首订单
-                return queue.Peek();
-            }
-        }
         
         /// <summary>
         /// 获取浏览器客户端（供命令面板使用）
@@ -1037,45 +979,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
             return browserClient;
         }
         
-        /// <summary>
-        /// 处理投注结果（HTTP API 回调）
-        /// </summary>
-        public void HandleBetResult(int configId, bool success, string? orderId, string? errorMessage)
-        {
-            try
-            {
-                var config = GetConfig(configId);
-                if (config == null)
-                {
-                    _log.Warning("AutoBet", $"配置不存在: {configId}");
-                    return;
-                }
-                
-                // 从队列移除已处理的订单
-                BaiShengVx3Plus.Shared.Models.BetStandardOrderList? orders = null;
-                lock (_orderQueues)
-                {
-                    if (_orderQueues.TryGetValue(configId, out var queue) && queue.Count > 0)
-                    {
-                        orders = queue.Dequeue();
-                    }
-                }
-                
-                if (orders == null)
-                {
-                    _log.Warning("AutoBet", $"未找到对应订单: 配置{configId}");
-                    return;
-                }
-                
-                // 🔥 投注记录已由 BetRecordService 统一管理，此处不再重复记录
-                
-                _log.Info("AutoBet", $"📥 [{config.ConfigName}] 投注结果: {(success ? "✅ 成功" : "❌ 失败")} 订单号:{orderId}");
-            }
-            catch (Exception ex)
-            {
-                _log.Error("AutoBet", $"处理投注结果失败: 配置{configId}", ex);
-            }
-        }
         
         #endregion
         
@@ -1708,13 +1611,6 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 🔥 步骤5: 停止 HTTP 服务器
-                if (_httpServer != null)
-                {
-                    _log.Info("AutoBet", "⏹️ 停止 HTTP 服务器...");
-                    _httpServer.Dispose();
-                    _httpServer = null;
-                    _log.Info("AutoBet", "✅ HTTP 服务器已停止");
-                }
                 
                 // 🔥 步骤6: 停止所有浏览器（最后停止，因为可能正在处理命令）
                 _log.Info("AutoBet", "⏹️ 停止所有浏览器...");

@@ -25,10 +25,10 @@ namespace zhaocaimao.Models.AutoBet
         /// <summary>
         /// 设置依赖服务（在 AutoBetService 中调用）
         /// </summary>
-        public void SetDependencies(ILogService logService, AutoBetSocketServer? socketServer = null)
+        public void SetDependencies(ILogService logService)
         {
             _logService = logService;
-            // 🔥 控件方式：不再需要 Socket 服务器，保留参数以兼容接口
+            // 🔥 内部 WebView2 控件方式：不需要 Socket Server
             
             // 🔥 诊断日志：记录依赖注入
             _logService?.Info("BetConfig", $"✅ [{ConfigName}] 依赖服务已注入");

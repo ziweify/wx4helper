@@ -24,14 +24,8 @@ namespace zhaocaimao.Services.AutoBet
         // 🔥 已删除字典！配置对象自己管理 Browser 连接
         // private readonly Dictionary<int, BrowserClient> _browsers = new();  // ❌ 不需要了
         
-        // Socket 服务器（双向通信：心跳、状态推送、远程控制）
-        private AutoBetSocketServer? _socketServer;
-        
-        // HTTP 服务器（主数据交互：配置、订单、结果）
-        private AutoBetHttpServer? _httpServer;
-        
-        // 待投注订单队列（配置ID → 订单队列）
-        private readonly Dictionary<int, Queue<zhaocaimao.Shared.Models.BetStandardOrderList>> _orderQueues = new();
+        // 🔥 已移除 Socket/HTTP 服务器：使用内部 WebView2 控件，直接调用方法（无需进程间通信）
+        // 🔥 已移除 _orderQueues：订单直接从 _ordersBindingList 查询，无需队列缓存
         
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
@@ -51,27 +45,10 @@ namespace zhaocaimao.Services.AutoBet
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             _log.Info("AutoBet", "🚀 AutoBetService 构造函数执行");
             
-            // 启动 Socket 服务器（端口 19527，用于双向通信）
-            _socketServer = new AutoBetSocketServer(log, OnBrowserConnected, OnMessageReceived, OnBrowserDisconnected); // 🔥 添加连接断开回调
-            _socketServer.Start();
-            
-            // 🔥 监控任务暂不启动，等待 SetDatabase 完成后再启动
+            // 🔥 内部 WebView2 控件方式：无需启动 Socket/HTTP 服务器
             _log.Info("AutoBet", "⏸️ 后台监控任务暂未启动（等待数据库初始化）");
-            
-            _log.Info("AutoBet", "✅ AutoBetService 初始化完成");
-            _log.Info("AutoBet", $"   Socket 服务器状态: {(_socketServer.IsRunning ? "运行中" : "未运行")}");
+            _log.Info("AutoBet", "✅ AutoBetService 初始化完成（内部WebView2控件，无需Socket/HTTP服务器）");
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            
-            // 启动 HTTP 服务器（端口 8888，用于数据交互和调试）
-            _httpServer = new AutoBetHttpServer(
-                log: log,
-                port: 8888,
-                getConfig: GetConfig,
-                saveConfig: SaveConfig,
-                orderService: orderService,
-                handleResult: HandleBetResult
-            );
-            _httpServer.Start();
         }
         
         /// <summary>
@@ -212,7 +189,7 @@ namespace zhaocaimao.Services.AutoBet
             
             foreach (var config in _configs)
             {
-                config.SetDependencies(_log, _socketServer);
+                config.SetDependencies(_log);  // 🔥 内部控件：不需要 Socket Server
             }
             
             _log.Info("AutoBet", $"✅ 已为 {_configs.Count} 个配置注入依赖服务");
@@ -843,47 +820,6 @@ namespace zhaocaimao.Services.AutoBet
             }
         }
         
-        /// <summary>
-        /// 添加订单到队列（供 HTTP 接口查询）
-        /// </summary>
-        public void QueueBetOrder(int configId, zhaocaimao.Shared.Models.BetStandardOrderList orders)
-        {
-            lock (_orderQueues)
-            {
-                if (!_orderQueues.ContainsKey(configId))
-                {
-                    _orderQueues[configId] = new Queue<zhaocaimao.Shared.Models.BetStandardOrderList>();
-                }
-                
-                _orderQueues[configId].Enqueue(orders);
-                var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
-                var totalAmount = orders.GetTotalAmount();
-                _log.Info("AutoBet", $"📝 订单已加入队列: 配置{configId} 期号{issueId} 共{orders.Count}项 {totalAmount}元");
-            }
-        }
-        
-        /// <summary>
-        /// 获取待处理订单（HTTP API 调用）
-        /// </summary>
-        public zhaocaimao.Shared.Models.BetStandardOrderList? GetPendingOrder(int configId, int? issueId)
-        {
-            lock (_orderQueues)
-            {
-                if (!_orderQueues.TryGetValue(configId, out var queue) || queue.Count == 0)
-                {
-                    return null;
-                }
-                
-                // 如果指定了期号，查找对应期号的订单
-                if (issueId.HasValue)
-                {
-                    return queue.FirstOrDefault(o => o.Count > 0 && o[0].IssueId == issueId.Value);
-                }
-                
-                // 否则返回队首订单
-                return queue.Peek();
-            }
-        }
         
         /// <summary>
         /// 获取浏览器控件（供命令面板使用）
@@ -926,45 +862,6 @@ namespace zhaocaimao.Services.AutoBet
             return new BrowserClientWrapper(configId, control);
         }
         
-        /// <summary>
-        /// 处理投注结果（HTTP API 回调）
-        /// </summary>
-        public void HandleBetResult(int configId, bool success, string? orderId, string? errorMessage)
-        {
-            try
-            {
-                var config = GetConfig(configId);
-                if (config == null)
-                {
-                    _log.Warning("AutoBet", $"配置不存在: {configId}");
-                    return;
-                }
-                
-                // 从队列移除已处理的订单
-                zhaocaimao.Shared.Models.BetStandardOrderList? orders = null;
-                lock (_orderQueues)
-                {
-                    if (_orderQueues.TryGetValue(configId, out var queue) && queue.Count > 0)
-                    {
-                        orders = queue.Dequeue();
-                    }
-                }
-                
-                if (orders == null)
-                {
-                    _log.Warning("AutoBet", $"未找到对应订单: 配置{configId}");
-                    return;
-                }
-                
-                // 🔥 投注记录已由 BetRecordService 统一管理，此处不再重复记录
-                
-                _log.Info("AutoBet", $"📥 [{config.ConfigName}] 投注结果: {(success ? "✅ 成功" : "❌ 失败")} 订单号:{orderId}");
-            }
-            catch (Exception ex)
-            {
-                _log.Error("AutoBet", $"处理投注结果失败: 配置{configId}", ex);
-            }
-        }
         
         #endregion
         
@@ -1341,23 +1238,7 @@ namespace zhaocaimao.Services.AutoBet
                 
                 // 🔥 监控线程已移除，无需停止
                 
-                // 🔥 步骤4: 停止 Socket 服务器（停止接受新连接）
-                if (_socketServer != null)
-                {
-                    _log.Info("AutoBet", "⏹️ 停止 Socket 服务器...");
-                    _socketServer.Dispose();
-                    _socketServer = null;
-                    _log.Info("AutoBet", "✅ Socket 服务器已停止");
-                }
-                
-                // 🔥 步骤5: 停止 HTTP 服务器
-                if (_httpServer != null)
-                {
-                    _log.Info("AutoBet", "⏹️ 停止 HTTP 服务器...");
-                    _httpServer.Dispose();
-                    _httpServer = null;
-                    _log.Info("AutoBet", "✅ HTTP 服务器已停止");
-                }
+                // 🔥 内部 WebView2 控件：无需停止 Socket/HTTP 服务器
                 
                 // 🔥 步骤6: 停止所有浏览器（最后停止，因为可能正在处理命令）
                 _log.Info("AutoBet", "⏹️ 停止所有浏览器...");

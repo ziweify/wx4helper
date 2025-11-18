@@ -18,15 +18,12 @@ namespace BaiShengVx3Plus.Views.AutoBet
     {
         private readonly AutoBetService _autoBetService;
         private readonly ILogService _logService;
-        private BindingList<BetConfig> _configsBindingList;
         private BetConfig? _selectedConfig;
 
         public BetConfigManagerForm(AutoBetService autoBetService, ILogService logService)
         {
             _autoBetService = autoBetService ?? throw new ArgumentNullException(nameof(autoBetService));
             _logService = logService ?? throw new ArgumentNullException(nameof(logService));
-            
-            _configsBindingList = new BindingList<BetConfig>();
             
             InitializeComponent();
             
@@ -42,67 +39,127 @@ namespace BaiShengVx3Plus.Views.AutoBet
         {
             try
             {
-                if (dgvRecords.Columns.Count == 0) return;
-                
-                // 配置列显示
-                if (dgvRecords.Columns["Id"] != null)
+                // 🔥 额外检查：确保 DataSource 不为空且有数据
+                if (dgvRecords.DataSource == null || dgvRecords.Columns.Count == 0)
                 {
-                    dgvRecords.Columns["Id"].HeaderText = "ID";
-                    dgvRecords.Columns["Id"].Width = 50;
-                }
-                if (dgvRecords.Columns["IssueId"] != null)
-                {
-                    dgvRecords.Columns["IssueId"].HeaderText = "期号";
-                    dgvRecords.Columns["IssueId"].Width = 100;
-                }
-                if (dgvRecords.Columns["Source"] != null)
-                {
-                    dgvRecords.Columns["Source"].HeaderText = "来源";
-                    dgvRecords.Columns["Source"].Width = 60;
-                }
-                if (dgvRecords.Columns["BetContentStandard"] != null)
-                {
-                    dgvRecords.Columns["BetContentStandard"].HeaderText = "投注内容";
-                    dgvRecords.Columns["BetContentStandard"].Width = 200;
-                }
-                if (dgvRecords.Columns["TotalAmount"] != null)
-                {
-                    dgvRecords.Columns["TotalAmount"].HeaderText = "金额";
-                    dgvRecords.Columns["TotalAmount"].Width = 80;
-                }
-                if (dgvRecords.Columns["Success"] != null)
-                {
-                    dgvRecords.Columns["Success"].HeaderText = "成功";
-                    dgvRecords.Columns["Success"].Width = 60;
-                }
-                if (dgvRecords.Columns["DurationMs"] != null)
-                {
-                    dgvRecords.Columns["DurationMs"].HeaderText = "耗时(ms)";
-                    dgvRecords.Columns["DurationMs"].Width = 80;
-                }
-                if (dgvRecords.Columns["SendTime"] != null)
-                {
-                    dgvRecords.Columns["SendTime"].HeaderText = "发送时间";
-                    dgvRecords.Columns["SendTime"].Width = 150;
-                    dgvRecords.Columns["SendTime"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm:ss";
+                    return;
                 }
                 
-                // 隐藏不需要的列
-                if (dgvRecords.Columns["ConfigId"] != null) dgvRecords.Columns["ConfigId"].Visible = false;
-                if (dgvRecords.Columns["OrderIds"] != null) dgvRecords.Columns["OrderIds"].Visible = false;
-                if (dgvRecords.Columns["PostStartTime"] != null) dgvRecords.Columns["PostStartTime"].Visible = false;
-                if (dgvRecords.Columns["PostEndTime"] != null) dgvRecords.Columns["PostEndTime"].Visible = false;
-                if (dgvRecords.Columns["Result"] != null) dgvRecords.Columns["Result"].Visible = false;
-                if (dgvRecords.Columns["ErrorMessage"] != null) dgvRecords.Columns["ErrorMessage"].Visible = false;
-                if (dgvRecords.Columns["OrderNo"] != null) dgvRecords.Columns["OrderNo"].Visible = false;
-                if (dgvRecords.Columns["CreateTime"] != null) dgvRecords.Columns["CreateTime"].Visible = false;
-                if (dgvRecords.Columns["UpdateTime"] != null) dgvRecords.Columns["UpdateTime"].Visible = false;
+                //winform最佳实践
+                // 🔥 延迟配置列（确保所有列都已完全初始化）
+                // 参考：https://stackoverflow.com/questions/15812339/datagridview-databindingcomplete-event
+                dgvRecords.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        ConfigureColumns();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("BetConfigManagerForm", $"延迟配置列失败: {ex.Message}", ex);
+                    }
+                }));
             }
             catch (Exception ex)
             {
                 _logService.Error("BetConfigManagerForm", $"配置列显示失败: {ex.Message}", ex);
             }
         }
+        
+        /// <summary>
+        /// 配置 DataGridView 列属性（提取为独立方法）
+        /// </summary>
+        private void ConfigureColumns()
+        {
+            // 🔥 多重防护：确保 DataGridView 和列集合已完全初始化
+            if (dgvRecords == null || dgvRecords.IsDisposed || 
+                dgvRecords.Columns == null || dgvRecords.Columns.Count == 0)
+            {
+                return;
+            }
+            
+            try
+            {
+                // 🔥 关键修复：先禁用自动调整大小，避免内部状态冲突
+                dgvRecords.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+                
+                // 🔥 批量配置列（减少重绘次数）
+                dgvRecords.SuspendLayout();
+                
+                // 🔥 使用安全的列配置方法
+                ConfigureColumn("Id", "ID", 50, true);
+                ConfigureColumn("IssueId", "期号", 100, true);
+                ConfigureColumn("Source", "来源", 60, true);
+                ConfigureColumn("BetContentStandard", "投注内容", 200, true);
+                ConfigureColumn("TotalAmount", "金额", 80, true);
+                ConfigureColumn("Success", "成功", 60, true);
+                ConfigureColumn("DurationMs", "耗时(ms)", 80, true);
+                
+                // 发送时间列（带格式化）
+                var colSendTime = dgvRecords.Columns["SendTime"];
+                if (colSendTime != null)
+                {
+                    colSendTime.HeaderText = "发送时间";
+                    colSendTime.Width = 150;
+                    colSendTime.Visible = true;
+                    if (colSendTime.DefaultCellStyle != null)
+                    {
+                        colSendTime.DefaultCellStyle.Format = "yyyy-MM-dd HH:mm:ss";
+                    }
+                }
+                
+                // 隐藏列
+                ConfigureColumn("ConfigId", null, 0, false);
+                ConfigureColumn("OrderIds", null, 0, false);
+                ConfigureColumn("PostStartTime", null, 0, false);
+                ConfigureColumn("PostEndTime", null, 0, false);
+                ConfigureColumn("Result", null, 0, false);
+                ConfigureColumn("ErrorMessage", null, 0, false);
+                ConfigureColumn("OrderNo", null, 0, false);
+                ConfigureColumn("CreateTime", null, 0, false);
+                ConfigureColumn("UpdateTime", null, 0, false);
+                
+                dgvRecords.ResumeLayout();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BetConfigManagerForm", $"配置列失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 安全配置单个列（避免 DataGridViewBand.set_Thickness 异常）
+        /// </summary>
+        private void ConfigureColumn(string columnName, string? headerText, int width, bool visible)
+        {
+            try
+            {
+                var column = dgvRecords.Columns[columnName];
+                if (column == null) return;
+                
+                // 🔥 先设置 Visible，再设置 Width（避免隐藏列的宽度设置异常）
+                column.Visible = visible;
+                
+                if (visible)
+                {
+                    if (!string.IsNullOrEmpty(headerText))
+                    {
+                        column.HeaderText = headerText;
+                    }
+                    
+                    // 🔥 只为可见列设置宽度
+                    if (width > 0)
+                    {
+                        column.Width = width;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("BetConfigManagerForm", $"配置列 {columnName} 失败: {ex.Message}");
+            }
+        }
+        
 
         /// <summary>
         /// 窗体加载
@@ -135,15 +192,17 @@ namespace BaiShengVx3Plus.Views.AutoBet
         /// </summary>
         private void LoadConfigs()
         {
-            var configs = _autoBetService.GetConfigs();
-            
-            _configsBindingList.Clear();
-            foreach (var config in configs)
+            // 🔥 直接绑定服务的 BindingList（实时同步）
+            var bindingList = _autoBetService.GetConfigsBindingList();
+            if (bindingList == null)
             {
-                _configsBindingList.Add(config);
+                _logService.Warning("ConfigManager", "服务的配置BindingList未初始化");
+                dgvConfigs.DataSource = null;
+                return;
             }
             
-            dgvConfigs.DataSource = _configsBindingList;
+            dgvConfigs.DataSource = bindingList;
+            _logService.Info("ConfigManager", $"已加载{bindingList.Count}个配置（直接绑定服务BindingList）");
             
             // 配置列显示
             if (dgvConfigs.Columns.Count > 0)
@@ -194,7 +253,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 if (dgvConfigs.Columns["LastUpdateTime"] != null) dgvConfigs.Columns["LastUpdateTime"].Visible = false;
             }
             
-            _logService.Info("ConfigManager", $"已加载 {configs.Count} 个配置");
         }
         
         /// <summary>
@@ -473,7 +531,9 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 };
                 
                 _autoBetService.SaveConfig(newConfig);
-                _configsBindingList.Add(newConfig);
+                
+                // 🔥 不需要手动添加到 BindingList，SaveConfig 已经处理
+                // BindingList 会自动同步，无需额外操作
                 
                 // 选中新配置
                 dgvConfigs.ClearSelection();
@@ -532,7 +592,9 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 try
                 {
                     _autoBetService.DeleteConfig(_selectedConfig.Id);
-                    _configsBindingList.Remove(_selectedConfig);
+                    
+                    // 🔥 不需要手动从 BindingList 移除，DeleteConfig 已经处理
+                    // BindingList 会自动同步，无需额外操作
                     
                     _logService.Info("ConfigManager", $"已删除配置: {_selectedConfig.ConfigName}");
                     UIMessageBox.Show("配置已删除！", "成功", UIStyle.Green, UIMessageBoxButtons.OK);
