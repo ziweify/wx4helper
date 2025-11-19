@@ -15,6 +15,7 @@ using BaiShengVx3Plus.Core;
 using BaiShengVx3Plus.Extensions;
 using System.ComponentModel;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SQLite;
 
@@ -1131,6 +1132,18 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", $"🚀 {Utils.VersionInfo.FullVersion}");
                 _logService.Info("VxMain", $"📅 构建日期: {Utils.VersionInfo.BuildDate}");
                 _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                
+                // 🔥 设置声音服务的 UI 线程上下文（确保 MCI API 在 UI 线程中调用）
+                var soundService = Program.ServiceProvider?.GetService<Services.Sound.SoundService>();
+                if (soundService != null && SynchronizationContext.Current != null)
+                {
+                    soundService.SetUIContext(SynchronizationContext.Current);
+                    _logService.Info("VxMain", $"✅ 声音服务 UI 线程上下文已设置");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", $"⚠️ 无法设置声音服务 UI 线程上下文: soundService={soundService != null}, SyncContext={SynchronizationContext.Current != null}");
+                }
                 
                 lblStatus.Text = "正在初始化...";
                 
