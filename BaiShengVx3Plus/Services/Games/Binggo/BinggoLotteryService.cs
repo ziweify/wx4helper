@@ -1207,13 +1207,31 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 会员申请上分/下分时播放声音，提醒管理员处理
                     if (isCredit)
                     {
-                        _soundService?.PlayCreditUpSound();
-                        _logService.Info("BinggoLotteryService", $"🔊 播放上分提示声音");
+                        _logService.Info("BinggoLotteryService", $"🔊 准备播放上分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
+                        
+                        try
+                        {
+                            _soundService?.PlayCreditUpSound();
+                            _logService.Info("BinggoLotteryService", $"✅ 上分声音播放命令已发送");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logService.Error("BinggoLotteryService", $"❌ 播放上分声音失败: {ex.Message}", ex);
+                        }
                     }
                     else
                     {
-                        _soundService?.PlayCreditDownSound();
-                        _logService.Info("BinggoLotteryService", $"🔊 播放下分提示声音");
+                        _logService.Info("BinggoLotteryService", $"🔊 准备播放下分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
+                        
+                        try
+                        {
+                            _soundService?.PlayCreditDownSound();
+                            _logService.Info("BinggoLotteryService", $"✅ 下分声音播放命令已发送");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logService.Error("BinggoLotteryService", $"❌ 播放下分声音失败: {ex.Message}", ex);
+                        }
                     }
                     
                     // 🔥 添加到 BindingList（会自动保存到数据库，并触发 UI 更新）
