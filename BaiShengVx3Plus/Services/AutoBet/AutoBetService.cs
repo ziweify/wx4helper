@@ -27,6 +27,9 @@ namespace BaiShengVx3Plus.Services.AutoBet
         // Socket 服务器（双向通信：心跳、状态推送、远程控制）
         private AutoBetSocketServer? _socketServer;
         
+        // 🔥 HTTP 服务器（用于 BsBrowserClient 获取配置、提交结果）
+        private AutoBetHttpServer? _httpServer;
+        
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
         private Core.BetConfigBindingList? _configs;
@@ -57,6 +60,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             
             // 🔥 监控任务暂不启动，等待 SetDatabase 完成后再启动
             _log.Info("AutoBet", "⏸️ 后台监控任务暂未启动（等待数据库初始化）");
+            _log.Info("AutoBet", "⏸️ HTTP 服务器暂未启动（等待数据库初始化）");
             
             _log.Info("AutoBet", "✅ AutoBetService 初始化完成");
             _log.Info("AutoBet", $"   Socket 服务器状态: {(_socketServer.IsRunning ? "运行中" : "未运行")}");
@@ -106,6 +110,24 @@ namespace BaiShengVx3Plus.Services.AutoBet
             
             EnsureDefaultConfig();
             _log.Info("AutoBet", $"✅ 数据库已设置，已加载 {_configs.Count} 个配置到内存");
+            
+            // 🔥 启动 HTTP 服务器（端口 8888，用于 BsBrowserClient 获取配置、提交结果）
+            try
+            {
+                _httpServer = new AutoBetHttpServer(
+                    _log,
+                    8888,
+                    GetConfig,
+                    SaveConfig,
+                    _orderService,
+                    HandleBetResult);
+                _httpServer.Start();
+                _log.Info("AutoBet", "✅ HTTP 服务器已启动（端口 8888）");
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "HTTP 服务器启动失败", ex);
+            }
             
             // 🔥 创建 CancellationTokenSource（用于取消异步任务）
             _cancellationTokenSource = new CancellationTokenSource();
@@ -309,6 +331,33 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 _log.Info("AutoBet", $"✅ 配置已更新: {config.ConfigName} (ID={config.Id})");
                 _log.Info("AutoBet", $"   说明：BindingList 已自动保存到数据库（F5BotV2 设计）");
+            }
+        }
+        
+        /// <summary>
+        /// 处理投注结果（HTTP API 回调）
+        /// </summary>
+        /// <param name="configId">配置ID</param>
+        /// <param name="success">是否成功</param>
+        /// <param name="orderId">订单ID</param>
+        /// <param name="errorMessage">错误信息</param>
+        private void HandleBetResult(int configId, bool success, string? orderId, string? errorMessage)
+        {
+            try
+            {
+                _log.Info("AutoBet", $"📥 收到投注结果: 配置ID={configId}, 成功={success}, 订单ID={orderId}");
+                
+                if (!success)
+                {
+                    _log.Warning("AutoBet", $"⚠️ 投注失败: {errorMessage}");
+                }
+                
+                // 这里可以添加更多的投注结果处理逻辑
+                // 例如：更新投注记录、发送通知等
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "处理投注结果失败", ex);
             }
         }
         
@@ -1611,6 +1660,13 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 }
                 
                 // 🔥 步骤5: 停止 HTTP 服务器
+                if (_httpServer != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止 HTTP 服务器...");
+                    _httpServer.Dispose();
+                    _httpServer = null;
+                    _log.Info("AutoBet", "✅ HTTP 服务器已停止");
+                }
                 
                 // 🔥 步骤6: 停止所有浏览器（最后停止，因为可能正在处理命令）
                 _log.Info("AutoBet", "⏹️ 停止所有浏览器...");

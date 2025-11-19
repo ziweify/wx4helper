@@ -183,6 +183,10 @@ public partial class Form1 : Form
     
     private bool _isAutoLoginTriggered = false;
     
+    // 🔥 从 VxMain 的 Login 命令中保存的账号密码（避免重复通过 HTTP API 获取）
+    private string? _username;
+    private string? _password;
+    
     /// <summary>
     /// 尝试自动登录（页面加载完成后触发）
     /// 参考 F5BotV2 的 LoginAsync 和 FrameLoadEnd 实现
@@ -221,51 +225,22 @@ public partial class Form1 : Form
                 OnLogMessage("⚠️ DOM检测失败，继续尝试登录");
             }
             
-            // 从VxMain获取账号密码（通过Socket或HTTP）
-            // 这里先用配置ID从HTTP API获取
-            var username = "";
-            var password = "";
+            // 🔥 使用从 Login 命令中保存的账号密码（避免冗余的 HTTP API 调用）
+            // VxMain 会在启动时主动发送 Login 命令，包含账号密码
+            var username = _username;
+            var password = _password;
             
-            try
-            {
-                var httpClient = new System.Net.Http.HttpClient();
-                var response = await httpClient.GetAsync($"http://127.0.0.1:8888/api/config?configId={_configId}");
-                if (response.IsSuccessStatusCode)
-                {
-                    var json = await response.Content.ReadAsStringAsync();
-                    OnLogMessage($"📄 收到配置响应: {json.Substring(0, Math.Min(200, json.Length))}...");
-                    
-                    var config = Newtonsoft.Json.Linq.JObject.Parse(json);
-                    if (config["success"]?.Value<bool>() ?? false)
-                    {
-                        username = config["data"]?["Username"]?.ToString() ?? "";
-                        password = config["data"]?["Password"]?.ToString() ?? "";
-                        
-                        OnLogMessage($"✅ 获取到配置:");
-                        OnLogMessage($"   用户名: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
-                        OnLogMessage($"   密码: {(string.IsNullOrEmpty(password) ? "(空)" : "******")}");
-                    }
-                    else
-                    {
-                        OnLogMessage($"⚠️ API 返回 success=false");
-                    }
-                }
-                else
-                {
-                    OnLogMessage($"⚠️ HTTP 请求失败: {response.StatusCode}");
-                }
-            }
-            catch (Exception ex)
-            {
-                OnLogMessage($"⚠️ 获取配置异常: {ex.Message}");
-            }
-            
-            // 如果没有账号密码，不自动登录
+            // 如果没有账号密码，说明 VxMain 还没发送 Login 命令
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                OnLogMessage("⚠️ 未配置账号密码，跳过自动登录");
+                OnLogMessage("⚠️ 未收到登录凭据，等待 VxMain 发送 Login 命令...");
+                OnLogMessage("ℹ️ 当前页面没有Cookie");
                 return;
             }
+            
+            OnLogMessage($"✅ 使用已保存的登录凭据:");
+            OnLogMessage($"   用户名: {username}");
+            OnLogMessage($"   密码: ******");
             
             // 调用平台脚本的登录方法
             OnLogMessage($"🔐 开始自动登录: {username}");
@@ -532,6 +507,11 @@ public partial class Form1 : Form
                     var loginData = command.Data as JObject;
                     var username = loginData?["username"]?.ToString() ?? "";
                     var password = loginData?["password"]?.ToString() ?? "";
+                    
+                    // 🔥 保存账号密码到成员变量（供自动登录使用，避免重复通过 HTTP API 获取）
+                    _username = username;
+                    _password = password;
+                    OnLogMessage($"💾 已保存登录凭据: 用户名={username}");
                     
                     // 🔥 WebView2 操作必须在 UI 线程执行
                     if (InvokeRequired)

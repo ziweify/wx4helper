@@ -178,15 +178,16 @@ namespace BaiShengVx3Plus.Helpers
                           .Replace("五", "5")
                           .Replace("六", "6");
             
-            // 提取所有数字
+            // 🔥 提取所有数字（允许重复，参考 F5BotV2）
+            // 例如: "23333" → [2, 3, 3, 3, 3]（不去重！）
             foreach (char c in carStr)
             {
                 if (char.IsDigit(c))
                 {
                     int num = int.Parse(c.ToString());
-                    if (num >= 1 && num <= 6 && !result.Contains(num))
+                    if (num >= 1 && num <= 6)
                     {
-                        result.Add(num);
+                        result.Add(num);  // 🔥 去除 !result.Contains(num) 条件，允许重复
                     }
                 }
             }

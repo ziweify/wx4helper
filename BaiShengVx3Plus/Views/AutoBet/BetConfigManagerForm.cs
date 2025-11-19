@@ -796,6 +796,72 @@ namespace BaiShengVx3Plus.Views.AutoBet
         }
 
         /// <summary>
+        /// 快捷按钮：登录（发送账号密码到浏览器）
+        /// </summary>
+        private async void BtnLoginCommand_Click(object? sender, EventArgs e)
+        {
+            if (_selectedConfig == null)
+            {
+                AppendCommandResult("❌ 错误:未选择配置");
+                return;
+            }
+
+            var username = txtUsername.Text.Trim();
+            var password = txtPassword.Text.Trim();
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                AppendCommandResult("❌ 错误:账号或密码为空，请先在【基本设置】中填写");
+                return;
+            }
+
+            try
+            {
+                btnLoginCommand.Enabled = false;
+                AppendCommandResult($"🔐 发送登录命令...");
+                AppendCommandResult($"   用户名: {username}");
+                AppendCommandResult($"   密码: ******");
+                AppendCommandResult($"   时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+
+                // 构造 Login 命令参数（JSON 格式）
+                var commandData = new
+                {
+                    username = username,
+                    password = password
+                };
+                var cmdParam = Newtonsoft.Json.JsonConvert.SerializeObject(commandData);
+
+                // 发送到浏览器
+                var result = await SendCommandToBrowserAsync("Login", cmdParam);
+
+                if (result.Success)
+                {
+                    AppendCommandResult($"✅ 登录命令已发送");
+                    AppendCommandResult($"   响应: {result.Message}");
+                    
+                    if (result.Data != null)
+                    {
+                        var dataJson = Newtonsoft.Json.JsonConvert.SerializeObject(result.Data, Newtonsoft.Json.Formatting.Indented);
+                        AppendCommandResult($"   详情: {dataJson}");
+                    }
+                }
+                else
+                {
+                    AppendCommandResult($"❌ 登录命令失败: {result.ErrorMessage ?? result.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendCommandResult($"❌ 异常: {ex.Message}");
+                _logService.Error("BetConfigManager", "发送登录命令失败", ex);
+            }
+            finally
+            {
+                btnLoginCommand.Enabled = true;
+            }
+        }
+
+        /// <summary>
         /// 发送命令按钮
         /// </summary>
         private async void BtnSendCommand_Click(object? sender, EventArgs e)

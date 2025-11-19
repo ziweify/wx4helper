@@ -71,6 +71,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlCommandPanel = new Sunny.UI.UIPanel();
             lblCommandPanel = new Sunny.UI.UILabel();
             pnlQuickButtons = new Sunny.UI.UIPanel();
+            btnLoginCommand = new Sunny.UI.UIButton();
             btnBetCommand = new Sunny.UI.UIButton();
             btnGetQuotaCommand = new Sunny.UI.UIButton();
             btnGetCookieCommand = new Sunny.UI.UIButton();
@@ -643,6 +644,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // 
             // pnlQuickButtons
             // 
+            pnlQuickButtons.Controls.Add(btnLoginCommand);
             pnlQuickButtons.Controls.Add(btnBetCommand);
             pnlQuickButtons.Controls.Add(btnGetQuotaCommand);
             pnlQuickButtons.Controls.Add(btnGetCookieCommand);
@@ -655,6 +657,19 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlQuickButtons.TabIndex = 1;
             pnlQuickButtons.Text = null;
             pnlQuickButtons.TextAlignment = ContentAlignment.MiddleCenter;
+            // 
+            // btnLoginCommand
+            // 
+            btnLoginCommand.Cursor = Cursors.Hand;
+            btnLoginCommand.Font = new Font("微软雅黑", 9F);
+            btnLoginCommand.Location = new Point(390, 5);
+            btnLoginCommand.MinimumSize = new Size(1, 1);
+            btnLoginCommand.Name = "btnLoginCommand";
+            btnLoginCommand.Size = new Size(100, 35);
+            btnLoginCommand.TabIndex = 3;
+            btnLoginCommand.Text = "登录";
+            btnLoginCommand.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnLoginCommand.Click += BtnLoginCommand_Click;
             // 
             // btnBetCommand
             // 
@@ -1122,6 +1137,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
         private Sunny.UI.UIPanel pnlCommandPanel;
         private Sunny.UI.UILabel lblCommandPanel;
         private Sunny.UI.UIPanel pnlQuickButtons;
+        private Sunny.UI.UIButton btnLoginCommand;
         private Sunny.UI.UIButton btnBetCommand;
         private Sunny.UI.UIButton btnGetQuotaCommand;
         private Sunny.UI.UIButton btnGetCookieCommand;
