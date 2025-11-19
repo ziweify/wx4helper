@@ -425,6 +425,9 @@ namespace BaiShengVx3Plus
                 // 🤖 数据库设置完成后，加载自动投注设置
                 LoadAutoBetSettings();
                 
+                // 🔊 添加声音测试按钮（动态创建）
+                AddSoundTestButton();
+                
                 // 🎚️ 加载应用配置（从 appsettings.json）
                 LoadAppConfiguration();
                 
@@ -2281,6 +2284,79 @@ namespace BaiShengVx3Plus
                 _logService.Error("VxMain", "清空数据失败", ex);
                 UIMessageBox.ShowError($"清空数据失败：{ex.Message}");
                 lblStatus.Text = "清空数据失败";
+            }
+        }
+
+        /// <summary>
+        /// 🔊 动态添加声音测试按钮
+        /// </summary>
+        private void AddSoundTestButton()
+        {
+            try
+            {
+                // 创建测试按钮
+                var btnTestSound = new Sunny.UI.UIButton
+                {
+                    Name = "btnTestSound",
+                    Text = "🔊 测试声音",
+                    Size = new System.Drawing.Size(100, 35),
+                    Font = new System.Drawing.Font("微软雅黑", 9F),
+                    TabIndex = 100
+                };
+                
+                // 添加点击事件
+                btnTestSound.Click += BtnTestSound_Click;
+                
+                // 找到 pnlTopButtons 面板
+                var pnlTopButtons = this.Controls.Find("pnlTopButtons", true).FirstOrDefault();
+                if (pnlTopButtons != null)
+                {
+                    // 添加到面板
+                    pnlTopButtons.Controls.Add(btnTestSound);
+                    
+                    // 设置位置（在设置按钮旁边）
+                    var btnSettings = pnlTopButtons.Controls.Find("btnSettings", false).FirstOrDefault();
+                    if (btnSettings != null)
+                    {
+                        btnTestSound.Location = new System.Drawing.Point(
+                            btnSettings.Location.X + btnSettings.Width + 10,
+                            btnSettings.Location.Y);
+                    }
+                    
+                    _logService.Info("VxMain", "✅ 声音测试按钮已添加");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ 未找到 pnlTopButtons 面板");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "添加声音测试按钮失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔊 测试声音按钮点击事件
+        /// </summary>
+        private void BtnTestSound_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var soundService = Program.ServiceProvider.GetService<Services.Sound.SoundService>();
+                if (soundService == null)
+                {
+                    Sunny.UI.UIMessageBox.ShowWarning("SoundService 未初始化！");
+                    return;
+                }
+
+                var testForm = new Views.SoundTestForm(soundService, _logService);
+                testForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开声音测试窗口失败", ex);
+                Sunny.UI.UIMessageBox.ShowError($"打开失败:\n{ex.Message}");
             }
         }
 

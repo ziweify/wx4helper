@@ -75,9 +75,19 @@ namespace BaiShengVx3Plus
             };
             setCurrentMemberItem.Click += MenuSetCurrentMember_Click;
             
+            // 🔊 测试声音播放
+            var testSoundItem = new ToolStripMenuItem
+            {
+                Text = "🔊 测试声音播放",
+                Name = "menuTestSound"
+            };
+            testSoundItem.Click += MenuTestSound_Click;
+            
             _devOptionsMenuItem.DropDownItems.Add(sendTestMessageItem);
             _devOptionsMenuItem.DropDownItems.Add(sendMessageSimulatorItem);
             _devOptionsMenuItem.DropDownItems.Add(setCurrentMemberItem);
+            _devOptionsMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            _devOptionsMenuItem.DropDownItems.Add(testSoundItem);
             
             cmsMembers.Items.Add(_devOptionsMenuItem);
             
@@ -483,6 +493,89 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", $"调整余额失败: {ex.Message}", ex);
                 UIMessageBox.ShowError($"调整余额失败：{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 🔊 测试声音播放
+        /// </summary>
+        private void MenuTestSound_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 🔥 使用正确的 GetService 方式（非泛型）
+                var soundService = Program.ServiceProvider.GetService(typeof(Services.Sound.SoundService)) as Services.Sound.SoundService;
+                if (soundService == null)
+                {
+                    UIMessageBox.ShowError("声音服务未初始化！");
+                    _logService.Error("VxMain", "SoundService 未找到");
+                    return;
+                }
+
+                // 创建一个简单的测试菜单
+                var testForm = new Form
+                {
+                    Text = "🔊 测试声音播放",
+                    Size = new Size(400, 300),
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    MaximizeBox = false,
+                    MinimizeBox = false
+                };
+
+                var flowPanel = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    FlowDirection = FlowDirection.TopDown,
+                    Padding = new Padding(20),
+                    AutoScroll = true
+                };
+
+                // 测试按钮
+                var btnSealing = new Button { Text = "🔔 测试封盘声音", Width = 300, Height = 40 };
+                btnSealing.Click += (s, ev) =>
+                {
+                    _logService.Info("VxMain", "🔊 手动测试封盘声音");
+                    soundService.PlaySealingSound();
+                    UIMessageTip.ShowOk("封盘声音已播放");
+                };
+
+                var btnLottery = new Button { Text = "🎲 测试开奖声音", Width = 300, Height = 40 };
+                btnLottery.Click += (s, ev) =>
+                {
+                    _logService.Info("VxMain", "🔊 手动测试开奖声音");
+                    soundService.PlayLotterySound();
+                    UIMessageTip.ShowOk("开奖声音已播放");
+                };
+
+                var btnCreditUp = new Button { Text = "💰 测试上分声音", Width = 300, Height = 40 };
+                btnCreditUp.Click += (s, ev) =>
+                {
+                    _logService.Info("VxMain", "🔊 手动测试上分声音");
+                    soundService.PlayCreditUpSound();
+                    UIMessageTip.ShowOk("上分声音已播放");
+                };
+
+                var btnCreditDown = new Button { Text = "💸 测试下分声音", Width = 300, Height = 40 };
+                btnCreditDown.Click += (s, ev) =>
+                {
+                    _logService.Info("VxMain", "🔊 手动测试下分声音");
+                    soundService.PlayCreditDownSound();
+                    UIMessageTip.ShowOk("下分声音已播放");
+                };
+
+                flowPanel.Controls.Add(btnSealing);
+                flowPanel.Controls.Add(btnLottery);
+                flowPanel.Controls.Add(btnCreditUp);
+                flowPanel.Controls.Add(btnCreditDown);
+
+                testForm.Controls.Add(flowPanel);
+                testForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"测试声音失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"测试声音失败！\n\n{ex.Message}");
             }
         }
         

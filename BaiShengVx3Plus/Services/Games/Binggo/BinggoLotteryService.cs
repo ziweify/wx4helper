@@ -1203,6 +1203,19 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", 
                         $"创建上下分申请: 会员={member.Nickname}, 动作={(isCredit ? "上分" : "下分")}, 金额={money}");
                     
+                    // 🔥 播放声音（参考 F5BotV2 第2597、2599行）
+                    // 会员申请上分/下分时播放声音，提醒管理员处理
+                    if (isCredit)
+                    {
+                        _soundService?.PlayCreditUpSound();
+                        _logService.Info("BinggoLotteryService", $"🔊 播放上分提示声音");
+                    }
+                    else
+                    {
+                        _soundService?.PlayCreditDownSound();
+                        _logService.Info("BinggoLotteryService", $"🔊 播放下分提示声音");
+                    }
+                    
                     // 🔥 添加到 BindingList（会自动保存到数据库，并触发 UI 更新）
                     if (_creditWithdrawsBindingList != null)
                     {

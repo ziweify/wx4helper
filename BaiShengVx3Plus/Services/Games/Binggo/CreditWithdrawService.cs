@@ -99,19 +99,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         member.CreditToday += request.Amount;
                         member.CreditTotal += request.Amount;
                         
-                        // 🔥 播放上分声音（参考 F5BotV2 第2597行：PlayMp3("mp3_shang.mp3")）
-                        if (!isLoading && _soundService != null)
-                        {
-                            try
-                            {
-                                _soundService.PlayCreditUpSound();
-                            }
-                            catch (Exception ex)
-                            {
-                                _logService.Warning("CreditWithdrawService", $"播放上分声音失败: {ex.Message}");
-                                // 继续执行，不影响主流程
-                            }
-                        }
+                        // 🔥 声音播放已移至会员申请时（BinggoLotteryService.HandleMessageAsync）
+                        // 管理员处理时不播放声音，避免重复
                     }
                     else if (request.Action == CreditWithdrawAction.下分)
                     {
@@ -143,19 +132,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         member.WithdrawToday += request.Amount;
                         member.WithdrawTotal += request.Amount;
                         
-                        // 🔥 播放下分声音（参考 F5BotV2 第2599行：PlayMp3("mp3_xia.mp3")）
-                        if (!isLoading && _soundService != null)
-                        {
-                            try
-                            {
-                                _soundService.PlayCreditDownSound();
-                            }
-                            catch (Exception ex)
-                            {
-                                _logService.Warning("CreditWithdrawService", $"播放下分声音失败: {ex.Message}");
-                                // 继续执行，不影响主流程
-                            }
-                        }
+                        // 🔥 声音播放已移至会员申请时（BinggoLotteryService.HandleMessageAsync）
+                        // 管理员处理时不播放声音，避免重复
                     }
                     else
                     {
