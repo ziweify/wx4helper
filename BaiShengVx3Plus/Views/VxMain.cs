@@ -2390,12 +2390,15 @@ namespace BaiShengVx3Plus
                 
                 // 创建新的设置窗口（非模态）
                 // 🔧 传入模拟消息回调（用于开发模式测试）
+                // 🔊 传入声音服务（用于声音测试）
+                var soundService = Program.ServiceProvider?.GetService<Services.Sound.SoundService>();
                 _settingsForm = new Views.SettingsForm(
                     _socketClient, 
                     _logService, 
                     _settingViewModel, 
                     _configService,
-                    SimulateMemberMessageAsync); // 🔧 开发模式：模拟消息回调
+                    SimulateMemberMessageAsync, // 🔧 开发模式：模拟消息回调
+                    soundService); // 🔊 声音测试
                 
                 // 订阅关闭事件，清理引用
                 _settingsForm.FormClosed += (s, args) =>

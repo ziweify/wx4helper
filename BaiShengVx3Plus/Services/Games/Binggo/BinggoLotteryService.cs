@@ -91,11 +91,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         public BinggoLotteryService(
             ILogService logService,
             IConfigurationService configService,
-            Services.Sound.SoundService? soundService = null)  // 🔥 声音服务（可选）
+            Services.Sound.SoundService soundService)  // 🔥 声音服务（必需，确保 DI 注入）
         {
             _logService = logService;
             _configService = configService;
             _soundService = soundService;
+            
+            // 🔥 验证声音服务注入
+            if (_soundService == null)
+            {
+                _logService.Warning("BinggoLotteryService", "⚠️ 声音服务未注入！封盘、开奖等声音将无法播放");
+            }
+            else
+            {
+                _logService.Info("BinggoLotteryService", "✅ 声音服务已注入");
+            }
         }
         
         /// <summary>

@@ -4,6 +4,7 @@ using System.Text.Json;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using BaiShengVx3Plus.ViewModels;
+using BaiShengVx3Plus.Services.Sound;
 
 namespace BaiShengVx3Plus.Views
 {
@@ -16,6 +17,7 @@ namespace BaiShengVx3Plus.Views
         private readonly ILogService _logService;
         private readonly SettingViewModel _settingVmodel;
         private readonly IConfigurationService _configService; // 📝 配置服务
+        private readonly SoundService? _soundService; // 🔊 声音服务
         
         /// <summary>
         /// 🔧 模拟消息处理回调（由 VxMain 提供）
@@ -27,7 +29,8 @@ namespace BaiShengVx3Plus.Views
             ILogService logService,
             SettingViewModel setting,
             IConfigurationService configService, // 📝 注入配置服务
-            Func<string, string, Task<(bool, string?, string?)>>? simulateMessageCallback = null) // 🔧 模拟消息回调
+            Func<string, string, Task<(bool, string?, string?)>>? simulateMessageCallback = null, // 🔧 模拟消息回调
+            SoundService? soundService = null) // 🔊 声音服务
         {
             InitializeComponent();
             _socketClient = socketClient;
@@ -35,6 +38,7 @@ namespace BaiShengVx3Plus.Views
             _settingVmodel = setting;
             _configService = configService;
             _simulateMessageCallback = simulateMessageCallback;
+            _soundService = soundService;
             
             // 加载设置
             LoadSettings();
@@ -545,6 +549,161 @@ namespace BaiShengVx3Plus.Views
             
             // 如果没有括号，直接返回（可能就是 wxid）
             return memberInfo.Trim();
+        }
+        
+        #endregion
+        
+        #region 声音测试功能
+        
+        /// <summary>
+        /// 测试封盘声音
+        /// </summary>
+        private void BtnTestSealing_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService?.Info("SettingsForm", "🔊 测试封盘声音");
+                
+                if (_soundService == null)
+                {
+                    UpdateSoundTestResult("❌ 声音服务未初始化", Color.Red);
+                    UIMessageBox.ShowWarning("声音服务未初始化！\n\n请检查程序是否正确启动。");
+                    return;
+                }
+                
+                string soundPath = System.IO.Path.Combine(Application.StartupPath, "sound", "mp3_fp.mp3");
+                _logService?.Info("SettingsForm", $"🔊 声音文件路径: {soundPath}");
+                _logService?.Info("SettingsForm", $"🔊 文件是否存在: {System.IO.File.Exists(soundPath)}");
+                
+                UpdateSoundTestResult($"▶️ 正在播放封盘声音...\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}", Color.Blue);
+                
+                _soundService.PlaySealingSound();
+                
+                UpdateSoundTestResult($"✅ 封盘声音播放命令已发送\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}\n\n如果听不到声音，请检查：\n1. sound文件夹是否存在\n2. mp3_fp.mp3文件是否存在\n3. 系统音量是否开启", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("SettingsForm", "测试封盘声音失败", ex);
+                UpdateSoundTestResult($"❌ 测试失败: {ex.Message}", Color.Red);
+                UIMessageBox.ShowError($"测试封盘声音失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 测试开奖声音
+        /// </summary>
+        private void BtnTestLottery_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService?.Info("SettingsForm", "🔊 测试开奖声音");
+                
+                if (_soundService == null)
+                {
+                    UpdateSoundTestResult("❌ 声音服务未初始化", Color.Red);
+                    UIMessageBox.ShowWarning("声音服务未初始化！\n\n请检查程序是否正确启动。");
+                    return;
+                }
+                
+                string soundPath = System.IO.Path.Combine(Application.StartupPath, "sound", "mp3_kj.mp3");
+                _logService?.Info("SettingsForm", $"🔊 声音文件路径: {soundPath}");
+                _logService?.Info("SettingsForm", $"🔊 文件是否存在: {System.IO.File.Exists(soundPath)}");
+                
+                UpdateSoundTestResult($"▶️ 正在播放开奖声音...\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}", Color.Blue);
+                
+                _soundService.PlayLotterySound();
+                
+                UpdateSoundTestResult($"✅ 开奖声音播放命令已发送\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}\n\n如果听不到声音，请检查：\n1. sound文件夹是否存在\n2. mp3_kj.mp3文件是否存在\n3. 系统音量是否开启", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("SettingsForm", "测试开奖声音失败", ex);
+                UpdateSoundTestResult($"❌ 测试失败: {ex.Message}", Color.Red);
+                UIMessageBox.ShowError($"测试开奖声音失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 测试上分声音
+        /// </summary>
+        private void BtnTestCreditUp_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService?.Info("SettingsForm", "🔊 测试上分声音");
+                
+                if (_soundService == null)
+                {
+                    UpdateSoundTestResult("❌ 声音服务未初始化", Color.Red);
+                    UIMessageBox.ShowWarning("声音服务未初始化！\n\n请检查程序是否正确启动。");
+                    return;
+                }
+                
+                string soundPath = System.IO.Path.Combine(Application.StartupPath, "sound", "mp3_shang.mp3");
+                _logService?.Info("SettingsForm", $"🔊 声音文件路径: {soundPath}");
+                _logService?.Info("SettingsForm", $"🔊 文件是否存在: {System.IO.File.Exists(soundPath)}");
+                
+                UpdateSoundTestResult($"▶️ 正在播放上分声音...\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}", Color.Blue);
+                
+                _soundService.PlayCreditUpSound();
+                
+                UpdateSoundTestResult($"✅ 上分声音播放命令已发送\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}\n\n如果听不到声音，请检查：\n1. sound文件夹是否存在\n2. mp3_shang.mp3文件是否存在\n3. 系统音量是否开启", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("SettingsForm", "测试上分声音失败", ex);
+                UpdateSoundTestResult($"❌ 测试失败: {ex.Message}", Color.Red);
+                UIMessageBox.ShowError($"测试上分声音失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 测试下分声音
+        /// </summary>
+        private void BtnTestCreditDown_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService?.Info("SettingsForm", "🔊 测试下分声音");
+                
+                if (_soundService == null)
+                {
+                    UpdateSoundTestResult("❌ 声音服务未初始化", Color.Red);
+                    UIMessageBox.ShowWarning("声音服务未初始化！\n\n请检查程序是否正确启动。");
+                    return;
+                }
+                
+                string soundPath = System.IO.Path.Combine(Application.StartupPath, "sound", "mp3_xia.mp3");
+                _logService?.Info("SettingsForm", $"🔊 声音文件路径: {soundPath}");
+                _logService?.Info("SettingsForm", $"🔊 文件是否存在: {System.IO.File.Exists(soundPath)}");
+                
+                UpdateSoundTestResult($"▶️ 正在播放下分声音...\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}", Color.Blue);
+                
+                _soundService.PlayCreditDownSound();
+                
+                UpdateSoundTestResult($"✅ 下分声音播放命令已发送\n\n文件路径: {soundPath}\n文件存在: {(System.IO.File.Exists(soundPath) ? "是" : "否")}\n\n如果听不到声音，请检查：\n1. sound文件夹是否存在\n2. mp3_xia.mp3文件是否存在\n3. 系统音量是否开启", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("SettingsForm", "测试下分声音失败", ex);
+                UpdateSoundTestResult($"❌ 测试失败: {ex.Message}", Color.Red);
+                UIMessageBox.ShowError($"测试下分声音失败！\n\n{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 更新声音测试结果显示
+        /// </summary>
+        private void UpdateSoundTestResult(string text, Color color)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => UpdateSoundTestResult(text, color)));
+                return;
+            }
+            
+            lblSoundTestResult.Text = text;
+            lblSoundTestResult.ForeColor = color;
         }
         
         #endregion
