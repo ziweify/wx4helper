@@ -43,8 +43,8 @@ namespace zhaocaimao
             DataGridViewCellStyle dataGridViewCellStyle11 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VxMain));
-            ucBinggoDataCur = new BaiShengVx3Plus.UserControls.UcBinggoDataCur();
-            ucBinggoDataLast = new BaiShengVx3Plus.UserControls.UcBinggoDataLast();
+            ucBinggoDataCur = new zhaocaimao.UserControls.UcBinggoDataCur();
+            ucBinggoDataLast = new zhaocaimao.UserControls.UcBinggoDataLast();
             lblSealSeconds = new Label();
             txtSealSeconds = new Sunny.UI.UIIntegerUpDown();
             lblMinBet = new Label();
@@ -96,7 +96,7 @@ namespace zhaocaimao
             pnlOrdersTop = new Sunny.UI.UIPanel();
             lblOrderInfo = new Sunny.UI.UILabel();
             pnlTopButtons = new Sunny.UI.UIPanel();
-            ucUserInfo1 = new BaiShengVx3Plus.Views.UcUserInfo();
+            ucUserInfo1 = new zhaocaimao.Views.UcUserInfo();
             btnClearData = new Sunny.UI.UIButton();
             btnCreditWithdrawManage = new Sunny.UI.UIButton();
             btnOpenLotteryResult = new Sunny.UI.UIButton();

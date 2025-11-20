@@ -5,8 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using zhaocaimao.Contracts;
 using zhaocaimao.Contracts.Games;
-using zhaocaimao.Models.AutoBet;  // 🔥 BetConfig, BetResult
-using zhaocaimao.Shared.Models;  // 🔥 使用共享的模型
+using zhaocaimao.Models.AutoBet;  // 🔥 BetConfig, BetResult, BetStandardOrderList
 using SQLite;
 
 namespace zhaocaimao.Services.AutoBet
@@ -889,7 +888,7 @@ namespace zhaocaimao.Services.AutoBet
             {
                 // 🔥 将字符串格式的 betContentStandard 解析为 BetStandardOrderList
                 // 格式："1大10,2大10,3大10,4大10"
-                var betOrders = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
+                var betOrders = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
                 
                 if (betOrders == null || betOrders.Count == 0)
                 {
@@ -1270,7 +1269,7 @@ namespace zhaocaimao.Services.AutoBet
         /// <summary>
         /// 投注
         /// </summary>
-        public async Task<BetResult> PlaceBet(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
+        public async Task<BetResult> PlaceBet(int configId, BetStandardOrderList orders)
         {
             var config = GetConfig(configId);
             if (config == null)

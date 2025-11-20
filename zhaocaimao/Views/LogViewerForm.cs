@@ -1,7 +1,7 @@
 using zhaocaimao.Contracts;
 using Sunny.UI;
-using LogLevel = BaiShengVx3Plus.Models.LogLevel;  // 明确使用我们的 LogLevel
-using LogEntry = BaiShengVx3Plus.Models.LogEntry;
+using LogLevel = zhaocaimao.Models.LogLevel;  // 明确使用我们的 LogLevel
+using LogEntry = zhaocaimao.Models.LogEntry;
 
 namespace zhaocaimao.Views
 {

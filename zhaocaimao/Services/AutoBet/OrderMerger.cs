@@ -74,7 +74,7 @@ namespace zhaocaimao.Services.AutoBet
                 
                 // 🔥 解析 BetContentStandar（已经是标准格式，如 "1大20"）
                 // 使用完全照搬 F5BotV2 的解析逻辑
-                var items = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(order.BetContentStandar, order.IssueId);
+                var items = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(order.BetContentStandar, order.IssueId);
                 foreach (var item in items)
                 {
                     allItems.Add(item);

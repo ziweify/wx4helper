@@ -1036,7 +1036,7 @@ namespace zhaocaimao.Views.AutoBet
                         
                         // 2. 解析投注内容
                         var originalContent = cmdParam; // "1234大10"
-                        var standardContent = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
+                        var standardContent = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
                         var totalAmount = CalculateTotalAmount(standardContent);
                         
                         _logService.Info("CommandPanel", $"投注解析:原始={originalContent} 标准={standardContent} 金额={totalAmount}");
