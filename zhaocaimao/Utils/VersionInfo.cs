@@ -16,7 +16,7 @@ namespace zhaocaimao.Utils
         /// <summary>
         /// 版本名称
         /// </summary>
-        public const string VersionName = "百胜Vx3 Plus";
+        public const string VersionName = "智能管理系统";
         
         /// <summary>
         /// 完整版本字符串

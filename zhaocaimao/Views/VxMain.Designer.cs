@@ -46,11 +46,11 @@ namespace zhaocaimao
             ucBinggoDataCur = new zhaocaimao.UserControls.UcBinggoDataCur();
             ucBinggoDataLast = new zhaocaimao.UserControls.UcBinggoDataLast();
             lblSealSeconds = new Label();
-            txtSealSeconds = new Sunny.UI.UIIntegerUpDown();
+            txtSealSeconds = new Sunny.UI.UITextBox();
             lblMinBet = new Label();
-            txtMinBet = new Sunny.UI.UIIntegerUpDown();
+            txtMinBet = new Sunny.UI.UITextBox();
             lblMaxBet = new Label();
-            txtMaxBet = new Sunny.UI.UIIntegerUpDown();
+            txtMaxBet = new Sunny.UI.UITextBox();
             lblAutoBetSeparator = new Label();
             lblPlatform = new Label();
             cbxPlatform = new Sunny.UI.UIComboBox();
@@ -86,7 +86,7 @@ namespace zhaocaimao
             btnBindingContacts = new Sunny.UI.UIButton();
             txtCurrentContact = new Sunny.UI.UITextBox();
             pnlRight = new Sunny.UI.UIPanel();
-            splitContainerRight = new Sunny.UI.UISplitContainer();
+            splitContainerData = new Sunny.UI.UISplitContainer();
             pnlMembers = new Sunny.UI.UIPanel();
             dgvMembers = new Sunny.UI.UIDataGridView();
             pnlMembersTop = new Sunny.UI.UIPanel();
@@ -116,10 +116,10 @@ namespace zhaocaimao
             ((System.ComponentModel.ISupportInitialize)dgvContacts).BeginInit();
             pnlLeftTop.SuspendLayout();
             pnlRight.SuspendLayout();
-            (splitContainerRight).BeginInit();
-            splitContainerRight.Panel1.SuspendLayout();
-            splitContainerRight.Panel2.SuspendLayout();
-            splitContainerRight.SuspendLayout();
+            (splitContainerData).BeginInit();
+            splitContainerData.Panel1.SuspendLayout();
+            splitContainerData.Panel2.SuspendLayout();
+            splitContainerData.SuspendLayout();
             pnlMembers.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvMembers).BeginInit();
             pnlMembersTop.SuspendLayout();
@@ -162,16 +162,16 @@ namespace zhaocaimao
             txtSealSeconds.Font = new Font("微软雅黑", 10F);
             txtSealSeconds.Location = new Point(100, 23);
             txtSealSeconds.Margin = new Padding(4, 5, 4, 5);
-            txtSealSeconds.Maximum = 300;
-            txtSealSeconds.Minimum = 10;
-            txtSealSeconds.MinimumSize = new Size(100, 0);
+            txtSealSeconds.MinimumSize = new Size(1, 16);
             txtSealSeconds.Name = "txtSealSeconds";
+            txtSealSeconds.Padding = new Padding(5);
             txtSealSeconds.ShowText = false;
             txtSealSeconds.Size = new Size(130, 29);
             txtSealSeconds.TabIndex = 1;
             txtSealSeconds.Text = "49";
-            txtSealSeconds.TextAlignment = ContentAlignment.MiddleCenter;
-            txtSealSeconds.ValueChanged += TxtSealSeconds_ValueChanged;
+            txtSealSeconds.TextAlignment = ContentAlignment.MiddleLeft;
+            txtSealSeconds.Watermark = "封盘提前秒数";
+            txtSealSeconds.TextChanged += TxtSealSeconds_TextChanged;
             // 
             // lblMinBet
             // 
@@ -188,15 +188,16 @@ namespace zhaocaimao
             txtMinBet.Font = new Font("微软雅黑", 10F);
             txtMinBet.Location = new Point(100, 56);
             txtMinBet.Margin = new Padding(4, 5, 4, 5);
-            txtMinBet.Maximum = 10000;
-            txtMinBet.Minimum = 1;
-            txtMinBet.MinimumSize = new Size(100, 0);
+            txtMinBet.MinimumSize = new Size(1, 16);
             txtMinBet.Name = "txtMinBet";
+            txtMinBet.Padding = new Padding(5);
             txtMinBet.ShowText = false;
             txtMinBet.Size = new Size(130, 29);
             txtMinBet.TabIndex = 3;
             txtMinBet.Text = "1";
-            txtMinBet.TextAlignment = ContentAlignment.MiddleCenter;
+            txtMinBet.TextAlignment = ContentAlignment.MiddleLeft;
+            txtMinBet.Watermark = "最小投注金额";
+            txtMinBet.TextChanged += TxtMinBet_TextChanged;
             // 
             // lblMaxBet
             // 
@@ -213,15 +214,16 @@ namespace zhaocaimao
             txtMaxBet.Font = new Font("微软雅黑", 10F);
             txtMaxBet.Location = new Point(100, 89);
             txtMaxBet.Margin = new Padding(4, 5, 4, 5);
-            txtMaxBet.Maximum = 1000000;
-            txtMaxBet.Minimum = 1;
-            txtMaxBet.MinimumSize = new Size(100, 0);
+            txtMaxBet.MinimumSize = new Size(1, 16);
             txtMaxBet.Name = "txtMaxBet";
+            txtMaxBet.Padding = new Padding(5);
             txtMaxBet.ShowText = false;
             txtMaxBet.Size = new Size(130, 29);
             txtMaxBet.TabIndex = 5;
             txtMaxBet.Text = "10000";
-            txtMaxBet.TextAlignment = ContentAlignment.MiddleCenter;
+            txtMaxBet.TextAlignment = ContentAlignment.MiddleLeft;
+            txtMaxBet.Watermark = "最大投注金额";
+            txtMaxBet.TextChanged += TxtMaxBet_TextChanged;
             // 
             // lblAutoBetSeparator
             // 
@@ -545,14 +547,14 @@ namespace zhaocaimao
             dgvContacts.AllowUserToAddRows = false;
             dgvContacts.AllowUserToDeleteRows = false;
             dgvContacts.AllowUserToResizeRows = false;
-            dataGridViewCellStyle1.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle1.BackColor = Color.FromArgb(255, 250, 240);
             dgvContacts.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             dgvContacts.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dgvContacts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvContacts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             dgvContacts.BackgroundColor = Color.White;
             dgvContacts.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle2.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle2.BackColor = Color.FromArgb(255, 165, 0);
             dataGridViewCellStyle2.Font = new Font("微软雅黑", 12F);
             dataGridViewCellStyle2.ForeColor = Color.White;
             dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
@@ -563,16 +565,16 @@ namespace zhaocaimao
             dgvContacts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvContacts.EnableHeadersVisualStyles = false;
             dgvContacts.Font = new Font("微软雅黑", 12F);
-            dgvContacts.GridColor = Color.FromArgb(80, 160, 255);
+            dgvContacts.GridColor = Color.FromArgb(255, 200, 100);
             dgvContacts.Location = new Point(3, 43);
             dgvContacts.MultiSelect = false;
             dgvContacts.Name = "dgvContacts";
             dgvContacts.ReadOnly = true;
             dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle3.BackColor = Color.FromArgb(255, 250, 240);
             dataGridViewCellStyle3.Font = new Font("微软雅黑", 12F);
             dataGridViewCellStyle3.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(255, 165, 0);
             dataGridViewCellStyle3.SelectionForeColor = Color.White;
             dataGridViewCellStyle3.WrapMode = DataGridViewTriState.True;
             dgvContacts.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
@@ -585,7 +587,7 @@ namespace zhaocaimao
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvContacts.Size = new Size(244, 147);
-            dgvContacts.StripeOddColor = Color.FromArgb(235, 243, 255);
+            dgvContacts.StripeOddColor = Color.FromArgb(255, 250, 240);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;
             // 
@@ -655,7 +657,7 @@ namespace zhaocaimao
             // 
             // pnlRight
             // 
-            pnlRight.Controls.Add(splitContainerRight);
+            pnlRight.Controls.Add(splitContainerData);
             pnlRight.Dock = DockStyle.Fill;
             pnlRight.Font = new Font("微软雅黑", 12F);
             pnlRight.Location = new Point(0, 0);
@@ -667,26 +669,26 @@ namespace zhaocaimao
             pnlRight.Text = null;
             pnlRight.TextAlignment = ContentAlignment.MiddleCenter;
             // 
-            // splitContainerRight
+            // splitContainerData
             // 
-            splitContainerRight.Cursor = Cursors.HSplit;
-            splitContainerRight.Dock = DockStyle.Fill;
-            splitContainerRight.Location = new Point(0, 0);
-            splitContainerRight.MinimumSize = new Size(20, 20);
-            splitContainerRight.Name = "splitContainerRight";
-            splitContainerRight.Orientation = Orientation.Horizontal;
+            splitContainerData.Cursor = Cursors.HSplit;
+            splitContainerData.Dock = DockStyle.Fill;
+            splitContainerData.Location = new Point(0, 0);
+            splitContainerData.MinimumSize = new Size(20, 20);
+            splitContainerData.Name = "splitContainerData";
+            splitContainerData.Orientation = Orientation.Horizontal;
             // 
-            // splitContainerRight.Panel1
+            // splitContainerData.Panel1
             // 
-            splitContainerRight.Panel1.Controls.Add(pnlMembers);
+            splitContainerData.Panel1.Controls.Add(pnlMembers);
             // 
-            // splitContainerRight.Panel2
+            // splitContainerData.Panel2
             // 
-            splitContainerRight.Panel2.Controls.Add(pnlOrders);
-            splitContainerRight.Size = new Size(951, 688);
-            splitContainerRight.SplitterDistance = 321;
-            splitContainerRight.SplitterWidth = 5;
-            splitContainerRight.TabIndex = 0;
+            splitContainerData.Panel2.Controls.Add(pnlOrders);
+            splitContainerData.Size = new Size(951, 688);
+            splitContainerData.SplitterDistance = 340;
+            splitContainerData.SplitterWidth = 5;
+            splitContainerData.TabIndex = 0;
             // 
             // pnlMembers
             // 
@@ -698,7 +700,7 @@ namespace zhaocaimao
             pnlMembers.Margin = new Padding(4, 5, 4, 5);
             pnlMembers.MinimumSize = new Size(1, 1);
             pnlMembers.Name = "pnlMembers";
-            pnlMembers.Size = new Size(951, 321);
+            pnlMembers.Size = new Size(951, 340);
             pnlMembers.TabIndex = 0;
             pnlMembers.Text = null;
             pnlMembers.TextAlignment = ContentAlignment.MiddleCenter;
@@ -708,34 +710,34 @@ namespace zhaocaimao
             dgvMembers.AllowUserToAddRows = false;
             dgvMembers.AllowUserToDeleteRows = false;
             dgvMembers.AllowUserToResizeRows = false;
-            dataGridViewCellStyle5.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle5.BackColor = Color.FromArgb(255, 250, 240);
             dgvMembers.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle5;
             dgvMembers.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvMembers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dgvMembers.BackgroundColor = Color.White;
             dgvMembers.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle6.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle6.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle6.BackColor = Color.FromArgb(255, 165, 0);
+            dataGridViewCellStyle6.Font = new Font("微软雅黑", 10F);
             dataGridViewCellStyle6.ForeColor = Color.White;
             dataGridViewCellStyle6.SelectionBackColor = SystemColors.Highlight;
             dataGridViewCellStyle6.SelectionForeColor = SystemColors.HighlightText;
             dataGridViewCellStyle6.WrapMode = DataGridViewTriState.True;
             dgvMembers.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle6;
-            dgvMembers.ColumnHeadersHeight = 32;
+            dgvMembers.ColumnHeadersHeight = 28;
             dgvMembers.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvMembers.ContextMenuStrip = cmsMembers;
             dgvMembers.EnableHeadersVisualStyles = false;
-            dgvMembers.Font = new Font("微软雅黑", 10F);
-            dgvMembers.GridColor = Color.FromArgb(80, 160, 255);
+            dgvMembers.Font = new Font("微软雅黑", 9F);
+            dgvMembers.GridColor = Color.FromArgb(255, 200, 100);
             dgvMembers.Location = new Point(0, 30);
             dgvMembers.MultiSelect = false;
             dgvMembers.Name = "dgvMembers";
             dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle7.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle7.Font = new Font("微软雅黑", 10F);
+            dataGridViewCellStyle7.BackColor = Color.FromArgb(255, 250, 240);
+            dataGridViewCellStyle7.Font = new Font("微软雅黑", 9F);
             dataGridViewCellStyle7.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle7.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle7.SelectionBackColor = Color.FromArgb(255, 165, 0);
             dataGridViewCellStyle7.SelectionForeColor = Color.White;
             dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
             dgvMembers.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
@@ -744,11 +746,11 @@ namespace zhaocaimao
             dataGridViewCellStyle8.BackColor = Color.White;
             dataGridViewCellStyle8.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             dgvMembers.RowsDefaultCellStyle = dataGridViewCellStyle8;
-            dgvMembers.RowTemplate.Height = 29;
+            dgvMembers.RowTemplate.Height = 24;
             dgvMembers.SelectedIndex = -1;
             dgvMembers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvMembers.Size = new Size(951, 291);
-            dgvMembers.StripeOddColor = Color.FromArgb(235, 243, 255);
+            dgvMembers.Size = new Size(951, 310);
+            dgvMembers.StripeOddColor = Color.FromArgb(255, 250, 240);
             dgvMembers.TabIndex = 1;
             dgvMembers.SelectionChanged += dgvMembers_SelectionChanged;
             // 
@@ -789,7 +791,7 @@ namespace zhaocaimao
             pnlOrders.Margin = new Padding(4, 5, 4, 5);
             pnlOrders.MinimumSize = new Size(1, 1);
             pnlOrders.Name = "pnlOrders";
-            pnlOrders.Size = new Size(951, 362);
+            pnlOrders.Size = new Size(951, 343);
             pnlOrders.TabIndex = 0;
             pnlOrders.Text = null;
             pnlOrders.TextAlignment = ContentAlignment.MiddleCenter;
@@ -799,33 +801,33 @@ namespace zhaocaimao
             dgvOrders.AllowUserToAddRows = false;
             dgvOrders.AllowUserToDeleteRows = false;
             dgvOrders.AllowUserToResizeRows = false;
-            dataGridViewCellStyle9.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle9.BackColor = Color.FromArgb(255, 250, 240);
             dgvOrders.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle9;
             dgvOrders.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvOrders.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dgvOrders.BackgroundColor = Color.White;
             dgvOrders.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle10.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle10.BackColor = Color.FromArgb(80, 160, 255);
-            dataGridViewCellStyle10.Font = new Font("微软雅黑", 12F);
+            dataGridViewCellStyle10.BackColor = Color.FromArgb(255, 165, 0);
+            dataGridViewCellStyle10.Font = new Font("微软雅黑", 10F);
             dataGridViewCellStyle10.ForeColor = Color.White;
             dataGridViewCellStyle10.SelectionBackColor = SystemColors.Highlight;
             dataGridViewCellStyle10.SelectionForeColor = SystemColors.HighlightText;
             dataGridViewCellStyle10.WrapMode = DataGridViewTriState.True;
             dgvOrders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle10;
-            dgvOrders.ColumnHeadersHeight = 32;
+            dgvOrders.ColumnHeadersHeight = 28;
             dgvOrders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvOrders.EnableHeadersVisualStyles = false;
-            dgvOrders.Font = new Font("微软雅黑", 10F);
-            dgvOrders.GridColor = Color.FromArgb(80, 160, 255);
+            dgvOrders.Font = new Font("微软雅黑", 9F);
+            dgvOrders.GridColor = Color.FromArgb(255, 200, 100);
             dgvOrders.Location = new Point(0, 30);
             dgvOrders.MultiSelect = true;
             dgvOrders.Name = "dgvOrders";
             dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle11.BackColor = Color.FromArgb(235, 243, 255);
-            dataGridViewCellStyle11.Font = new Font("微软雅黑", 10F);
+            dataGridViewCellStyle11.BackColor = Color.FromArgb(255, 250, 240);
+            dataGridViewCellStyle11.Font = new Font("微软雅黑", 9F);
             dataGridViewCellStyle11.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(255, 165, 0);
             dataGridViewCellStyle11.SelectionForeColor = Color.White;
             dataGridViewCellStyle11.WrapMode = DataGridViewTriState.True;
             dgvOrders.RowHeadersDefaultCellStyle = dataGridViewCellStyle11;
@@ -834,11 +836,11 @@ namespace zhaocaimao
             dataGridViewCellStyle12.BackColor = Color.White;
             dataGridViewCellStyle12.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             dgvOrders.RowsDefaultCellStyle = dataGridViewCellStyle12;
-            dgvOrders.RowTemplate.Height = 29;
+            dgvOrders.RowTemplate.Height = 24;
             dgvOrders.SelectedIndex = -1;
             dgvOrders.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvOrders.Size = new Size(951, 332);
-            dgvOrders.StripeOddColor = Color.FromArgb(235, 243, 255);
+            dgvOrders.Size = new Size(951, 313);
+            dgvOrders.StripeOddColor = Color.FromArgb(255, 250, 240);
             dgvOrders.TabIndex = 1;
             dgvOrders.MouseDown += DgvOrders_MouseDown;
             // 
@@ -939,20 +941,20 @@ namespace zhaocaimao
             // btnConnect
             // 
             btnConnect.Cursor = Cursors.Hand;
-            btnConnect.FillHoverColor = Color.FromArgb(100, 180, 255);
-            btnConnect.FillPressColor = Color.FromArgb(60, 140, 235);
-            btnConnect.FillSelectedColor = Color.FromArgb(60, 140, 235);
+            btnConnect.FillHoverColor = Color.FromArgb(255, 200, 100);
+            btnConnect.FillPressColor = Color.FromArgb(255, 140, 0);
+            btnConnect.FillSelectedColor = Color.FromArgb(255, 140, 0);
             btnConnect.Font = new Font("微软雅黑", 10F, FontStyle.Bold);
             btnConnect.Location = new Point(253, 12);
             btnConnect.MinimumSize = new Size(1, 1);
             btnConnect.Name = "btnConnect";
             btnConnect.Radius = 6;
-            btnConnect.RectHoverColor = Color.FromArgb(100, 180, 255);
-            btnConnect.RectPressColor = Color.FromArgb(60, 140, 235);
-            btnConnect.RectSelectedColor = Color.FromArgb(60, 140, 235);
+            btnConnect.RectHoverColor = Color.FromArgb(255, 200, 100);
+            btnConnect.RectPressColor = Color.FromArgb(255, 140, 0);
+            btnConnect.RectSelectedColor = Color.FromArgb(255, 140, 0);
             btnConnect.Size = new Size(100, 40);
             btnConnect.TabIndex = 2;
-            btnConnect.Text = "连接";
+            btnConnect.Text = "启动微信";
             btnConnect.TipsFont = new Font("微软雅黑", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnConnect.Click += btnConnect_Click;
             // 
@@ -985,7 +987,7 @@ namespace zhaocaimao
             // 
             // statusStrip
             // 
-            statusStrip.BackColor = Color.FromArgb(243, 249, 255);
+            statusStrip.BackColor = Color.FromArgb(255, 250, 240);
             statusStrip.Font = new Font("微软雅黑", 10F);
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { lblStatus });
@@ -1009,7 +1011,7 @@ namespace zhaocaimao
             Controls.Add(statusStrip);
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "VxMain";
-            Text = "百胜VX3Plus - 管理系统";
+            Text = "智能管理系统";
             ZoomScaleRect = new Rectangle(15, 15, 980, 762);
             Load += VxMain_Load;
             cmsMembers.ResumeLayout(false);
@@ -1023,10 +1025,10 @@ namespace zhaocaimao
             ((System.ComponentModel.ISupportInitialize)dgvContacts).EndInit();
             pnlLeftTop.ResumeLayout(false);
             pnlRight.ResumeLayout(false);
-            splitContainerRight.Panel1.ResumeLayout(false);
-            splitContainerRight.Panel2.ResumeLayout(false);
-            (splitContainerRight).EndInit();
-            splitContainerRight.ResumeLayout(false);
+            splitContainerData.Panel1.ResumeLayout(false);
+            splitContainerData.Panel2.ResumeLayout(false);
+            (splitContainerData).EndInit();
+            splitContainerData.ResumeLayout(false);
             pnlMembers.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvMembers).EndInit();
             pnlMembersTop.ResumeLayout(false);
@@ -1050,7 +1052,7 @@ namespace zhaocaimao
         private Sunny.UI.UIButton btnBindingContacts;
         private Sunny.UI.UITextBox txtCurrentContact;
         private Sunny.UI.UIPanel pnlRight;
-        private Sunny.UI.UISplitContainer splitContainerRight;
+        private Sunny.UI.UISplitContainer splitContainerData;
         private Sunny.UI.UIPanel pnlMembers;
         private Sunny.UI.UIDataGridView dgvMembers;
         private Sunny.UI.UIPanel pnlMembersTop;
@@ -1090,11 +1092,11 @@ namespace zhaocaimao
         private UserControls.UcBinggoDataLast ucBinggoDataLast;
         private Sunny.UI.UIPanel pnl_fastsetting;
         private System.Windows.Forms.Label lblSealSeconds;
-        private Sunny.UI.UIIntegerUpDown txtSealSeconds;
+        private Sunny.UI.UITextBox txtSealSeconds;
         private System.Windows.Forms.Label lblMinBet;
-        private Sunny.UI.UIIntegerUpDown txtMinBet;
+        private Sunny.UI.UITextBox txtMinBet;
         private System.Windows.Forms.Label lblMaxBet;
-        private Sunny.UI.UIIntegerUpDown txtMaxBet;
+        private Sunny.UI.UITextBox txtMaxBet;
         
         // 🤖 自动投注控件
         private System.Windows.Forms.Label lblAutoBetSeparator;

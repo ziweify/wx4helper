@@ -234,7 +234,7 @@ namespace zhaocaimao
                 
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "BaiShengVx3Plus",
+                    "智能管理系统",
                     "Data");
                 Directory.CreateDirectory(dataDirectory);
                 
@@ -633,28 +633,14 @@ namespace zhaocaimao
             try
             {
                 // 从配置加载到 UI
-                txtSealSeconds.Value = _configService.GetSealSecondsAhead();
-                txtMinBet.Value = (int)_configService.GetMinBet();
-                txtMaxBet.Value = (int)_configService.GetMaxBet();
+                txtSealSeconds.Text = _configService.GetSealSecondsAhead().ToString();
+                txtMinBet.Text = ((int)_configService.GetMinBet()).ToString();
+                txtMaxBet.Text = ((int)_configService.GetMaxBet()).ToString();
                 
                 // 🔥 绑定事件：用户修改快速设置时自动保存
-                txtSealSeconds.ValueChanged += (s, e) =>
-                {
-                    // 🔥 直接使用 ConfigurationService 保存（自动持久化到 appsettings.json）
-                    _configService.SetSealSecondsAhead((int)txtSealSeconds.Value);
-                };
-                
-                txtMinBet.ValueChanged += (s, e) =>
-                {
-                    // 🔥 直接使用 ConfigurationService 保存（自动持久化到 appsettings.json）
-                    _configService.SetMinBet((float)txtMinBet.Value);
-                };
-                
-                txtMaxBet.ValueChanged += (s, e) =>
-                {
-                    // 🔥 直接使用 ConfigurationService 保存（自动持久化到 appsettings.json）
-                    _configService.SetMaxBet((float)txtMaxBet.Value);
-                };
+                txtSealSeconds.TextChanged += TxtSealSeconds_TextChanged;
+                txtMinBet.TextChanged += TxtMinBet_TextChanged;
+                txtMaxBet.TextChanged += TxtMaxBet_TextChanged;
                 
                 // 🔥 管理模式初始化（默认关闭）
                 // chkAdminMode 在 Settings 窗口中，不在主窗口
@@ -753,18 +739,68 @@ namespace zhaocaimao
         }
         
         /// <summary>
-        /// 封盘提前秒数值改变事件
+        /// 封盘提前秒数文本改变事件
         /// </summary>
-        private void TxtSealSeconds_ValueChanged(object? sender, int value)
+        private void TxtSealSeconds_TextChanged(object? sender, EventArgs e)
         {
             try
             {
-                _configService.SetSealSecondsAhead(value);
-                _logService.Info("VxMain", $"封盘提前秒数已更新: {value} 秒");
+                if (sender is Sunny.UI.UITextBox textBox && int.TryParse(textBox.Text, out int value))
+                {
+                    if (value >= 10 && value <= 300)
+                    {
+                        _configService.SetSealSecondsAhead(value);
+                        _logService.Info("VxMain", $"封盘提前秒数已更新: {value} 秒");
+                    }
+                }
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", $"更新封盘提前秒数失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 最小投注文本改变事件
+        /// </summary>
+        private void TxtMinBet_TextChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (sender is Sunny.UI.UITextBox textBox && float.TryParse(textBox.Text, out float value))
+                {
+                    if (value >= 1 && value <= 10000)
+                    {
+                        _configService.SetMinBet(value);
+                        _logService.Info("VxMain", $"最小投注已更新: {value}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"更新最小投注失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 最大投注文本改变事件
+        /// </summary>
+        private void TxtMaxBet_TextChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (sender is Sunny.UI.UITextBox textBox && float.TryParse(textBox.Text, out float value))
+                {
+                    if (value >= 1 && value <= 1000000)
+                    {
+                        _configService.SetMaxBet(value);
+                        _logService.Info("VxMain", $"最大投注已更新: {value}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"更新最大投注失败: {ex.Message}", ex);
             }
         }
         
@@ -1641,17 +1677,22 @@ namespace zhaocaimao
             if (dgvContacts.Columns["IsGroup"] != null)
                 dgvContacts.Columns["IsGroup"].Visible = false;
 
-            // 修改 Wxid 列的表头显示为 "ID"
-            if (dgvContacts.Columns["Wxid"] != null)
-            {
-                dgvContacts.Columns["Wxid"].HeaderText = "ID";
-                dgvContacts.Columns["Wxid"].Width = 100;
-            }
-
-            // 调整昵称列宽度为自动填充
+            // 🔥 调整列顺序：昵称在前，ID在后
+            // 修改昵称列：固定宽度（4个中文宽度，约80像素）
             if (dgvContacts.Columns["Nickname"] != null)
             {
-                dgvContacts.Columns["Nickname"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                dgvContacts.Columns["Nickname"].DisplayIndex = 0;
+                dgvContacts.Columns["Nickname"].Width = 80;
+                dgvContacts.Columns["Nickname"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            }
+
+            // 修改 Wxid 列的表头显示为 "ID"，宽度更长
+            if (dgvContacts.Columns["Wxid"] != null)
+            {
+                dgvContacts.Columns["Wxid"].DisplayIndex = 1;
+                dgvContacts.Columns["Wxid"].HeaderText = "ID";
+                dgvContacts.Columns["Wxid"].Width = 160;
+                dgvContacts.Columns["Wxid"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             }
         }
 
@@ -2131,7 +2172,7 @@ namespace zhaocaimao
                         // 🔥 使用 AppData\Local 目录存储备份
                         var backupDirectory = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "BaiShengVx3Plus",
+                            "智能管理系统",
                             "Data",
                             "Backup");
                         
