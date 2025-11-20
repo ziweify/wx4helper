@@ -86,13 +86,14 @@ namespace zhaocaimao.Services.Messages.Handlers
                         {
                             foreach (var welcomeMsg in welcomeMessages)
                             {
-                                await _socketClient.SendAsync<object>("SendText", groupWxid, welcomeMsg);
+                                await _socketClient.SendAsync<object>("SendMessage", groupWxid, welcomeMsg);
                                 await Task.Delay(100); // 避免消息发送过快
                             }
                         }
 
-                        // 🔥 最后发送刷新完成
-                        return (0, "^刷新完成", null);
+                        // 🔥 最后发送刷新完成（内部已发送，返回空让外部不再发送）
+                        await _socketClient.SendAsync<object>("SendMessage", groupWxid, "^刷新完成");
+                        return (0, null, null);  // 🔥 返回 null，因为消息已在内部发送
                     }
                     else
                     {

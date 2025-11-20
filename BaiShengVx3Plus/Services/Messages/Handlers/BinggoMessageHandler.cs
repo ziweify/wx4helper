@@ -94,9 +94,18 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     var (refreshCode, refreshReply, refreshError) = await _adminCommandHandler.HandleRefreshCommand(groupWxid, messageContent);
                     if (refreshCode != -1)
                     {
-                        if (refreshCode == 0 && !string.IsNullOrEmpty(refreshReply))
+                        // 🔥 刷新命令已在内部发送消息，如果成功（code==0）且没有错误，返回已处理但不需要回复
+                        if (refreshCode == 0)
                         {
-                            return (true, refreshReply);
+                            if (!string.IsNullOrEmpty(refreshReply))
+                            {
+                                return (true, refreshReply);
+                            }
+                            else
+                            {
+                                // 🔥 消息已在内部发送，返回已处理但不需要回复
+                                return (true, null);
+                            }
                         }
                         else if (!string.IsNullOrEmpty(refreshError))
                         {
