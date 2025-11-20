@@ -1,6 +1,7 @@
 using Sunny.UI;
 using BaiShengVx3Plus.ViewModels;
 using BaiShengVx3Plus.Utils;
+using BaiShengVx3Plus.Helpers;
 
 namespace BaiShengVx3Plus.Views
 {
@@ -34,6 +35,8 @@ namespace BaiShengVx3Plus.Views
             // 登录按钮
             btnLogin.Click += async (s, e) =>
             {
+                //string msg = "me\x001Ehaha\rhaha\thaha";
+                //MessageBox.Show(msg.UnEscape());
                 btnLogin.Enabled = false;
                 await _viewModel.LoginCommand.ExecuteAsync(null);
                 btnLogin.Enabled = true;

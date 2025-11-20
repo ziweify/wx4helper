@@ -244,32 +244,66 @@ namespace zhaocaimao.Services.Games.Binggo
                     return (false, $"期号 {issueId} 未开奖，请先在开奖页面手动录入开奖数据！", null);
                 }
                 
-                // 3. 创建订单
+                // 🔥 3. 解析投注内容（与正常订单一样，确保能正确结算）
+                _logService.Info("BinggoOrderService", 
+                    $"🔍 [补单] 解析投注内容: {betContent}");
+                var parsedBetContent = BinggoHelper.ParseBetContent(betContent, issueId);
+                
+                if (parsedBetContent.Code != 0)
+                {
+                    _logService.Warning("BinggoOrderService", 
+                        $"补单解析失败: {parsedBetContent.ErrorMessage}");
+                    return (false, $"投注内容解析失败: {parsedBetContent.ErrorMessage}", null);
+                }
+                
+                _logService.Info("BinggoOrderService", 
+                    $"✅ [补单] 解析成功: 标准格式={parsedBetContent.ToStandardString()}, 注数={parsedBetContent.Items.Count}, 总金额={parsedBetContent.TotalAmount}");
+                
+                // 🔥 4. 创建订单（设置所有必要字段，参考 CreateOrderAsync）
+                long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
+                float betFronMoney = member.Balance;  // 注前金额
+                float betAfterMoney = member.Balance;  // 补单不扣钱，注后金额等于注前金额
+                
                 var order = new V2MemberOrder
                 {
+                    // 🔥 会员信息
                     Wxid = member.Wxid,
+                    Account = member.Account,
                     Nickname = member.Nickname,
                     GroupWxId = member.GroupWxId,
+                    
+                    // 🔥 订单基础信息
                     IssueId = issueId,
-                    BetContent = betContent,
-                    BetAmount = amount,
-                    MemberState = member.State,  // 🔥 记录会员等级快照
+                    TimeStampBet = timestampBet,
+                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    CreatedAt = DateTime.Now,
+                    
+                    // 🔥 投注内容（参考 CreateOrderAsync）
+                    BetContentOriginal = betContent,  // 原始内容
+                    BetContentStandar = parsedBetContent.ToStandardString(),  // 🔥 标准内容（结算时使用）
+                    BetContent = parsedBetContent.ToStandardString(),  // 兼容字段
+                    Nums = parsedBetContent.Items.Count,  // 注数
+                    AmountTotal = (float)parsedBetContent.TotalAmount,  // 🔥 总金额（结算时使用）
+                    BetAmount = amount,  // 兼容字段
+                    
+                    // 🔥 金额记录
+                    BetFronMoney = betFronMoney,   // 注前金额
+                    BetAfterMoney = betAfterMoney, // 注后金额
+                    
+                    // 🔥 结算信息
                     Profit = 0,  // 稍后结算
-                    IsSettled = false,
-                    TimeStampBet = DateTimeOffset.Now.ToUnixTimeSeconds(),  // 🔥 设置下注时间戳
-                    CreatedAt = DateTime.Now
+                    NetProfit = 0,  // 稍后结算
+                    Odds = 1.97f,  // 赔率（参考 F5BotV2 默认值）
+                    OrderStatus = OrderStatus.待处理,  // 初始状态，结算后会更新
+                    OrderType = OrderType.待定,  // 补单类型为待定
+                    MemberState = member.State,  // 🔥 记录会员等级快照
+                    IsSettled = false
                 };
                 
-                // 4. 立即结算（与正常订单一样走结算流程）
+                // 🔥 5. 立即结算（与正常订单一样走结算流程）
+                // 参考 F5BotV2: 补单时会员已经下过单，本金已经被扣除了
+                // 所以结算时应该加总赢金额（包含本金），与正常订单结算逻辑一致
                 await SettleSingleOrderAsync(order, lotteryData);
-                
-                // 5. 更新会员余额（盈亏）
-                member.Balance += order.NetProfit;  // 🔥 补单也要更新余额
-                member.IncomeTotal += order.NetProfit;
-                if (order.CreatedAt.Date == DateTime.Now.Date)
-                {
-                    member.IncomeToday += order.NetProfit;
-                }
                 
                 // 6. 保存订单（插入到列表顶部，保持"最新在上"）
                 if (_ordersBindingList != null && _ordersBindingList.Count > 0)

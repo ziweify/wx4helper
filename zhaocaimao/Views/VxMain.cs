@@ -4009,10 +4009,13 @@ namespace zhaocaimao
                     }
                     
                     // 🔥 6. 执行补单（调用 OrderService）
+                    // 🔥 使用标准内容（BetContentStandar），因为它是已经解析过的正确格式
+                    // 如果没有标准内容，则使用原始内容作为备选
+                    string betContentForManual = order.BetContentStandar ?? order.BetContentOriginal ?? order.BetContent ?? string.Empty;
                     (bool success, string message, V2MemberOrder? newOrder) = await _orderService.CreateManualOrderAsync(
                         member,
                         order.IssueId,
-                        order.BetContent,
+                        betContentForManual,
                         (decimal)order.AmountTotal,  // 🔥 转换为 decimal
                         sendToWeChat);  // 🔥 控制是否发送到微信
                     

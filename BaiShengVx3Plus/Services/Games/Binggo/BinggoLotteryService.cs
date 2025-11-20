@@ -934,7 +934,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
 
                         // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
-                        string nickname = order.Nickname ?? member.Nickname ?? member.DisplayName ?? "未知";
+                        string nickname = order.Nickname.UnEscape() ?? member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知";
 
                         // 🔥 注意：这里不缓存余额，因为余额在结算过程中会被更新
                         // 余额将在发送消息时重新获取最新值（参考 F5BotV2 第 1454 行）
@@ -1054,7 +1054,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
                         // 盈利 = 总赢金额 - 投注总额 = 纯利（参考 F5BotV2 第 1458 行：{(int)order.Profit- order.AmountTotal}）
                         float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
-                        winningMessage.Append($"{report.nickname}[{(int)currentBalance}] {(int)netProfit}\r");
+                        winningMessage.Append($"{report.nickname.UnEscape()}[{(int)currentBalance}] {(int)netProfit}\r");
                     }
                 }
                 
@@ -1069,7 +1069,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----留~名单----\r{会员名} 余额\r
                 // 🔥 重要：无论是否有订单，都要发送留分名单
                 var balanceMessage = new System.Text.StringBuilder();
-                balanceMessage.Append($"第{issueidLite}队\r");
+                balanceMessage.Append($"第{issueidLite}队 \r");
                 balanceMessage.Append($"{lotteryData.ToLotteryString()}\r");
                 balanceMessage.Append($"----留~名单----\r");
                 
@@ -1080,7 +1080,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         // 🔥 格式完全一致：{nickname} {(int)Balance}\r
                         if ((int)member.Balance >= 1)  // 余额 >= 1 才显示
                         {
-                            balanceMessage.Append($"{member.Nickname ?? member.DisplayName ?? "未知"} {(int)member.Balance}\r");
+                            balanceMessage.Append($"{member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知"} {(int)member.Balance} \r");
                         }
                     }
                 }
