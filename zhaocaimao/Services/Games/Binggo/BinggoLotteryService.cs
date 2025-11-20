@@ -1104,6 +1104,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", "今日最后一期，发送结束消息");
                     var endMessage = "各位客官今日份结束咯。\r";
                     await _socketClient!.SendAsync<object>("SendMessage", groupWxId, endMessage);
+                    
+                    // 🔥 最后一期结算后，发送最新的开奖图片（参考 F5BotV2）
+                    // 本来应该在"开奖中"发送，但最后一期开奖后状态变为"等待中"，所以在这里发送
+                    _logService.Info("BinggoLotteryService", "今日最后一期，发送开奖图片");
+                    await Task.Delay(500);  // 延迟500ms，确保结束消息先发送
+                    await SendHistoryLotteryImageAsync(issueId, groupWxId);
                 }
             }
             catch (Exception ex)
