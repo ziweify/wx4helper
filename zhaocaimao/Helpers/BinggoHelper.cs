@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Models.Games.Binggo;
+using zhaocaimao.Models.Games.Binggo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -178,15 +178,16 @@ namespace zhaocaimao.Helpers
                           .Replace("五", "5")
                           .Replace("六", "6");
             
-            // 提取所有数字
+            // 🔥 提取所有数字（允许重复，参考 F5BotV2）
+            // 例如: "23333" → [2, 3, 3, 3, 3]（不去重！）
             foreach (char c in carStr)
             {
                 if (char.IsDigit(c))
                 {
                     int num = int.Parse(c.ToString());
-                    if (num >= 1 && num <= 6 && !result.Contains(num))
+                    if (num >= 1 && num <= 6)
                     {
-                        result.Add(num);
+                        result.Add(num);  // 🔥 去除 !result.Contains(num) 条件，允许重复
                     }
                 }
             }
@@ -253,21 +254,24 @@ namespace zhaocaimao.Helpers
         }
         
         /// <summary>
-        /// 添加或累加下注项（如果已存在相同车号和玩法，则累加数量）
+        /// 添加或累加下注项
+        /// 🔥 参考 F5BotV2 第 272-283 行：只要车号和玩法相同就累加数量，不管金额
+        /// 这样 1233333大10 会解析为: 1大10(1注), 2大10(1注), 3大10×5(5注)
         /// </summary>
         private static void AddOrIncrementBetItem(BinggoBetContent result, int carNumber, BinggoPlayType playType, decimal amount)
         {
+            // 🔥 关键修复：只匹配车号和玩法，不匹配金额（参考 F5BotV2 第272行）
             var existing = result.Items.FirstOrDefault(item => 
-                item.CarNumber == carNumber && item.PlayType == playType && item.Amount == amount);
+                item.CarNumber == carNumber && item.PlayType == playType);
             
             if (existing != null)
             {
-                // 已存在，累加数量
+                // 🔥 已存在相同车号+玩法：累加数量（参考 F5BotV2 第275行：item.numberAdd()）
                 existing.AddQuantity();
             }
             else
             {
-                // 新增
+                // 🔥 首次出现：新增（参考 F5BotV2 第280行）
                 result.Items.Add(new BinggoBetItem(carNumber, playType, amount));
             }
         }

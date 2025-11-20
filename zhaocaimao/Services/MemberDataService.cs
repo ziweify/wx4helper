@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using zhaocaimao.Contracts;
 using zhaocaimao.Models;
 using zhaocaimao.Core;

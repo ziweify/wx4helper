@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Models.Games.Binggo
+namespace zhaocaimao.Models.Games.Binggo
 {
     /// <summary>
     /// 炳狗开奖状态

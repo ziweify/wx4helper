@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Models
+namespace zhaocaimao.Models
 {
     /// <summary>
     /// 用户模型

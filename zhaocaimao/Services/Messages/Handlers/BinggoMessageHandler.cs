@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Contracts;
+using zhaocaimao.Contracts;
 using zhaocaimao.Contracts.Games;
 using zhaocaimao.Models;
 using zhaocaimao.Models.Games.Binggo;
@@ -59,18 +59,29 @@ namespace zhaocaimao.Services.Messages.Handlers
         {
             try
             {
-                // ✅ 检查是否开启收单（使用静态属性，由 VxMain 同步更新）
-                if(!IsOrdersTaskingEnabled)
-                {
-                    return (false, null);
-                }
-               
-
                 // 1. 基础检查
                 if (member == null || string.IsNullOrWhiteSpace(messageContent))
                 {
                     return (false, null);
                 }
+                
+                // 🔥 检查是否为上下分命令（上下分不受收单开关影响）
+                // 参考 F5BotV2：收单开关只影响投注订单，不影响上下分、查询、取消等操作
+                string trimmedMsg = messageContent.Trim();
+                bool isCreditWithdrawCommand = Regex.IsMatch(trimmedMsg, @"^[上下]\d+$");
+                
+                // ✅ 检查是否开启收单（使用静态属性，由 VxMain 同步更新）
+                // 🔥 注意：上下分、查询、取消命令不受收单开关影响
+                if(!IsOrdersTaskingEnabled && !isCreditWithdrawCommand)
+                {
+                    // 🔥 如果是查询或取消命令，也允许通过
+                    if (trimmedMsg != "查" && trimmedMsg != "流水" && trimmedMsg != "货单" && 
+                        trimmedMsg != "取消" && trimmedMsg != "qx")
+                    {
+                        return (false, null);
+                    }
+                }
+               
                 
                 // 🔥 2. 管理员权限检查 - 参考 F5BotV2 Line 2014-2075
                 bool isAdmin = member.State == MemberState.管理 || member.Wxid == currentUserWxid;

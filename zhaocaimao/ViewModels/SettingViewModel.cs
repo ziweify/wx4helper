@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Core;
+using zhaocaimao.Core;
 using zhaocaimao.Models;
 using zhaocaimao.Contracts;
 using CommunityToolkit.Mvvm.ComponentModel;

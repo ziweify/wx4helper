@@ -24,14 +24,23 @@ namespace zhaocaimao.Services.AutoBet
         // 🔥 已删除字典！配置对象自己管理 Browser 连接
         // private readonly Dictionary<int, BrowserClient> _browsers = new();  // ❌ 不需要了
         
-        // 🔥 已移除 Socket/HTTP 服务器：使用内部 WebView2 控件，直接调用方法（无需进程间通信）
-        // 🔥 已移除 _orderQueues：订单直接从 _ordersBindingList 查询，无需队列缓存
+        // Socket 服务器（双向通信：心跳、状态推送、远程控制）
+        private AutoBetSocketServer? _socketServer;
+        
+        // 🔥 HTTP 服务器（用于 BsBrowserClient 获取配置、提交结果）
+        private AutoBetHttpServer? _httpServer;
         
         // 🔥 配置列表（内存管理，自动保存）- 参考 V2MemberBindingList
         // 每个配置对象通过 config.Browser 管理自己的浏览器连接
         private Core.BetConfigBindingList? _configs;
         
+        // 🔥 后台监控任务：自动启动浏览器（如果配置需要但未连接）
+        private Thread? _monitorThread;
+        private bool _monitorRunning = false;
         private readonly object _lock = new object();
+        
+        // 🔥 记录正在启动的配置（防止重复启动）
+        private readonly HashSet<int> _startingConfigs = new();
         
         // 🔥 用于取消异步任务的 CancellationTokenSource
         private CancellationTokenSource? _cancellationTokenSource;
@@ -45,9 +54,16 @@ namespace zhaocaimao.Services.AutoBet
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             _log.Info("AutoBet", "🚀 AutoBetService 构造函数执行");
             
-            // 🔥 内部 WebView2 控件方式：无需启动 Socket/HTTP 服务器
+            // 启动 Socket 服务器（端口 19527，用于双向通信）
+            _socketServer = new AutoBetSocketServer(log, OnBrowserConnected, OnMessageReceived, OnBrowserDisconnected); // 🔥 添加连接断开回调
+            _socketServer.Start();
+            
+            // 🔥 监控任务暂不启动，等待 SetDatabase 完成后再启动
             _log.Info("AutoBet", "⏸️ 后台监控任务暂未启动（等待数据库初始化）");
-            _log.Info("AutoBet", "✅ AutoBetService 初始化完成（内部WebView2控件，无需Socket/HTTP服务器）");
+            _log.Info("AutoBet", "⏸️ HTTP 服务器暂未启动（等待数据库初始化）");
+            
+            _log.Info("AutoBet", "✅ AutoBetService 初始化完成");
+            _log.Info("AutoBet", $"   Socket 服务器状态: {(_socketServer.IsRunning ? "运行中" : "未运行")}");
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         }
         
@@ -94,6 +110,24 @@ namespace zhaocaimao.Services.AutoBet
             
             EnsureDefaultConfig();
             _log.Info("AutoBet", $"✅ 数据库已设置，已加载 {_configs.Count} 个配置到内存");
+            
+            // 🔥 启动 HTTP 服务器（端口 8888，用于 BsBrowserClient 获取配置、提交结果）
+            try
+            {
+                _httpServer = new AutoBetHttpServer(
+                    _log,
+                    8888,
+                    GetConfig,
+                    SaveConfig,
+                    _orderService,
+                    HandleBetResult);
+                _httpServer.Start();
+                _log.Info("AutoBet", "✅ HTTP 服务器已启动（端口 8888）");
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "HTTP 服务器启动失败", ex);
+            }
             
             // 🔥 创建 CancellationTokenSource（用于取消异步任务）
             _cancellationTokenSource = new CancellationTokenSource();
@@ -145,8 +179,31 @@ namespace zhaocaimao.Services.AutoBet
                                     break;
                                 }
                                 
-                                // 控件方式：不需要检查 Socket 连接
-                                // 浏览器控件在 StartAsync 时已经初始化
+                                // 检查 Socket 服务器是否有连接
+                                var connection = _socketServer?.GetConnection(config.Id);
+                                if (connection != null && connection.IsConnected)
+                                {
+                                    _log.Info("AutoBet", $"   📌 [{config.ConfigName}] 发现 Socket 连接，但未附加到 BrowserClient");
+                                    
+                                    // 创建或更新 BrowserClient
+                                    if (config.Browser == null)
+                                    {
+                                        var browserClient = new BrowserClient(config.Id);
+                                        config.Browser = browserClient;
+                                        _log.Info("AutoBet", $"   ✅ 已创建 BrowserClient");
+                                    }
+                                    
+                                    // 附加连接
+                                    config.Browser.AttachConnection(connection);
+                                    
+                                    if (config.IsConnected)
+                                    {
+                                        _log.Info("AutoBet", $"   ✅ [{config.ConfigName}] 连接已附加，浏览器重连成功！");
+                                        config.Status = "已连接";
+                                        SaveConfig(config);
+                                        break;
+                                    }
+                                }
                             }
                             
                             if (!config.IsConnected)
@@ -189,7 +246,7 @@ namespace zhaocaimao.Services.AutoBet
             
             foreach (var config in _configs)
             {
-                config.SetDependencies(_log);  // 🔥 内部控件：不需要 Socket Server
+                config.SetDependencies(_log, _socketServer);
             }
             
             _log.Info("AutoBet", $"✅ 已为 {_configs.Count} 个配置注入依赖服务");
@@ -207,46 +264,30 @@ namespace zhaocaimao.Services.AutoBet
                 return;
             }
             
-            _log.Info("AutoBet", "ℹ️ 监控线程已废弃，浏览器由 IsEnabled 属性直接管理");
+            _log.Info("AutoBet", "🚀 开始启动配置监控（配置自管理模式）...");
             
-            // 🔥 检查是否有启用的配置需要启动浏览器
-            int enabledCount = 0;
+            int startedCount = 0;
             foreach (var config in _configs)
             {
-                if (config.IsEnabled && !config.IsConnected)
-                {
-                    enabledCount++;
-                    _log.Info("AutoBet", $"🚀 检测到配置 [{config.ConfigName}] 已启用但浏览器未启动，立即启动...");
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await config.StartBrowserManuallyAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            _log.Error("AutoBet", $"❌ 启动浏览器失败: {config.ConfigName}", ex);
-                        }
-                    });
-                }
+                // 🔥 无论 IsEnabled 状态如何，都启动监控线程
+                // 监控线程内部会检查 IsEnabled，只有启用时才启动浏览器
+                config.StartMonitoring();
+                startedCount++;
             }
             
-            if (enabledCount > 0)
-            {
-                _log.Info("AutoBet", $"✅ 已为 {enabledCount} 个配置启动浏览器");
-            }
+            _log.Info("AutoBet", $"✅ 已启动 {startedCount} 个配置的监控线程");
         }
         
         #region 配置管理（从内存读取，不访问数据库）
         
         /// <summary>
-        /// 获取所有配置（从内存读取）
-        /// 🔥 监控任务调用此方法，不访问数据库
+        /// 获取配置 BindingList（返回引用，实时同步）
+        /// 🔥 用于数据绑定和查询，修改会自动同步到数据库
+        /// 🔥 架构设计：服务持有数据，UI 只引用（不持有副本）
         /// </summary>
-        public List<BetConfig> GetConfigs()
+        public Core.BetConfigBindingList? GetConfigsBindingList()
         {
-            if (_configs == null) return new List<BetConfig>();
-            return _configs.ToList();
+            return _configs;
         }
         
         /// <summary>
@@ -290,6 +331,33 @@ namespace zhaocaimao.Services.AutoBet
                 
                 _log.Info("AutoBet", $"✅ 配置已更新: {config.ConfigName} (ID={config.Id})");
                 _log.Info("AutoBet", $"   说明：BindingList 已自动保存到数据库（F5BotV2 设计）");
+            }
+        }
+        
+        /// <summary>
+        /// 处理投注结果（HTTP API 回调）
+        /// </summary>
+        /// <param name="configId">配置ID</param>
+        /// <param name="success">是否成功</param>
+        /// <param name="orderId">订单ID</param>
+        /// <param name="errorMessage">错误信息</param>
+        private void HandleBetResult(int configId, bool success, string? orderId, string? errorMessage)
+        {
+            try
+            {
+                _log.Info("AutoBet", $"📥 收到投注结果: 配置ID={configId}, 成功={success}, 订单ID={orderId}");
+                
+                if (!success)
+                {
+                    _log.Warning("AutoBet", $"⚠️ 投注失败: {errorMessage}");
+                }
+                
+                // 这里可以添加更多的投注结果处理逻辑
+                // 例如：更新投注记录、发送通知等
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "处理投注结果失败", ex);
             }
         }
         
@@ -433,22 +501,97 @@ namespace zhaocaimao.Services.AutoBet
                 _log.Info("AutoBet", $"   说明：配置名固定，但数据库重建后配置ID可能变化");
                 _log.Info("AutoBet", $"   当前连接状态: {(config.IsConnected ? "已连接" : "未连接")}");
                 
-                // 🔥 控件方式：不再需要 Socket 连接处理
-                // 浏览器控件在 StartAsync 时已经初始化，直接检查状态即可
-                _log.Info("AutoBet", $"ℹ️ 控件方式：浏览器已通过 StartAsync 初始化，无需 Socket 连接");
+                // 🔥 保存进程ID到配置
+                config.ProcessId = processId;
+                SaveConfig(config);
+                _log.Info("AutoBet", $"✅ 已保存进程ID: {processId}");
                 
-                var browserControl = config.Browser;
-                if (browserControl != null && browserControl.IsInitialized)
+                // 🔥 从 AutoBetSocketServer 获取 ClientConnection
+                // 关键：必须使用浏览器握手时发送的 browserConfigId 去查找，因为 AutoBetSocketServer 是用它存储的
+                _log.Info("AutoBet", $"   查找连接使用的 BrowserConfigId: {browserConfigId}");
+                
+                var connection = _socketServer?.GetConnection(browserConfigId);
+                if (connection == null)
                 {
-                    config.Status = "已连接";
-                    SaveConfig(config);
-                    _log.Info("AutoBet", $"✅ 浏览器控件已连接: {config.ConfigName}");
+                    _log.Error("AutoBet", $"❌ 无法获取 ClientConnection: BrowserConfigId={browserConfigId}");
+                    _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    return;
+                }
+                
+                _log.Info("AutoBet", $"✅ 已获取 ClientConnection，连接状态: {connection.IsConnected}");
+                
+                // 🔥 配置对象自己管理 Browser！
+                BrowserClient? browserClient = config.Browser;
+                
+                if (browserClient == null)
+                {
+                    // 🔥 主程序重启或数据库重建场景：config.Browser 为 null，但浏览器在运行并重连了
+                    _log.Info("AutoBet", $"📌 配置无 Browser 实例，自动创建");
+                    _log.Info("AutoBet", $"   场景：主程序重启、数据库重建、或浏览器先于主程序启动");
+                    
+                    browserClient = new BrowserClient(configId);
+                    config.Browser = browserClient;  // 🔥 先设置到配置，再附加连接
                 }
                 else
                 {
-                    _log.Warning("AutoBet", $"⚠️ 浏览器控件未连接: {config.ConfigName}");
+                    _log.Info("AutoBet", $"📌 配置已有 Browser 实例，清理旧连接并附加新连接");
+                    // 🔥 清理旧连接（但不杀进程）
+                    try
+                    {
+                        var oldConnection = browserClient.GetConnection();
+                        if (oldConnection != null && oldConnection != connection)
+                        {
+                            _log.Info("AutoBet", $"   清理旧连接（准备附加新连接）");
+                            oldConnection.Dispose();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Warning("AutoBet", $"   清理旧连接时出错: {ex.Message}");
+                    }
                 }
                 
+                // 🔥 如果浏览器和服务端的 configId 不同，需要在 AutoBetSocketServer 中更新映射
+                // 🔥 注意：必须在 AttachConnection 之前更新映射，确保 GetConnection 能正确获取
+                if (browserConfigId != configId)
+                {
+                    _log.Info("AutoBet", $"🔄 更新连接映射: BrowserId={browserConfigId} → ServerId={configId}");
+                    _socketServer?.UpdateConnectionMapping(browserConfigId, configId);
+                    
+                    // 🔥 更新映射后，重新从服务器获取连接（因为映射已更新）
+                    connection = _socketServer?.GetConnection(configId);
+                    if (connection == null)
+                    {
+                        _log.Error("AutoBet", $"❌ 更新映射后无法获取连接: ConfigId={configId}");
+                        _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        return;
+                    }
+                    _log.Info("AutoBet", $"✅ 已重新获取连接（映射更新后）");
+                }
+                
+                // 🔥 附加连接（无论新建还是已存在，都要更新连接）
+                browserClient.AttachConnection(connection);
+                
+                // 🔥 验证连接状态
+                if (browserClient.IsConnected)
+                {
+                    _log.Info("AutoBet", $"✅ BrowserClient 连接状态验证成功");
+                }
+                else
+                {
+                    _log.Warning("AutoBet", $"⚠️ BrowserClient 连接状态验证失败，但继续处理");
+                    _log.Warning("AutoBet", $"   connection.IsConnected={connection.IsConnected}");
+                    _log.Warning("AutoBet", $"   browserClient.IsConnected={browserClient.IsConnected}");
+                }
+                
+                // 更新配置状态
+                config.Status = "已连接";
+                SaveConfig(config);
+                
+                _log.Info("AutoBet", $"✅ 浏览器 Socket 连接处理完成: {config.ConfigName}");
+                _log.Info("AutoBet", $"   配置连接状态: {(config.IsConnected ? "已连接" : "未连接")}");
+                _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");
+                _log.Info("AutoBet", $"   ClientConnection.IsConnected: {connection.IsConnected}");
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             catch (Exception ex)
@@ -515,8 +658,18 @@ namespace zhaocaimao.Services.AutoBet
                 if (config.IsEnabled)
                 {
                     // 🔥 前置并发控制：检查是否已经在启动中
-                    // 🔥 监控线程已移除，不再需要并发控制
-                    // 浏览器由 IsEnabled 属性直接管理，内部已有防重复启动机制
+                    bool alreadyStarting = false;
+                    lock (_lock)
+                    {
+                        alreadyStarting = _startingConfigs.Contains(configId);
+                    }
+                    
+                    if (alreadyStarting)
+                    {
+                        _log.Info("AutoBet", $"⏳ [{config.ConfigName}] 配置已在启动中，跳过事件驱动恢复");
+                        _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        return;
+                    }
                     
                     _log.Info("AutoBet", $"配置已启用，监控任务将在2秒内检查并恢复连接...");
                     _log.Info("AutoBet", "   说明：恢复由监控任务统一处理，避免与事件驱动重复启动");
@@ -545,11 +698,10 @@ namespace zhaocaimao.Services.AutoBet
                 // 🔥 首先，将所有消息分发给对应的 BrowserClient
                 //    这样 BrowserClient.SendCommandAsync 可以通过回调接收响应
                 var config = GetConfig(configId);
-                // 控件方式：不需要消息处理，命令直接调用 ExecuteCommandAsync
-                // if (config?.Browser != null)
-                // {
-                //     config.Browser.OnMessageReceived(message);
-                // }
+                if (config?.Browser != null)
+                {
+                    config.Browser.OnMessageReceived(message);
+                }
                 
                 // 然后，处理特定类型的消息（Cookie更新、登录成功等）
                 var messageType = message["type"]?.ToString();
@@ -641,8 +793,8 @@ namespace zhaocaimao.Services.AutoBet
         public async Task NotifySealingAsync(int configId, string issueId, int secondsRemaining)
         {
             var config = GetConfig(configId);
-            var browserControl = config?.Browser;
-            if (browserControl == null || !browserControl.IsInitialized)
+            var browserClient = config?.Browser;
+            if (browserClient == null)
             {
                 _log.Warning("AutoBet", $"浏览器未连接，无法推送封盘通知: {config?.ConfigName ?? configId.ToString()}");
                 return;
@@ -657,7 +809,7 @@ namespace zhaocaimao.Services.AutoBet
                     timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 };
                 
-                await browserControl.ExecuteCommandAsync("封盘通知", data);
+                await browserClient.SendCommandAsync("封盘通知", data);
                 _log.Info("AutoBet", $"📢 已推送封盘通知:配置{configId} 期号{issueId} 剩余{secondsRemaining}秒");
             }
             catch (Exception ex)
@@ -684,8 +836,8 @@ namespace zhaocaimao.Services.AutoBet
                 };
             }
             
-            var browserControl = config.Browser;
-            if (browserControl == null)
+            var browserClient = config.Browser;
+            if (browserClient == null)
             {
                 _log.Warning("AutoBet", $"❌ 浏览器未连接，无法推送投注命令: {config.ConfigName}");
                 _log.Warning("AutoBet", $"   监控任务会在3秒内自动检查并重启浏览器");
@@ -697,14 +849,39 @@ namespace zhaocaimao.Services.AutoBet
                 };
             }
             
-            // 🔥 检查连接状态（控件方式）
-            if (!browserControl.IsInitialized)
+            // 🔥 检查连接状态
+            if (!browserClient.IsConnected)
             {
-                _log.Error("AutoBet", $"❌ 浏览器控件未初始化或已断开");
+                _log.Error("AutoBet", $"❌ 浏览器客户端存在但 IsConnected=false");
+                
+                // 🔥 详细诊断（仅在连接失败时输出）
+                var connection = browserClient.GetConnection();
+                _log.Error("AutoBet", $"   📊 诊断: connection={connection != null}");
+                
+                if (connection != null)
+                {
+                    _log.Error("AutoBet", $"   Client={connection.Client != null}, Connected={connection.Client?.Connected}");
+                    
+                    if (connection.Client?.Client != null)
+                    {
+                        try
+                        {
+                            var socket = connection.Client.Client;
+                            bool pollResult = socket.Poll(1, System.Net.Sockets.SelectMode.SelectRead);
+                            int available = socket.Available;
+                            _log.Error("AutoBet", $"   Socket.Poll={pollResult}, Available={available}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Error("AutoBet", $"   Socket检查异常: {ex.Message}");
+                        }
+                    }
+                }
+                
                 return new BetResult
                 {
                     Success = false,
-                    ErrorMessage = "浏览器控件未初始化"
+                    ErrorMessage = "连接状态异常(请查看日志)"
                 };
             }
             
@@ -712,7 +889,7 @@ namespace zhaocaimao.Services.AutoBet
             {
                 // 🔥 将字符串格式的 betContentStandard 解析为 BetStandardOrderList
                 // 格式："1大10,2大10,3大10,4大10"
-                var betOrders = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
+                var betOrders = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
                 
                 if (betOrders == null || betOrders.Count == 0)
                 {
@@ -724,8 +901,8 @@ namespace zhaocaimao.Services.AutoBet
                     };
                 }
                 
-                // 🔥 直接调用浏览器控件的命令方法
-                var result = await browserControl.ExecuteCommandAsync("投注", betOrders);
+                // 🔥 发送 BetStandardOrderList 对象（浏览器端期望的格式）
+                var result = await browserClient.SendCommandAsync("投注", betOrders);
                 
                 _log.Info("AutoBet", $"📥 投注结果:配置{configId} 成功={result.Success}");
                 
@@ -822,44 +999,33 @@ namespace zhaocaimao.Services.AutoBet
         
         
         /// <summary>
-        /// 获取浏览器控件（供命令面板使用）
+        /// 获取浏览器客户端（供命令面板使用）
         /// </summary>
-        public UserControls.BetBrowserControl? GetBrowserControl(int configId)
+        public BrowserClient? GetBrowserClient(int configId)
         {
             var config = GetConfig(configId);
             if (config == null)
             {
-                _log.Warning("AutoBet", $"❌ GetBrowserControl: 配置不存在 ConfigId={configId}");
+                _log.Warning("AutoBet", $"❌ GetBrowserClient: 配置不存在 ConfigId={configId}");
                 return null;
             }
             
-            var browserControl = config.Browser;
-            if (browserControl == null)
+            var browserClient = config.Browser;
+            if (browserClient == null)
             {
-                _log.Warning("AutoBet", $"❌ GetBrowserControl: BrowserControl 为 null ConfigId={configId}");
+                _log.Warning("AutoBet", $"❌ GetBrowserClient: BrowserClient 为 null ConfigId={configId}");
                 return null;
             }
             
-            // 🔥 诊断连接状态（控件方式）
-            _log.Info("AutoBet", $"📊 GetBrowserControl 诊断: ConfigId={configId}");
-            _log.Info("AutoBet", $"   BrowserControl 存在: {browserControl != null}");
-            _log.Info("AutoBet", $"   BrowserControl.IsInitialized: {browserControl.IsInitialized}");
+            // 🔥 诊断连接状态
+            var connection = browserClient.GetConnection();
+            _log.Info("AutoBet", $"📊 GetBrowserClient 诊断: ConfigId={configId}");
+            _log.Info("AutoBet", $"   BrowserClient 存在: {browserClient != null}");
+            _log.Info("AutoBet", $"   Connection 存在: {connection != null}");
+            _log.Info("AutoBet", $"   Connection.IsConnected: {connection?.IsConnected ?? false}");
+            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");
             
-            return browserControl;
-        }
-        
-        /// <summary>
-        /// 获取浏览器客户端（兼容方法，返回包装器）
-        /// </summary>
-        [Obsolete("使用 GetBrowserControl 代替")]
-        public BrowserClient? GetBrowserClient(int configId)
-        {
-            var control = GetBrowserControl(configId);
-            if (control == null)
-                return null;
-            
-            // 返回一个包装器，保持兼容性
-            return new BrowserClientWrapper(configId, control);
+            return browserClient;
         }
         
         
@@ -935,14 +1101,22 @@ namespace zhaocaimao.Services.AutoBet
         private async Task<bool> StartBrowserInternal(int configId)
         {
             // 🔥 并发控制：防止同一配置被重复启动
-            // 🔥 监控线程已移除，不再需要并发控制
-            // 浏览器由 IsEnabled 属性直接管理，内部已有防重复启动机制
-            bool shouldStart = true;
+            bool shouldStart = false;
+            lock (_lock)
+            {
+                if (_startingConfigs.Contains(configId))
+                {
+                    _log.Warning("AutoBet", $"⏳ 配置 {configId} 正在启动中，跳过重复启动");
+                    return false;
+                }
+                _startingConfigs.Add(configId);
+                shouldStart = true;  // 标记已添加，需要在 finally 中移除
+            }
             
             try
             {
                 _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                _log.Info("AutoBet", $"🚀 启动浏览器控件 ConfigId={configId}");
+                _log.Info("AutoBet", $"🚀 启动浏览器进程 ConfigId={configId}");
                 
                 var config = GetConfig(configId);
                 if (config == null)
@@ -960,51 +1134,54 @@ namespace zhaocaimao.Services.AutoBet
                     return true;
                 }
                 
-                // 🔥 清理旧的浏览器控件（如果存在）
+                // 🔥 清理旧的 BrowserClient（如果存在）
                 if (config.Browser != null)
                 {
-                    _log.Info("AutoBet", $"🧹 清理旧的浏览器控件（准备启动新浏览器）");
+                    _log.Info("AutoBet", $"🧹 清理旧的 BrowserClient（准备启动新浏览器）");
+                    _log.Info("AutoBet", $"   说明：清理连接但不杀进程，新浏览器启动后旧进程会被系统自动清理");
                     try
                     {
-                        config.Browser.Dispose();
+                        config.Browser.Dispose(killProcess: false);  // 🔥 不杀进程，只清理连接
                     }
                     catch (Exception ex)
                     {
-                        _log.Warning("AutoBet", $"清理旧浏览器控件时出错: {ex.Message}");
+                        _log.Warning("AutoBet", $"清理旧 BrowserClient 时出错: {ex.Message}");
                     }
                     config.Browser = null;
                 }
                 
-                // 控件方式：不需要 ProcessId
+                // 🔥 清除旧的 ProcessId（让新浏览器使用新的 ProcessId）
+                if (config.ProcessId > 0)
+                {
+                    _log.Info("AutoBet", $"🧹 清除旧的 ProcessId: {config.ProcessId}（新浏览器将使用新的 ProcessId）");
+                    config.ProcessId = 0;
+                }
                 
                 _log.Info("AutoBet", $"📋 配置信息: {config.ConfigName} ({config.Platform})");
-                _log.Info("AutoBet", $"🚀 启动新浏览器控件: {config.ConfigName}");
+                _log.Info("AutoBet", $"🚀 启动新浏览器进程: {config.ConfigName}");
                 _log.Info("AutoBet", $"   ConfigId: {configId}");
                 _log.Info("AutoBet", $"   平台: {config.Platform}");
                 _log.Info("AutoBet", $"   URL: {config.PlatformUrl}");
                 
-                // 🔥 直接创建浏览器控件
-                var newBrowserControl = new UserControls.BetBrowserControl();
+                // 创建浏览器客户端（Socket 服务器使用固定端口 19527）
+                var newBrowserClient = new BrowserClient(configId);
                 
-                // 订阅日志事件
-                newBrowserControl.OnLog += (msg) => _log.Info("AutoBet", $"[{config.ConfigName}] {msg}");
+                // 🔥 先设置到配置，这样 OnBrowserConnected 能找到它
+                config.Browser = newBrowserClient;
+                _log.Info("AutoBet", $"✅ BrowserClient 已设置到配置对象（等待连接）");
                 
-                // 🔥 先设置到配置（在初始化之前，这样监控线程可以看到对象存在）
-                config.Browser = newBrowserControl;
-                _log.Info("AutoBet", $"✅ 浏览器控件已设置到配置对象");
-                
-                // 初始化浏览器控件
-                await newBrowserControl.InitializeAsync(configId, config.ConfigName, config.Platform, config.PlatformUrl);
-                _log.Info("AutoBet", $"✅ 浏览器控件已初始化");
+                // 启动浏览器进程
+                await newBrowserClient.StartAsync(0, config.ConfigName, config.Platform, config.PlatformUrl);
+                _log.Info("AutoBet", $"✅ 浏览器进程已启动");
                 
                 // 更新状态
                 config.Status = "已启动";
                 SaveConfig(config);
                 
-                // 🔥 控件方式：直接检查是否已初始化（不需要等待 Socket 连接）
-                _log.Info("AutoBet", $"⏳ 等待浏览器控件初始化...");
+                // 3️⃣ 等待 Socket 连接建立（浏览器会主动连接到端口 19527）
+                _log.Info("AutoBet", $"⏳ 等待浏览器连接到 Socket 服务器（端口 19527）...");
                 
-                // 🔥 等待初始化完成，最多等待5秒
+                // 🔥 等待连接建立，最多等待5秒
                 for (int i = 0; i < 10; i++)
                 {
                     await Task.Delay(500);
@@ -1012,7 +1189,7 @@ namespace zhaocaimao.Services.AutoBet
                     // 检查连接状态
                     if (config.IsConnected)
                     {
-                        _log.Info("AutoBet", $"✅ 浏览器控件已初始化！等待时间: {i * 0.5}秒");
+                        _log.Info("AutoBet", $"✅ Socket 连接已建立！等待时间: {i * 0.5}秒");
                         break;
                     }
                 }
@@ -1024,15 +1201,31 @@ namespace zhaocaimao.Services.AutoBet
                 }
                 else
                 {
-                    _log.Warning("AutoBet", $"⚠️ 浏览器控件尚未初始化（等待5秒后）");
-                    _log.Warning("AutoBet", $"   当前 BrowserControl.IsInitialized: {newBrowserControl.IsInitialized}");
+                    _log.Warning("AutoBet", $"⚠️ Socket 连接尚未建立（等待5秒后）");
+                    _log.Warning("AutoBet", $"   请检查日志中是否有 '浏览器握手成功，配置ID: {configId}' 的消息");
+                    _log.Warning("AutoBet", $"   当前 BrowserClient.IsConnected: {newBrowserClient.IsConnected}");
+                    
+                    // 🔥 检查是否有连接但未附加
+                    var connection = _socketServer?.GetConnection(configId);
+                    if (connection != null)
+                    {
+                        _log.Warning("AutoBet", $"   ⚠️ 发现 Socket 连接存在但未附加到 BrowserClient");
+                        _log.Warning("AutoBet", $"   连接状态: {connection.IsConnected}");
+                        _log.Warning("AutoBet", $"   尝试手动附加连接...");
+                        newBrowserClient.AttachConnection(connection);
+                        
+                        if (config.IsConnected)
+                        {
+                            _log.Info("AutoBet", $"✅ 手动附加连接成功！");
+                        }
+                    }
                 }
                 
                 // 4️⃣ 自动登录
                 if (config.AutoLogin && !string.IsNullOrEmpty(config.Username))
                 {
                     _log.Info("AutoBet", $"🔐 自动登录: {config.Username}");
-                    var loginResult = await newBrowserControl.ExecuteCommandAsync("Login", new
+                    var loginResult = await newBrowserClient.SendCommandAsync("Login", new
                     {
                         username = config.Username,
                         password = config.Password
@@ -1063,14 +1256,21 @@ namespace zhaocaimao.Services.AutoBet
             }
             finally
             {
-                // 🔥 监控线程已移除，不再需要移除启动标记
+                // 🔥 移除启动标记（确保即使异常也能清除）
+                if (shouldStart)
+                {
+                    lock (_lock)
+                    {
+                        _startingConfigs.Remove(configId);
+                    }
+                }
             }
         }
         
         /// <summary>
         /// 投注
         /// </summary>
-        public async Task<BetResult> PlaceBet(int configId, zhaocaimao.Shared.Models.BetStandardOrderList orders)
+        public async Task<BetResult> PlaceBet(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
         {
             var config = GetConfig(configId);
             if (config == null)
@@ -1082,8 +1282,8 @@ namespace zhaocaimao.Services.AutoBet
                 };
             }
             
-            var browserControl = config.Browser;
-            if (browserControl == null || !browserControl.IsInitialized)
+            var browserClient = config.Browser;
+            if (browserClient == null)
             {
                 return new BetResult
                 {
@@ -1097,7 +1297,7 @@ namespace zhaocaimao.Services.AutoBet
             _log.Info("AutoBet", $"📤 [{config.ConfigName}] 投注: 期号{issueId} 共{orders.Count}项 {totalAmount}元");
             
             // 发送投注命令
-            var result = await browserControl.ExecuteCommandAsync("投注", orders);
+            var result = await browserClient.SendCommandAsync("PlaceBet", orders);
             
             // 🔥 投注记录已由 BetRecordService 统一管理，此处不再重复记录
             
@@ -1130,10 +1330,10 @@ namespace zhaocaimao.Services.AutoBet
             var browserClient = config?.Browser;
             if (browserClient != null)
             {
-                _log.Info("AutoBet", $"   正在关闭浏览器控件...");
+                _log.Info("AutoBet", $"   正在关闭浏览器进程...");
                 
-                config!.Browser?.Dispose();  // 🔥 释放浏览器控件
-                config.Browser = null;  // 🔥 配置对象清除 Browser 引用
+                browserClient.Dispose(killProcess: true);  // 🔥 明确要求杀死进程
+                config!.Browser = null;  // 🔥 配置对象清除 Browser 引用
                 config.Status = "已停止";
                 SaveConfig(config);
                 
@@ -1160,7 +1360,203 @@ namespace zhaocaimao.Services.AutoBet
         
         #endregion
         
-        // 🔥 监控线程已移除，浏览器由 IsEnabled 属性直接管理
+        /// <summary>
+        /// 🔥 监控线程循环（使用专用线程 + while 循环，精确控制时机）
+        /// </summary>
+        private void MonitorBrowsersLoop()
+        {
+            try
+            {
+                _log.Info("AutoBet", "🚀 监控线程立即开始运行（用户需求：立即启动，但检测到需要启动浏览器时，先延迟2秒再次判断）");
+                _log.Info("AutoBet", "✅ 监控线程已启动，开始循环检查...");
+                
+                // 🔥 主循环：每2秒检查一次
+                while (_monitorRunning)
+                {
+                    try
+                    {
+                        // 🔥 执行监控任务
+                        MonitorBrowsers();
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Error("AutoBet", "监控任务执行异常", ex);
+                    }
+                    
+                    // 🔥 等待2秒再执行下一次
+                    // 注意：这里是任务执行完后等待2秒，不是从上次开始计时
+                    Thread.Sleep(2000);
+                }
+                
+                _log.Info("AutoBet", "⏹️ 监控线程已停止");
+            }
+            catch (ThreadAbortException)
+            {
+                _log.Info("AutoBet", "⏹️ 监控线程被中止");
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "监控线程异常退出", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 后台监控任务：主要机制（负责检查配置状态并启动浏览器）
+        /// 
+        /// 职责：
+        /// 1. 从内存读取所有配置（不访问数据库）
+        /// 2. 如果 IsEnabled=true 且 IsConnected=false
+        /// 3. 检查进程是否还在运行（如果在运行，等待重连）
+        /// 4. 如果进程不在运行，启动新浏览器
+        /// 
+        /// 工作流程：
+        /// - 界面打开飞单开关 → 设置 config.IsEnabled = true
+        /// - 监控任务检测到 IsEnabled=true 且 IsConnected=false → 启动浏览器
+        /// - 事件驱动（OnBrowserDisconnected）作为辅助，处理连接断开后的自动恢复
+        /// 
+        /// 🔥 现在由专用线程调用，不再是 Timer 回调
+        /// </summary>
+        private void MonitorBrowsers()
+        {
+            try
+            {
+                if (_configs == null) return;
+                
+                // 🔥 从内存读取所有启用的配置（不访问数据库）
+                var enabledConfigs = _configs.Where(c => c.IsEnabled).ToList();
+                
+                if (enabledConfigs.Count == 0)
+                {
+                    // 优化：没有启用的配置，直接返回（避免无效检查）
+                    return;
+                }
+                
+                // 🔥 简化日志：只在有问题时才输出
+                foreach (var config in enabledConfigs)
+                {
+                    // 🔥 检查连接状态（配置对象自己管理）
+                    if (config.IsConnected)
+                    {
+                        // 已连接，跳过
+                        continue;
+                    }
+                    
+                    // 🔥 诊断日志：输出未连接配置的关键状态
+                    _log.Debug("AutoBet", $"🔍 检查配置 [{config.ConfigName}]:");
+                    _log.Debug("AutoBet", $"   IsEnabled={config.IsEnabled}, IsConnected={config.IsConnected}");
+                    _log.Debug("AutoBet", $"   ProcessId={config.ProcessId}, Browser={(config.Browser != null ? "存在" : "null")}");
+                    
+                    // 🔥 如果 Browser 存在但未连接，移除它
+                    if (config.Browser != null && !config.Browser.IsConnected)
+                    {
+                        _log.Warning("AutoBet", $"⚠️ 配置 [{config.ConfigName}] Browser存在但IsConnected=False");
+                        
+                        // 🔥 详细诊断
+                        var connection = config.Browser.GetConnection();
+                        _log.Warning("AutoBet", $"   诊断: connection={connection != null}, Client={connection?.Client != null}, Connected={connection?.Client?.Connected}");
+                        
+                        // 🔥 移除失效的 Browser，允许重新启动
+                        config.Browser = null;
+                        _log.Info("AutoBet", $"   🔧 已移除失效的 Browser");
+                    }
+                    
+                    // 🔥 检查进程是否还在运行（简单方案）
+                    if (config.ProcessId > 0)
+                    {
+                        if (IsProcessRunning(config.ProcessId))
+                        {
+                            _log.Info("AutoBet", $"⏳ 配置 [{config.ConfigName}] 浏览器进程 {config.ProcessId} 仍在运行，等待重连...");
+                            continue;  // 🔥 进程还在，不启动新的
+                        }
+                        else
+                        {
+                            // 🔥 进程已结束，清除 ProcessId
+                            _log.Info("AutoBet", $"🔧 配置 [{config.ConfigName}] 浏览器进程 {config.ProcessId} 已结束，清除 ProcessId");
+                            config.ProcessId = 0;
+                        }
+                    }
+                    
+                    // 🔥 前置并发控制：立即标记"正在启动"（在 Task.Run 之前）
+                    bool shouldStart = false;
+                    lock (_lock)
+                    {
+                        if (!_startingConfigs.Contains(config.Id))
+                        {
+                            _startingConfigs.Add(config.Id);  // 🔥 立即标记，防止竞态
+                            shouldStart = true;
+                        }
+                    }
+                    
+                    if (!shouldStart)
+                    {
+                        _log.Debug("AutoBet", $"⏳ 配置 [{config.ConfigName}] 正在启动中，跳过");
+                        continue;
+                    }
+                    
+                    // 🔥 未连接，准备启动浏览器（已标记，不会重复）
+                    _log.Info("AutoBet", $"📌 配置 [{config.ConfigName}] 飞单已开启但未连接");
+                    
+                    // 🔥 异步处理（不阻塞监控线程）
+                    int configId = config.Id;
+                    string configName = config.ConfigName;
+                    int processId = config.ProcessId;
+                    
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // 🔥 【核心优化】无论 ProcessId 是否为0，都先等待2秒给老浏览器重连的机会
+                            // 这是用户的核心需求：先延时2秒，再次判断，再启动
+                            _log.Info("AutoBet", $"⏳ [{configName}] 检测到未连接（ProcessId={processId}），延迟2秒再次检查连接状态...");
+                            await Task.Delay(2000);
+                            
+                            // 🔥 【关键检查1】等待后再次检查连接状态
+                            var cfgCheck = GetConfig(configId);
+                            if (cfgCheck?.IsConnected == true)
+                            {
+                                _log.Info("AutoBet", $"✅ [{configName}] 浏览器已在2秒内重连成功，取消启动");
+                                return;
+                            }
+                            
+                            // 🔥 【关键检查2】再次检查 IsEnabled（可能用户在等待期间关闭了）
+                            if (cfgCheck == null || !cfgCheck.IsEnabled)
+                            {
+                                _log.Info("AutoBet", $"   [{configName}] IsEnabled=false，取消启动");
+                                return;
+                            }
+                            
+                            // 🔥 【关键检查3】如果还有进程ID，再次检查进程是否真的已结束
+                            if (cfgCheck.ProcessId > 0 && IsProcessRunning(cfgCheck.ProcessId))
+                            {
+                                _log.Warning("AutoBet", $"⚠️ [{configName}] 浏览器进程 {cfgCheck.ProcessId} 仍在运行但未连接");
+                                _log.Warning("AutoBet", $"   保留 ProcessId，等待下次检查");
+                                return;
+                            }
+                            
+                            // 🔥 确认未连接且需要启动，启动浏览器
+                            _log.Info("AutoBet", $"🚀 [{configName}] 延迟2秒后确认未连接，开始启动新浏览器");
+                            await StartBrowserInternal(configId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Error("AutoBet", $"监控任务启动浏览器失败: ConfigId={configId}", ex);
+                        }
+                        finally
+                        {
+                            // 移除启动标记
+                            lock (_lock)
+                            {
+                                _startingConfigs.Remove(configId);
+                            }
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error("AutoBet", "监控任务异常", ex);
+            }
+        }
         
         /// <summary>
         /// 🔥 检查进程是否还在运行
@@ -1236,9 +1632,41 @@ namespace zhaocaimao.Services.AutoBet
                     _log.Info("AutoBet", "✅ 异步任务已取消");
                 }
                 
-                // 🔥 监控线程已移除，无需停止
+                // 🔥 步骤2: 停止监控线程（防止新的任务启动）
+                if (_monitorThread != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止监控线程...");
+                    _monitorRunning = false;  // 🔥 设置标志，让线程自然退出
+                    
+                    // 🔥 等待线程结束（最多等待3秒）
+                    if (!_monitorThread.Join(3000))
+                    {
+                        _log.Warning("AutoBet", "⚠️ 监控线程未在3秒内结束，继续释放资源");
+                    }
+                    else
+                    {
+                        _log.Info("AutoBet", "✅ 监控线程已停止");
+                    }
+                    _monitorThread = null;
+                }
                 
-                // 🔥 内部 WebView2 控件：无需停止 Socket/HTTP 服务器
+                // 🔥 步骤4: 停止 Socket 服务器（停止接受新连接）
+                if (_socketServer != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止 Socket 服务器...");
+                    _socketServer.Dispose();
+                    _socketServer = null;
+                    _log.Info("AutoBet", "✅ Socket 服务器已停止");
+                }
+                
+                // 🔥 步骤5: 停止 HTTP 服务器
+                if (_httpServer != null)
+                {
+                    _log.Info("AutoBet", "⏹️ 停止 HTTP 服务器...");
+                    _httpServer.Dispose();
+                    _httpServer = null;
+                    _log.Info("AutoBet", "✅ HTTP 服务器已停止");
+                }
                 
                 // 🔥 步骤6: 停止所有浏览器（最后停止，因为可能正在处理命令）
                 _log.Info("AutoBet", "⏹️ 停止所有浏览器...");

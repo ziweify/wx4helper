@@ -15,6 +15,7 @@ using zhaocaimao.Core;
 using zhaocaimao.Extensions;
 using System.ComponentModel;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SQLite;
 
@@ -233,7 +234,7 @@ namespace zhaocaimao
                 
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "zhaocaimao",
+                    "BaiShengVx3Plus",
                     "Data");
                 Directory.CreateDirectory(dataDirectory);
                 
@@ -425,44 +426,16 @@ namespace zhaocaimao
                 // 🤖 数据库设置完成后，加载自动投注设置
                 LoadAutoBetSettings();
                 
+                // 🔊 添加声音测试按钮（动态创建）
+                AddSoundTestButton();
+                
                 // 🎚️ 加载应用配置（从 appsettings.json）
                 LoadAppConfiguration();
                 
-                // 🔥 浏览器由 IsEnabled 属性直接管理，无需监控线程
+                // 🔥 配置自管理模式：启动监控线程
+                _logService.Info("VxMain", "🚀 启动自动投注监控线程（配置自管理模式）...");
+                _autoBetService.StartMonitoring();
                 _logService.Info("VxMain", "✅ 配置初始化完成");
-                
-                // 🔥 检查是否有启用的配置需要立即启动浏览器
-                // 注意：此时 LoadAppConfiguration 还未执行，需要再次检查
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
-                if (defaultConfig != null)
-                {
-                    _logService.Info("VxMain", $"📊 默认配置状态: IsEnabled={defaultConfig.IsEnabled}, IsConnected={defaultConfig.IsConnected}");
-                    
-                    if (defaultConfig.IsEnabled && !defaultConfig.IsConnected)
-                    {
-                        _logService.Info("VxMain", $"🚀 [InitializeGlobalServices] 检测到飞单开关已开启，但浏览器未启动，立即启动浏览器...");
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await defaultConfig.StartBrowserManuallyAsync();
-                                _logService.Info("VxMain", $"✅ [InitializeGlobalServices] 浏览器启动请求已完成");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logService.Error("VxMain", $"❌ [InitializeGlobalServices] 启动浏览器失败", ex);
-                            }
-                        });
-                    }
-                    else
-                    {
-                        _logService.Info("VxMain", $"ℹ️ [InitializeGlobalServices] 无需启动浏览器: IsEnabled={defaultConfig.IsEnabled}, IsConnected={defaultConfig.IsConnected}");
-                    }
-                }
-                else
-                {
-                    _logService.Warning("VxMain", "⚠️ [InitializeGlobalServices] 未找到默认配置");
-                }
                 
                 // 2. 创建开奖数据 BindingList（使用全局数据库）
                 _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
@@ -1160,6 +1133,18 @@ namespace zhaocaimao
                 _logService.Info("VxMain", $"📅 构建日期: {Utils.VersionInfo.BuildDate}");
                 _logService.Info("VxMain", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 
+                // 🔥 设置声音服务的 UI 线程上下文（确保 MCI API 在 UI 线程中调用）
+                var soundService = Program.ServiceProvider?.GetService<Services.Sound.SoundService>();
+                if (soundService != null && SynchronizationContext.Current != null)
+                {
+                    soundService.SetUIContext(SynchronizationContext.Current);
+                    _logService.Info("VxMain", $"✅ 声音服务 UI 线程上下文已设置");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", $"⚠️ 无法设置声音服务 UI 线程上下文: soundService={soundService != null}, SyncContext={SynchronizationContext.Current != null}");
+                }
+                
                 lblStatus.Text = "正在初始化...";
                 
                 // 隐藏不需要显示的列
@@ -1773,6 +1758,10 @@ namespace zhaocaimao
         /// 1. 调用服务层完成所有业务逻辑
         /// 2. 只负责 UI 更新和显示
         /// 3. 保持 View 层精简
+        /// 
+        /// 🔥 关键修复 2025-11-18：使用 Clear+Add 模式，避免引用断裂
+        /// - 首次绑定：创建 BindingList 并绑定到 DataSource
+        /// - 后续绑定：传入已有实例，服务内部使用 Clear+Add 更新
         /// </summary>
         private async Task BindGroupAsync(WxContact contact)
         {
@@ -1788,13 +1777,25 @@ namespace zhaocaimao
                     return;
                 }
                 
-                // 🔥 1. 清空旧数据并清零统计
-                UpdateUIThreadSafe(() =>
+                // 🔥 1. 判断是否首次绑定
+                bool isFirstTimeBinding = _membersBindingList == null;
+                
+                if (isFirstTimeBinding)
                 {
-                    _membersBindingList?.Clear();
-                    _ordersBindingList?.Clear();
+                    _logService.Info("VxMain", "✅ 首次绑定群，创建 BindingList");
+                    
+                    // 首次创建 BindingList
+                    _membersBindingList = new V2MemberBindingList(_db, contact.Wxid);
+                    _ordersBindingList = new V2OrderBindingList(_db);
+                    _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);
+                }
+                else
+                {
+                    _logService.Info("VxMain", "✅ 复用已有 BindingList（避免引用断裂）");
+                    
+                    // 清零统计（数据会在 GroupBindingService 中重新加载）
                     _statisticsService.UpdateStatistics(setZero: true);
-                });
+                }
                 
                 // 🔥 2. 更新 UI 状态
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
@@ -1803,7 +1804,7 @@ namespace zhaocaimao
                 dgvContacts.Refresh();
                 lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在加载数据...";
                 
-                // 🔥 3. 调用服务层完成所有业务逻辑
+                // 🔥 3. 调用服务层完成所有业务逻辑（传入已有 BindingList）
                 var result = await _groupBindingService.BindGroupCompleteAsync(
                     contact,
                     _db,
@@ -1811,7 +1812,11 @@ namespace zhaocaimao
                     _orderService,
                     _statisticsService,
                     _memberDataService,
-                    _lotteryService
+                    _lotteryService,
+                    // 🔥 关键修复：传入已有实例
+                    existingMembersBindingList: _membersBindingList,
+                    existingOrdersBindingList: _ordersBindingList,
+                    existingCreditWithdrawsBindingList: _creditWithdrawsBindingList
                 );
                 
                 // 🔥 4. 处理结果
@@ -1822,58 +1827,38 @@ namespace zhaocaimao
                     return;
                 }
                 
-                // 🔥 5. 更新 View 层的 BindingList 引用
-                _membersBindingList = result.MembersBindingList;
-                _ordersBindingList = result.OrdersBindingList;
-                _creditWithdrawsBindingList = result.CreditWithdrawsBindingList;
+                // 🔥 5. 确保所有服务引用同一个 BindingList 实例
+                SetAllServicesBindingList();
                 
-                // 🔥 5.5. 重新设置 AdminCommandHandler 的引用（重要！）
-                // 因为在 InitializeBinggoServices 时，_membersBindingList 可能还是 null
-                // 现在绑定群成功后，_membersBindingList 已经有值了，需要重新设置
-                var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
-                if (adminCommandHandler != null && _db != null && _membersBindingList != null)
+                // 🔥 6. 只在首次绑定时设置 DataSource
+                if (isFirstTimeBinding)
                 {
-                    adminCommandHandler.SetMembersBindingList(_membersBindingList);
-                    adminCommandHandler.SetDatabase(_db);
-                    
-                    // 🔥 创建并设置上下分服务（参考 F5BotV2）
-                    var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
-                        _db,
-                        _logService,
-                        _statisticsService,
-                        _socketClient,
-                        Program.ServiceProvider.GetService<Services.Sound.SoundService>());
-                    adminCommandHandler.SetCreditWithdrawService(creditWithdrawService);
-                    
-                    // 🔥 设置上下分 BindingList
-                    if (_creditWithdrawsBindingList != null)
+                    UpdateUIThreadSafe(() =>
                     {
-                        adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
-                    }
-                    
-                    _logService.Info("VxMain", "✅ AdminCommandHandler 已重新设置会员列表、数据库、上下分服务和 BindingList（绑定群后）");
+                        dgvMembers.DataSource = _membersBindingList;
+                        dgvOrders.DataSource = _ordersBindingList;
+                        
+                        _logService.Info("VxMain", "✅ 首次绑定 DataSource 到 UI");
+                        
+                        // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
+                        // 这样列头标题、列宽、对齐等配置才会生效
+                        if (dgvMembers.Columns.Count > 0)
+                        {
+                            dgvMembers.ConfigureFromModel<V2Member>();
+                            _logService.Info("VxMain", "✅ 会员表列配置已应用");
+                        }
+                        
+                        if (dgvOrders.Columns.Count > 0)
+                        {
+                            dgvOrders.ConfigureFromModel<V2MemberOrder>();
+                            _logService.Info("VxMain", "✅ 订单表列配置已应用");
+                        }
+                    });
                 }
-                
-                // 🔥 6. 绑定到 DataGridView（UI 更新）
-                UpdateUIThreadSafe(() =>
+                else
                 {
-                    dgvMembers.DataSource = _membersBindingList;
-                    dgvOrders.DataSource = _ordersBindingList;
-                    
-                    // 🔥 重要：在设置 DataSource 之后，列已经自动生成，现在应用特性配置
-                    // 这样列头标题、列宽、对齐等配置才会生效
-                    if (dgvMembers.Columns.Count > 0)
-                    {
-                        dgvMembers.ConfigureFromModel<V2Member>();
-                        _logService.Info("VxMain", "✅ 会员表列配置已应用");
-                    }
-                    
-                    if (dgvOrders.Columns.Count > 0)
-                    {
-                        dgvOrders.ConfigureFromModel<V2MemberOrder>();
-                        _logService.Info("VxMain", "✅ 订单表列配置已应用");
-                    }
-                });
+                    _logService.Info("VxMain", "✅ 复用已有 DataSource，UI 自动同步（BindingList 特性）");
+                }
                 
                 // 🔥 7. 更新 UI 显示
                 UpdateMemberInfoLabel();
@@ -1888,6 +1873,75 @@ namespace zhaocaimao
                 UIMessageBox.ShowError($"绑定群失败！\n\n{ex.Message}");
                 throw;
             }
+        }
+        
+        /// <summary>
+        /// 🔥 统一设置所有服务的 BindingList 引用
+        /// 
+        /// 关键修复 2025-11-18：确保所有服务都引用同一个 BindingList 实例
+        /// 避免引用断裂导致的数据不同步问题
+        /// </summary>
+        private void SetAllServicesBindingList()
+        {
+            if (_membersBindingList == null || _ordersBindingList == null || _creditWithdrawsBindingList == null)
+            {
+                _logService.Warning("VxMain", "BindingList 未初始化，无法设置服务引用");
+                return;
+            }
+            
+            _logService.Info("VxMain", "🔗 开始统一设置所有服务的 BindingList 引用...");
+            
+            // 1️⃣ AdminCommandHandler
+            var adminCommandHandler = Program.ServiceProvider.GetService<Services.Messages.Handlers.AdminCommandHandler>();
+            if (adminCommandHandler != null && _db != null)
+            {
+                adminCommandHandler.SetMembersBindingList(_membersBindingList);
+                adminCommandHandler.SetDatabase(_db);
+                
+                // 创建并设置上下分服务（参考 F5BotV2）
+                var creditWithdrawService = new Services.Games.Binggo.CreditWithdrawService(
+                    _db,
+                    _logService,
+                    _statisticsService,
+                    _socketClient,
+                    Program.ServiceProvider.GetService<Services.Sound.SoundService>());
+                creditWithdrawService.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
+                adminCommandHandler.SetCreditWithdrawService(creditWithdrawService);
+                adminCommandHandler.SetCreditWithdrawsBindingList(_creditWithdrawsBindingList);
+                
+                _logService.Info("VxMain", "✅ AdminCommandHandler 已设置 BindingList");
+            }
+            
+            // 2️⃣ BinggoOrderService
+            if (_orderService != null)
+            {
+                _orderService.SetMembersBindingList(_membersBindingList);
+                _orderService.SetOrdersBindingList(_ordersBindingList);
+                _logService.Info("VxMain", "✅ BinggoOrderService 已设置 BindingList");
+            }
+            
+            // 3️⃣ BinggoStatisticsService
+            if (_statisticsService != null)
+            {
+                _statisticsService.SetBindingLists(_membersBindingList, _ordersBindingList);
+                _logService.Info("VxMain", "✅ BinggoStatisticsService 已设置 BindingList");
+            }
+            
+            // 4️⃣ BinggoLotteryService（已在 GroupBindingService 中设置）
+            // 无需重复设置，因为 GroupBindingService.BindGroupCompleteAsync 已经调用了
+            // lotteryService.SetBusinessDependencies(...)
+            
+            // 5️⃣ MemberDataService
+            if (_memberDataService is Services.MemberDataService mds)
+            {
+                mds.SetMembersBindingList(_membersBindingList);
+                _logService.Info("VxMain", "✅ MemberDataService 已设置 BindingList");
+            }
+            
+            _logService.Info("VxMain", "🔗 所有服务的 BindingList 引用已统一设置完成");
+            _logService.Info("VxMain", $"   会员表 HashCode: {_membersBindingList.GetHashCode()}");
+            _logService.Info("VxMain", $"   订单表 HashCode: {_ordersBindingList.GetHashCode()}");
+            _logService.Info("VxMain", $"   上下分表 HashCode: {_creditWithdrawsBindingList.GetHashCode()}");
         }
 
         /// <summary>
@@ -2077,7 +2131,7 @@ namespace zhaocaimao
                         // 🔥 使用 AppData\Local 目录存储备份
                         var backupDirectory = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "zhaocaimao",
+                            "BaiShengVx3Plus",
                             "Data",
                             "Backup");
                         
@@ -2246,6 +2300,79 @@ namespace zhaocaimao
             }
         }
 
+        /// <summary>
+        /// 🔊 动态添加声音测试按钮
+        /// </summary>
+        private void AddSoundTestButton()
+        {
+            try
+            {
+                // 创建测试按钮
+                var btnTestSound = new Sunny.UI.UIButton
+                {
+                    Name = "btnTestSound",
+                    Text = "🔊 测试声音",
+                    Size = new System.Drawing.Size(100, 35),
+                    Font = new System.Drawing.Font("微软雅黑", 9F),
+                    TabIndex = 100
+                };
+                
+                // 添加点击事件
+                btnTestSound.Click += BtnTestSound_Click;
+                
+                // 找到 pnlTopButtons 面板
+                var pnlTopButtons = this.Controls.Find("pnlTopButtons", true).FirstOrDefault();
+                if (pnlTopButtons != null)
+                {
+                    // 添加到面板
+                    pnlTopButtons.Controls.Add(btnTestSound);
+                    
+                    // 设置位置（在设置按钮旁边）
+                    var btnSettings = pnlTopButtons.Controls.Find("btnSettings", false).FirstOrDefault();
+                    if (btnSettings != null)
+                    {
+                        btnTestSound.Location = new System.Drawing.Point(
+                            btnSettings.Location.X + btnSettings.Width + 10,
+                            btnSettings.Location.Y);
+                    }
+                    
+                    _logService.Info("VxMain", "✅ 声音测试按钮已添加");
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "⚠️ 未找到 pnlTopButtons 面板");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "添加声音测试按钮失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔊 测试声音按钮点击事件
+        /// </summary>
+        private void BtnTestSound_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var soundService = Program.ServiceProvider.GetService<Services.Sound.SoundService>();
+                if (soundService == null)
+                {
+                    Sunny.UI.UIMessageBox.ShowWarning("SoundService 未初始化！");
+                    return;
+                }
+
+                var testForm = new Views.SoundTestForm(soundService, _logService);
+                testForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "打开声音测试窗口失败", ex);
+                Sunny.UI.UIMessageBox.ShowError($"打开失败:\n{ex.Message}");
+            }
+        }
+
         private void btnSettings_Click(object sender, EventArgs e)
         {
             try
@@ -2276,12 +2403,15 @@ namespace zhaocaimao
                 
                 // 创建新的设置窗口（非模态）
                 // 🔧 传入模拟消息回调（用于开发模式测试）
+                // 🔊 传入声音服务（用于声音测试）
+                var soundService = Program.ServiceProvider?.GetService<Services.Sound.SoundService>();
                 _settingsForm = new Views.SettingsForm(
                     _socketClient, 
                     _logService, 
                     _settingViewModel, 
                     _configService,
-                    SimulateMemberMessageAsync); // 🔧 开发模式：模拟消息回调
+                    SimulateMemberMessageAsync, // 🔧 开发模式：模拟消息回调
+                    soundService); // 🔊 声音测试
                 
                 // 订阅关闭事件，清理引用
                 _settingsForm.FormClosed += (s, args) =>
@@ -3241,22 +3371,23 @@ namespace zhaocaimao
         {
             try
             {
-                if (_db == null || _membersBindingList == null)
+                if (_db == null || _membersBindingList == null || _creditWithdrawsBindingList == null)
                 {
-                    _logService.Warning("VxMain", "数据库或会员列表未初始化，跳过上下分数据加载");
+                    _logService.Warning("VxMain", "数据库、会员列表或上下分列表未初始化，跳过上下分数据加载");
                     return;
                 }
                 
                 // 🔥 1. 确保表存在
                 _db.CreateTable<V2CreditWithdraw>();
                 
-                // 🔥 2. 加载该群的所有上下分记录
-                var creditWithdraws = _db.Table<V2CreditWithdraw>()
+                // 🔥 2. 从 BindingList（内存表）加载该群的所有上下分记录
+                // 用户要求："订单只能从内存表中拿，改数据都改内存表，内存表修改即保存"
+                var creditWithdraws = _creditWithdrawsBindingList
                     .Where(cw => cw.GroupWxId == groupWxid)
                     .OrderBy(cw => cw.Timestamp)
                     .ToList();
                 
-                _logService.Info("VxMain", $"📊 加载了 {creditWithdraws.Count} 条上下分记录");
+                _logService.Info("VxMain", $"📊 从内存表加载了 {creditWithdraws.Count} 条上下分记录");
                 
                 if (creditWithdraws.Count == 0)
                 {
@@ -3425,7 +3556,7 @@ namespace zhaocaimao
                 _logService.Info("VxMain", "📋 加载自动投注设置（临时解绑事件）...");
                 swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
                 
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 
                 if (defaultConfig != null)
                 {
@@ -3500,7 +3631,7 @@ namespace zhaocaimao
         {
             try
             {
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig == null)
                 {
                     // 🔥 如果默认配置不存在，创建一个新的
@@ -3601,15 +3732,14 @@ namespace zhaocaimao
                     // 先保存设置
                     SaveAutoBetSettings();
                     
-                    // ✅ 设置 BetConfig.IsEnabled = true（立即启动浏览器）
-                    var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                    // ✅ 设置 BetConfig.IsEnabled = true（让监控线程启动浏览器）
+                    var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
-                        // 🔥 IsEnabled 的 setter 会自动启动浏览器（异步执行）
                         defaultConfig.IsEnabled = true;
                         _autoBetService.SaveConfig(defaultConfig);
                         _logService.Info("VxMain", $"✅ 已设置配置 [{defaultConfig.ConfigName}] IsEnabled=true");
-                        _logService.Info("VxMain", "   浏览器将立即启动（由 IsEnabled setter 触发）");
+                        _logService.Info("VxMain", "   监控线程将在2秒内检测到并启动浏览器");
                         
                         // 🔥 启动 AutoBetCoordinator（订阅封盘事件，处理订单投注）
                         _ = Task.Run(async () =>
@@ -3636,7 +3766,7 @@ namespace zhaocaimao
                     _logService.Info("VxMain", "✅ AutoBetCoordinator 已停止，已取消订阅封盘事件");
                     
                     // ✅ 设置 BetConfig.IsEnabled = false（停止监控浏览器）
-                    var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                    var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                     if (defaultConfig != null)
                     {
                         defaultConfig.IsEnabled = false;
@@ -3719,56 +3849,23 @@ namespace zhaocaimao
                 _logService.Info("VxMain", $"✅ 应用配置已加载: 飞单={swiAutoOrdersBet.Active}, 收单={swi_OrdersTasking.Active}");
                 
                 // 🔥 同步应用级配置到 BetConfig.IsEnabled
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                // 这样监控线程才能正确检测到需要启动浏览器
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
-                    // 🔥 同步 IsEnabled 状态（无论是否相等，都要确保浏览器已启动）
-                    _logService.Info("VxMain", $"📊 [LoadAppConfiguration] 配置状态检查:");
-                    _logService.Info("VxMain", $"   appsettings.json.Is飞单开关 = {isAutoBetEnabled}");
-                    _logService.Info("VxMain", $"   BetConfig.IsEnabled = {defaultConfig.IsEnabled}");
-                    _logService.Info("VxMain", $"   BetConfig.IsConnected = {defaultConfig.IsConnected}");
-                    _logService.Info("VxMain", $"   Browser object = {(defaultConfig.Browser != null ? "存在" : "null")}");
-                    
                     if (defaultConfig.IsEnabled != isAutoBetEnabled)
                     {
-                        _logService.Info("VxMain", $"🔄 [LoadAppConfiguration] IsEnabled 状态不一致，同步为: {isAutoBetEnabled}");
+                        _logService.Info("VxMain", $"🔄 同步飞单开关状态: appsettings.json={isAutoBetEnabled}, BetConfig.IsEnabled={defaultConfig.IsEnabled}");
+                        _logService.Info("VxMain", $"   将 BetConfig.IsEnabled 同步为: {isAutoBetEnabled}");
                         defaultConfig.IsEnabled = isAutoBetEnabled;
                         _autoBetService.SaveConfig(defaultConfig);
-                        _logService.Info("VxMain", $"✅ [LoadAppConfiguration] IsEnabled 已同步并保存");
                     }
                     else
                     {
-                        _logService.Info("VxMain", $"✅ [LoadAppConfiguration] IsEnabled 状态已一致: {defaultConfig.IsEnabled}");
+                        _logService.Info("VxMain", $"✅ 飞单开关状态已同步: BetConfig.IsEnabled={defaultConfig.IsEnabled}");
                     }
                     
-                    // 🔥 【关键】无论 IsEnabled 是否变化，都要检查浏览器是否需要启动
-                    if (isAutoBetEnabled && !defaultConfig.IsConnected)
-                    {
-                        _logService.Info("VxMain", $"🔥🔥🔥 [LoadAppConfiguration] 飞单已开启但浏览器未启动！");
-                        _logService.Info("VxMain", $"   立即启动浏览器...");
-                        
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                _logService.Info("VxMain", $"🚀 [LoadAppConfiguration] Task.Run 开始执行");
-                                await defaultConfig.StartBrowserManuallyAsync();
-                                _logService.Info("VxMain", $"✅ [LoadAppConfiguration] 浏览器启动请求已完成");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logService.Error("VxMain", $"❌ [LoadAppConfiguration] 启动浏览器失败", ex);
-                            }
-                        });
-                        
-                        _logService.Info("VxMain", $"✅ [LoadAppConfiguration] 浏览器启动任务已创建（异步执行）");
-                    }
-                    else
-                    {
-                        _logService.Info("VxMain", $"ℹ️ [LoadAppConfiguration] 无需启动浏览器：IsAutoBetEnabled={isAutoBetEnabled}, IsConnected={defaultConfig.IsConnected}");
-                    }
-                    
-                    // 🔥 如果飞单开关已开启，启动 AutoBetCoordinator
+                    // 🔥 如果飞单开关已开启，启动 AutoBetCoordinator（订阅封盘事件）
                     if (isAutoBetEnabled)
                     {
                         _logService.Info("VxMain", "✅ 检测到飞单开关已开启，启动 AutoBetCoordinator...");
@@ -3836,7 +3933,7 @@ namespace zhaocaimao
 
                 _logService.Info("VxMain", "🚀 手动启动浏览器...");
 
-                var defaultConfig = _autoBetService.GetConfigs().FirstOrDefault(c => c.IsDefault);
+                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig != null)
                 {
                     var success = await _autoBetService.StartBrowser(defaultConfig.Id);

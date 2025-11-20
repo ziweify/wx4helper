@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Models
+namespace zhaocaimao.Models
 {
     /// <summary>
     /// 联系人过滤类型

@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Contracts
+namespace zhaocaimao.Contracts
 {
     /// <summary>
     /// 配置服务接口

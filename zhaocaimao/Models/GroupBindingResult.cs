@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Core;
+using zhaocaimao.Core;
 
 namespace zhaocaimao.Models
 {

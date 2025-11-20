@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -91,11 +91,21 @@ namespace zhaocaimao.Services.Games.Binggo
         public BinggoLotteryService(
             ILogService logService,
             IConfigurationService configService,
-            Services.Sound.SoundService? soundService = null)  // 🔥 声音服务（可选）
+            Services.Sound.SoundService soundService)  // 🔥 声音服务（必需，确保 DI 注入）
         {
             _logService = logService;
             _configService = configService;
             _soundService = soundService;
+            
+            // 🔥 验证声音服务注入
+            if (_soundService == null)
+            {
+                _logService.Warning("BinggoLotteryService", "⚠️ 声音服务未注入！封盘、开奖等声音将无法播放");
+            }
+            else
+            {
+                _logService.Info("BinggoLotteryService", "✅ 声音服务已注入");
+            }
         }
         
         /// <summary>
@@ -888,15 +898,15 @@ namespace zhaocaimao.Services.Games.Binggo
                 _soundService?.PlayLotterySound();
                 
                 // 🔥 1. 获取当期所有订单（参考 F5BotV2 第 1420 行）
-                // 🔥 查询条件：期号匹配，且不是已取消/未知状态，且不是托单
+                // 🔥 查询条件：期号匹配，且不是已取消/未知状态
+                // 🔥 重要：托单也要正常发送到微信（显示在中~名单和留~名单中）
                 var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
                 _logService.Info("BinggoLotteryService", $"📋 订单列表总数: {allOrders.Count}");
                 
                 var orders = allOrders
                     .Where(o => o.IssueId == issueId 
                         && o.OrderStatus != OrderStatus.已取消 
-                        && o.OrderStatus != OrderStatus.未知
-                        && o.OrderType != OrderType.托)  // 托单不显示
+                        && o.OrderStatus != OrderStatus.未知)
                     .ToList();
                 
                 _logService.Info("BinggoLotteryService", $"📋 期号 {issueId} 的待结算订单数: {orders.Count}");
@@ -924,7 +934,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
 
                         // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
-                        string nickname = order.Nickname ?? member.Nickname ?? member.DisplayName ?? "未知";
+                        string nickname = order.Nickname.UnEscape() ?? member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知";
 
                         // 🔥 注意：这里不缓存余额，因为余额在结算过程中会被更新
                         // 余额将在发送消息时重新获取最新值（参考 F5BotV2 第 1454 行）
@@ -1044,7 +1054,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
                         // 盈利 = 总赢金额 - 投注总额 = 纯利（参考 F5BotV2 第 1458 行：{(int)order.Profit- order.AmountTotal}）
                         float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
-                        winningMessage.Append($"{report.nickname}[{(int)currentBalance}] {(int)netProfit}\r");
+                        winningMessage.Append($"{report.nickname.UnEscape()}[{(int)currentBalance}] {(int)netProfit}\r");
                     }
                 }
                 
@@ -1059,7 +1069,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----留~名单----\r{会员名} 余额\r
                 // 🔥 重要：无论是否有订单，都要发送留分名单
                 var balanceMessage = new System.Text.StringBuilder();
-                balanceMessage.Append($"第{issueidLite}队\r");
+                balanceMessage.Append($"第{issueidLite}队 \r");
                 balanceMessage.Append($"{lotteryData.ToLotteryString()}\r");
                 balanceMessage.Append($"----留~名单----\r");
                 
@@ -1070,7 +1080,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         // 🔥 格式完全一致：{nickname} {(int)Balance}\r
                         if ((int)member.Balance >= 1)  // 余额 >= 1 才显示
                         {
-                            balanceMessage.Append($"{member.Nickname ?? member.DisplayName ?? "未知"} {(int)member.Balance}\r");
+                            balanceMessage.Append($"{member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知"} {(int)member.Balance} \r");
                         }
                     }
                 }
@@ -1203,6 +1213,37 @@ namespace zhaocaimao.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", 
                         $"创建上下分申请: 会员={member.Nickname}, 动作={(isCredit ? "上分" : "下分")}, 金额={money}");
                     
+                    // 🔥 播放声音（参考 F5BotV2 第2597、2599行）
+                    // 会员申请上分/下分时播放声音，提醒管理员处理
+                    if (isCredit)
+                    {
+                        _logService.Info("BinggoLotteryService", $"🔊 准备播放上分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
+                        
+                        try
+                        {
+                            _soundService?.PlayCreditUpSound();
+                            _logService.Info("BinggoLotteryService", $"✅ 上分声音播放命令已发送");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logService.Error("BinggoLotteryService", $"❌ 播放上分声音失败: {ex.Message}", ex);
+                        }
+                    }
+                    else
+                    {
+                        _logService.Info("BinggoLotteryService", $"🔊 准备播放下分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
+                        
+                        try
+                        {
+                            _soundService?.PlayCreditDownSound();
+                            _logService.Info("BinggoLotteryService", $"✅ 下分声音播放命令已发送");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logService.Error("BinggoLotteryService", $"❌ 播放下分声音失败: {ex.Message}", ex);
+                        }
+                    }
+                    
                     // 🔥 添加到 BindingList（会自动保存到数据库，并触发 UI 更新）
                     if (_creditWithdrawsBindingList != null)
                     {
@@ -1249,6 +1290,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     
                     var orders = _orderService.GetPendingOrdersForMemberAndIssue(member.Wxid, _currentIssueId)
                         .Where(o => o.OrderStatus != OrderStatus.已取消 && o.OrderStatus != OrderStatus.已完成)
+                        .OrderByDescending(o => o.Id)  // 🔥 按订单ID降序排序，确保最新的在前面
                         .ToList();
                     
                     if (orders == null || orders.Count == 0)
@@ -1256,8 +1298,9 @@ namespace zhaocaimao.Services.Games.Binggo
                         return (true, $"@{member.Nickname}\r当前期号无待处理订单", null);
                     }
                     
-                    // 🔥 取消最后一个订单（参考 F5BotV2 第2215行）
-                    var ods = orders.Last();
+                    // 🔥 取消最新的一个订单（参考 F5BotV2 第2215行）
+                    // 由于已经按 Id 降序排序，First() 就是最新的订单
+                    var ods = orders.First();
                     
                     // 🔥 双重验证：确保只能取消当前期的订单（重要！）
                     if (ods.IssueId != _currentIssueId)
@@ -1272,43 +1315,28 @@ namespace zhaocaimao.Services.Games.Binggo
                     _logService.Info("BinggoLotteryService", 
                         $"✅ 取消订单验证通过: 会员={member.Nickname} 订单ID={ods.Id} 订单期号={ods.IssueId} 当前期号={_currentIssueId} 金额={ods.AmountTotal}");
                     
-                    // 🔥 步骤1: 修改内存对象（在锁外执行，避免长时间锁定）
+                    // 执行取消逻辑
                     ods.OrderStatus = OrderStatus.已取消;
+                    _orderService.UpdateOrder(ods);
                     
                     // 🔥 退款给会员（参考 F5BotV2 第2301行）
-                    member.Balance += ods.AmountTotal;
+                    // 只有管理员不退款（因为下单时也没扣钱）
+                    if (member.State != MemberState.管理)
+                    {
+                        member.Balance += ods.AmountTotal;
+                        _logService.Info("BinggoLotteryService", 
+                            $"💰 退款: {member.Nickname} - 退款 {ods.AmountTotal:F2}，退款后余额: {member.Balance:F2}");
+                    }
                     
                     // 🔥 减掉会员统计（参考 F5BotV2 第2302-2304行：OrderCancel 方法）
-                    // 注意：托单不计算在内，但这里已经通过订单类型判断了
-                    if (ods.OrderType != OrderType.托)
-                    {
-                        member.BetCur -= ods.AmountTotal;
-                        member.BetToday -= ods.AmountTotal;
-                        member.BetTotal -= ods.AmountTotal;
-                        member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
-                        
-                        _logService.Info("BinggoLotteryService", 
-                            $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
-                    }
+                    // 🔥 重要：托单也要减掉统计！（因为下单时增加了统计）
+                    member.BetCur -= ods.AmountTotal;
+                    member.BetToday -= ods.AmountTotal;
+                    member.BetTotal -= ods.AmountTotal;
+                    member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
                     
-                    // 🔥 步骤2: 使用锁保护数据库写入（确保订单和会员的更新是原子的）
-                    if (_db != null)
-                    {
-                        Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
-                        {
-                            _db.Update(ods);  // 直接更新订单
-                            // 显式更新会员到数据库（确保原子性）
-                            if (member.Id > 0)
-                            {
-                                _db.Update(member);
-                            }
-                        });
-                    }
-                    else
-                    {
-                        // 如果没有数据库连接，只更新订单（通过UpdateOrder）
-                        _orderService.UpdateOrder(ods);
-                    }
+                    _logService.Info("BinggoLotteryService", 
+                        $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
                     
                     _logService.Info("BinggoLotteryService", 
                         $"✅ 取消订单: {member.Nickname} - 期号:{_currentIssueId} - 订单ID:{ods.Id}");
@@ -1876,10 +1904,14 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             try
             {
+                // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
+                // 声音是本地提示，不依赖群绑定状态，应该始终播放
+                _soundService?.PlaySealingSound();
+                
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
-                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘消息");
+                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘消息（但声音已播放）");
                     return;
                 }
                 
@@ -1890,9 +1922,6 @@ namespace zhaocaimao.Services.Games.Binggo
                 }
                 
                 _logService.Info("BinggoLotteryService", $"📢 发送封盘消息: 期号 {issueId}");
-                
-                // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
-                _soundService?.PlaySealingSound();
                 
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();

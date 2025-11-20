@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Contracts.Games;
+using zhaocaimao.Contracts.Games;
 using zhaocaimao.Models;
 using zhaocaimao.Services.Games.Binggo;
 using SQLite;
@@ -64,6 +64,8 @@ namespace zhaocaimao.Contracts
         /// 5. 获取服务器数据并智能合并会员
         /// 6. 更新统计
         /// 7. 返回结果 DTO
+        /// 
+        /// 🔥 关键修复 2025-11-18：支持传入已有 BindingList（避免引用断裂）
         /// </summary>
         /// <param name="contact">要绑定的群组</param>
         /// <param name="db">数据库连接</param>
@@ -72,6 +74,9 @@ namespace zhaocaimao.Contracts
         /// <param name="statisticsService">统计服务</param>
         /// <param name="memberDataService">会员数据服务</param>
         /// <param name="lotteryService">开奖服务</param>
+        /// <param name="existingMembersBindingList">已有的会员 BindingList（可选）</param>
+        /// <param name="existingOrdersBindingList">已有的订单 BindingList（可选）</param>
+        /// <param name="existingCreditWithdrawsBindingList">已有的上下分 BindingList（可选）</param>
         /// <returns>绑定结果</returns>
         Task<GroupBindingResult> BindGroupCompleteAsync(
             WxContact contact,
@@ -80,7 +85,10 @@ namespace zhaocaimao.Contracts
             IBinggoOrderService orderService,
             BinggoStatisticsService statisticsService,
             IMemberDataService memberDataService,
-            IBinggoLotteryService lotteryService);
+            IBinggoLotteryService lotteryService,
+            Core.V2MemberBindingList? existingMembersBindingList = null,
+            Core.V2OrderBindingList? existingOrdersBindingList = null,
+            Core.V2CreditWithdrawBindingList? existingCreditWithdrawsBindingList = null);
     }
 }
 

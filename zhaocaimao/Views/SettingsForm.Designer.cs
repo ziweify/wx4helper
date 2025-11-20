@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Views
+namespace zhaocaimao.Views
 {
     partial class SettingsForm
     {
@@ -69,6 +69,13 @@
             btnSendCommand = new Sunny.UI.UIButton();
             txtCommand = new Sunny.UI.UITextBox();
             uiLabel3 = new Sunny.UI.UILabel();
+            tabPageOther = new TabPage();
+            grpSoundTest = new Sunny.UI.UIGroupBox();
+            btnTestSealing = new Sunny.UI.UIButton();
+            btnTestLottery = new Sunny.UI.UIButton();
+            btnTestCreditUp = new Sunny.UI.UIButton();
+            btnTestCreditDown = new Sunny.UI.UIButton();
+            lblSoundTestResult = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
             uiTabControl1.SuspendLayout();
@@ -80,6 +87,8 @@
             tabPageTest.SuspendLayout();
             uiGroupBox4.SuspendLayout();
             uiGroupBox3.SuspendLayout();
+            tabPageOther.SuspendLayout();
+            grpSoundTest.SuspendLayout();
             SuspendLayout();
             // 
             // uiTabControl1
@@ -87,6 +96,7 @@
             uiTabControl1.Controls.Add(tabPageSystem);
             uiTabControl1.Controls.Add(tabPageConnection);
             uiTabControl1.Controls.Add(tabPageTest);
+            uiTabControl1.Controls.Add(tabPageOther);
             uiTabControl1.Dock = DockStyle.Top;
             uiTabControl1.DrawMode = TabDrawMode.OwnerDrawFixed;
             uiTabControl1.Font = new Font("微软雅黑", 12F);
@@ -642,6 +652,97 @@
             uiLabel3.Text = "命令:";
             uiLabel3.TextAlign = ContentAlignment.MiddleRight;
             // 
+            // tabPageOther
+            // 
+            tabPageOther.BackColor = Color.White;
+            tabPageOther.Controls.Add(grpSoundTest);
+            tabPageOther.Location = new Point(0, 40);
+            tabPageOther.Name = "tabPageOther";
+            tabPageOther.Size = new Size(800, 470);
+            tabPageOther.TabIndex = 2;
+            tabPageOther.Text = "其他";
+            // 
+            // grpSoundTest
+            // 
+            grpSoundTest.Controls.Add(btnTestCreditDown);
+            grpSoundTest.Controls.Add(btnTestCreditUp);
+            grpSoundTest.Controls.Add(btnTestLottery);
+            grpSoundTest.Controls.Add(btnTestSealing);
+            grpSoundTest.Controls.Add(lblSoundTestResult);
+            grpSoundTest.Font = new Font("微软雅黑", 12F);
+            grpSoundTest.Location = new Point(20, 20);
+            grpSoundTest.Margin = new Padding(4, 5, 4, 5);
+            grpSoundTest.MinimumSize = new Size(1, 1);
+            grpSoundTest.Name = "grpSoundTest";
+            grpSoundTest.Padding = new Padding(0, 32, 0, 0);
+            grpSoundTest.Size = new Size(760, 200);
+            grpSoundTest.TabIndex = 0;
+            grpSoundTest.Text = "声音测试";
+            grpSoundTest.TextAlignment = ContentAlignment.MiddleLeft;
+            // 
+            // btnTestSealing
+            // 
+            btnTestSealing.Cursor = Cursors.Hand;
+            btnTestSealing.Font = new Font("微软雅黑", 12F);
+            btnTestSealing.Location = new Point(30, 50);
+            btnTestSealing.MinimumSize = new Size(1, 1);
+            btnTestSealing.Name = "btnTestSealing";
+            btnTestSealing.Size = new Size(150, 40);
+            btnTestSealing.TabIndex = 0;
+            btnTestSealing.Text = "🔔 测试封盘声音";
+            btnTestSealing.TipsFont = new Font("宋体", 9F);
+            btnTestSealing.Click += BtnTestSealing_Click;
+            // 
+            // btnTestLottery
+            // 
+            btnTestLottery.Cursor = Cursors.Hand;
+            btnTestLottery.Font = new Font("微软雅黑", 12F);
+            btnTestLottery.Location = new Point(200, 50);
+            btnTestLottery.MinimumSize = new Size(1, 1);
+            btnTestLottery.Name = "btnTestLottery";
+            btnTestLottery.Size = new Size(150, 40);
+            btnTestLottery.TabIndex = 1;
+            btnTestLottery.Text = "🎲 测试开奖声音";
+            btnTestLottery.TipsFont = new Font("宋体", 9F);
+            btnTestLottery.Click += BtnTestLottery_Click;
+            // 
+            // btnTestCreditUp
+            // 
+            btnTestCreditUp.Cursor = Cursors.Hand;
+            btnTestCreditUp.Font = new Font("微软雅黑", 12F);
+            btnTestCreditUp.Location = new Point(370, 50);
+            btnTestCreditUp.MinimumSize = new Size(1, 1);
+            btnTestCreditUp.Name = "btnTestCreditUp";
+            btnTestCreditUp.Size = new Size(150, 40);
+            btnTestCreditUp.TabIndex = 2;
+            btnTestCreditUp.Text = "💰 测试上分声音";
+            btnTestCreditUp.TipsFont = new Font("宋体", 9F);
+            btnTestCreditUp.Click += BtnTestCreditUp_Click;
+            // 
+            // btnTestCreditDown
+            // 
+            btnTestCreditDown.Cursor = Cursors.Hand;
+            btnTestCreditDown.Font = new Font("微软雅黑", 12F);
+            btnTestCreditDown.Location = new Point(540, 50);
+            btnTestCreditDown.MinimumSize = new Size(1, 1);
+            btnTestCreditDown.Name = "btnTestCreditDown";
+            btnTestCreditDown.Size = new Size(150, 40);
+            btnTestCreditDown.TabIndex = 3;
+            btnTestCreditDown.Text = "💸 测试下分声音";
+            btnTestCreditDown.TipsFont = new Font("宋体", 9F);
+            btnTestCreditDown.Click += BtnTestCreditDown_Click;
+            // 
+            // lblSoundTestResult
+            // 
+            lblSoundTestResult.Font = new Font("微软雅黑", 11F);
+            lblSoundTestResult.ForeColor = Color.FromArgb(48, 48, 48);
+            lblSoundTestResult.Location = new Point(30, 110);
+            lblSoundTestResult.Name = "lblSoundTestResult";
+            lblSoundTestResult.Size = new Size(700, 70);
+            lblSoundTestResult.TabIndex = 4;
+            lblSoundTestResult.Text = "点击按钮测试声音播放...";
+            lblSoundTestResult.TextAlign = ContentAlignment.TopLeft;
+            // 
             // btnSave
             // 
             btnSave.Cursor = Cursors.Hand;
@@ -688,6 +789,8 @@
             tabPageTest.ResumeLayout(false);
             uiGroupBox4.ResumeLayout(false);
             uiGroupBox3.ResumeLayout(false);
+            tabPageOther.ResumeLayout(false);
+            grpSoundTest.ResumeLayout(false);
             ResumeLayout(false);
 
         }
@@ -737,6 +840,13 @@
         private Sunny.UI.UITextBox tbxRunDevSendMessage;
         private Sunny.UI.UIButton btnRunDevSendCommand;
         private Sunny.UI.UICheckBox uiCheckBox1;
+        private TabPage tabPageOther;
+        private Sunny.UI.UIGroupBox grpSoundTest;
+        private Sunny.UI.UIButton btnTestSealing;
+        private Sunny.UI.UIButton btnTestLottery;
+        private Sunny.UI.UIButton btnTestCreditUp;
+        private Sunny.UI.UIButton btnTestCreditDown;
+        private Sunny.UI.UILabel lblSoundTestResult;
     }
 }
 

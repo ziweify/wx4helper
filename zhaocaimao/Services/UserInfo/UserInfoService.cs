@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using zhaocaimao.Models;
 using zhaocaimao.Contracts;
 

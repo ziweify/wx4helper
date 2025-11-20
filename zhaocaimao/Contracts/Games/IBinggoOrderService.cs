@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Core;
+using zhaocaimao.Core;
 using zhaocaimao.Models;
 using zhaocaimao.Models.Games.Binggo;
 using SQLite;

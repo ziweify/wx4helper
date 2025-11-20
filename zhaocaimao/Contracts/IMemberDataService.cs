@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Models;
+using zhaocaimao.Models;
 
 namespace zhaocaimao.Contracts
 {

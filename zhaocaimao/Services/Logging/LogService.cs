@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using zhaocaimao.Models;
 using zhaocaimao.Contracts;
 using System.Collections.Concurrent;
@@ -32,7 +32,7 @@ namespace zhaocaimao.Services.Logging
             // 🔥 使用 AppData\Local 目录，无需管理员权限
             var dataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "zhaocaimao",
+                "BaiShengVx3Plus",
                 "Data");
             Directory.CreateDirectory(dataDir);
             _dbPath = Path.Combine(dataDir, "logs.db");

@@ -1,4 +1,4 @@
-﻿using Sunny.UI;
+using Sunny.UI;
 using zhaocaimao.Contracts.Games;
 using zhaocaimao.Models.Games.Binggo;
 using zhaocaimao.Models.Games.Binggo.Events;
@@ -402,7 +402,7 @@ namespace zhaocaimao.UserControls
                         numberLabels[i].Font = new Font("微软雅黑", 10F, FontStyle.Bold);
                         
                         // 🔥 新规则：大红色，小绿色（基于 Size 属性）
-                        if (ball.Size == zhaocaimao.Models.Games.Binggo.SizeType.Big)
+                        if (ball.Size == BaiShengVx3Plus.Models.Games.Binggo.SizeType.Big)
                         {
                             numberLabels[i].BackColor = Color.FromArgb(244, 67, 54);  // 红色（大）
                         }
@@ -412,7 +412,7 @@ namespace zhaocaimao.UserControls
                         }
                         
                         // 🔥 通过 Tag 传递单双信息（用于绘制圆形或方形）
-                        numberLabels[i].Tag = (ball.OddEven == zhaocaimao.Models.Games.Binggo.OddEvenType.Odd);
+                        numberLabels[i].Tag = (ball.OddEven == BaiShengVx3Plus.Models.Games.Binggo.OddEvenType.Odd);
                         
                         numberLabels[i].Invalidate(); // 触发重绘
                     }

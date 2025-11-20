@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace zhaocaimao.Utils
 {
@@ -11,12 +11,12 @@ namespace zhaocaimao.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "31.8.5";  // 2025-11-14 构建
-        
+        public const string Version = "32.1.6";  // "31.8.7"
+
         /// <summary>
         /// 版本名称
         /// </summary>
-        public const string VersionName = "招财猫智能投注系统";
+        public const string VersionName = "百盛Vx3 Plus";
         
         /// <summary>
         /// 完整版本字符串

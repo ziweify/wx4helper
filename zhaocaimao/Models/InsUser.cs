@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Models
+namespace zhaocaimao.Models
 {
     /// <summary>
     /// InsUser 模型 - 对应图片中的用户信息

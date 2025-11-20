@@ -1,4 +1,4 @@
-﻿namespace zhaocaimao.Views
+namespace zhaocaimao.Views
 {
     partial class LogViewerForm
     {

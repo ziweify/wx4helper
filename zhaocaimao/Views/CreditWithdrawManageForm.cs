@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -23,6 +23,7 @@ namespace zhaocaimao.Views
         private readonly Core.V2MemberBindingList _membersBindingList;  // 🔥 会员列表引用
         private readonly Services.Games.Binggo.CreditWithdrawService _creditWithdrawService;  // 🔥 上下分服务
         private BindingSource _bindingSource;  // 🔥 使用 BindingSource 处理过滤和自动更新
+        private int _hoverRowIndex = -1;  // 🔥 跟踪鼠标悬停的行索引
 
         public CreditWithdrawManageForm(
             SQLiteConnection db, 
@@ -64,6 +65,12 @@ namespace zhaocaimao.Views
             
             // 🔥 更新统计信息
             UpdateStats();
+            
+            // 🔥 注册 RowPostPaint、CellPainting 和鼠标事件（美化效果）
+            dgvRequests.RowPostPaint += DgvRequests_RowPostPaint;  // 🔥 在单元格绘制后绘制蒙板
+            dgvRequests.CellPainting += DgvRequests_CellPainting;
+            dgvRequests.CellMouseEnter += DgvRequests_CellMouseEnter;
+            dgvRequests.CellMouseLeave += DgvRequests_CellMouseLeave;
         }
 
         /// <summary>
@@ -78,6 +85,51 @@ namespace zhaocaimao.Views
             cmbStatus.Items.Add("已拒绝");
             cmbStatus.Items.Add("忽略");
             cmbStatus.SelectedIndex = 1;  // 默认显示"等待处理"
+        }
+        
+        /// <summary>
+        /// 🔥 格式化枚举列显示（显示中文而不是数字）
+        /// </summary>
+        private void DgvRequests_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            try
+            {
+                // 格式化"动作"列（Action 枚举）
+                if (dgvRequests.Columns[e.ColumnIndex].DataPropertyName == "Action" && e.Value != null)
+                {
+                    if (e.Value is CreditWithdrawAction action)
+                    {
+                        e.Value = action switch
+                        {
+                            CreditWithdrawAction.上分 => "上分",
+                            CreditWithdrawAction.下分 => "下分",
+                            _ => "未知"
+                        };
+                        e.FormattingApplied = true;
+                    }
+                }
+                
+                // 格式化"状态"列（Status 枚举）
+                if (dgvRequests.Columns[e.ColumnIndex].DataPropertyName == "Status" && e.Value != null)
+                {
+                    if (e.Value is CreditWithdrawStatus status)
+                    {
+                        e.Value = status switch
+                        {
+                            CreditWithdrawStatus.等待处理 => "等待处理",
+                            CreditWithdrawStatus.已同意 => "已同意",
+                            CreditWithdrawStatus.已拒绝 => "已拒绝",
+                            CreditWithdrawStatus.忽略 => "忽略",
+                            _ => "未知"
+                        };
+                        e.FormattingApplied = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("CreditWithdrawManageForm", "格式化单元格失败", ex);
+            }
         }
 
         /// <summary>
@@ -111,7 +163,7 @@ namespace zhaocaimao.Views
                 },
                 new DataGridViewTextBoxColumn 
                 { 
-                    DataPropertyName = "ActionText", 
+                    DataPropertyName = "Action", 
                     HeaderText = "动作", 
                     Width = 70 
                 },
@@ -128,7 +180,7 @@ namespace zhaocaimao.Views
                 },
                 new DataGridViewTextBoxColumn 
                 { 
-                    DataPropertyName = "StatusText", 
+                    DataPropertyName = "Status", 
                     HeaderText = "状态", 
                     Width = 80 
                 },
@@ -152,6 +204,9 @@ namespace zhaocaimao.Views
                     AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
                 }
             });
+            
+            // 🔥 设置枚举列的格式化
+            dgvRequests.CellFormatting += DgvRequests_CellFormatting;
             
             // 🔥 添加操作按钮列（同意、忽略、拒绝）- 参考 F5BotV2 Line 82-104
             var btnAgreeColumn = new DataGridViewButtonColumn
@@ -205,14 +260,241 @@ namespace zhaocaimao.Views
             // 🔥 单元格点击事件（处理按钮点击）
             dgvRequests.CellContentClick += DgvRequests_CellContentClick;
             
-            // 🔥 单元格绘制事件（设置颜色和按钮状态）- 参考 F5BotV2 Line 136-248
-            dgvRequests.CellPainting += DgvRequests_CellPainting;
+            // 🔥 不设置 SelectionBackColor 为透明（会变黑色）
+            // 让 CellPainting 控制单元格颜色，RowPostPaint 绘制选中蒙板
+            
+            // 🔥 设置只读，不允许直接修改数据
+            dgvRequests.ReadOnly = false;  // 不能整个设为只读，按钮列需要点击
+            dgvRequests.AllowUserToAddRows = false;
+            dgvRequests.AllowUserToDeleteRows = false;
+            dgvRequests.EditMode = DataGridViewEditMode.EditProgrammatically;  // 🔥 只允许程序编辑，不允许用户双击编辑
+            
+            // 🔥 将所有非按钮列设置为只读
+            foreach (DataGridViewColumn column in dgvRequests.Columns)
+            {
+                if (!(column is DataGridViewButtonColumn))
+                {
+                    column.ReadOnly = true;  // 🔥 非按钮列全部只读
+                }
+            }
         }
 
         /// <summary>
-        /// 单元格绘制事件（设置颜色和按钮状态）- 参考 F5BotV2 Line 136-248
+        /// 🔥 行后绘制：在单元格绘制后绘制选中/Hover 蒙板（覆盖在列颜色之上）
+        /// </summary>
+        private void DgvRequests_RowPostPaint(object? sender, DataGridViewRowPostPaintEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.Graphics == null) return;
+            
+            bool isSelected = dgvRequests.Rows[e.RowIndex].Selected;
+            bool isHover = (e.RowIndex == _hoverRowIndex);
+            
+            // 🔥 只在选中或 Hover 时绘制蒙板（覆盖在原有颜色之上）
+            if (isSelected)
+            {
+                // 绘制半透明蓝色蒙板
+                e.Graphics.FillRectangle(
+                    new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
+                    e.RowBounds);
+                
+                // 绘制蓝色边框
+                using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                {
+                    e.Graphics.DrawRectangle(pen, 
+                        e.RowBounds.X, 
+                        e.RowBounds.Y, 
+                        e.RowBounds.Width - 1, 
+                        e.RowBounds.Height - 1);
+                }
+            }
+            else if (isHover)
+            {
+                // 绘制半透明淡黄色蒙板
+                e.Graphics.FillRectangle(
+                    new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
+                    e.RowBounds);
+            }
+        }
+
+        /// <summary>
+        /// 🔥 自定义单元格绘制：设置列颜色（保留旧版样式）
         /// </summary>
         private void DgvRequests_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= _bindingSource.Count) return;
+            
+            var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+            if (request == null) return;
+            
+            var column = dgvRequests.Columns[e.ColumnIndex];
+            var row = dgvRequests.Rows[e.RowIndex];
+            
+            // 🔥 1. 动作列颜色
+            if (column.DataPropertyName == "Action")
+            {
+                if (request.Action == CreditWithdrawAction.上分)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Green;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Green;  // 🔥 选中时也保持绿色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                }
+                else if (request.Action == CreditWithdrawAction.下分)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Red;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Red;  // 🔥 选中时也保持红色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.White;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.White;
+                }
+            }
+            
+            // 🔥 2. 状态列颜色
+            if (column.DataPropertyName == "Status")
+            {
+                if (request.Status == CreditWithdrawStatus.等待处理)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Red;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Red;  // 🔥 选中时也保持红色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.White;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.White;
+                }
+                else if (request.Status == CreditWithdrawStatus.已同意)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Green;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Green;  // 🔥 选中时也保持绿色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.White;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.White;
+                    
+                    // 🔥 禁用按钮（已处理）
+                    DisableButtonsForProcessedRequest(row);
+                }
+                else if (request.Status == CreditWithdrawStatus.忽略)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.LightGray;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.LightGray;  // 🔥 选中时也保持浅灰色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                    
+                    // 🔥 禁用按钮（已处理）
+                    DisableButtonsForProcessedRequest(row);
+                }
+                else if (request.Status == CreditWithdrawStatus.已拒绝)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Orange;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Orange;  // 🔥 选中时也保持橙色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.White;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.White;
+                    
+                    // 🔥 禁用按钮（已处理）
+                    DisableButtonsForProcessedRequest(row);
+                }
+            }
+            
+            // 🔥 3. 金额列颜色
+            if (column.DataPropertyName == "Amount")
+            {
+                int amount = (int)request.Amount;
+                if (amount >= 10000)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Orange;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Orange;  // 🔥 选中时也保持橙色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                }
+                else if (amount >= 1000)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.Green;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.Green;  // 🔥 选中时也保持绿色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                }
+                else if (amount >= 100)
+                {
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.LightGray;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.LightGray;  // 🔥 选中时也保持浅灰色
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                }
+                else
+                {
+                    // 🔥 小于100的金额，使用白色背景
+                    row.Cells[e.ColumnIndex].Style.BackColor = Color.White;
+                    row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.White;
+                    row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                    row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+                }
+            }
+            
+            // 🔥 4. 其他列（ID、时间、昵称、备注等）默认白色背景
+            if (column.DataPropertyName != "Action" && 
+                column.DataPropertyName != "Status" && 
+                column.DataPropertyName != "Amount" &&
+                !(column is DataGridViewButtonColumn))
+            {
+                row.Cells[e.ColumnIndex].Style.BackColor = Color.White;
+                row.Cells[e.ColumnIndex].Style.SelectionBackColor = Color.White;  // 🔥 选中时保持白色
+                row.Cells[e.ColumnIndex].Style.ForeColor = Color.Black;
+                row.Cells[e.ColumnIndex].Style.SelectionForeColor = Color.Black;
+            }
+            
+            // 🔥 不设置 e.Handled，让 DataGridView 自己绘制单元格（包括按钮列）
+        }
+
+        /// <summary>
+        /// ❌ 已废弃：旧版自定义文本绘制（现在使用 Style 设置颜色）
+        /// </summary>
+        [Obsolete("已废弃，现在使用 Style 设置颜色")]
+        private void DgvRequests_CellPainting_CustomText(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Graphics == null) return;
+            
+            // 🔥 按钮列使用默认绘制
+            if (dgvRequests.Columns[e.ColumnIndex] is DataGridViewButtonColumn)
+            {
+                return;  // 让按钮列使用默认绘制
+            }
+            
+            // 🔥 绘制背景（使用默认背景，因为 RowPrePaint 已经绘制了整行背景）
+            e.PaintBackground(e.CellBounds, true);
+            
+            // 🔥 绘制文本（强制黑色，确保可见）
+            if (e.Value != null && e.CellStyle?.Font != null)
+            {
+                using (SolidBrush brush = new SolidBrush(Color.Black))  // 🔥 强制黑色文字
+                {
+                    // 🔥 根据对齐方式计算文本位置
+                    StringFormat format = new StringFormat
+                    {
+                        Alignment = e.CellStyle.Alignment switch
+                        {
+                            DataGridViewContentAlignment.MiddleCenter or 
+                            DataGridViewContentAlignment.TopCenter or 
+                            DataGridViewContentAlignment.BottomCenter => StringAlignment.Center,
+                            DataGridViewContentAlignment.MiddleRight or 
+                            DataGridViewContentAlignment.TopRight or 
+                            DataGridViewContentAlignment.BottomRight => StringAlignment.Far,
+                            _ => StringAlignment.Near
+                        },
+                        LineAlignment = StringAlignment.Center
+                    };
+                    
+                    e.Graphics.DrawString(
+                        e.Value.ToString() ?? string.Empty,
+                        e.CellStyle.Font,
+                        brush,
+                        e.CellBounds,
+                        format);
+                }
+            }
+            
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// ❌ 已废弃：旧版单元格绘制逻辑（仅设置 Style，不自定义绘制）
+        /// </summary>
+        [Obsolete("已废弃，使用上面新版 DgvRequests_CellPainting")]
+        private void DgvRequests_CellPainting_OldStyleOnly(object? sender, DataGridViewCellPaintingEventArgs e)
         {
             if (e.RowIndex < 0 || e.RowIndex >= _bindingSource.Count)
                 return;
@@ -683,6 +965,71 @@ namespace zhaocaimao.Views
             ApplyFilter();
             UpdateStats();
         }
+
+        #region 美化效果 - 鼠标事件
+
+        /// <summary>
+        /// 禁用已处理请求的按钮（设置为灰色只读状态）
+        /// </summary>
+        private void DisableButtonsForProcessedRequest(DataGridViewRow row)
+        {
+            // 🔥 禁用"同意"按钮
+            if (row.Cells["btnAgree"] is DataGridViewButtonCell btnAgree)
+            {
+                btnAgree.ReadOnly = true;
+                btnAgree.Style.BackColor = Color.Gray;
+                btnAgree.Style.SelectionBackColor = Color.Gray;
+                btnAgree.Style.ForeColor = Color.DarkGray;
+                btnAgree.Style.SelectionForeColor = Color.DarkGray;
+            }
+            
+            // 🔥 禁用"忽略"按钮
+            if (row.Cells["btnIgnore"] is DataGridViewButtonCell btnIgnore)
+            {
+                btnIgnore.ReadOnly = true;
+                btnIgnore.Style.BackColor = Color.Gray;
+                btnIgnore.Style.SelectionBackColor = Color.Gray;
+                btnIgnore.Style.ForeColor = Color.DarkGray;
+                btnIgnore.Style.SelectionForeColor = Color.DarkGray;
+            }
+            
+            // 🔥 禁用"拒绝"按钮
+            if (row.Cells["btnReject"] is DataGridViewButtonCell btnReject)
+            {
+                btnReject.ReadOnly = true;
+                btnReject.Style.BackColor = Color.Gray;
+                btnReject.Style.SelectionBackColor = Color.Gray;
+                btnReject.Style.ForeColor = Color.DarkGray;
+                btnReject.Style.SelectionForeColor = Color.DarkGray;
+            }
+        }
+
+        /// <summary>
+        /// 鼠标进入单元格：记录行索引并刷新
+        /// </summary>
+        private void DgvRequests_CellMouseEnter(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.RowIndex != _hoverRowIndex)
+            {
+                _hoverRowIndex = e.RowIndex;
+                dgvRequests.InvalidateRow(e.RowIndex);  // 🔥 只刷新当前行
+            }
+        }
+
+        /// <summary>
+        /// 鼠标离开单元格：清除行索引并刷新
+        /// </summary>
+        private void DgvRequests_CellMouseLeave(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.RowIndex == _hoverRowIndex)
+            {
+                int oldIndex = _hoverRowIndex;
+                _hoverRowIndex = -1;
+                dgvRequests.InvalidateRow(oldIndex);  // 🔥 只刷新之前的行
+            }
+        }
+
+        #endregion
     }
 }
 
