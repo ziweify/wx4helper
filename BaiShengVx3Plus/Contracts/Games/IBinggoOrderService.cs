@@ -39,15 +39,15 @@ namespace BaiShengVx3Plus.Contracts.Games
             BinggoLotteryStatus currentStatus);
         
         /// <summary>
-        /// 补单（手动创建）
+        /// 补单（在原订单上操作，参考 F5BotV2）
         /// </summary>
+        /// <param name="order">原订单对象</param>
+        /// <param name="member">会员对象</param>
         /// <param name="sendToWeChat">是否发送到微信（线上补单=true，离线补单=false）</param>
         /// <returns>(成功, 微信消息, 订单对象)</returns>
-        Task<(bool success, string message, V2MemberOrder? order)> CreateManualOrderAsync(
+        Task<(bool success, string message, V2MemberOrder? order)> SettleManualOrderAsync(
+            V2MemberOrder order,
             V2Member member,
-            int issueId,
-            string betContent,
-            decimal amount,
             bool sendToWeChat = true);
         
         /// <summary>

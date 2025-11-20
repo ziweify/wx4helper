@@ -4105,19 +4105,17 @@ namespace BaiShengVx3Plus
                         continue;
                     }
                     
-                    // 🔥 6. 执行补单（调用 OrderService）
-                    (bool success, string message, V2MemberOrder? newOrder) = await _orderService.CreateManualOrderAsync(
+                    // 🔥 6. 执行补单（在原订单上操作，参考 F5BotV2）
+                    (bool success, string message, V2MemberOrder? settledOrder) = await _orderService.SettleManualOrderAsync(
+                        order,
                         member,
-                        order.IssueId,
-                        order.BetContent,
-                        (decimal)order.AmountTotal,  // 🔥 转换为 decimal
                         sendToWeChat);  // 🔥 控制是否发送到微信
                     
                     if (success)
                     {
                         successCount++;
                         _logService.Info("VxMain", 
-                            $"✅ {type}成功: {member.Nickname} - 期号: {order.IssueId} - 盈利: {newOrder?.NetProfit:F2}");
+                            $"✅ {type}成功: {member.Nickname} - 订单ID: {order.Id} - 期号: {order.IssueId} - 盈利: {settledOrder?.NetProfit:F2}");
                         
                         // 🔥 7. 如果是线上补单，发送消息到微信（参考 F5BotV2 第 1267-1268 行）
                         if (sendToWeChat && !string.IsNullOrEmpty(message))
@@ -4135,7 +4133,7 @@ namespace BaiShengVx3Plus
                             }
                         }
                         
-                        messages.AppendLine($"✅ {order.Nickname} ({order.IssueId}) - {newOrder?.NetProfit:F2}元");
+                        messages.AppendLine($"✅ {order.Nickname} ({order.IssueId}) - {settledOrder?.NetProfit:F2}元");
                     }
                     else
                     {

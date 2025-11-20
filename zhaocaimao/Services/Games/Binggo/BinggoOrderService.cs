@@ -213,130 +213,75 @@ namespace zhaocaimao.Services.Games.Binggo
         }
         
         /// <summary>
-        /// 补单（手动创建）
+        /// 补单（在原订单上操作，参考 F5BotV2 第 599-673 行）
         /// </summary>
+        /// <param name="order">原订单对象</param>
+        /// <param name="member">会员对象</param>
         /// <param name="sendToWeChat">是否发送到微信（线上补单=true，离线补单=false）</param>
         /// <returns>(成功, 微信消息内容, 订单对象)</returns>
-        public async Task<(bool success, string message, V2MemberOrder? order)> CreateManualOrderAsync(
+        public async Task<(bool success, string message, V2MemberOrder? order)> SettleManualOrderAsync(
+            V2MemberOrder order,
             V2Member member,
-            int issueId,
-            string betContent,
-            decimal amount,
             bool sendToWeChat = true)
         {
             try
             {
                 string type = sendToWeChat ? "线上补单" : "离线补单";
                 _logService.Info("BinggoOrderService", 
-                    $"{type}: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
+                    $"{type}: {member.Nickname} ({member.Wxid}) - 订单ID: {order.Id} - 期号: {order.IssueId}");
                 
-                // 1. 验证补单
-                if (!_validator.ValidateManualOrder(member, issueId, amount, out string errorMessage))
+                // 🔥 1. 检查订单状态（参考 F5BotV2 第 599-640 行）
+                if (order.OrderStatus == OrderStatus.已完成)
                 {
-                    return (false, errorMessage, null);
+                    return (false, "已完成的订单无法补单", null);
                 }
                 
-                // 2. 获取开奖数据（优先从本地缓存）
-                var lotteryData = await _lotteryService.GetLotteryDataAsync(issueId, forceRefresh: false);
+                if (order.OrderStatus == OrderStatus.已取消)
+                {
+                    return (false, "已取消的订单无法补单", null);
+                }
+                
+                // 🔥 2. 获取开奖数据（优先从本地缓存）
+                var lotteryData = await _lotteryService.GetLotteryDataAsync(order.IssueId, forceRefresh: false);
                 
                 if (lotteryData == null || !lotteryData.IsOpened)
                 {
-                    return (false, $"期号 {issueId} 未开奖，请先在开奖页面手动录入开奖数据！", null);
+                    return (false, $"期号 {order.IssueId} 未开奖，请先在开奖页面手动录入开奖数据！", null);
                 }
                 
-                // 🔥 3. 解析投注内容（与正常订单一样，确保能正确结算）
-                _logService.Info("BinggoOrderService", 
-                    $"🔍 [补单] 解析投注内容: {betContent}");
-                var parsedBetContent = BinggoHelper.ParseBetContent(betContent, issueId);
-                
-                if (parsedBetContent.Code != 0)
-                {
-                    _logService.Warning("BinggoOrderService", 
-                        $"补单解析失败: {parsedBetContent.ErrorMessage}");
-                    return (false, $"投注内容解析失败: {parsedBetContent.ErrorMessage}", null);
-                }
-                
-                _logService.Info("BinggoOrderService", 
-                    $"✅ [补单] 解析成功: 标准格式={parsedBetContent.ToStandardString()}, 注数={parsedBetContent.Items.Count}, 总金额={parsedBetContent.TotalAmount}");
-                
-                // 🔥 4. 创建订单（设置所有必要字段，参考 CreateOrderAsync）
-                long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
-                float betFronMoney = member.Balance;  // 注前金额
-                float betAfterMoney = member.Balance;  // 补单不扣钱，注后金额等于注前金额
-                
-                var order = new V2MemberOrder
-                {
-                    // 🔥 会员信息
-                    Wxid = member.Wxid,
-                    Account = member.Account,
-                    Nickname = member.Nickname,
-                    GroupWxId = member.GroupWxId,
-                    
-                    // 🔥 订单基础信息
-                    IssueId = issueId,
-                    TimeStampBet = timestampBet,
-                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    CreatedAt = DateTime.Now,
-                    
-                    // 🔥 投注内容（参考 CreateOrderAsync）
-                    BetContentOriginal = betContent,  // 原始内容
-                    BetContentStandar = parsedBetContent.ToStandardString(),  // 🔥 标准内容（结算时使用）
-                    BetContent = parsedBetContent.ToStandardString(),  // 兼容字段
-                    Nums = parsedBetContent.Items.Count,  // 注数
-                    AmountTotal = (float)parsedBetContent.TotalAmount,  // 🔥 总金额（结算时使用）
-                    BetAmount = amount,  // 兼容字段
-                    
-                    // 🔥 金额记录
-                    BetFronMoney = betFronMoney,   // 注前金额
-                    BetAfterMoney = betAfterMoney, // 注后金额
-                    
-                    // 🔥 结算信息
-                    Profit = 0,  // 稍后结算
-                    NetProfit = 0,  // 稍后结算
-                    Odds = 1.97f,  // 赔率（参考 F5BotV2 默认值）
-                    OrderStatus = OrderStatus.待处理,  // 初始状态，结算后会更新
-                    OrderType = OrderType.待定,  // 补单类型为待定
-                    MemberState = member.State,  // 🔥 记录会员等级快照
-                    IsSettled = false
-                };
-                
-                // 🔥 5. 立即结算（与正常订单一样走结算流程）
-                // 参考 F5BotV2: 补单时会员已经下过单，本金已经被扣除了
-                // 所以结算时应该加总赢金额（包含本金），与正常订单结算逻辑一致
+                // 🔥 3. 在原订单上结算（参考 F5BotV2 第 622-624 行）
                 await SettleSingleOrderAsync(order, lotteryData);
                 
-                // 6. 保存订单（插入到列表顶部，保持"最新在上"）
-                if (_ordersBindingList != null && _ordersBindingList.Count > 0)
-                {
-                    _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
-                }
-                else
-                {
-                    _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
-                }
+                // 🔥 4. 添加备注（参考 F5BotV2：记录补单信息）
+                string notePrefix = string.IsNullOrEmpty(order.Notes) ? "" : $"{order.Notes}\r";
+                string noteSuffix = $"{type} - {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                order.Notes = $"{notePrefix}{noteSuffix}";
                 
-                // 🔥 7. 更新全局统计（完全参考 F5BotV2）
-                if (_statisticsService != null && order.OrderType != OrderType.托)
+                // 🔥 5. 更新订单到数据库（备注已更新）
+                Services.Database.DatabaseLockService.Instance.ExecuteWrite(() =>
                 {
-                    _statisticsService.OnOrderCreated(order);  // 增加总注、今投、当前
-                    _statisticsService.OnOrderSettled(order);  // 增加总盈、今盈
-                }
+                    if (_db != null)
+                    {
+                        _db.Update(order);
+                    }
+                });
                 
-                // 🔥 8. 生成补单微信消息（完全参考 F5BotV2 第 1261-1268 行）
+                // 🔥 6. 生成补单微信消息（完全参考 F5BotV2 第 1261-1268 行）
                 // 格式：
                 //   ----补分名单----
                 //   {nickname}|{期号后3位}|{开奖号码}|{投注内容}|{押注金额}
                 //   ------补完留分------
                 //   {nickname} | {余额}
-                int issueShort = issueId % 1000;
+                int issueShort = order.IssueId % 1000;
                 string lotteryStr = lotteryData.ToLotteryString();  // "7,14,21,8,2 大单 龙"
+                string betContentForMessage = order.BetContentOriginal ?? order.BetContentStandar ?? order.BetContent ?? "";
                 string weChatMessage = $"----补分名单----\r" +
-                    $"{member.Nickname}|{issueShort}|{lotteryStr}|{betContent}|{order.AmountTotal - order.NetProfit}\r" +
+                    $"{member.Nickname}|{issueShort}|{lotteryStr}|{betContentForMessage}|{order.AmountTotal - order.NetProfit}\r" +
                     $"------补完留分------\r" +
                     $"{member.Nickname} | {(int)member.Balance}";
                 
                 _logService.Info("BinggoOrderService", 
-                    $"✅ {type}成功: {member.Nickname} - {betContent} - {amount:F2}元 - 盈利: {order.NetProfit:F2} - 余额: {member.Balance:F2}");
+                    $"✅ {type}成功: {member.Nickname} - 订单ID: {order.Id} - 盈利: {order.NetProfit:F2} - 余额: {member.Balance:F2}");
                 
                 // 🔥 返回微信消息（如果是线上补单，调用者需要发送到微信；离线补单则只做记录）
                 return (true, weChatMessage, order);
