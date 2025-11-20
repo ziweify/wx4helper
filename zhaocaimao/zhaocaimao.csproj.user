@@ -20,7 +20,13 @@
     <Compile Update="Views\BinggoLotteryResultForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\Controls\SoundSettingsPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Views\CreditWithdrawManageForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Dev\MessageSimulatorForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\LoginForm.cs">
@@ -30,6 +36,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\SettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\SoundTestForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\UcUserInfo.cs">

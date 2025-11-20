@@ -11,12 +11,12 @@ namespace BaiShengVx3Plus.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "32.1.8";  // "31.8.7"
+        public const string Version = "32.1.9";  // "31.8.7"
 
         /// <summary>
         /// 版本名称
         /// </summary>
-        public const string VersionName = "百盛Vx3 Plus";
+        public const string VersionName = "百胜Vx3 Plus";
         
         /// <summary>
         /// 完整版本字符串
