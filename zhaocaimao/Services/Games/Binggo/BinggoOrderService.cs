@@ -285,17 +285,18 @@ namespace zhaocaimao.Services.Games.Binggo
                     UpdateOrder(order);
                 }
                 
-                // 🔥 6. 生成补单微信消息（完全参考 F5BotV2 第 1261-1268 行）
+                // 🔥 6. 生成补单微信消息（完全参考 F5BotV2 第 1402 行和 284 行）
                 // 格式：
                 //   ----补分名单----
-                //   {nickname}|{期号后3位}|{开奖号码}|{投注内容}|{押注金额}
+                //   {nickname}|{期号后3位}|{开奖号码}|{投注内容}|{返奖金额}
                 //   ------补完留分------
                 //   {nickname} | {余额}
+                // 注意：F5BotV2 中显示的是 Profit（返奖金额，总赢金额包含本金），不是纯利
                 int issueShort = order.IssueId % 1000;
                 string lotteryStr = lotteryData.ToLotteryString();  // "7,14,21,8,2 大单 龙"
                 string betContentForMessage = order.BetContentOriginal ?? order.BetContentStandar ?? order.BetContent ?? "";
                 string weChatMessage = $"----补分名单----\r" +
-                    $"{member.Nickname}|{issueShort}|{lotteryStr}|{betContentForMessage}|{order.AmountTotal - order.NetProfit}\r" +
+                    $"{member.Nickname}|{issueShort}|{lotteryStr}|{betContentForMessage}|{order.Profit}\r" +
                     $"------补完留分------\r" +
                     $"{member.Nickname} | {(int)member.Balance}";
                 
