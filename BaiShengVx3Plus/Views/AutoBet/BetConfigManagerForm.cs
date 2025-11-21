@@ -395,17 +395,12 @@ namespace BaiShengVx3Plus.Views.AutoBet
         }
 
         /// <summary>
-        /// 初始化平台URL映射
+        /// 初始化平台URL映射（已废弃，使用 PlatformUrlManager 统一管理）
         /// </summary>
+        [Obsolete("使用 PlatformUrlManager 统一管理平台URL")]
         private void InitializePlatformUrls()
         {
-            // 平台URL映射表（可以后续移到配置文件）
-            var platformUrls = new Dictionary<string, string>
-            {
-                { "YunDing28", "https://www.yunding28.com" },
-                { "HaiXia28", "https://www.haixia28.com" },
-                { "HongHai28", "https://www.honghai28.com" }
-            };
+            // 已迁移到 PlatformUrlManager，此方法保留仅为兼容性
         }
 
         /// <summary>
@@ -524,8 +519,8 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 var newConfig = new BetConfig
                 {
                     ConfigName = "新配置",
-                    Platform = "YunDing28",
-                    PlatformUrl = "https://www.yunding28.com",
+                    Platform = "云顶",
+                    PlatformUrl = PlatformUrlManager.GetDefaultUrl("云顶"),
                     IsEnabled = true,
                     AutoLogin = true
                 };
@@ -753,17 +748,15 @@ namespace BaiShengVx3Plus.Views.AutoBet
         /// </summary>
         private void cbxPlatform_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            // 根据平台自动填充URL
-            var platformUrls = new Dictionary<string, string>
+            // 🔥 只在URL为空时才自动填充，避免覆盖用户手动修改的URL
+            if (string.IsNullOrWhiteSpace(txtPlatformUrl.Text))
             {
-                { "YunDing28", "https://www.yunding28.com" },
-                { "HaiXia28", "https://www.haixia28.com" },
-                { "HongHai28", "https://www.honghai28.com" }
-            };
-            
-            if (platformUrls.TryGetValue(cbxPlatform.Text, out var url))
-            {
-                txtPlatformUrl.Text = url;
+                // 使用统一的URL管理器获取平台URL
+                var url = PlatformUrlManager.GetDefaultUrl(cbxPlatform.Text);
+                if (!string.IsNullOrEmpty(url))
+                {
+                    txtPlatformUrl.Text = url;
+                }
             }
         }
 

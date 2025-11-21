@@ -3580,14 +3580,7 @@ namespace BaiShengVx3Plus
                     {
                         ConfigName = "默认配置",
                         Platform = platform.ToString(),
-                        PlatformUrl = platform switch
-                        {
-                            BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
-                            BetPlatform.云顶 => "https://www.yunding28.com",
-                            BetPlatform.海峡 => "https://www.haixia28.com",
-                            BetPlatform.红海 => "https://www.honghai28.com",
-                            _ => "https://yb666.fr.win2000.cc"
-                        },
+                        PlatformUrl = PlatformUrlManager.GetDefaultUrl(platform),
                         Username = "",  // 🔥 初始为空，用户需要手动输入
                         Password = "",  // 🔥 初始为空，用户需要手动输入
                         IsDefault = true,
@@ -3642,14 +3635,7 @@ namespace BaiShengVx3Plus
                     {
                         ConfigName = "默认配置",
                         Platform = platform.ToString(),
-                        PlatformUrl = platform switch
-                        {
-                            BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
-                            BetPlatform.云顶 => "https://www.yunding28.com",
-                            BetPlatform.海峡 => "https://www.haixia28.com",
-                            BetPlatform.红海 => "https://www.honghai28.com",
-                            _ => "https://yb666.fr.win2000.cc"
-                        },
+                        PlatformUrl = PlatformUrlManager.GetDefaultUrl(platform),
                         Username = txtAutoBetUsername.Text,
                         Password = txtAutoBetPassword.Text,
                         IsDefault = true,
@@ -3666,15 +3652,18 @@ namespace BaiShengVx3Plus
                     var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
                     defaultConfig.Platform = platform.ToString();
                     
-                    // 🔥 同时更新平台URL（根据平台自动设置）
-                    defaultConfig.PlatformUrl = platform switch
+                    // 🔥 不再自动覆盖平台URL，保留用户手动修改的值
+                    // 如果用户需要修改URL，应该在配置管理器中手动修改
+                    // 只有在URL为空时才自动设置默认URL
+                    if (string.IsNullOrWhiteSpace(defaultConfig.PlatformUrl))
                     {
-                        BetPlatform.通宝 => "https://yb666.fr.win2000.cc",
-                        BetPlatform.云顶 => "https://www.yunding28.com",
-                        BetPlatform.海峡 => "https://www.haixia28.com",
-                        BetPlatform.红海 => "https://www.honghai28.com",
-                        _ => defaultConfig.PlatformUrl // 保持原值
-                    };
+                        defaultConfig.PlatformUrl = PlatformUrlManager.GetDefaultUrl(platform);
+                        _logService.Info("VxMain", $"URL为空，已自动设置为默认URL: {defaultConfig.PlatformUrl}");
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", $"保留用户设置的URL: {defaultConfig.PlatformUrl}");
+                    }
 
                     // 保存账号密码
                     var username = txtAutoBetUsername.Text;
