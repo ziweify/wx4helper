@@ -45,6 +45,11 @@ v3.1.0.1114 (2025-11-14)
     }
 
     /*
+     * 32.1.9
+     *   管理功能
+     *      添加命令:刷新
+     *   最后一期发图
+     *   
      * 修复完成总结
 1. 管理员上分时创建记录
 修改 AdminCommandHandler.ExecuteCreditWithdraw，创建 V2CreditWithdraw 记录并调用 CreditWithdrawService.ProcessCreditWithdraw（参考 F5BotV2 Line 2759-2762, 2814-2817）
