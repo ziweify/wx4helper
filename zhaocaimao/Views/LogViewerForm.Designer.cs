@@ -276,13 +276,13 @@ namespace zhaocaimao.Views
             // 
             dgvLogs.AllowUserToAddRows = false;
             dgvLogs.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle1.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle1.BackColor = Color.FromArgb(248, 250, 252);  // 浅金色交替行
             dgvLogs.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             dgvLogs.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvLogs.BackgroundColor = Color.White;
             dgvLogs.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle2.BackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle2.BackColor = Color.FromArgb(107, 143, 166);  // 亮金色表头
             dataGridViewCellStyle2.Font = new Font("微软雅黑", 12F);
             dataGridViewCellStyle2.ForeColor = Color.White;
             dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
@@ -303,15 +303,15 @@ namespace zhaocaimao.Views
             dgvLogs.Dock = DockStyle.Fill;
             dgvLogs.EnableHeadersVisualStyles = false;
             dgvLogs.Font = new Font("微软雅黑", 12F);
-            dgvLogs.GridColor = Color.FromArgb(80, 160, 255);
+            dgvLogs.GridColor = Color.FromArgb(107, 143, 166);  // 金色网格线
             dgvLogs.Location = new Point(0, 115);
             dgvLogs.Name = "dgvLogs";
             dgvLogs.ReadOnly = true;
             dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle4.BackColor = Color.FromArgb(248, 250, 252);  // 浅金色交替行
             dataGridViewCellStyle4.Font = new Font("微软雅黑", 12F);
             dataGridViewCellStyle4.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle4.SelectionBackColor = Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle4.SelectionBackColor = Color.FromArgb(107, 143, 166);  // 金色选中
             dataGridViewCellStyle4.SelectionForeColor = Color.White;
             dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
             dgvLogs.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
@@ -320,7 +320,7 @@ namespace zhaocaimao.Views
             dgvLogs.SelectedIndex = -1;
             dgvLogs.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvLogs.Size = new Size(1200, 555);
-            dgvLogs.StripeOddColor = Color.FromArgb(235, 243, 255);
+            dgvLogs.StripeOddColor = Color.FromArgb(248, 250, 252);  // 浅金色交替行
             dgvLogs.TabIndex = 2;
             // 
             // colTime

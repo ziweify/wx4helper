@@ -39,7 +39,7 @@ namespace zhaocaimao.Views
             this.dgvRequests.AllowUserToDeleteRows = false;
             this.dgvRequests.AllowUserToResizeRows = false;
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
-            dataGridViewCellStyle1.BackColor = System.Drawing.Color.FromArgb(235, 243, 255);
+            dataGridViewCellStyle1.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);  // 浅金色交替行
             this.dgvRequests.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             this.dgvRequests.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
@@ -49,10 +49,10 @@ namespace zhaocaimao.Views
             this.dgvRequests.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.Single;
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.FromArgb(107, 143, 166);  // 亮金色表头
             dataGridViewCellStyle2.Font = new System.Drawing.Font("微软雅黑", 12F);
             dataGridViewCellStyle2.ForeColor = System.Drawing.Color.White;
-            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.Color.FromArgb(107, 143, 166);  // 金色选中
             dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.dgvRequests.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;

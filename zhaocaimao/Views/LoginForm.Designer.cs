@@ -57,9 +57,9 @@
             pnlMain.MinimumSize = new Size(1, 1);
             pnlMain.Name = "pnlMain";
             pnlMain.Padding = new Padding(30);
-            // 🔥 金色招财猫主题
-            pnlMain.FillColor = Color.FromArgb(255, 248, 220);  // 淡金色背景
-            pnlMain.RectColor = Color.FromArgb(255, 193, 7);   // 金色边框
+            // 🔥 柔和蓝灰色主题
+            pnlMain.FillColor = Color.FromArgb(245, 247, 250);  // 浅灰蓝色背景
+            pnlMain.RectColor = Color.FromArgb(143, 168, 194);   // 柔和蓝色边框
             pnlMain.Size = new Size(450, 380);
             pnlMain.TabIndex = 0;
             pnlMain.Text = null;
@@ -68,17 +68,17 @@
             // btnCancel
             // 
             btnCancel.Cursor = Cursors.Hand;
-            // 🔥 金色主题 - 取消按钮使用深金色
-            btnCancel.FillColor = Color.FromArgb(184, 134, 11);  // 深金色
-            btnCancel.FillHoverColor = Color.FromArgb(218, 165, 32);  // 金色悬停
-            btnCancel.FillPressColor = Color.FromArgb(153, 101, 21);  // 深金色按下
+            // 🔥 柔和蓝灰色主题 - 取消按钮使用深蓝灰色
+            btnCancel.FillColor = Color.FromArgb(90, 122, 138);  // 深蓝灰色
+            btnCancel.FillHoverColor = Color.FromArgb(107, 143, 166);  // 蓝灰色悬停
+            btnCancel.FillPressColor = Color.FromArgb(74, 95, 122);  // 深蓝灰色按下
             btnCancel.Font = new Font("微软雅黑", 12F);
             btnCancel.Location = new Point(240, 295);
             btnCancel.MinimumSize = new Size(1, 1);
             btnCancel.Name = "btnCancel";
-            btnCancel.RectColor = Color.FromArgb(184, 134, 11);
-            btnCancel.RectHoverColor = Color.FromArgb(218, 165, 32);
-            btnCancel.RectPressColor = Color.FromArgb(153, 101, 21);
+            btnCancel.RectColor = Color.FromArgb(90, 122, 138);
+            btnCancel.RectHoverColor = Color.FromArgb(107, 143, 166);
+            btnCancel.RectPressColor = Color.FromArgb(74, 95, 122);
             btnCancel.Size = new Size(120, 45);
             btnCancel.TabIndex = 7;
             btnCancel.Text = "取消";
@@ -88,13 +88,13 @@
             // btnLogin
             // 
             btnLogin.Cursor = Cursors.Hand;
-            // 🔥 金色主题 - 登录按钮使用亮金色
-            btnLogin.FillColor = Color.FromArgb(255, 193, 7);  // 亮金色
-            btnLogin.FillHoverColor = Color.FromArgb(255, 215, 0);  // 金色悬停
-            btnLogin.FillPressColor = Color.FromArgb(218, 165, 32);  // 深金色按下
-            btnLogin.RectColor = Color.FromArgb(255, 193, 7);
-            btnLogin.RectHoverColor = Color.FromArgb(255, 215, 0);
-            btnLogin.RectPressColor = Color.FromArgb(218, 165, 32);
+            // 🔥 柔和蓝灰色主题 - 登录按钮使用柔和蓝灰色
+            btnLogin.FillColor = Color.FromArgb(107, 143, 166);  // 柔和蓝灰色
+            btnLogin.FillHoverColor = Color.FromArgb(143, 168, 194);  // 蓝灰色悬停
+            btnLogin.FillPressColor = Color.FromArgb(91, 127, 166);  // 深蓝灰色按下
+            btnLogin.RectColor = Color.FromArgb(107, 143, 166);
+            btnLogin.RectHoverColor = Color.FromArgb(143, 168, 194);
+            btnLogin.RectPressColor = Color.FromArgb(91, 127, 166);
             btnLogin.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
             btnLogin.Location = new Point(90, 295);
             btnLogin.MinimumSize = new Size(1, 1);
@@ -107,7 +107,7 @@
             // chkRememberPassword
             // 
             chkRememberPassword.Font = new Font("微软雅黑", 10F);
-            chkRememberPassword.ForeColor = Color.FromArgb(184, 134, 11);  // 金色文字
+            chkRememberPassword.ForeColor = Color.FromArgb(74, 95, 122);  // 中灰蓝色文字
             chkRememberPassword.Location = new Point(130, 245);
             chkRememberPassword.MinimumSize = new Size(1, 1);
             chkRememberPassword.Name = "chkRememberPassword";
@@ -118,7 +118,7 @@
             // txtPassword
             // 
             txtPassword.Font = new Font("微软雅黑", 12F);
-            txtPassword.RectColor = Color.FromArgb(255, 193, 7);  // 金色边框
+            txtPassword.RectColor = Color.FromArgb(143, 168, 194);  // 柔和蓝色边框
             txtPassword.Location = new Point(130, 195);
             txtPassword.Margin = new Padding(4, 5, 4, 5);
             txtPassword.MinimumSize = new Size(1, 16);
@@ -134,7 +134,7 @@
             // lblPassword
             // 
             lblPassword.Font = new Font("微软雅黑", 12F);
-            lblPassword.ForeColor = Color.FromArgb(184, 134, 11);  // 金色文字
+            lblPassword.ForeColor = Color.FromArgb(74, 95, 122);  // 中灰蓝色文字
             lblPassword.Location = new Point(50, 195);
             lblPassword.Name = "lblPassword";
             lblPassword.Size = new Size(80, 35);
@@ -145,7 +145,7 @@
             // txtUsername
             // 
             txtUsername.Font = new Font("微软雅黑", 12F);
-            txtUsername.RectColor = Color.FromArgb(255, 193, 7);  // 金色边框
+            txtUsername.RectColor = Color.FromArgb(143, 168, 194);  // 柔和蓝色边框
             txtUsername.Location = new Point(130, 140);
             txtUsername.Margin = new Padding(4, 5, 4, 5);
             txtUsername.MinimumSize = new Size(1, 16);
@@ -160,7 +160,7 @@
             // lblUsername
             // 
             lblUsername.Font = new Font("微软雅黑", 12F);
-            lblUsername.ForeColor = Color.FromArgb(184, 134, 11);  // 金色文字
+            lblUsername.ForeColor = Color.FromArgb(74, 95, 122);  // 中灰蓝色文字
             lblUsername.Location = new Point(50, 140);
             lblUsername.Name = "lblUsername";
             lblUsername.Size = new Size(80, 35);
@@ -172,7 +172,7 @@
             // 
             // 🔥 金色招财猫主题 - 标题
             lblTitle.Font = new Font("微软雅黑", 22F, FontStyle.Bold, GraphicsUnit.Point, 134);
-            lblTitle.ForeColor = Color.FromArgb(184, 134, 11);  // 深金色文字
+            lblTitle.ForeColor = Color.FromArgb(44, 62, 80);  // 深灰蓝色文字
             lblTitle.Location = new Point(30, 25);
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new Size(390, 70);

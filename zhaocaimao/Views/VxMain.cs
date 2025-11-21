@@ -1459,15 +1459,15 @@ namespace zhaocaimao
                 // 先绘制原本的背景色
                 e.PaintBackground(e.CellBounds, false);
                 
-                // 🔥 选中效果：蓝色蒙板 (50% 透明度)
+                // 🔥 选中效果：柔和蓝灰色蒙板 (50% 透明度)
                 if (isSelected)
                 {
                     e.Graphics.FillRectangle(
-                        new SolidBrush(Color.FromArgb(50, 80, 160, 255)), // 50% 透明度的蓝色
+                        new SolidBrush(Color.FromArgb(50, 107, 143, 166)), // 50% 透明度的柔和蓝灰色
                         e.CellBounds);
                     
-                    // 绘制蓝色边框（2px）
-                    using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                    // 绘制柔和蓝灰色边框（2px）
+                    using (Pen pen = new Pen(Color.FromArgb(107, 143, 166), 2))
                     {
                         e.Graphics.DrawRectangle(pen, 
                             e.CellBounds.X, 
@@ -1476,11 +1476,11 @@ namespace zhaocaimao
                             e.CellBounds.Height - 1);
                     }
                 }
-                // 🔥 Hover 效果：淡黄色蒙板 (30% 透明度)
+                // 🔥 Hover 效果：柔和蓝灰色蒙板 (30% 透明度)
                 else if (isHover && !isSelected)
                 {
                     e.Graphics.FillRectangle(
-                        new SolidBrush(Color.FromArgb(30, 255, 235, 150)), // 30% 透明度的淡黄色
+                        new SolidBrush(Color.FromArgb(30, 143, 168, 194)), // 30% 透明度的柔和蓝灰色
                         e.CellBounds);
                 }
                 
@@ -1529,7 +1529,7 @@ namespace zhaocaimao
             {
                 baseBackColor = member.State switch
                 {
-                    MemberState.管理 => Color.FromArgb(255, 248, 220),    // 金色（浅）
+                    MemberState.管理 => Color.FromArgb(240, 248, 255),    // 浅蓝灰色
                     MemberState.托 => Color.FromArgb(255, 228, 181),       // 橙色（浅）
                     MemberState.已退群 => Color.FromArgb(220, 220, 220),  // 灰色
                     MemberState.已删除 => Color.FromArgb(255, 200, 200),  // 红色（浅）
@@ -1554,10 +1554,10 @@ namespace zhaocaimao
             if (isSelected)
             {
                 e.Graphics.FillRectangle(
-                    new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
+                    new SolidBrush(Color.FromArgb(50, 107, 143, 166)),
                     e.CellBounds);
                 
-                using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                using (Pen pen = new Pen(Color.FromArgb(107, 143, 166), 2))
                 {
                     e.Graphics.DrawRectangle(pen, 
                         e.CellBounds.X, 
@@ -1570,7 +1570,7 @@ namespace zhaocaimao
             else if (isHover)
             {
                 e.Graphics.FillRectangle(
-                    new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
+                    new SolidBrush(Color.FromArgb(30, 143, 168, 194)),
                     e.CellBounds);
             }
             
@@ -1612,10 +1612,10 @@ namespace zhaocaimao
                 if (isSelected)
                 {
                     e.Graphics.FillRectangle(
-                        new SolidBrush(Color.FromArgb(50, 80, 160, 255)),
+                        new SolidBrush(Color.FromArgb(50, 107, 143, 166)),
                         e.CellBounds);
                     
-                    using (Pen pen = new Pen(Color.FromArgb(80, 160, 255), 2))
+                    using (Pen pen = new Pen(Color.FromArgb(107, 143, 166), 2))
                     {
                         e.Graphics.DrawRectangle(pen, 
                             e.CellBounds.X, 
@@ -1627,7 +1627,7 @@ namespace zhaocaimao
                 else if (isHover && !isSelected)
                 {
                     e.Graphics.FillRectangle(
-                        new SolidBrush(Color.FromArgb(30, 255, 235, 150)),
+                        new SolidBrush(Color.FromArgb(30, 143, 168, 194)),
                         e.CellBounds);
                 }
                 
@@ -1840,8 +1840,8 @@ namespace zhaocaimao
                 
                 // 🔥 2. 更新 UI 状态
                 txtCurrentContact.Text = $"{contact.Nickname} ({contact.Wxid})";
-                txtCurrentContact.FillColor = Color.FromArgb(240, 255, 240); // 浅绿色背景
-                txtCurrentContact.RectColor = Color.FromArgb(82, 196, 26);   // 绿色边框
+                txtCurrentContact.FillColor = Color.FromArgb(240, 248, 255); // 浅蓝灰色背景
+                txtCurrentContact.RectColor = Color.FromArgb(107, 143, 166);   // 柔和蓝灰色边框
                 dgvContacts.Refresh();
                 lblStatus.Text = $"✓ 已绑定: {contact.Nickname} - 正在加载数据...";
                 

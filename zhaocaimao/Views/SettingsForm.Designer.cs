@@ -113,7 +113,7 @@ namespace zhaocaimao.Views
             // 
             // tabPageSystem
             // 
-            tabPageSystem.BackColor = Color.White;
+            tabPageSystem.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
             tabPageSystem.Controls.Add(grp开发模式选项);
             tabPageSystem.Controls.Add(chk收单关闭时不发送系统消息);
             tabPageSystem.Controls.Add(chkRunModelDev);
@@ -252,7 +252,7 @@ namespace zhaocaimao.Views
             // 
             // tabPageConnection
             // 
-            tabPageConnection.BackColor = Color.White;
+            tabPageConnection.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
             tabPageConnection.Controls.Add(uiGroupBox2);
             tabPageConnection.Controls.Add(uiGroupBox1);
             tabPageConnection.Location = new Point(0, 40);
@@ -461,7 +461,7 @@ namespace zhaocaimao.Views
             // 
             // tabPageTest
             // 
-            tabPageTest.BackColor = Color.White;
+            tabPageTest.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
             tabPageTest.Controls.Add(uiGroupBox4);
             tabPageTest.Controls.Add(uiGroupBox3);
             tabPageTest.Location = new Point(0, 40);
@@ -592,7 +592,7 @@ namespace zhaocaimao.Views
             // 
             // txtResult
             // 
-            txtResult.BackColor = Color.FromArgb(243, 249, 255);
+            txtResult.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
             txtResult.BorderStyle = BorderStyle.FixedSingle;
             txtResult.Font = new Font("Consolas", 10F);
             txtResult.Location = new Point(30, 140);
@@ -654,7 +654,7 @@ namespace zhaocaimao.Views
             // 
             // tabPageOther
             // 
-            tabPageOther.BackColor = Color.White;
+            tabPageOther.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
             tabPageOther.Controls.Add(grpSoundTest);
             tabPageOther.Location = new Point(0, 40);
             tabPageOther.Name = "tabPageOther";
