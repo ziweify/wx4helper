@@ -186,6 +186,14 @@ namespace zhaocaimao.Helpers
         }
         
         /// <summary>
+        /// 获取指定期号往前推 n 期的期号
+        /// </summary>
+        public static int GetPreviousIssueId(int issueId, int offset)
+        {
+            return issueId - offset;
+        }
+        
+        /// <summary>
         /// 获取下一期期号
         /// </summary>
         public static int GetNextIssueId(int issueId)

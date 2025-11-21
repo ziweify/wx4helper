@@ -401,7 +401,7 @@ namespace zhaocaimao.Services.AutoBet
                 {
                     ConfigName = "默认配置",
                     Platform = "通宝",
-                    PlatformUrl = "https://yb666.fr.win2000.cc",
+                    PlatformUrl = zhaocaimao.Shared.Platform.PlatformUrlManager.GetDefaultUrl("通宝"),
                     IsDefault = true,
                     IsEnabled = false  // 🔥 默认不启用，由用户手动开启
                 };
@@ -414,31 +414,40 @@ namespace zhaocaimao.Services.AutoBet
                 // 原因：现在有"延迟2秒再次判断"机制和老浏览器重连机制，可以安全地保留 IsEnabled 状态
                 _log.Info("AutoBet", $"加载默认配置 IsEnabled 状态: {defaultConfig.IsEnabled}");
                 
-                // 🔥 检查并修复平台和URL的匹配
+                // 🔥 检查并修复平台和URL的匹配（只在URL为空时自动设置，避免覆盖用户手动修改的URL）
                 _log.Info("AutoBet", $"检查默认配置: 平台={defaultConfig.Platform}, URL={defaultConfig.PlatformUrl}");
                 
                 bool needUpdate = false;
                 string correctUrl = GetCorrectPlatformUrl(defaultConfig.Platform);
                 
-                // 如果URL不匹配平台，自动修正
-                if (!string.IsNullOrEmpty(correctUrl) && defaultConfig.PlatformUrl != correctUrl)
+                // 🔥 只在URL为空或无效时才自动设置，避免覆盖用户手动修改的URL
+                if (string.IsNullOrWhiteSpace(defaultConfig.PlatformUrl) && !string.IsNullOrEmpty(correctUrl))
                 {
-                    _log.Warning("AutoBet", $"⚠️ 检测到平台URL不匹配:");
-                    _log.Warning("AutoBet", $"   平台: {defaultConfig.Platform}");
-                    _log.Warning("AutoBet", $"   当前URL: {defaultConfig.PlatformUrl}");
-                    _log.Warning("AutoBet", $"   正确URL: {correctUrl}");
+                    _log.Info("AutoBet", $"检测到URL为空，自动设置为默认URL:");
+                    _log.Info("AutoBet", $"   平台: {defaultConfig.Platform}");
+                    _log.Info("AutoBet", $"   默认URL: {correctUrl}");
                     
                     defaultConfig.PlatformUrl = correctUrl;  // 🔥 直接修改，PropertyChanged 自动保存
                     needUpdate = true;
                 }
+                else if (!string.IsNullOrEmpty(defaultConfig.PlatformUrl))
+                {
+                    // URL已存在，保留用户手动修改的值（不自动修正）
+                    _log.Info("AutoBet", $"保留用户设置的URL: {defaultConfig.PlatformUrl}");
+                }
                 
                 // 兼容旧的平台名称（YunDing28 → 云顶）
+                // 🔥 只更新平台名称，不覆盖用户手动修改的URL
                 if (defaultConfig.Platform == "YunDing28")
                 {
                     defaultConfig.Platform = "云顶";
-                    defaultConfig.PlatformUrl = "https://www.yunding28.com";
+                    // 🔥 只在URL为空时才设置默认URL，避免覆盖用户手动修改的值
+                    if (string.IsNullOrWhiteSpace(defaultConfig.PlatformUrl))
+                    {
+                        defaultConfig.PlatformUrl = zhaocaimao.Shared.Platform.PlatformUrlManager.GetDefaultUrl("云顶");
+                    }
                     needUpdate = true;
-                    _log.Warning("AutoBet", "检测到旧的平台名称YunDing28，已更新为'云顶'");
+                    _log.Warning("AutoBet", $"检测到旧的平台名称YunDing28，已更新为'云顶'（URL={(string.IsNullOrWhiteSpace(defaultConfig.PlatformUrl) ? "已设置为默认值" : "保留用户设置")}）");
                 }
                 
                 if (needUpdate)
@@ -454,18 +463,11 @@ namespace zhaocaimao.Services.AutoBet
         }
         
         /// <summary>
-        /// 根据平台名称获取正确的URL
+        /// 根据平台名称获取正确的URL（使用统一的URL管理器）
         /// </summary>
         private string GetCorrectPlatformUrl(string platform)
         {
-            return platform switch
-            {
-                "通宝" or "TongBao" => "https://yb666.fr.win2000.cc",
-                "云顶" or "YunDing" or "YunDing28" => "https://www.yunding28.com",
-                "海峡" or "HaiXia" => "https://www.haixia28.com",
-                "红海" or "HongHai" => "https://www.honghai28.com",
-                _ => ""
-            };
+            return zhaocaimao.Shared.Platform.PlatformUrlManager.GetDefaultUrl(platform);
         }
         
         /// <summary>

@@ -1679,37 +1679,61 @@ namespace zhaocaimao.Services.Games.Binggo
                         {
                             float rectY = 71;  // 🔥 起始Y坐标（参考 F5BotV2 第1641行）
                             
-                            // 🔥 排序（参考 F5BotV2 第1647-1650行）
-                            var sortedData = historyData.OrderBy(d => d.IssueId).ToList();
-                            
-                            // 🔥 绘制每一期数据（参考 F5BotV2 第1652-1676行）
-                            for (int i = 0; i < sortedData.Count && i < 32; i++)  // 最多32期
+                            // 🔥 获取当前期号，计算最近32期的期号范围
+                            int currentIssueId = Helpers.BinggoTimeHelper.GetCurrentIssueId();
+                            var issueIdList = new List<int>();
+                            int issueId = currentIssueId;
+                            for (int i = 0; i < 32; i++)
                             {
-                                var item = sortedData[i];
+                                issueIdList.Add(issueId);
+                                issueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
+                            }
+                            issueIdList.Reverse(); // 反转，从最早到最新
+                            
+                            // 🔥 创建期号到开奖数据的映射（只包含已开奖的数据）
+                            var dataDict = historyData
+                                .Where(d => d.IsOpened)
+                                .ToDictionary(d => d.IssueId, d => d);
+                            
+                            // 🔥 绘制每一期数据（确保期号连续，未开奖的显示空白）
+                            for (int i = 0; i < issueIdList.Count && i < 32; i++)  // 最多32期
+                            {
+                                int currentIssueIdForRow = issueIdList[i];
                                 float currentY = rectY + (i * 28);  // 每行高度28像素
                                 
-                                // 🔥 绘制期号（参考 F5BotV2 第1655、1659行）
-                                int issueShort = item.IssueId % 1000;
+                                // 🔥 绘制期号（无论是否开奖都显示）
+                                int issueShort = currentIssueIdForRow % 1000;
                                 DrawText(g, issueShort.ToString(), 2, currentY, font, System.Drawing.Color.Black);
                                 
-                                // 🔥 绘制时间（参考 F5BotV2 第1656、1660行）
-                                string time = DateTime.Parse(item.OpenTime).ToString("HH:mm");
+                                // 🔥 绘制开奖时间（无论是否开奖都显示，可以计算出来）
+                                DateTime openTime = Helpers.BinggoTimeHelper.GetIssueOpenTime(currentIssueIdForRow);
+                                string time = openTime.ToString("HH:mm");
                                 DrawText(g, time, 60, currentY, font, System.Drawing.Color.Black);
                                 
-                                // 🔥 绘制5个开奖号码（参考 F5BotV2 第1664-1668行）
-                                DrawLotteryNumber(g, 126, (int)currentY, fontBold, item.P1.Number);
-                                DrawLotteryNumber(g, 226 + 3, (int)currentY, fontBold, item.P2.Number);
-                                DrawLotteryNumber(g, 326 + 3, (int)currentY, fontBold, item.P3.Number);
-                                DrawLotteryNumber(g, 428 + 3, (int)currentY, fontBold, item.P4.Number);
-                                DrawLotteryNumber(g, 530 + 3, (int)currentY, fontBold, item.P5.Number);
-                                
-                                // 🔥 绘制和值（参考 F5BotV2 第1669-1670行）
-                                int sum = item.P1.Number + item.P2.Number + item.P3.Number + item.P4.Number + item.P5.Number;
-                                DrawLotterySum(g, 635, (int)currentY, fontBold, sum);
-                                
-                                // 🔥 绘制龙虎（参考 F5BotV2 第1671-1674行）
-                                string dragonTiger = item.DragonTiger == Models.Games.Binggo.DragonTigerType.Dragon ? "龙" : "虎";
-                                DrawLotteryDragonTiger(g, 750, (int)currentY, fontBold, dragonTiger);
+                                // 🔥 检查是否有开奖数据
+                                if (dataDict.TryGetValue(currentIssueIdForRow, out var item) && item.IsOpened)
+                                {
+                                    // 🔥 有开奖数据：正常显示开奖号码、和值、龙虎
+                                    // 🔥 绘制5个开奖号码（参考 F5BotV2 第1664-1668行）
+                                    DrawLotteryNumber(g, 126, (int)currentY, fontBold, item.P1.Number);
+                                    DrawLotteryNumber(g, 226 + 3, (int)currentY, fontBold, item.P2.Number);
+                                    DrawLotteryNumber(g, 326 + 3, (int)currentY, fontBold, item.P3.Number);
+                                    DrawLotteryNumber(g, 428 + 3, (int)currentY, fontBold, item.P4.Number);
+                                    DrawLotteryNumber(g, 530 + 3, (int)currentY, fontBold, item.P5.Number);
+                                    
+                                    // 🔥 绘制和值（参考 F5BotV2 第1669-1670行）
+                                    int sum = item.P1.Number + item.P2.Number + item.P3.Number + item.P4.Number + item.P5.Number;
+                                    DrawLotterySum(g, 635, (int)currentY, fontBold, sum);
+                                    
+                                    // 🔥 绘制龙虎（参考 F5BotV2 第1671-1674行）
+                                    string dragonTiger = item.DragonTiger == Models.Games.Binggo.DragonTigerType.Dragon ? "龙" : "虎";
+                                    DrawLotteryDragonTiger(g, 750, (int)currentY, fontBold, dragonTiger);
+                                }
+                                else
+                                {
+                                    // 🔥 没开奖：开奖数据（号码、和值、龙虎）不绘制，保持空白
+                                    // 期号和开奖时间已经在上方绘制了
+                                }
                             }
                         }
                         

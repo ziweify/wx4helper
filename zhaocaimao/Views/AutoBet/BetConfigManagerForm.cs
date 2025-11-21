@@ -524,8 +524,8 @@ namespace zhaocaimao.Views.AutoBet
                 var newConfig = new BetConfig
                 {
                     ConfigName = "新配置",
-                    Platform = "YunDing28",
-                    PlatformUrl = "https://www.yunding28.com",
+                    Platform = "云顶", // 默认平台
+                    PlatformUrl = PlatformUrlManager.GetDefaultUrl("云顶"), // 使用 PlatformUrlManager
                     IsEnabled = true,
                     AutoLogin = true
                 };
@@ -753,17 +753,15 @@ namespace zhaocaimao.Views.AutoBet
         /// </summary>
         private void cbxPlatform_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            // 根据平台自动填充URL
-            var platformUrls = new Dictionary<string, string>
+            // 🔥 只在URL为空时才自动填充，避免覆盖用户手动修改的URL
+            if (string.IsNullOrWhiteSpace(txtPlatformUrl.Text))
             {
-                { "YunDing28", "https://www.yunding28.com" },
-                { "HaiXia28", "https://www.haixia28.com" },
-                { "HongHai28", "https://www.honghai28.com" }
-            };
-            
-            if (platformUrls.TryGetValue(cbxPlatform.Text, out var url))
-            {
-                txtPlatformUrl.Text = url;
+                // 使用统一的URL管理器获取平台URL
+                var url = PlatformUrlManager.GetDefaultUrl(cbxPlatform.Text);
+                if (!string.IsNullOrEmpty(url))
+                {
+                    txtPlatformUrl.Text = url;
+                }
             }
         }
 
