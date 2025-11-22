@@ -88,7 +88,7 @@ namespace zhaocaimao.Services.Messages.Handlers
                 
                 if (isAdmin)
                 {
-                    _logService.Info("BinggoMessageHandler", $"检测到管理员消息: {member.Nickname} ({member.Wxid})");
+                    _logService.Info("MessageHandler", $"管理员消息: {member.Nickname} ({member.Wxid})");
                     
                     // 🔥 2.1 处理刷新命令
                     var (refreshCode, refreshReply, refreshError) = await _adminCommandHandler.HandleRefreshCommand(groupWxid, messageContent);
@@ -129,7 +129,7 @@ namespace zhaocaimao.Services.Messages.Handlers
                     
                     // 🔥 管理员的其他消息不处理（不当作普通命令）
                     // 这样管理员可以在群里正常聊天，不会触发投注等命令
-                    _logService.Info("BinggoMessageHandler", "管理员消息不匹配任何管理命令，忽略");
+                    _logService.Info("MessageHandler", "管理员消息未匹配命令，已忽略");
                     return (false, null);
                 }
                 
@@ -150,8 +150,8 @@ namespace zhaocaimao.Services.Messages.Handlers
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoMessageHandler", 
-                    $"处理消息失败: {ex.Message}", ex);
+                _logService.Error("MessageHandler", 
+                    $"消息处理异常: {ex.Message}", ex);
                 return (true, "系统错误，请稍后重试");
             }
         }

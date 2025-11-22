@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace zhaocaimao.Models.Api
 {
     /// <summary>
-    /// 白胜系统 API 响应
+    /// API 响应封装
     /// </summary>
     /// <typeparam name="T">响应数据类型</typeparam>
     public class BsApiResponse<T>

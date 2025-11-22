@@ -1,7 +1,7 @@
 # 读取日志数据库
-Add-Type -Path "BaiShengVx3Plus/bin/Debug/net8.0-windows/SQLite-net.dll"
+Add-Type -Path "zhaocaimao/bin/Debug/net8.0-windows/SQLite-net.dll"
 
-$dbPath = "BaiShengVx3Plus/bin/Debug/net8.0-windows/Data/logs.db"
+$dbPath = "zhaocaimao/bin/Debug/net8.0-windows/Data/logs.db"
 $conn = New-Object -TypeName SQLite.SQLiteConnection -ArgumentList $dbPath
 $conn.Open()
 

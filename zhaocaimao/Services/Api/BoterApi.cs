@@ -10,7 +10,7 @@ using System.Net.Http;
 namespace zhaocaimao.Services.Api
 {
     /// <summary>
-    /// 白胜 API 客户端（完全参考 F5BotV2 的 BoterApi）
+    /// API 客户端（完全参考 F5BotV2 的 BoterApi）
     /// 
     /// 🔥 设计原则：
     /// 1. 单例模式（Singleton）

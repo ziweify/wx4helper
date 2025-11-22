@@ -1,5 +1,5 @@
 # 检查数据库内容
-$dbPath = "$env:LOCALAPPDATA\BaiShengVx3Plus\Data\business.db"
+$dbPath = "$env:LOCALAPPDATA\ZhaoCaiMao\Data\business.db"
 
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
 Write-Host "🔍 数据库检查脚本" -ForegroundColor Yellow

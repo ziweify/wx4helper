@@ -119,7 +119,7 @@ namespace zhaocaimao
                 try
                 {
                     logService = ServiceProvider.GetRequiredService<ILogService>();
-                    logService.Info("Program", "应用程序启动");
+                    logService.Info("Program", "系统启动中");
                 }
                 catch (Exception ex)
                 {
@@ -136,7 +136,7 @@ namespace zhaocaimao
                     {
                         dispatcher.RegisterHandler(handler);
                     }
-                    logService.Info("Program", "消息处理器注册完成");
+                    logService.Info("Program", "消息路由配置完成");
                 }
                 catch (Exception ex)
                 {
@@ -158,7 +158,7 @@ namespace zhaocaimao
 
                 if (loginForm.ShowDialog() == DialogResult.OK)
                 {
-                    logService.Info("Program", "用户登录成功");
+                    logService.Info("Program", "登录验证通过");
                     
                     // 登录成功，显示主窗口
                     try

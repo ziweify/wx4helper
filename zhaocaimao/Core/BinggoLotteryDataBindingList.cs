@@ -32,28 +32,28 @@ namespace zhaocaimao.Core
             {
                 // 尝试查询表，如果列不匹配会抛出异常
                 var testQuery = _db.Table<BinggoLotteryData>().Take(1).ToList();
-                _logService.Info("BinggoLotteryDataBindingList", "✅ 表结构验证通过");
+                _logService.Info("LotteryData", "数据表验证通过");
             }
             catch (Exception ex)
             {
-                _logService.Warning("BinggoLotteryDataBindingList", 
-                    $"表结构不匹配或表不存在，尝试重建: {ex.Message}");
+                _logService.Warning("LotteryData", 
+                    $"表结构异常，准备重建: {ex.Message}");
                 
                 try
                 {
                     // 删除旧表
                     _db.Execute("DROP TABLE IF EXISTS BinggoLotteryData");
-                    _logService.Info("BinggoLotteryDataBindingList", "🗑️ 已删除旧表");
+                    _logService.Info("LotteryData", "旧表已清理");
                 }
                 catch (Exception dropEx)
                 {
-                    _logService.Warning("BinggoLotteryDataBindingList", $"删除旧表失败: {dropEx.Message}");
+                    _logService.Warning("LotteryData", $"清理旧表失败: {dropEx.Message}");
                 }
             }
             
             // 创建或重建表
             _db.CreateTable<BinggoLotteryData>();
-            _logService.Info("BinggoLotteryDataBindingList", "✅ 表已创建或更新");
+            _logService.Info("LotteryData", "数据表初始化完成");
             
             // 启用通知
             AllowEdit = true;
@@ -93,11 +93,11 @@ namespace zhaocaimao.Core
                         data.PropertyChanged += OnDataPropertyChanged;
                     }
                     
-                    _logService.Info("BinggoLotteryDataBindingList", $"从数据库加载 {dataList.Count} 期数据");
+                    _logService.Info("LotteryData", $"已加载 {dataList.Count} 条记录");
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryDataBindingList", $"加载数据失败: {ex.Message}", ex);
+                    _logService.Error("LotteryData", $"数据加载失败: {ex.Message}", ex);
                 }
             }
         }
@@ -124,8 +124,8 @@ namespace zhaocaimao.Core
                         // 保存到数据库
                         _db.Update(existing);
                         
-                        _logService.Info("BinggoLotteryDataBindingList", 
-                            $"更新开奖数据: {data.ToLotteryString()}");
+                        _logService.Info("LotteryData", 
+                            $"数据已更新: {data.ToLotteryString()}");
                         
                         // 触发列表变更事件
                         ResetBindings();
@@ -138,8 +138,8 @@ namespace zhaocaimao.Core
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryDataBindingList", 
-                        $"添加或更新数据失败: {ex.Message}", ex);
+                    _logService.Error("LotteryData", 
+                        $"数据操作失败: {ex.Message}", ex);
                 }
             }
         }
@@ -163,8 +163,8 @@ namespace zhaocaimao.Core
                         _db.Insert(item);
                         item.Id = (int)_db.ExecuteScalar<long>("SELECT last_insert_rowid()");
                         
-                        _logService.Info("BinggoLotteryDataBindingList", 
-                            $"💾 新增开奖数据: {item.IssueId}");
+                        _logService.Info("LotteryData", 
+                            $"新增记录: {item.IssueId}");
                     }
                     else
                     {
@@ -172,8 +172,8 @@ namespace zhaocaimao.Core
                         item.Id = existing.Id;
                         _db.Update(item);
                         
-                        _logService.Info("BinggoLotteryDataBindingList", 
-                            $"🔄 更新开奖数据: {item.IssueId}");
+                        _logService.Info("LotteryData", 
+                            $"数据同步: {item.IssueId}");
                     }
                     
                     base.InsertItem(index, item);
@@ -183,8 +183,8 @@ namespace zhaocaimao.Core
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryDataBindingList", 
-                        $"插入数据失败: {ex.Message}", ex);
+                    _logService.Error("LotteryData", 
+                        $"数据写入失败: {ex.Message}", ex);
                 }
             }
         }
@@ -201,16 +201,16 @@ namespace zhaocaimao.Core
                     if (item.Id > 0)
                     {
                         _db.Update(item);
-                        _logService.Info("BinggoLotteryDataBindingList", 
-                            $"📝 修改开奖数据: {item.IssueId}");
+                        _logService.Info("LotteryData", 
+                            $"记录变更: {item.IssueId}");
                     }
                     
                     base.SetItem(index, item);
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryDataBindingList", 
-                        $"修改数据失败: {ex.Message}", ex);
+                    _logService.Error("LotteryData", 
+                        $"数据更新失败: {ex.Message}", ex);
                 }
             }
         }
@@ -227,12 +227,12 @@ namespace zhaocaimao.Core
                     try
                     {
                         _db.Update(data);
-                        _logService.Info("BinggoLotteryDataBindingList", 
-                            $"🔄 自动保存: {data.IssueId} (修改字段: {e.PropertyName})");
+                        _logService.Info("LotteryData", 
+                            $"属性变更已保存: {data.IssueId} ({e.PropertyName})");
                     }
                     catch (Exception ex)
                     {
-                        _logService.Warning("BinggoLotteryDataBindingList", 
+                        _logService.Warning("LotteryData", 
                             $"自动保存失败: {ex.Message}");
                     }
                 }

@@ -3,7 +3,7 @@ using System;
 namespace zhaocaimao.Models.Api
 {
     /// <summary>
-    /// 白胜系统 API 用户
+    /// API 用户信息
     /// 🔥 完全参考 F5BotV2 的 BoterLoginReponse
     /// 
     /// 用于系统级认证，包含登录凭证和权限信息

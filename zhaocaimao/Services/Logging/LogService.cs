@@ -32,7 +32,7 @@ namespace zhaocaimao.Services.Logging
             // 🔥 使用 AppData\Local 目录，无需管理员权限
             var dataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "BaiShengVx3Plus",
+                "ZhaoCaiMao",
                 "Data");
             Directory.CreateDirectory(dataDir);
             _dbPath = Path.Combine(dataDir, "logs.db");
@@ -48,7 +48,7 @@ namespace zhaocaimao.Services.Logging
             };
             _consumerThread.Start();
 
-            Info("LogService", "日志服务已启动");
+            Info("LogService", "日志系统初始化完成");
         }
 
         // ========================================

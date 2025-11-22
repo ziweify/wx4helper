@@ -9,7 +9,7 @@ namespace zhaocaimao.Utils
     public static class PasswordHelper
     {
         // 简单的混淆密钥（防止明文存储）
-        private const string Salt = "BaiSheng_Vx3Plus_2024";
+        private const string Salt = "ZhaoCaiMao_2024";
         
         /// <summary>
         /// 加密密码（Base64 + 简单XOR）

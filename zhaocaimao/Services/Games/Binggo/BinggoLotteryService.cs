@@ -100,11 +100,11 @@ namespace zhaocaimao.Services.Games.Binggo
             // 🔥 验证声音服务注入
             if (_soundService == null)
             {
-                _logService.Warning("BinggoLotteryService", "⚠️ 声音服务未注入！封盘、开奖等声音将无法播放");
+                _logService.Warning("LotteryService", "声音服务未配置");
             }
             else
             {
-                _logService.Info("BinggoLotteryService", "✅ 声音服务已注入");
+                _logService.Info("LotteryService", "声音服务已就绪");
             }
         }
         
@@ -118,7 +118,7 @@ namespace zhaocaimao.Services.Games.Binggo
             if (!_configService.GetIsOrdersTaskingEnabled() && 
                 _configService.Get收单关闭时不发送系统消息())
             {
-                _logService.Debug("BinggoLotteryService", "⏸️ 收单已关闭且设置了不发送系统消息，跳过发送");
+                _logService.Debug("LotteryService", "收单关闭，跳过系统消息");
                 return false;
             }
             return true;
@@ -144,7 +144,7 @@ namespace zhaocaimao.Services.Games.Binggo
             _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 设置上下分 BindingList
             _statisticsService = statisticsService;  // 🔥 设置统计服务
             
-            _logService.Info("BinggoLotteryService", 
+            _logService.Info("LotteryService", 
                 $"✅ 业务依赖已设置 - 统计服务: {(statisticsService != null ? "已设置" : "null")}");
         }
         
@@ -157,7 +157,7 @@ namespace zhaocaimao.Services.Games.Binggo
             if (_db != null)
             {
                 _db.CreateTable<Models.V2CreditWithdraw>();
-                _logService.Info("BinggoLotteryService", "✅ 上下分数据库已设置");
+                _logService.Info("LotteryService", "✅ 上下分数据库已设置");
             }
         }
         
@@ -168,7 +168,7 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             _db = db;
             _db?.CreateTable<BinggoLotteryData>();
-            _logService.Info("BinggoLotteryService", "数据库已设置，开奖数据表已创建");
+            _logService.Info("LotteryService", "数据库已设置，开奖数据表已创建");
         }
         
         /// <summary>
@@ -177,25 +177,25 @@ namespace zhaocaimao.Services.Games.Binggo
         public void SetBindingList(BinggoLotteryDataBindingList? bindingList)
         {
             _bindingList = bindingList;
-            _logService.Info("BinggoLotteryService", "BindingList 已设置，开奖数据将自动更新到 UI");
+            _logService.Info("LotteryService", "BindingList 已设置，开奖数据将自动更新到 UI");
         }
         
         public async Task StartAsync()
         {
             if (_isRunning)
             {
-                _logService.Warning("BinggoLotteryService", "服务已在运行中");
+                _logService.Warning("LotteryService", "服务已在运行中");
                 return;
             }
             
             // 🔥 防御性检查：确保数据库已设置
             if (_db == null)
             {
-                _logService.Error("BinggoLotteryService", "❌ 数据库未设置，无法启动服务！请先调用 SetDatabase()");
+                _logService.Error("LotteryService", "❌ 数据库未设置，无法启动服务！请先调用 SetDatabase()");
                 return;
             }
             
-            _logService.Info("BinggoLotteryService", "🚀 开奖服务启动");
+            _logService.Info("LotteryService", "🚀 开奖服务启动");
             _isRunning = true;
             
             // 立即执行一次
@@ -212,12 +212,12 @@ namespace zhaocaimao.Services.Games.Binggo
             // 🔥 启动开奖队列检查线程（参考 F5BotV2）
             _queueCheckCts = new CancellationTokenSource();
             _queueCheckTask = Task.Run(() => CheckLotteryQueueAsync(_queueCheckCts.Token), _queueCheckCts.Token);
-            _logService.Info("BinggoLotteryService", "✅ 开奖队列检查线程已启动");
+            _logService.Info("LotteryService", "✅ 开奖队列检查线程已启动");
         }
         
         public Task StopAsync()
         {
-            _logService.Info("BinggoLotteryService", "🛑 开奖服务停止");
+            _logService.Info("LotteryService", "🛑 开奖服务停止");
             _isRunning = false;
             _timer?.Dispose();
             _timer = null;
@@ -232,7 +232,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 }
                 catch (Exception ex)
                 {
-                    _logService.Warning("BinggoLotteryService", $"停止队列检查线程异常: {ex.Message}");
+                    _logService.Warning("LotteryService", $"停止队列检查线程异常: {ex.Message}");
                 }
             }
             _queueCheckCts?.Dispose();
@@ -274,11 +274,11 @@ namespace zhaocaimao.Services.Games.Binggo
                         {
                             // 🔥 首次初始化：计算上一期
                             previousIssueId = BinggoTimeHelper.GetPreviousIssueId(localIssueId);
-                            _logService.Info("BinggoLotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
+                            _logService.Info("LotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
                         }
                         else
                         {
-                            _logService.Info("BinggoLotteryService", $"🔄 期号变更: {previousIssueId} → {localIssueId}");
+                            _logService.Info("LotteryService", $"🔄 期号变更: {previousIssueId} → {localIssueId}");
                         }
                         
                         // 🔥 统一的期号切换流程（首次初始化和期号变更都走这里）
@@ -302,7 +302,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"定时器执行异常: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"定时器执行异常: {ex.Message}", ex);
             }
         }
         
@@ -315,7 +315,7 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             try
             {
-                _logService.Info("BinggoLotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
+                _logService.Info("LotteryService", $"🔄 期号变更: {oldIssueId} → {newIssueId}");
                 
                 // 🔥 期号变更时，重置开盘消息发送标志（新期号可以发送"线下开始"消息）
                 _lastOpeningIssueId = 0;
@@ -327,9 +327,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     OpenTime = BinggoTimeHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
                 };
                 
-                _logService.Info("BinggoLotteryService", $"📢 期号变更事件: 当期={newIssueId}, 上期={oldIssueId}");
-                _logService.Info("BinggoLotteryService", $"   当期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
-                _logService.Info("BinggoLotteryService", $"   上期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
+                _logService.Info("LotteryService", $"📢 期号变更事件: 当期={newIssueId}, 上期={oldIssueId}");
+                _logService.Info("LotteryService", $"   当期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
+                _logService.Info("LotteryService", $"   上期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
                 
                 // 🔥 触发期号变更事件（同时传递当期和上期数据）
                 IssueChanged?.Invoke(this, new BinggoIssueChangedEventArgs
@@ -343,7 +343,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 创建一个空的 BinggoLotteryData 对象，IssueId 为 0 表示还未获取到开奖数据
                 var queueData = new BinggoLotteryData { IssueId = 0 };
                 _lotteryQueue.AddOrUpdate(oldIssueId, queueData, (key, oldValue) => queueData);
-                _logService.Info("BinggoLotteryService", $"📥 期号 {oldIssueId} 已加入开奖队列");
+                _logService.Info("LotteryService", $"📥 期号 {oldIssueId} 已加入开奖队列");
                 
                 // 🔥 期号变更时，如果上一期还没开奖，状态设置为"开奖中"（参考 F5BotV2 第983行 On开奖中）
                 // 检查上一期是否已开奖
@@ -353,7 +353,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 上一期还没开奖，状态设置为"开奖中"
                     var oldStatus = _currentStatus;
                     _currentStatus = BinggoLotteryStatus.开奖中;
-                    _logService.Info("BinggoLotteryService", $"🎲 上一期({oldIssueId})尚未开奖，状态设置为: 开奖中");
+                    _logService.Info("LotteryService", $"🎲 上一期({oldIssueId})尚未开奖，状态设置为: 开奖中");
                     
                     StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
                     {
@@ -370,7 +370,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"期号变更处理异常: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"期号变更处理异常: {ex.Message}", ex);
             }
         }
         
@@ -380,7 +380,7 @@ namespace zhaocaimao.Services.Games.Binggo
         /// </summary>
         private async Task CheckLotteryQueueAsync(CancellationToken cancellationToken)
         {
-            _logService.Info("BinggoLotteryService", "🔄 开奖队列检查线程已启动");
+            _logService.Info("LotteryService", "🔄 开奖队列检查线程已启动");
             
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -400,7 +400,7 @@ namespace zhaocaimao.Services.Games.Binggo
                             // 参考 F5BotV2: if(item.Key != item.Value.IssueId)
                             if (queueData.IssueId == 0 || queueData.IssueId != queueIssueId || !queueData.IsOpened)
                             {
-                                _logService.Info("BinggoLotteryService", $"📡 检查开奖队列: 期号 {queueIssueId} 尚未开奖，请求API...");
+                                _logService.Info("LotteryService", $"📡 检查开奖队列: 期号 {queueIssueId} 尚未开奖，请求API...");
                                 
                                 // 🔥 调用API获取开奖数据
                                 var api = Services.Api.BoterApi.GetInstance();
@@ -410,7 +410,7 @@ namespace zhaocaimao.Services.Games.Binggo
                                 {
                                     var openedData = response.Data;
                                     
-                                    _logService.Info("BinggoLotteryService", $"✅ 获取到开奖数据: {queueIssueId} - {openedData.ToLotteryString()}");
+                                    _logService.Info("LotteryService", $"✅ 获取到开奖数据: {queueIssueId} - {openedData.ToLotteryString()}");
                                     
                                     // 从队列中移除
                                     _lotteryQueue.TryRemove(queueIssueId, out _);
@@ -426,7 +426,7 @@ namespace zhaocaimao.Services.Games.Binggo
                                         catch (SQLite.SQLiteException ex) when (ex.Message.Contains("no such table"))
                                         {
                                             // 🔥 表不存在（可能是数据库刚初始化），忽略错误
-                                            _logService.Warning("BinggoLotteryService", $"保存开奖数据失败，表不存在: {ex.Message}");
+                                            _logService.Warning("LotteryService", $"保存开奖数据失败，表不存在: {ex.Message}");
                                         }
                                     }
                                     
@@ -440,7 +440,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     {
                         var oldStatus = _currentStatus;
                         _currentStatus = BinggoLotteryStatus.等待中;
-                        _logService.Info("BinggoLotteryService", $"✅ 开奖完成，状态从'开奖中'变为'等待中'");
+                        _logService.Info("LotteryService", $"✅ 开奖完成，状态从'开奖中'变为'等待中'");
                         
                         StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
                         {
@@ -458,14 +458,14 @@ namespace zhaocaimao.Services.Games.Binggo
                                 }
                                 else
                                 {
-                                    _logService.Debug("BinggoLotteryService", $"⏳ 期号 {queueIssueId} 尚未开奖，等待下次检查...");
+                                    _logService.Debug("LotteryService", $"⏳ 期号 {queueIssueId} 尚未开奖，等待下次检查...");
                                 }
                             }
                             else
                             {
                                 // 已经开奖，从队列中移除
                                 _lotteryQueue.TryRemove(queueIssueId, out _);
-                                _logService.Info("BinggoLotteryService", $"✅ 期号 {queueIssueId} 已开奖，从队列中移除");
+                                _logService.Info("LotteryService", $"✅ 期号 {queueIssueId} 已开奖，从队列中移除");
                             }
                         }
                     }
@@ -475,17 +475,17 @@ namespace zhaocaimao.Services.Games.Binggo
                 }
                 catch (OperationCanceledException)
                 {
-                    _logService.Info("BinggoLotteryService", "🛑 开奖队列检查线程已取消");
+                    _logService.Info("LotteryService", "🛑 开奖队列检查线程已取消");
                     break;
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryService", $"开奖队列检查异常: {ex.Message}", ex);
+                    _logService.Error("LotteryService", $"开奖队列检查异常: {ex.Message}", ex);
                     await Task.Delay(1000, cancellationToken); // 异常时等待1秒后继续
                 }
             }
             
-            _logService.Info("BinggoLotteryService", "🛑 开奖队列检查线程已退出");
+            _logService.Info("LotteryService", "🛑 开奖队列检查线程已退出");
         }
         
         /// <summary>
@@ -509,7 +509,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发（参考 F5BotV2）
                 if (data != null && !string.IsNullOrEmpty(data.LotteryData))
                 {
-                    _logService.Info("BinggoLotteryService", $"💾 本地已有开奖数据: {issueId}");
+                    _logService.Info("LotteryService", $"💾 本地已有开奖数据: {issueId}");
                     // 如果该期号在队列中，队列检查线程会自动处理并触发开奖事件
                     return;
                 }
@@ -521,7 +521,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 while (retryCount < maxRetries)
                 {
-                    _logService.Info("BinggoLotteryService", $"📡 第 {retryCount + 1}/{maxRetries} 次请求开奖数据: {issueId}");
+                    _logService.Info("LotteryService", $"📡 第 {retryCount + 1}/{maxRetries} 次请求开奖数据: {issueId}");
                     
                     // 🔥 使用 BoterApi 单例
                     var api = Services.Api.BoterApi.GetInstance();
@@ -537,7 +537,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         {
                             _db.InsertOrReplace(data);
                             _bindingList?.LoadFromDatabase(100);
-                            _logService.Info("BinggoLotteryService", $"✅ 开奖数据已保存: {issueId} - {data.ToLotteryString()}");
+                            _logService.Info("LotteryService", $"✅ 开奖数据已保存: {issueId} - {data.ToLotteryString()}");
                         }
                         
                         // 🔥 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发（参考 F5BotV2）
@@ -550,16 +550,16 @@ namespace zhaocaimao.Services.Games.Binggo
                     retryCount++;
                     if (retryCount < maxRetries)
                     {
-                        _logService.Info("BinggoLotteryService", $"⏳ 暂无开奖数据，{retryIntervalSeconds}秒后重试...");
+                        _logService.Info("LotteryService", $"⏳ 暂无开奖数据，{retryIntervalSeconds}秒后重试...");
                         await Task.Delay(retryIntervalSeconds * 1000);
                     }
                 }
                 
-                _logService.Warning("BinggoLotteryService", $"❌ 轮询超时，未能获取开奖数据: {issueId}");
+                _logService.Warning("LotteryService", $"❌ 轮询超时，未能获取开奖数据: {issueId}");
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"加载开奖数据异常: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"加载开奖数据异常: {ex.Message}", ex);
             }
         }
         
@@ -606,7 +606,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 只在第一次进入"等待中"状态时记录日志（避免重复日志）
                 if (oldStatus != BinggoLotteryStatus.等待中)
                 {
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"⏳ 进入等待中状态: 期号 {_currentIssueId}, 剩余时间 {secondsToSeal}秒（超过5分钟，不允许投注）");
                 }
             }
@@ -621,7 +621,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 if (secondsToSeal < 30 && !_reminded30Seconds)
                 {
                     _reminded30Seconds = true;
-                    _logService.Info("BinggoLotteryService", $"⏰ 30秒提醒: 期号 {_currentIssueId}");
+                    _logService.Info("LotteryService", $"⏰ 30秒提醒: 期号 {_currentIssueId}");
                     
                     // 🔥 直接发送提醒消息到群（参考 F5BotV2 第1008行）- 异步执行
                     _ = Task.Run(async () => await SendSealingReminderAsync(_currentIssueId, 30));
@@ -633,7 +633,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 if (secondsToSeal < 15 && !_reminded15Seconds)
                 {
                     _reminded15Seconds = true;
-                    _logService.Info("BinggoLotteryService", $"⏰ 15秒提醒: 期号 {_currentIssueId}");
+                    _logService.Info("LotteryService", $"⏰ 15秒提醒: 期号 {_currentIssueId}");
                     
                     // 🔥 直接发送提醒消息到群（参考 F5BotV2 第1013行）- 异步执行
                     _ = Task.Run(async () => await SendSealingReminderAsync(_currentIssueId, 15));
@@ -662,7 +662,7 @@ namespace zhaocaimao.Services.Games.Binggo
             if (newStatus != oldStatus)
             {
                 _currentStatus = newStatus;
-                _logService.Info("BinggoLotteryService", $"🔔 状态变更: {oldStatus} → {newStatus}");
+                _logService.Info("LotteryService", $"🔔 状态变更: {oldStatus} → {newStatus}");
                 
                 StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
                 {
@@ -717,19 +717,19 @@ namespace zhaocaimao.Services.Games.Binggo
                         
                         if (local != null)
                         {
-                            _logService.Info("BinggoLotteryService", $"✓ 从本地缓存获取期号 {issueId} 数据");
+                            _logService.Info("LotteryService", $"✓ 从本地缓存获取期号 {issueId} 数据");
                             return local;
                         }
                     }
                     catch (SQLite.SQLiteException ex) when (ex.Message.Contains("no such table"))
                     {
                         // 🔥 表不存在（可能是数据库刚初始化），忽略错误，直接从网络获取
-                        _logService.Warning("BinggoLotteryService", $"本地数据库表不存在，跳过本地查询，从网络获取: {ex.Message}");
+                        _logService.Warning("LotteryService", $"本地数据库表不存在，跳过本地查询，从网络获取: {ex.Message}");
                     }
                 }
                 
                 // 步骤2: 本地没有，从网络获取
-                _logService.Info("BinggoLotteryService", $"🌐 从网络获取期号 {issueId} 数据");
+                _logService.Info("LotteryService", $"🌐 从网络获取期号 {issueId} 数据");
                 
                 // 🔥 使用 BoterApi 单例
                 var api = Services.Api.BoterApi.GetInstance();
@@ -742,12 +742,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     return response.Data;
                 }
                 
-                _logService.Warning("BinggoLotteryService", $"期号 {issueId} 数据不存在或未开奖");
+                _logService.Warning("LotteryService", $"期号 {issueId} 数据不存在或未开奖");
                 return null;
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"获取期号 {issueId} 数据失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"获取期号 {issueId} 数据失败: {ex.Message}", ex);
                 return null;
             }
         }
@@ -759,7 +759,7 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             try
             {
-                _logService.Info("BinggoLotteryService", $"开始从 API 获取最近 {count} 期数据...");
+                _logService.Info("LotteryService", $"开始从 API 获取最近 {count} 期数据...");
                 
                 // 🔥 直接使用 BoterApi 单例（完全参考 F5BotV2）
                 var api = Services.Api.BoterApi.GetInstance();
@@ -768,7 +768,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 BoterApi 已经返回解析好的 List<BinggoLotteryData>，无需再转换
                 if (response.Code == 0 && response.Data != null && response.Data.Count > 0)
                 {
-                    _logService.Info("BinggoLotteryService", $"✅ API 返回 {response.Data.Count} 期数据");
+                    _logService.Info("LotteryService", $"✅ API 返回 {response.Data.Count} 期数据");
                     
                     // 保存到本地缓存
                     await SaveLotteryDataListAsync(response.Data);
@@ -780,7 +780,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 }
                 else
                 {
-                    _logService.Warning("BinggoLotteryService", 
+                    _logService.Warning("LotteryService", 
                         $"❌ API 返回失败: Code={response.Code}, Msg={response.Msg}");
                 }
                 
@@ -797,7 +797,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         .Take(count)
                         .ToList();
                     
-                    _logService.Info("BinggoLotteryService", $"📂 从本地缓存获取 {local.Count} 期数据");
+                    _logService.Info("LotteryService", $"📂 从本地缓存获取 {local.Count} 期数据");
                     
                     // 🔥 同样检查上期数据
                     CheckAndNotifyLastIssue(local);
@@ -809,7 +809,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"获取最近 {count} 期数据失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"获取最近 {count} 期数据失败: {ex.Message}", ex);
                 
                 // 异常时尝试从本地读取
                 if (_db != null)
@@ -826,7 +826,7 @@ namespace zhaocaimao.Services.Games.Binggo
                             .Take(count)
                             .ToList();
                         
-                        _logService.Info("BinggoLotteryService", $"📂 异常恢复：从本地缓存获取 {local.Count} 期数据");
+                        _logService.Info("LotteryService", $"📂 异常恢复：从本地缓存获取 {local.Count} 期数据");
                         
                         // 🔥 同样检查上期数据
                         CheckAndNotifyLastIssue(local);
@@ -835,7 +835,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     catch (Exception dbEx)
                     {
-                        _logService.Error("BinggoLotteryService", $"从本地读取也失败: {dbEx.Message}", dbEx);
+                        _logService.Error("LotteryService", $"从本地读取也失败: {dbEx.Message}", dbEx);
                     }
                 }
                 
@@ -863,7 +863,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 if (lastData != null && lastData.IsOpened)
                 {
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"🎲 发现上期已开奖数据: {lastIssueId} - {lastData.ToLotteryString()}");
                     
                     // 🔥 注意：不在这里触发开奖事件，开奖事件只由队列检查线程触发（参考 F5BotV2）
@@ -871,13 +871,13 @@ namespace zhaocaimao.Services.Games.Binggo
                 }
                 else
                 {
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"⏳ 上期数据未开奖或未找到: {lastIssueId}");
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"检查上期数据异常: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"检查上期数据异常: {ex.Message}", ex);
             }
         }
         
@@ -892,7 +892,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 int issueId = data.IssueId;
                 int issueidLite = issueId % 1000;  // 期号后3位（参考 F5BotV2: issueid_lite = data.IssueId % 1000）
                 
-                _logService.Info("BinggoLotteryService", $"🎲 开奖处理: {issueId} - {data.ToLotteryString()}");
+                _logService.Info("LotteryService", $"🎲 开奖处理: {issueId} - {data.ToLotteryString()}");
                 
                 // 🔥 播放开奖声音（参考 F5BotV2 第1411行）
                 _soundService?.PlayLotterySound();
@@ -901,7 +901,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 查询条件：期号匹配，且不是已取消/未知状态
                 // 🔥 重要：托单也要正常发送到微信（显示在中~名单和留~名单中）
                 var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
-                _logService.Info("BinggoLotteryService", $"📋 订单列表总数: {allOrders.Count}");
+                _logService.Info("LotteryService", $"📋 订单列表总数: {allOrders.Count}");
                 
                 var orders = allOrders
                     .Where(o => o.IssueId == issueId 
@@ -909,12 +909,12 @@ namespace zhaocaimao.Services.Games.Binggo
                         && o.OrderStatus != OrderStatus.未知)
                     .ToList();
                 
-                _logService.Info("BinggoLotteryService", $"📋 期号 {issueId} 的待结算订单数: {orders.Count}");
+                _logService.Info("LotteryService", $"📋 期号 {issueId} 的待结算订单数: {orders.Count}");
                 if (orders.Count > 0)
                 {
                     foreach (var o in orders)
                     {
-                        _logService.Info("BinggoLotteryService", 
+                        _logService.Info("LotteryService", 
                             $"  订单ID={o.Id}, 状态={o.OrderStatus}, 类型={o.OrderType}, 期号={o.IssueId}, 金额={o.AmountTotal}");
                     }
                 }
@@ -961,7 +961,7 @@ namespace zhaocaimao.Services.Games.Binggo
 
                     if (orders.Count > 0)
                     {
-                        _logService.Info("BinggoLotteryService", $"✅ 结算完成: {orders.Count} 单");
+                        _logService.Info("LotteryService", $"✅ 结算完成: {orders.Count} 单");
                     }
                 }
 
@@ -986,11 +986,11 @@ namespace zhaocaimao.Services.Games.Binggo
                     
                     // 🔥 标记该期号已结算完成（发送了中~名单和留~名单）
                     _lastSettledIssueId = issueId;
-                    _logService.Info("BinggoLotteryService", $"✅ 期号 {issueId} 结算完成，已发送中~名单和留~名单");
+                    _logService.Info("LotteryService", $"✅ 期号 {issueId} 结算完成，已发送中~名单和留~名单");
                 }
                 else
                 {
-                    _logService.Info("BinggoLotteryService", "未绑定群或微信未登录，跳过发送结算消息");
+                    _logService.Info("LotteryService", "未绑定群或微信未登录，跳过发送结算消息");
                 }
 
                 
@@ -1005,7 +1005,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"开奖处理失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"开奖处理失败: {ex.Message}", ex);
             }
         }
         
@@ -1058,11 +1058,11 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                 }
                 
-                _logService.Info("BinggoLotteryService", $"📤 发送中奖名单到群: {groupWxId}");
+                _logService.Info("LotteryService", $"📤 发送中奖名单到群: {groupWxId}");
                 var response1 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, winningMessage.ToString());
                 if (response1 != null)
                 {
-                    _logService.Info("BinggoLotteryService", "✅ 中奖名单已发送");
+                    _logService.Info("LotteryService", "✅ 中奖名单已发送");
                 }
                 
                 // 🔥 发送留分名单（参考 F5BotV2 第 1464-1474 行）
@@ -1085,36 +1085,36 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                 }
                 
-                _logService.Info("BinggoLotteryService", $"📤 发送留分名单到群: {groupWxId}");
+                _logService.Info("LotteryService", $"📤 发送留分名单到群: {groupWxId}");
                 var response2 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, balanceMessage.ToString());
                 if (response2 != null)
                 {
-                    _logService.Info("BinggoLotteryService", "✅ 留分名单已发送");
+                    _logService.Info("LotteryService", "✅ 留分名单已发送");
                 }
                 
                 // 🔥 重要：增加延迟，确保消息真正发送到微信群（参考 F5BotV2 的消息发送机制）
                 // 这样可以确保下一期的"线下开始"消息不会在"留~名单"之前发送
                 await Task.Delay(1000);  // 延迟1秒，确保消息顺序正确
-                _logService.Info("BinggoLotteryService", "✅ 结算消息发送完成，已等待1秒确保消息顺序");
+                _logService.Info("LotteryService", "✅ 结算消息发送完成，已等待1秒确保消息顺序");
                 
                 // 🔥 检查是否是今日最后一期（参考 F5BotV2 第 1482-1488 行）
                 int dayIndex = Helpers.BinggoHelper.GetDayIndex(issueId);
                 if (dayIndex == 203)
                 {
-                    _logService.Info("BinggoLotteryService", "今日最后一期，发送结束消息");
+                    _logService.Info("LotteryService", "今日最后一期，发送结束消息");
                     var endMessage = "各位客官今日份结束咯。\r";
                     await _socketClient!.SendAsync<object>("SendMessage", groupWxId, endMessage);
                     
                     // 🔥 最后一期结算后，发送最新的开奖图片（参考 F5BotV2）
                     // 本来应该在"开奖中"发送，但最后一期开奖后状态变为"等待中"，所以在这里发送
-                    _logService.Info("BinggoLotteryService", "今日最后一期，发送开奖图片");
+                    _logService.Info("LotteryService", "今日最后一期，发送开奖图片");
                     await Task.Delay(500);  // 延迟500ms，确保结束消息先发送
                     await SendHistoryLotteryImageAsync(issueId, groupWxId);
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"发送结算消息失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"发送结算消息失败: {ex.Message}", ex);
             }
         }
         
@@ -1134,7 +1134,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 1. 处理查询命令（查、流水、货单）- 参考 F5BotV2 第2174行
                 if (msg == "查" || msg == "流水" || msg == "货单")
                 {
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"📋 收到查询命令: 会员={member.Nickname}({member.Wxid}), 消息内容=[{msg}], 长度={msg.Length}");
                     
                     // 🔥 格式完全按照 F5BotV2 第2177-2180行（字节级别一致）
@@ -1145,9 +1145,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 🔥 F5BotV2 使用 Zsxs 配置决定是否显示整数，这里默认使用整数格式（与 F5BotV2 默认一致）
                     sendTxt = sendTxt + $"今日盈亏:" + ((int)member.IncomeToday).ToString() + "\r";
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"✅ 查询命令处理完成: {member.Nickname} - 今日下注:{member.BetToday}, 盈亏:{member.IncomeToday}, 回复消息长度={sendTxt.Length}");
-                    _logService.Debug("BinggoLotteryService", 
+                    _logService.Debug("LotteryService", 
                         $"📤 查询回复消息内容: {sendTxt.Replace("\r", "\\r")}");
                     
                     return (true, sendTxt, null);
@@ -1161,7 +1161,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     string st1 = match.Groups[1].Value;  // 上/下
                     string st2 = match.Groups[2].Value;  // 金额
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"解析上下分命令: 原始消息='{msg}', 动作='{st1}', 金额字符串='{st2}'");
                     
                     int money = 0;
@@ -1171,17 +1171,17 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     catch
                     {
-                        _logService.Warning("BinggoLotteryService", $"金额解析失败: '{st2}'");
+                        _logService.Warning("LotteryService", $"金额解析失败: '{st2}'");
                         return (true, "请输入正确的金额，例如：上1000 或 下500", null);
                     }
                     
                     if (money <= 0)
                     {
-                        _logService.Warning("BinggoLotteryService", $"金额必须大于0: {money}");
+                        _logService.Warning("LotteryService", $"金额必须大于0: {money}");
                         return (true, "金额必须大于0", null);
                     }
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"✅ 上下分命令解析成功: 动作={st1}, 金额={money}");
                     
                     // 判断是上分还是下分
@@ -1197,7 +1197,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 🔥 创建上下分申请
                     if (_db == null)
                     {
-                        _logService.Warning("BinggoLotteryService", "数据库未初始化，无法创建上下分申请");
+                        _logService.Warning("LotteryService", "数据库未初始化，无法创建上下分申请");
                         return (true, "系统错误，请联系管理员", null);
                     }
                     
@@ -1216,37 +1216,37 @@ namespace zhaocaimao.Services.Games.Binggo
                         Notes = $"会员申请{(isCredit ? "上分" : "下分")}"
                     };
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"创建上下分申请: 会员={member.Nickname}, 动作={(isCredit ? "上分" : "下分")}, 金额={money}");
                     
                     // 🔥 播放声音（参考 F5BotV2 第2597、2599行）
                     // 会员申请上分/下分时播放声音，提醒管理员处理
                     if (isCredit)
                     {
-                        _logService.Info("BinggoLotteryService", $"🔊 准备播放上分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
+                        _logService.Info("LotteryService", $"🔊 准备播放上分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
                         
                         try
                         {
                             _soundService?.PlayCreditUpSound();
-                            _logService.Info("BinggoLotteryService", $"✅ 上分声音播放命令已发送");
+                            _logService.Info("LotteryService", $"✅ 上分声音播放命令已发送");
                         }
                         catch (Exception ex)
                         {
-                            _logService.Error("BinggoLotteryService", $"❌ 播放上分声音失败: {ex.Message}", ex);
+                            _logService.Error("LotteryService", $"❌ 播放上分声音失败: {ex.Message}", ex);
                         }
                     }
                     else
                     {
-                        _logService.Info("BinggoLotteryService", $"🔊 准备播放下分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
+                        _logService.Info("LotteryService", $"🔊 准备播放下分提示声音: _soundService={(_soundService == null ? "null" : "已注入")}");
                         
                         try
                         {
                             _soundService?.PlayCreditDownSound();
-                            _logService.Info("BinggoLotteryService", $"✅ 下分声音播放命令已发送");
+                            _logService.Info("LotteryService", $"✅ 下分声音播放命令已发送");
                         }
                         catch (Exception ex)
                         {
-                            _logService.Error("BinggoLotteryService", $"❌ 播放下分声音失败: {ex.Message}", ex);
+                            _logService.Error("LotteryService", $"❌ 播放下分声音失败: {ex.Message}", ex);
                         }
                     }
                     
@@ -1254,14 +1254,14 @@ namespace zhaocaimao.Services.Games.Binggo
                     if (_creditWithdrawsBindingList != null)
                     {
                         _creditWithdrawsBindingList.Add(request);
-                        _logService.Info("BinggoLotteryService", 
+                        _logService.Info("LotteryService", 
                             $"{(isCredit ? "上分" : "下分")}申请已创建并添加到 BindingList: {member.Nickname} - {money}");
                     }
                     else
                     {
                         // 如果没有 BindingList，直接保存到数据库（兼容旧逻辑）
                         _db.Insert(request);
-                        _logService.Warning("BinggoLotteryService", 
+                        _logService.Warning("LotteryService", 
                             $"上下分 BindingList 未设置，直接保存到数据库: {member.Nickname} - {money}");
                     }
                     
@@ -1311,14 +1311,14 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 🔥 双重验证：确保只能取消当前期的订单（重要！）
                     if (ods.IssueId != _currentIssueId)
                     {
-                        _logService.Error("BinggoLotteryService", 
+                        _logService.Error("LotteryService", 
                             $"❌ 取消订单期号不匹配！订单期号={ods.IssueId} 当前期号={_currentIssueId} 会员={member.Nickname} 订单ID={ods.Id}");
                         // 🔥 简化回复：只显示期号后3位，不显示详细错误信息
                         int issueShort = _currentIssueId % 1000;
                         return (true, $"@{member.Nickname}\r{issueShort}没有可取消的订单", null);
                     }
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"✅ 取消订单验证通过: 会员={member.Nickname} 订单ID={ods.Id} 订单期号={ods.IssueId} 当前期号={_currentIssueId} 金额={ods.AmountTotal}");
                     
                     // 执行取消逻辑
@@ -1330,7 +1330,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     if (member.State != MemberState.管理)
                     {
                         member.Balance += ods.AmountTotal;
-                        _logService.Info("BinggoLotteryService", 
+                        _logService.Info("LotteryService", 
                             $"💰 退款: {member.Nickname} - 退款 {ods.AmountTotal:F2}，退款后余额: {member.Balance:F2}");
                     }
                     
@@ -1341,24 +1341,24 @@ namespace zhaocaimao.Services.Games.Binggo
                     member.BetTotal -= ods.AmountTotal;
                     member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"📊 统计更新: {member.Nickname} - 减掉投注 {ods.AmountTotal:F2} - 今日下注 {member.BetToday:F2}");
                     
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"✅ 取消订单: {member.Nickname} - 期号:{_currentIssueId} - 订单ID:{ods.Id}");
                     
                     // 🔥 更新全局统计（参考 F5BotV2 第680-709行：OnMemberOrderCancel）
                     if (_statisticsService != null && ods.OrderType != OrderType.托)
                     {
-                        _logService.Info("BinggoLotteryService", 
+                        _logService.Info("LotteryService", 
                             $"📊 调用统计服务减掉订单: 订单ID={ods.Id} 金额={ods.AmountTotal} 期号={ods.IssueId}");
                         _statisticsService.OnOrderCanceled(ods);
-                        _logService.Info("BinggoLotteryService", 
+                        _logService.Info("LotteryService", 
                             $"✅ 统计服务已调用: 总注={_statisticsService.BetMoneyTotal} 今投={_statisticsService.BetMoneyToday} 当前={_statisticsService.BetMoneyCur}");
                     }
                     else
                     {
-                        _logService.Warning("BinggoLotteryService", 
+                        _logService.Warning("LotteryService", 
                             $"⚠️ 未调用统计服务: _statisticsService={(_statisticsService != null ? "已设置" : "null")} 订单类型={ods.OrderType}");
                     }
                     
@@ -1387,7 +1387,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 检查期号是否初始化
                 if (_currentIssueId == 0)
                 {
-                    _logService.Warning("BinggoLotteryService", "当前期号未初始化");
+                    _logService.Warning("LotteryService", "当前期号未初始化");
                     return (true, "系统初始化中，请稍后...", null);
                 }
                 
@@ -1397,7 +1397,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     _currentStatus == BinggoLotteryStatus.开奖中 ||
                     _currentStatus == BinggoLotteryStatus.等待中)
                 {
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"❌ 状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
                     // 🔥 格式完全按照 F5BotV2 第2425行：{m.nickname}\r时间未到!不收货!
                     return (true, $"{member.Nickname}\r时间未到!不收货!", null);
@@ -1406,11 +1406,11 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 调用订单服务创建订单
                 if (_orderService == null)
                 {
-                    _logService.Error("BinggoLotteryService", "订单服务未初始化");
+                    _logService.Error("LotteryService", "订单服务未初始化");
                     return (true, "系统错误，请稍后重试", null);
                 }
                 
-                _logService.Info("BinggoLotteryService", 
+                _logService.Info("LotteryService", 
                     $"📝 处理下注请求: {member.Nickname} ({member.Wxid}) - 期号: {_currentIssueId} - 状态: {_currentStatus}");
                 
                 var (success, message, order) = await _orderService.CreateOrderAsync(
@@ -1421,12 +1421,12 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 if (success)
                 {
-                    _logService.Info("BinggoLotteryService", 
+                    _logService.Info("LotteryService", 
                         $"✅ 下注成功: {member.Nickname} - 期号: {_currentIssueId} - 订单ID: {order?.Id}");
                 }
                 else
                 {
-                    _logService.Warning("BinggoLotteryService", 
+                    _logService.Warning("LotteryService", 
                         $"❌ 下注失败: {member.Nickname} - {message}");
                 }
                 
@@ -1434,7 +1434,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", 
+                _logService.Error("LotteryService", 
                     $"处理消息失败: {ex.Message}", ex);
                 return (true, "系统错误，请稍后重试", null);
             }
@@ -1452,11 +1452,11 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 防止同一期号重复发送"线下开始"消息
                 if (_lastOpeningIssueId == issueId)
                 {
-                    _logService.Warning("BinggoLotteryService", $"⚠️ 期号 {issueId} 的'线下开始'消息已发送过，跳过重复发送");
+                    _logService.Warning("LotteryService", $"⚠️ 期号 {issueId} 的'线下开始'消息已发送过，跳过重复发送");
                     return;
                 }
                 
-                _logService.Info("BinggoLotteryService", $"📢 开盘处理: 期号 {issueId}");
+                _logService.Info("LotteryService", $"📢 开盘处理: 期号 {issueId}");
                 
                 // 🔥 检查上一期是否已结算完成（发送了中~名单和留~名单）
                 // 参考 F5BotV2：开奖后状态变为"等待中"，然后在状态循环中变为"开盘中"时发送
@@ -1465,9 +1465,9 @@ namespace zhaocaimao.Services.Games.Binggo
                 int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
                 if (_lastSettledIssueId < previousIssueId)
                 {
-                    _logService.Warning("BinggoLotteryService", 
+                    _logService.Warning("LotteryService", 
                         $"⚠️ 上一期 {previousIssueId} 尚未结算完成（已结算期号：{_lastSettledIssueId}），跳过发送本期 {issueId} 的'线下开始'消息");
-                    _logService.Warning("BinggoLotteryService", 
+                    _logService.Warning("LotteryService", 
                         $"⚠️ 等待上一期开奖并结算完成后，下次 tick 时再发送'线下开始'消息");
                     
                     // 🔥 直接返回，不发送"线下开始"消息
@@ -1490,14 +1490,14 @@ namespace zhaocaimao.Services.Games.Binggo
                         int issueShort = issueId % 1000;
                         string message = $"第{issueShort}队\r---------线下开始---------";
                         
-                        _logService.Info("BinggoLotteryService", $"📢 发送开盘提示: {groupWxId} - {message}");
+                        _logService.Info("LotteryService", $"📢 发送开盘提示: {groupWxId} - {message}");
                         
                         var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
                         if (response != null)
                         {
                             // 🔥 标记该期号已发送过"线下开始"消息
                             _lastOpeningIssueId = issueId;
-                            _logService.Info("BinggoLotteryService", $"✅ 开盘提示已发送: {message}");
+                            _logService.Info("LotteryService", $"✅ 开盘提示已发送: {message}");
                         }
                         
                         // 🔥 重要：增加延迟，确保"线下开始"消息先到达微信群，然后再发送图片
@@ -1510,7 +1510,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"开盘处理失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"开盘处理失败: {ex.Message}", ex);
             }
         }
         
@@ -1524,7 +1524,7 @@ namespace zhaocaimao.Services.Games.Binggo
             {
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
-                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送历史记录图片");
+                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送历史记录图片");
                     return;
                 }
                 
@@ -1534,7 +1534,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     return;
                 }
                 
-                _logService.Info("BinggoLotteryService", $"📊 开始生成历史记录图片: 期号 {issueId}");
+                _logService.Info("LotteryService", $"📊 开始生成历史记录图片: 期号 {issueId}");
                 
                 // 🔥 最多重试5次生成图片（参考 F5BotV2 第1185行）
                 for (int retry = 0; retry < 5; retry++)
@@ -1547,7 +1547,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         
                         if (response.Code != 0 || response.Data == null || response.Data.Count == 0)
                         {
-                            _logService.Warning("BinggoLotteryService", $"获取历史数据失败，重试 {retry + 1}/5");
+                            _logService.Warning("LotteryService", $"获取历史数据失败，重试 {retry + 1}/5");
                             await Task.Delay(500);  // 等待500ms后重试
                             continue;
                         }
@@ -1563,31 +1563,31 @@ namespace zhaocaimao.Services.Games.Binggo
                             try
                             {
                                 Directory.CreateDirectory(dataDir);
-                                _logService.Info("BinggoLotteryService", $"创建图片目录: {dataDir}");
+                                _logService.Info("LotteryService", $"创建图片目录: {dataDir}");
                             }
                             catch (UnauthorizedAccessException ex)
                             {
-                                _logService.Error("BinggoLotteryService", $"创建目录失败，需要管理员权限: {ex.Message}");
+                                _logService.Error("LotteryService", $"创建目录失败，需要管理员权限: {ex.Message}");
                                 throw new Exception("需要管理员权限才能在C盘根目录创建文件夹，请以管理员身份运行程序");
                             }
                         }
                         
                         string imagePath = Path.Combine(dataDir, $"img_{issueId}.jpg");
-                        _logService.Info("BinggoLotteryService", $"图片保存路径: {imagePath}");
+                        _logService.Info("LotteryService", $"图片保存路径: {imagePath}");
                         
                         bool imageCreated = await CreateLotteryImageAsync(response.Data, imagePath);
                         
                         // 🔥 防御性编程：严格检查图片是否生成成功
                         if (!imageCreated)
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片生成失败（返回false），重试 {retry + 1}/5");
+                            _logService.Warning("LotteryService", $"图片生成失败（返回false），重试 {retry + 1}/5");
                             await Task.Delay(500);
                             continue;
                         }
                         
                         if (!File.Exists(imagePath))
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片文件不存在: {imagePath}，重试 {retry + 1}/5");
+                            _logService.Warning("LotteryService", $"图片文件不存在: {imagePath}，重试 {retry + 1}/5");
                             await Task.Delay(500);
                             continue;
                         }
@@ -1596,12 +1596,12 @@ namespace zhaocaimao.Services.Games.Binggo
                         var fileInfo = new FileInfo(imagePath);
                         if (fileInfo.Length == 0)
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片文件为空: {imagePath}，重试 {retry + 1}/5");
+                            _logService.Warning("LotteryService", $"图片文件为空: {imagePath}，重试 {retry + 1}/5");
                             await Task.Delay(500);
                             continue;
                         }
                         
-                        _logService.Info("BinggoLotteryService", $"✅ 图片生成成功: {imagePath}，大小: {fileInfo.Length} 字节");
+                        _logService.Info("LotteryService", $"✅ 图片生成成功: {imagePath}，大小: {fileInfo.Length} 字节");
                         
                         // 🔥 防御性编程：等待文件完全写入磁盘（避免"文件找不到"错误）
                         await Task.Delay(300);  // 等待300ms确保文件系统完全刷新
@@ -1609,38 +1609,38 @@ namespace zhaocaimao.Services.Games.Binggo
                         // 🔥 再次验证文件是否可以访问
                         if (!File.Exists(imagePath))
                         {
-                            _logService.Warning("BinggoLotteryService", $"等待后文件仍不存在: {imagePath}，重试 {retry + 1}/5");
+                            _logService.Warning("LotteryService", $"等待后文件仍不存在: {imagePath}，重试 {retry + 1}/5");
                             await Task.Delay(500);
                             continue;
                         }
                         
                         // 🔥 3. 发送图片到微信群（直接使用纯英文路径 C:\images\）
-                        _logService.Info("BinggoLotteryService", $"📤 发送历史记录图片到群: {groupWxId}，文件路径: {imagePath}");
+                        _logService.Info("LotteryService", $"📤 发送历史记录图片到群: {groupWxId}，文件路径: {imagePath}");
                         var sendResponse = await _socketClient.SendAsync<object>("SendImage", groupWxId, imagePath);
                         
                         if (sendResponse != null)
                         {
-                            _logService.Info("BinggoLotteryService", $"✅ 历史记录图片已发送: {imagePath}");
+                            _logService.Info("LotteryService", $"✅ 历史记录图片已发送: {imagePath}");
                             return;  // 成功，退出重试循环
                         }
                         else
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片发送失败（返回null），重试 {retry + 1}/5");
+                            _logService.Warning("LotteryService", $"图片发送失败（返回null），重试 {retry + 1}/5");
                             await Task.Delay(500);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logService.Warning("BinggoLotteryService", $"生成/发送图片异常，重试 {retry + 1}/5: {ex.Message}");
+                        _logService.Warning("LotteryService", $"生成/发送图片异常，重试 {retry + 1}/5: {ex.Message}");
                         await Task.Delay(500);
                     }
                 }
                 
-                _logService.Error("BinggoLotteryService", "历史记录图片发送失败：已达最大重试次数");
+                _logService.Error("LotteryService", "历史记录图片发送失败：已达最大重试次数");
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"发送历史记录图片失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"发送历史记录图片失败: {ex.Message}", ex);
             }
         }
         
@@ -1655,7 +1655,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 {
                     if (historyData == null || historyData.Count == 0)
                     {
-                        _logService.Warning("BinggoLotteryService", "历史数据为空，无法生成图片");
+                        _logService.Warning("LotteryService", "历史数据为空，无法生成图片");
                         return false;
                     }
                     
@@ -1663,8 +1663,8 @@ namespace zhaocaimao.Services.Games.Binggo
                     string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs", "bgzst.png");
                     if (!File.Exists(templatePath))
                     {
-                        _logService.Error("BinggoLotteryService", $"模板文件不存在: {templatePath}");
-                        _logService.Error("BinggoLotteryService", $"请确保 libs/bgzst.png 文件存在");
+                        _logService.Error("LotteryService", $"模板文件不存在: {templatePath}");
+                        _logService.Error("LotteryService", $"请确保 libs/bgzst.png 文件存在");
                         return false;
                     }
                     
@@ -1742,7 +1742,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
                         {
                             Directory.CreateDirectory(outputDir);
-                            _logService.Info("BinggoLotteryService", $"创建输出目录: {outputDir}");
+                            _logService.Info("LotteryService", $"创建输出目录: {outputDir}");
                         }
                         
                         // 🔥 保存图片（参考 F5BotV2 第1680行）
@@ -1751,18 +1751,18 @@ namespace zhaocaimao.Services.Games.Binggo
                         // 🔥 防御性编程：验证文件是否真的生成了
                         if (!File.Exists(outputPath))
                         {
-                            _logService.Error("BinggoLotteryService", $"图片保存失败，文件不存在: {outputPath}");
+                            _logService.Error("LotteryService", $"图片保存失败，文件不存在: {outputPath}");
                             return false;
                         }
                         
                         var fileInfo = new FileInfo(outputPath);
-                        _logService.Info("BinggoLotteryService", $"✅ 图片生成成功: {outputPath}，大小: {fileInfo.Length} 字节");
+                        _logService.Info("LotteryService", $"✅ 图片生成成功: {outputPath}，大小: {fileInfo.Length} 字节");
                         return true;
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryService", $"生成图片失败: {ex.Message}", ex);
+                    _logService.Error("LotteryService", $"生成图片失败: {ex.Message}", ex);
                     return false;
                 }
             });
@@ -1789,7 +1789,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Warning("BinggoLotteryService", $"绘制文本失败: {ex.Message}");
+                _logService.Warning("LotteryService", $"绘制文本失败: {ex.Message}");
             }
         }
         
@@ -1897,7 +1897,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
-                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘提醒");
+                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送封盘提醒");
                     return;
                 }
                 
@@ -1911,17 +1911,17 @@ namespace zhaocaimao.Services.Games.Binggo
                 int issueShort = issueId % 1000;
                 string message = $"{issueShort} 还剩{seconds}秒";
                 
-                _logService.Info("BinggoLotteryService", $"📢 发送封盘提醒: {groupWxId} - {message}");
+                _logService.Info("LotteryService", $"📢 发送封盘提醒: {groupWxId} - {message}");
                 
                 var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
                 if (response != null)
                 {
-                    _logService.Info("BinggoLotteryService", $"✅ 封盘提醒已发送: {message}");
+                    _logService.Info("LotteryService", $"✅ 封盘提醒已发送: {message}");
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"发送封盘提醒失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"发送封盘提醒失败: {ex.Message}", ex);
             }
         }
         
@@ -1941,7 +1941,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
                 if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
                 {
-                    _logService.Debug("BinggoLotteryService", "未绑定群或微信未登录，跳过发送封盘消息（但声音已播放）");
+                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送封盘消息（但声音已播放）");
                     return;
                 }
                 
@@ -1951,7 +1951,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     return;
                 }
                 
-                _logService.Info("BinggoLotteryService", $"📢 发送封盘消息: 期号 {issueId}");
+                _logService.Info("LotteryService", $"📢 发送封盘消息: 期号 {issueId}");
                 
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();
@@ -1982,17 +1982,17 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 即使没有订单也要发送（参考 F5BotV2 第1237行）
                 sbTxt.Append("------线下无效------");
                 
-                _logService.Info("BinggoLotteryService", $"📤 发送封盘消息到群: {groupWxId}");
+                _logService.Info("LotteryService", $"📤 发送封盘消息到群: {groupWxId}");
                 
                 var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, sbTxt.ToString());
                 if (response != null)
                 {
-                    _logService.Info("BinggoLotteryService", $"✅ 封盘消息已发送: 期号 {issueId}, 订单数 {orders?.Count ?? 0}");
+                    _logService.Info("LotteryService", $"✅ 封盘消息已发送: 期号 {issueId}, 订单数 {orders?.Count ?? 0}");
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"发送封盘消息失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"发送封盘消息失败: {ex.Message}", ex);
             }
         }
         
@@ -2012,11 +2012,11 @@ namespace zhaocaimao.Services.Games.Binggo
                     clearedCount++;
                 }
                 
-                _logService.Info("BinggoLotteryService", $"✅ 已清空 {clearedCount} 个会员的当期投注金额");
+                _logService.Info("LotteryService", $"✅ 已清空 {clearedCount} 个会员的当期投注金额");
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"清空会员投注金额失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"清空会员投注金额失败: {ex.Message}", ex);
             }
         }
         
@@ -2042,7 +2042,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoLotteryService", $"获取 {date:yyyy-MM-dd} 数据失败: {ex.Message}", ex);
+                _logService.Error("LotteryService", $"获取 {date:yyyy-MM-dd} 数据失败: {ex.Message}", ex);
                 return new List<BinggoLotteryData>();
             }
         }
@@ -2064,18 +2064,18 @@ namespace zhaocaimao.Services.Games.Binggo
                     if (existing == null)
                     {
                         _db.Insert(data);
-                        _logService.Info("BinggoLotteryService", $"💾 保存开奖数据: {data.IssueId}");
+                        _logService.Info("LotteryService", $"💾 保存开奖数据: {data.IssueId}");
                     }
                     else
                     {
                         data.Id = existing.Id;
                         _db.Update(data);
-                        _logService.Info("BinggoLotteryService", $"🔄 更新开奖数据: {data.IssueId}");
+                        _logService.Info("LotteryService", $"🔄 更新开奖数据: {data.IssueId}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logService.Error("BinggoLotteryService", $"保存开奖数据失败: {ex.Message}", ex);
+                    _logService.Error("LotteryService", $"保存开奖数据失败: {ex.Message}", ex);
                 }
             });
         }
@@ -2113,12 +2113,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     catch (Exception ex)
                     {
-                        _logService.Warning("BinggoLotteryService", 
+                        _logService.Warning("LotteryService", 
                             $"保存期号 {data.IssueId} 数据失败: {ex.Message}");
                     }
                 }
                 
-                _logService.Info("BinggoLotteryService", 
+                _logService.Info("LotteryService", 
                     $"💾 批量保存到数据库: 新增 {savedCount} 期，更新 {updatedCount} 期");
             });
             
@@ -2143,12 +2143,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     catch (Exception ex)
                     {
-                        _logService.Warning("BinggoLotteryService", 
+                        _logService.Warning("LotteryService", 
                             $"更新 BindingList 期号 {data.IssueId} 失败: {ex.Message}");
                     }
                 }
                 
-                _logService.Info("BinggoLotteryService", 
+                _logService.Info("LotteryService", 
                     $"✅ BindingList 更新完成，共 {dataList.Count} 期数据");
             }
         }

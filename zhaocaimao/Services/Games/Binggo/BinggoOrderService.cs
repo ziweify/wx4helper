@@ -89,7 +89,7 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             try
             {
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"处理下注: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
                 
                 // 1. 解析下注内容
@@ -97,7 +97,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 if (betContent.Code != 0)
                 {
-                    _logService.Warning("BinggoOrderService", 
+                    _logService.Warning("OrderService", 
                         $"解析下注失败: {betContent.ErrorMessage}");
                     return (false, betContent.ErrorMessage, null);
                 }
@@ -105,7 +105,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 2. 验证下注
                 if (!_validator.ValidateBet(member, betContent, currentStatus, out string errorMessage))
                 {
-                    _logService.Warning("BinggoOrderService", 
+                    _logService.Warning("OrderService", 
                         $"验证下注失败: {errorMessage}");
                     
                     // 🔥 余额不足消息格式完全按照 F5BotV2 第2430行：@{m.nickname} {Reply_余额不足}
@@ -175,12 +175,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 只有管理员不扣钱
                     if (member.State != MemberState.管理)
                     {
-                        _logService.Info("BinggoOrderService", 
+                        _logService.Info("OrderService", 
                             $"🔒 [下单] {member.Nickname} - 扣除前余额: {member.Balance:F2}");
                         
                         member.Balance -= (float)betContent.TotalAmount;
                         
-                        _logService.Info("BinggoOrderService", 
+                        _logService.Info("OrderService", 
                             $"🔒 [下单] {member.Nickname} - 扣除 {betContent.TotalAmount:F2}，扣除后余额: {member.Balance:F2}");
                     }
                     
@@ -191,7 +191,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     member.BetTotal += (float)betContent.TotalAmount;
                     member.BetCur += (float)betContent.TotalAmount;  // 本期下注
                     
-                    _logService.Info("BinggoOrderService", 
+                    _logService.Info("OrderService", 
                         $"🔒 [下单] {member.Nickname} - 待结算: {member.BetWait:F2}, 今日下注: {member.BetToday:F2}");
                     
                     // 4.3 保存订单（插入到列表顶部，保持"最新在上"）
@@ -204,12 +204,12 @@ namespace zhaocaimao.Services.Games.Binggo
                         _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
                     }
                     
-                    _logService.Info("BinggoOrderService", 
+                    _logService.Info("OrderService", 
                         $"🔒 [下单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
                 }
                 // 🔥 锁释放：会员余额、订单数据已同步写入
                 
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
                 
                 // 🔥 7. 更新全局统计（实时增减，参考 F5BotV2 第 538-573 行：OnMemberOrderCreate）
@@ -228,7 +228,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", 
+                _logService.Error("OrderService", 
                     $"创建订单失败: {ex.Message}", ex);
                 return (false, "系统错误，请稍后重试", null);
             }
@@ -249,7 +249,7 @@ namespace zhaocaimao.Services.Games.Binggo
             try
             {
                 string type = sendToWeChat ? "线上补单" : "离线补单";
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"{type}: {member.Nickname} ({member.Wxid}) - 订单ID: {order.Id} - 期号: {order.IssueId}");
                 
                 // 🔥 1. 检查订单状态（参考 F5BotV2 第 599-640 行）
@@ -300,7 +300,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     $"------补完留分------\r" +
                     $"{member.Nickname} | {(int)member.Balance}";
                 
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"✅ {type}成功: {member.Nickname} - 订单ID: {order.Id} - 盈利: {order.NetProfit:F2} - 余额: {member.Balance:F2}");
                 
                 // 🔥 返回微信消息（如果是线上补单，调用者需要发送到微信；离线补单则只做记录）
@@ -308,7 +308,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", 
+                _logService.Error("OrderService", 
                     $"补单失败: {ex.Message}", ex);
                 return (false, $"补单失败: {ex.Message}", null);
             }
@@ -323,7 +323,7 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             try
             {
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"开始结算期号: {issueId}");
                 
                 // 1. 获取开奖数据
@@ -334,7 +334,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 if (lotteryData == null || !lotteryData.IsOpened)
                 {
-                    _logService.Warning("BinggoOrderService", 
+                    _logService.Warning("OrderService", 
                         $"期号 {issueId} 未开奖，无法结算");
                     return (0, "开奖数据未找到");
                 }
@@ -349,7 +349,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 if (unsetledOrders == null || unsetledOrders.Count == 0)
                 {
-                    _logService.Info("BinggoOrderService", 
+                    _logService.Info("OrderService", 
                         $"期号 {issueId} 没有待结算订单");
                     return (0, "没有待结算订单");
                 }
@@ -365,7 +365,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     totalProfit += (decimal)order.Profit;
                 }
                 
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"✅ 结算完成: 期号 {issueId}，共 {settledCount} 单，总盈利: {totalProfit:F2}");
                 
                 // 🔥 4. 更新统计（参考 F5BotV2 第 635 行）
@@ -381,7 +381,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", 
+                _logService.Error("OrderService", 
                     $"结算失败: {ex.Message}", ex);
                 return (0, $"结算失败: {ex.Message}");
             }
@@ -399,13 +399,13 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 1. 检查订单状态
                 if (order.OrderStatus == OrderStatus.已完成)
                 {
-                    _logService.Info("BinggoOrderService", $"订单已结算，跳过: {order.Id}");
+                    _logService.Info("OrderService", $"订单已结算，跳过: {order.Id}");
                     return;
                 }
                 
                 if (order.OrderStatus == OrderStatus.已取消)
                 {
-                    _logService.Info("BinggoOrderService", $"订单已取消，跳过: {order.Id}");
+                    _logService.Info("OrderService", $"订单已取消，跳过: {order.Id}");
                     return;
                 }
                 
@@ -414,7 +414,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 if (betContent.Code != 0)
                 {
-                    _logService.Warning("BinggoOrderService", 
+                    _logService.Warning("OrderService", 
                         $"订单解析失败，无法结算: {order.BetContentStandar}");
                     order.IsSettled = true;
                     order.Profit = 0; // 解析失败视为输
@@ -444,7 +444,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 order.OrderStatus = OrderStatus.已完成;
                 order.IsSettled = true;
                 
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
                 
                 // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
@@ -456,14 +456,14 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder
                     UpdateOrder(order);
                     
-                    _logService.Info("BinggoOrderService", 
+                    _logService.Info("OrderService", 
                         $"🔒 [开奖] 订单已更新: OrderId={order.Id}, Profit={order.Profit:F2}, NetProfit={order.NetProfit:F2}");
                     
                     // 6.2 更新会员数据（参考 F5BotV2: m.OpenLottery(order) 第 451-454 行）
                     var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
                     if (member != null)  // 🔥 托单也正常结算（更新余额）
                     {
-                        _logService.Info("BinggoOrderService", 
+                        _logService.Info("OrderService", 
                             $"🔒 [开奖] {member.Nickname} - 结算前余额: {member.Balance:F2}, 待结算: {member.BetWait:F2}");
                         
                         // 🔥 关键逻辑（参考 F5BotV2 V2Member.OpenLottery）：
@@ -478,7 +478,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         // 🔥 扣除待结算金额（参考 F5BotV2 第 633 行: m.BetWait = m.BetWait - order.AmountTotal）
                         member.BetWait -= order.AmountTotal;
                         
-                        _logService.Info("BinggoOrderService", 
+                        _logService.Info("OrderService", 
                             $"🔒 [开奖] {member.Nickname} - 结算后余额: {member.Balance:F2}, 待结算: {member.BetWait:F2}, 今日盈亏: {member.IncomeToday:F2}");
                         
                         // 🔥 更新全局盈利统计（参考 F5BotV2 第 626-635 行：OnMemberOrderFinish）
@@ -495,7 +495,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", 
+                _logService.Error("OrderService", 
                     $"订单结算异常: {ex.Message}", ex);
                 throw;
             }
@@ -527,14 +527,14 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 int tuoOrders = allOrders.Count - validOrders.Count;
                 
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"📋 查询待投注订单（从内存表）:期号{issueId} 总计{allOrders.Count}个，有效{validOrders.Count}个，托单{tuoOrders}个（已排除）");
                 
                 return validOrders;
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", 
+                _logService.Error("OrderService", 
                     $"查询待投注订单失败: {ex.Message}", ex);
                 return Enumerable.Empty<V2MemberOrder>();
             }
@@ -555,13 +555,13 @@ namespace zhaocaimao.Services.Games.Binggo
                     .Where(o => o.Wxid == wxid && o.IssueId == issueId && o.OrderStatus == OrderStatus.待处理)
                     .ToList();
                 
-                _logService.Info("BinggoOrderService", $"📋 查询待处理订单（从内存表）:会员{wxid} 期号{issueId} 找到{orders.Count}个");
+                _logService.Info("OrderService", $"📋 查询待处理订单（从内存表）:会员{wxid} 期号{issueId} 找到{orders.Count}个");
                 
                 return orders;
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", $"查询待处理订单失败:会员{wxid} 期号{issueId}", ex);
+                _logService.Error("OrderService", $"查询待处理订单失败:会员{wxid} 期号{issueId}", ex);
                 return Enumerable.Empty<V2MemberOrder>();
             }
         }
@@ -592,12 +592,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                 }
                 
-                _logService.Info("BinggoOrderService", 
+                _logService.Info("OrderService", 
                     $"✅ 订单已更新:ID={order.Id} 状态={order.OrderStatus} 类型={order.OrderType} 总赢={order.Profit:F2} 纯利={order.NetProfit:F2}");
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", $"更新订单失败:ID={order.Id}", ex);
+                _logService.Error("OrderService", $"更新订单失败:ID={order.Id}", ex);
             }
         }
     }

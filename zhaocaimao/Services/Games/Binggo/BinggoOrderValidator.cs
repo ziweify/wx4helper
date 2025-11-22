@@ -62,28 +62,28 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 4. 验证单注金额
                 float minBet = _configService.GetMinBet();
                 float maxBet = _configService.GetMaxBet();
-                _logService.Info("BinggoOrderValidator", $"🔍 开始验证单注金额限制: MinBet={minBet}, MaxBet={maxBet}");
+                _logService.Info("OrderValidator", $"验证金额限制: Min={minBet}, Max={maxBet}");
                 
                 foreach (var item in betContent.Items)
                 {
-                    _logService.Info("BinggoOrderValidator", $"   - 检查投注项: 车{item.CarNumber} {item.PlayType}, 金额={item.Amount}");
+                    _logService.Info("OrderValidator", $"检查投注项: {item.CarNumber} {item.PlayType}, 金额={item.Amount}");
                     
                     if (item.Amount < (decimal)minBet)
                     {
                         errorMessage = $"单注金额不能小于 {minBet} 元";
-                        _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
+                        _logService.Warning("OrderValidator", $"{errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
                     
                     if (item.Amount > (decimal)maxBet)
                     {
                         errorMessage = $"单注金额不能超过 {maxBet} 元";
-                        _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
+                        _logService.Warning("OrderValidator", $"{errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
                 }
                 
-                _logService.Info("BinggoOrderValidator", "✅ 单注金额验证通过");
+                _logService.Info("OrderValidator", "金额验证通过");
                 
                 // 5. 验证总金额
                 decimal totalAmount = betContent.TotalAmount;
@@ -114,7 +114,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderValidator", $"验证下注时发生异常: {ex.Message}", ex);
+                _logService.Error("OrderValidator", $"验证异常: {ex.Message}", ex);
                 errorMessage = "系统错误，请稍后重试";
                 return false;
             }
@@ -161,7 +161,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderValidator", $"验证补单时发生异常: {ex.Message}", ex);
+                _logService.Error("OrderValidator", $"补单验证异常: {ex.Message}", ex);
                 errorMessage = "系统错误，请稍后重试";
                 return false;
             }

@@ -150,7 +150,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     CreditToday = 0;
                     WithdrawToday = 0;
                     
-                    _logService.Info("BinggoStatistics", "统计数据已清零");
+                    _logService.Info("Statistics", "统计数据已重置");
                     return;
                 }
                 
@@ -242,7 +242,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 IncomeTotal = totalIncome;
                 IncomeToday = todayIncome;
                 
-                _logService.Info("BinggoStatistics", 
+                _logService.Info("Statistics", 
                     $"统计更新: 总注{totalBet} 今投{todayBet} 当前{curBet} 总盈{totalIncome:F2} 今盈{todayIncome:F2}");
                 
                 // 🔥 重要：UpdateStatistics 会重新计算所有统计，覆盖 OnOrderCanceled 的更新
@@ -251,7 +251,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoStatistics", $"更新统计失败: {ex.Message}", ex);
+                _logService.Error("Statistics", $"更新统计失败: {ex.Message}", ex);
             }
         }
         
@@ -278,7 +278,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 {
                     // 如果时间戳转换失败，使用 CreatedAt 作为后备
                     orderDate = order.CreatedAt.Date;
-                    _logService.Warning("BinggoStatistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
+                    _logService.Warning("Statistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
                 }
                 
                 DateTime today = DateTime.Now.Date;
@@ -300,7 +300,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     BetMoneyCur += amount;
                 }
                 
-                _logService.Debug("BinggoStatistics", 
+                _logService.Debug("Statistics", 
                     $"📊 统计增加: 订单 {order.Id} - 金额 {amount} - 总注 {BetMoneyTotal} 今投 {BetMoneyToday} 当前 {BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
                 
                 // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
@@ -308,7 +308,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoStatistics", $"OnOrderCreated 失败: {ex.Message}", ex);
+                _logService.Error("Statistics", $"OnOrderCreated 失败: {ex.Message}", ex);
             }
         }
         
@@ -323,14 +323,14 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 跳过托单（参考 F5BotV2 第 688 行）
                 if (order.OrderType == OrderType.托)
                 {
-                    _logService.Debug("BinggoStatistics", $"跳过托单取消统计: 订单 {order.Id}");
+                    _logService.Debug("Statistics", $"跳过托单取消统计: 订单 {order.Id}");
                     return;
                 }
                 
                 // 🔥 检查订单状态：已完成的订单不应该取消统计（已完成说明已经结算过了）
                 if (order.OrderStatus == OrderStatus.已完成)
                 {
-                    _logService.Warning("BinggoStatistics", $"⚠️ 订单 {order.Id} 已完成，不能取消统计");
+                    _logService.Warning("Statistics", $"⚠️ 订单 {order.Id} 已完成，不能取消统计");
                     return;
                 }
                 
@@ -348,7 +348,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 {
                     // 如果时间戳转换失败，使用 CreatedAt 作为后备
                     orderDate = order.CreatedAt.Date;
-                    _logService.Warning("BinggoStatistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
+                    _logService.Warning("Statistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
                 }
                 
                 DateTime today = DateTime.Now.Date;
@@ -374,24 +374,24 @@ namespace zhaocaimao.Services.Games.Binggo
                 if (order.IssueId == IssueidCur)
                 {
                     BetMoneyCur -= amount;
-                    _logService.Info("BinggoStatistics", 
+                    _logService.Info("Statistics", 
                         $"🔥 减少当期统计: 订单ID={order.Id} 期号={order.IssueId} 当前期号={IssueidCur} 金额={amount} 新值={BetMoneyCur}");
                 }
                 
-                _logService.Info("BinggoStatistics", 
+                _logService.Info("Statistics", 
                     $"📊 统计减少: 订单 {order.Id} - 金额 {amount} - 总注 {oldTotal}→{BetMoneyTotal} 今投 {oldToday}→{BetMoneyToday} 当前 {oldCur}→{BetMoneyCur} - 期号 {order.IssueId} 当前期号 {IssueidCur} 订单日期 {orderDate:yyyy-MM-dd} 今天 {today:yyyy-MM-dd}");
                 
                 // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示（重要！）
                 // 必须在主线程上触发，确保UI能正确更新
-                _logService.Info("BinggoStatistics", 
+                _logService.Info("Statistics", 
                     $"🔔 准备触发 PropertyChanged 事件: 订阅者数量={PropertyChanged?.GetInvocationList()?.Length ?? 0} 当前线程={System.Threading.Thread.CurrentThread.ManagedThreadId}");
                 OnPropertyChanged(nameof(PanDescribe));
                 
-                _logService.Info("BinggoStatistics", $"✅ 已触发 PanDescribe 属性变化通知（线程{System.Threading.Thread.CurrentThread.ManagedThreadId}）");
+                _logService.Info("Statistics", $"✅ 已触发 PanDescribe 属性变化通知（线程{System.Threading.Thread.CurrentThread.ManagedThreadId}）");
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoStatistics", $"OnOrderCanceled 失败: {ex.Message}", ex);
+                _logService.Error("Statistics", $"OnOrderCanceled 失败: {ex.Message}", ex);
             }
         }
         
@@ -422,7 +422,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 {
                     // 如果时间戳转换失败，使用 CreatedAt 作为后备
                     orderDate = order.CreatedAt.Date;
-                    _logService.Warning("BinggoStatistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
+                    _logService.Warning("Statistics", $"订单 {order.Id} 时间戳转换失败，使用 CreatedAt: {order.TimeStampBet}");
                 }
                 
                 DateTime today = DateTime.Now.Date;
@@ -438,7 +438,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     IncomeToday += netProfit;
                 }
                 
-                _logService.Debug("BinggoStatistics", 
+                _logService.Debug("Statistics", 
                     $"📊 盈利统计更新: 订单 {order.Id} - 纯利 {netProfit:F2} - 总盈 {IncomeTotal:F2} 今盈 {IncomeToday:F2}");
                 
                 // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
@@ -446,7 +446,7 @@ namespace zhaocaimao.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoStatistics", $"OnOrderSettled 失败: {ex.Message}", ex);
+                _logService.Error("Statistics", $"OnOrderSettled 失败: {ex.Message}", ex);
             }
         }
         
