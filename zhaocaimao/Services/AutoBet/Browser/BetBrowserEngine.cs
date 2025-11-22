@@ -49,7 +49,7 @@ namespace zhaocaimao.Services.AutoBet.Browser
                 _configId = configId;
                 _configName = configName;
                 _platform = platform;
-                _platformUrl = string.IsNullOrEmpty(platformUrl) ? BetPlatformHelper.GetDefaultUrl(platform) : platformUrl;
+                _platformUrl = string.IsNullOrEmpty(platformUrl) ? PlatformUrlManager.GetDefaultUrl(platform) : platformUrl;
                 
                 OnLog?.Invoke("🚀 正在初始化浏览器引擎...");
                 
