@@ -5,13 +5,16 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using zhaocaimao.Models.AutoBet;
+using zhaocaimao.Views.AutoBet;
 using Newtonsoft.Json;
 
 namespace zhaocaimao.Services.AutoBet
 {
     /// <summary>
-    /// 浏览器客户端 - 启动进程并通过 Socket 通信
+    /// 浏览器客户端 - 使用内置浏览器窗口（WebView2）
+    /// 不再启动外部进程，直接使用进程内的浏览器窗口
     /// </summary>
     public class BrowserClient : IDisposable
     {
@@ -25,50 +28,33 @@ namespace zhaocaimao.Services.AutoBet
         private const int SW_RESTORE = 9;
         private const int SW_SHOW = 5;
         private readonly int _configId;
-        private Process? _process;
-        private AutoBetSocketServer.ClientConnection? _connection;  // 🔥 改为使用 ClientConnection
-        private readonly object _connectionLock = new object(); // 🔥 线程安全：保护连接的访问和更新
+        private BetBrowserForm? _browserForm;  // 🔥 使用内置浏览器窗口
+        private readonly object _browserLock = new object(); // 🔥 线程安全：保护浏览器窗口的访问
         
-        // 🔥 响应等待机制
-        private readonly Dictionary<string, TaskCompletionSource<Newtonsoft.Json.Linq.JObject>> _pendingResponses = new();
-        private readonly object _responseLock = new();
-        
+        /// <summary>
+        /// 是否已连接（浏览器窗口已初始化）
+        /// </summary>
         public bool IsConnected
         {
             get
             {
-                lock (_connectionLock)
+                lock (_browserLock)
                 {
-                    return _connection != null && _connection.IsConnected;
+                    return _browserForm != null && _browserForm.IsInitialized && !_browserForm.IsDisposed;
                 }
             }
         }
         
         /// <summary>
-        /// 🔥 获取底层连接对象（用于诊断）
-        /// </summary>
-        public AutoBetSocketServer.ClientConnection? GetConnection()
-        {
-            lock (_connectionLock)
-            {
-                return _connection;
-            }
-        }
-        
-        /// <summary>
-        /// 检查进程是否还在运行
+        /// 检查浏览器窗口是否还在运行
         /// </summary>
         public bool IsProcessRunning
         {
             get
             {
-                try
+                lock (_browserLock)
                 {
-                    return _process != null && !_process.HasExited;
-                }
-                catch
-                {
-                    return false;
+                    return _browserForm != null && !_browserForm.IsDisposed;
                 }
             }
         }
@@ -79,264 +65,185 @@ namespace zhaocaimao.Services.AutoBet
         }
         
         /// <summary>
-        /// 处理来自 AutoBetSocketServer 的响应消息
+        /// 🔥 获取浏览器窗口（用于诊断）
         /// </summary>
-        public void OnMessageReceived(Newtonsoft.Json.Linq.JObject message)
+        public BetBrowserForm? GetBrowserForm()
         {
-            try
+            lock (_browserLock)
             {
-                // 检查是否是命令响应
-                var success = message["success"]?.ToObject<bool>();
-                var configId = message["configId"]?.ToString();
-                
-                if (success != null && configId == _configId.ToString())
-                {
-                    // 这是一个命令响应
-                    var requestId = $"cmd_{_configId}";  // 简化版：每个配置同时只有一个pending命令
-                    
-                    lock (_responseLock)
-                    {
-                        if (_pendingResponses.TryGetValue(requestId, out var tcs))
-                        {
-                            _pendingResponses.Remove(requestId);
-                            tcs.SetResult(message);
-                            Console.WriteLine($"[BrowserClient] 响应已分发到等待的命令");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[BrowserClient] 收到响应，但没有等待的命令");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[BrowserClient] OnMessageReceived 错误: {ex.Message}");
+                return _browserForm;
             }
         }
         
         /// <summary>
-        /// 🔥 附加已建立的连接（用于浏览器主动连接的情况）
-        /// 改为接收 ClientConnection，避免 Socket 冲突
+        /// 🔥 获取底层连接对象（用于诊断，兼容旧代码）
+        /// 注意：使用内置窗口时，不再有 Socket 连接，返回 null
         /// </summary>
-        public void AttachConnection(AutoBetSocketServer.ClientConnection? connection)
+        [Obsolete("使用内置浏览器窗口，不再有 Socket 连接")]
+        public AutoBetSocketServer.ClientConnection? GetConnection()
         {
-            lock (_connectionLock)
-            {
-                // 🔥 直接使用 ClientConnection，不再创建新的 reader/writer
-                _connection = connection;
-            }
-            
-            // 🔥 连接已附加，IsConnected 属性会自动反映真实状态
+            return null;  // 内置窗口不再有 Socket 连接
         }
         
         /// <summary>
-        /// 附加到已存在的浏览器进程（主程序重启场景）
-        /// </summary>
-        public void AttachToExistingProcess(Process process)
-        {
-            _process = process;
-            // Socket 连接会在浏览器重连时由 AutoBetSocketServer.OnBrowserConnected 处理
-        }
-        
-        /// <summary>
-        /// 启动浏览器进程（浏览器会主动连接到 VxMain 的 Socket 服务器）
+        /// 启动浏览器窗口（使用内置 WebView2 控件）
         /// </summary>
         public async Task<bool> StartAsync(int port, string configName, string platform, string platformUrl)
         {
             try
             {
-                // 1. 启动浏览器进程
-                // 🔥 修改：浏览器程序和主程序在同一文件夹
-                var browserDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                
-                var browserExePath = Path.Combine(browserDirectory, "BsBrowserClient.exe");
-                
-                if (!File.Exists(browserExePath))
+                lock (_browserLock)
                 {
-                    throw new FileNotFoundException($"浏览器程序不存在: {browserExePath}");
-                }
-                
-                _process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
+                    // 如果窗口已存在，直接返回
+                    if (_browserForm != null && !_browserForm.IsDisposed)
                     {
-                        FileName = browserExePath,
-                        // 🔥 传递 configId，用于HTTP API获取配置（账号、密码等）
-                        Arguments = $"--config-id {_configId} --config-name \"{configName}\" --port {port} --platform {platform} --url {platformUrl}",
-                        WorkingDirectory = browserDirectory, // 设置工作目录为浏览器所在目录
-                        UseShellExecute = false,
-                        CreateNoWindow = false // 显示浏览器窗口
+                        // 激活现有窗口
+                        if (_browserForm.WindowState == FormWindowState.Minimized)
+                        {
+                            _browserForm.WindowState = FormWindowState.Normal;
+                        }
+                        _browserForm.Activate();
+                        _browserForm.BringToFront();
+                        return true;
                     }
-                };
-                
-                _process.Start();
-                
-                // 2. 等待进程启动（浏览器会主动连接到 VxMain:19527）
-                await Task.Delay(1000);
-                
-                // 3. 检查进程是否成功启动
-                if (_process.HasExited)
-                {
-                    throw new Exception($"浏览器进程启动失败，退出代码: {_process.ExitCode}");
                 }
                 
-                // ✅ 进程启动成功，Socket 连接由 AutoBetSocketServer.OnBrowserConnected 处理
+                // 在 UI 线程中创建窗口
+                BetBrowserForm? newForm = null;
+                var tcs = new TaskCompletionSource<BetBrowserForm>();
+                
+                if (Application.OpenForms.Count > 0)
+                {
+                    var mainForm = Application.OpenForms[0];
+                    mainForm.Invoke((MethodInvoker)(() =>
+                    {
+                        try
+                        {
+                            newForm = new BetBrowserForm(_configId, configName, platform, platformUrl, 
+                                (msg) => Console.WriteLine($"[BrowserClient-{_configId}] {msg}"));
+                            
+                            // 订阅窗口关闭事件
+                            newForm.FormClosed += (s, e) =>
+                            {
+                                lock (_browserLock)
+                                {
+                                    if (_browserForm == newForm)
+                                    {
+                                        _browserForm = null;
+                                    }
+                                }
+                            };
+                            
+                            newForm.Show();
+                            tcs.SetResult(newForm);
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.SetException(ex);
+                        }
+                    }));
+                }
+                else
+                {
+                    // 如果没有主窗口，直接创建（需要在 UI 线程中）
+                    System.Threading.SynchronizationContext? syncContext = null;
+                    try
+                    {
+                        syncContext = System.Threading.SynchronizationContext.Current;
+                    }
+                    catch { }
+                    
+                    if (syncContext != null)
+                    {
+                        syncContext.Post(_ =>
+                        {
+                            try
+                            {
+                                newForm = new BetBrowserForm(_configId, configName, platform, platformUrl,
+                                    (msg) => Console.WriteLine($"[BrowserClient-{_configId}] {msg}"));
+                                
+                                // 订阅窗口关闭事件
+                                newForm.FormClosed += (s, e) =>
+                                {
+                                    lock (_browserLock)
+                                    {
+                                        if (_browserForm == newForm)
+                                        {
+                                            _browserForm = null;
+                                        }
+                                    }
+                                };
+                                
+                                newForm.Show();
+                                tcs.SetResult(newForm);
+                            }
+                            catch (Exception ex)
+                            {
+                                tcs.SetException(ex);
+                            }
+                        }, null);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("无法在非 UI 线程中创建浏览器窗口");
+                    }
+                }
+                
+                // 等待窗口创建完成
+                newForm = await tcs.Task;
+                
+                // 等待浏览器初始化
+                int retryCount = 0;
+                while (retryCount < 20 && (newForm == null || !newForm.IsInitialized))
+                {
+                    await Task.Delay(500);
+                    retryCount++;
+                }
+                
+                if (newForm == null || !newForm.IsInitialized)
+                {
+                    throw new Exception("浏览器窗口初始化超时");
+                }
+                
+                lock (_browserLock)
+                {
+                    _browserForm = newForm;
+                }
+                
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[BrowserClient] 启动浏览器窗口失败: {ex.Message}");
                 Dispose();
                 throw;
             }
         }
         
         /// <summary>
-        /// 🔥 发送命令并等待响应（通过 ClientConnection 发送，避免 Socket 冲突）
+        /// 🔥 发送命令并等待响应（直接调用浏览器窗口的命令接口）
         /// </summary>
         public async Task<BetResult> SendCommandAsync(string command, object? data = null)
         {
-            // 🔥 获取连接的本地引用（线程安全）
-            AutoBetSocketServer.ClientConnection? connection;
-            lock (_connectionLock)
+            BetBrowserForm? browserForm;
+            lock (_browserLock)
             {
-                connection = _connection;
+                browserForm = _browserForm;
                 
-                // 🔥 详细的连接状态检查
-                Console.WriteLine($"[BrowserClient] SendCommandAsync 调用:");
-                Console.WriteLine($"  - ConfigId: {_configId}");
-                Console.WriteLine($"  - _connection == null: {_connection == null}");
-                Console.WriteLine($"  - _connection?.IsConnected: {_connection?.IsConnected}");
-                
-                if (connection == null || !connection.IsConnected)
+                if (browserForm == null || browserForm.IsDisposed || !browserForm.IsInitialized)
                 {
-                    Console.WriteLine($"[BrowserClient] ❌ 连接检查失败，返回错误");
                     return new BetResult
                     {
                         Success = false,
-                        ErrorMessage = "未连接到浏览器"
+                        ErrorMessage = "浏览器未初始化"
                     };
                 }
             }
             
             try
             {
-                // 构造请求
-                var request = new
-                {
-                    command = command,
-                    data = data
-                };
-                
-                // 创建响应等待任务
-                var requestId = $"cmd_{_configId}";
-                var tcs = new TaskCompletionSource<Newtonsoft.Json.Linq.JObject>();
-                
-                lock (_responseLock)
-                {
-                    _pendingResponses[requestId] = tcs;
-                }
-                
-                // 🔥 通过 ClientConnection 发送命令（避免 Socket 冲突）
-                var json = JsonConvert.SerializeObject(request);
-                Console.WriteLine($"[BrowserClient] 发送命令:{command} ConfigId:{_configId}");
-                Console.WriteLine($"[BrowserClient] 发送数据:{json.Substring(0, Math.Min(200, json.Length))}...");
-                
-                // 🔥 使用本地连接引用（即使_connection被替换，这里仍使用当前快照）
-                var sendSuccess = await connection.SendCommandAsync(command, data);
-                if (!sendSuccess)
-                {
-                    Console.WriteLine($"[BrowserClient] ❌ 发送命令失败");
-                    lock (_responseLock)
-                    {
-                        _pendingResponses.Remove(requestId);
-                    }
-                    return new BetResult
-                    {
-                        Success = false,
-                        ErrorMessage = "发送命令失败"
-                    };
-                }
-                
-                Console.WriteLine($"[BrowserClient] ✅ 命令已发送，等待响应...");
-                
-                // 🔥 等待响应（通过回调触发）
-                Newtonsoft.Json.Linq.JObject? responseObj = null;
-                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
-                
-                try
-                {
-                    // 等待 OnMessageReceived 设置结果
-                    responseObj = await tcs.Task.WaitAsync(cts.Token);
-                    Console.WriteLine($"[BrowserClient] 收到响应（通过回调）");
-                }
-                catch (TaskCanceledException)
-                {
-                    Console.WriteLine($"[BrowserClient] ⏱️ 超时！30秒未收到响应");
-                    
-                    // 清理
-                    lock (_responseLock)
-                    {
-                        _pendingResponses.Remove(requestId);
-                    }
-                    
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[BrowserClient] ❌ 等待响应异常: {ex.Message}");
-                    
-                    // 清理
-                    lock (_responseLock)
-                    {
-                        _pendingResponses.Remove(requestId);
-                    }
-                    
-                    throw;
-                }
-                
-                if (responseObj == null)
-                {
-                    return new BetResult
-                    {
-                        Success = false,
-                        ErrorMessage = "未收到响应"
-                    };
-                }
-                
-                // 解析响应
-                var result = new BetResult
-                {
-                    Success = responseObj["success"]?.ToObject<bool>() ?? false,
-                    ErrorMessage = responseObj["errorMessage"]?.ToString()
-                };
-                
-                // 🔥 解析详细投注结果
-                var responseData = responseObj["data"];
-                if (responseData != null)
-                {
-                    result.Data = responseData;  // 保存原始数据
-                    
-                    // 解析时间和耗时
-                    var postStartStr = responseData["postStartTime"]?.ToString();
-                    var postEndStr = responseData["postEndTime"]?.ToString();
-                    
-                    if (!string.IsNullOrEmpty(postStartStr) && DateTime.TryParse(postStartStr, out var postStart))
-                    {
-                        result.PostStartTime = postStart;
-                    }
-                    
-                    if (!string.IsNullOrEmpty(postEndStr) && DateTime.TryParse(postEndStr, out var postEnd))
-                    {
-                        result.PostEndTime = postEnd;
-                    }
-                    
-                    result.DurationMs = responseData["durationMs"]?.ToObject<int?>();
-                    result.OrderNo = responseData["orderNo"]?.ToString();
-                    result.OrderId = responseData["orderId"]?.ToString();  // 兼容旧字段
-                }
-                
-                return result;
+                // 直接调用浏览器窗口的命令接口
+                return await browserForm.ExecuteCommandAsync(command, data);
             }
             catch (Exception ex)
             {
@@ -349,46 +256,47 @@ namespace zhaocaimao.Services.AutoBet
         }
         
         /// <summary>
-        /// 显示窗口（通过 Socket 命令）
+        /// 显示窗口
         /// </summary>
         public async Task<bool> ShowWindowAsync()
         {
             try
             {
-                if (!IsConnected)
+                BetBrowserForm? browserForm;
+                lock (_browserLock)
+                {
+                    browserForm = _browserForm;
+                }
+                
+                if (browserForm == null || browserForm.IsDisposed)
                 {
                     return false;
                 }
                 
-                // 发送显示命令
-                var result = await SendCommandAsync("显示窗口");
-                return result.Success;
-            }
-            catch
-            {
-                // 如果 Socket 失败，尝试使用 Windows API
-                return ShowWindowByApi();
-            }
-        }
-        
-        /// <summary>
-        /// 使用 Windows API 显示窗口（备用方法）
-        /// </summary>
-        private bool ShowWindowByApi()
-        {
-            try
-            {
-                if (_process != null && !_process.HasExited)
+                // 在 UI 线程中显示窗口
+                if (browserForm.InvokeRequired)
                 {
-                    IntPtr hWnd = _process.MainWindowHandle;
-                    if (hWnd != IntPtr.Zero)
+                    browserForm.Invoke((MethodInvoker)(() =>
                     {
-                        ShowWindow(hWnd, SW_RESTORE);
-                        SetForegroundWindow(hWnd);
-                        return true;
-                    }
+                        if (browserForm.WindowState == FormWindowState.Minimized)
+                        {
+                            browserForm.WindowState = FormWindowState.Normal;
+                        }
+                        browserForm.Activate();
+                        browserForm.BringToFront();
+                    }));
                 }
-                return false;
+                else
+                {
+                    if (browserForm.WindowState == FormWindowState.Minimized)
+                    {
+                        browserForm.WindowState = FormWindowState.Normal;
+                    }
+                    browserForm.Activate();
+                    browserForm.BringToFront();
+                }
+                
+                return true;
             }
             catch
             {
@@ -409,10 +317,10 @@ namespace zhaocaimao.Services.AutoBet
                 }
                 
                 var result = await SendCommandAsync("心跳检测");
-                if (result.Success && result.Data != null)
+                if (result.Success)
                 {
-                    var data = result.Data as dynamic;
-                    return (true, data?.processId ?? 0);
+                    // 返回进程ID为当前进程ID（因为使用内置窗口）
+                    return (true, Process.GetCurrentProcess().Id);
                 }
                 
                 return (false, 0);
@@ -424,54 +332,43 @@ namespace zhaocaimao.Services.AutoBet
         }
         
         /// <summary>
-        /// 🔥 重新连接已废弃 - 使用 ClientConnection 后由 AutoBetSocketServer 管理连接
-        /// </summary>
-        [Obsolete("不再使用，连接由 AutoBetSocketServer 管理")]
-        public async Task<bool> ReconnectAsync(int port)
-        {
-            await Task.CompletedTask;
-            return _connection != null && _connection.IsConnected;
-        }
-        
-        /// <summary>
         /// 停止并清理资源
         /// </summary>
-        /// <param name="killProcess">是否终止浏览器进程（默认false，保持浏览器运行以便主程序重启后重连）</param>
+        /// <param name="killProcess">是否关闭浏览器窗口（默认false，保持窗口运行）</param>
         public void Dispose(bool killProcess = false)
         {
             try
             {
-                // 🔥 关闭 TCP 连接（通知 AutoBetSocketServer 清理）- 线程安全
-                AutoBetSocketServer.ClientConnection? connectionToDispose = null;
-                lock (_connectionLock)
+                BetBrowserForm? browserFormToDispose = null;
+                lock (_browserLock)
                 {
-                    if (_connection != null)
-                    {
-                        connectionToDispose = _connection;
-                        _connection = null;
-                    }
+                    browserFormToDispose = _browserForm;
+                    _browserForm = null;
                 }
                 
-                // 🔥 在锁外执行 Dispose（避免死锁）
-                if (connectionToDispose != null)
+                // 在锁外执行 Dispose（避免死锁）
+                if (browserFormToDispose != null && killProcess)
                 {
                     try
                     {
-                        connectionToDispose.Dispose();
+                        if (browserFormToDispose.InvokeRequired)
+                        {
+                            browserFormToDispose.Invoke((MethodInvoker)(() =>
+                            {
+                                browserFormToDispose.Close();
+                                browserFormToDispose.Dispose();
+                            }));
+                        }
+                        else
+                        {
+                            browserFormToDispose.Close();
+                            browserFormToDispose.Dispose();
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[BrowserClient] Dispose connection 错误: {ex.Message}");
+                        Console.WriteLine($"[BrowserClient] Dispose browser form 错误: {ex.Message}");
                     }
-                }
-                
-                // 🔥 只有明确要求时才关闭进程（例如用户点击"停止浏览器"按钮）
-                // 默认情况下保持浏览器运行，允许主程序重启后重连
-                if (killProcess && _process != null && !_process.HasExited)
-                {
-                    _process.Kill();
-                    _process?.Dispose();
-                    _process = null;
                 }
             }
             catch
@@ -482,7 +379,7 @@ namespace zhaocaimao.Services.AutoBet
         
         void IDisposable.Dispose()
         {
-            // IDisposable 接口实现：默认不杀进程
+            // IDisposable 接口实现：默认不关闭窗口
             Dispose(killProcess: false);
         }
     }

@@ -221,20 +221,11 @@ namespace zhaocaimao.Models.AutoBet
                 }
             }
             
-            // 4. 检查进程是否还在运行
-            if (ProcessId > 0)
+            // 4. 检查浏览器窗口是否还在运行（使用内置窗口，检查窗口是否存在）
+            if (Browser != null && Browser.IsProcessRunning)
             {
-                if (IsProcessRunning(ProcessId))
-                {
-                    _logService?.Debug("BetConfig", $"⏳ [{ConfigName}] 浏览器进程 {ProcessId} 仍在运行，等待重连...");
-                    return false;
-                }
-                else
-                {
-                    // 进程已结束，清除 ProcessId
-                    _logService?.Info("BetConfig", $"🔧 [{ConfigName}] 浏览器进程 {ProcessId} 已结束，清除 ProcessId");
-                    ProcessId = 0;
-                }
+                _logService?.Debug("BetConfig", $"⏳ [{ConfigName}] 浏览器窗口仍在运行，等待初始化...");
+                return false;
             }
             
             return true;  // 所有条件都满足，应该启动浏览器
@@ -309,12 +300,8 @@ namespace zhaocaimao.Models.AutoBet
                 _logService?.Info("BetConfig", $"   URL: {PlatformUrl}");
                 _logService?.Info("BetConfig", $"   显示窗口: {ShowBrowserWindow}");
                 
-                // 清理旧的 ProcessId
-                if (ProcessId > 0)
-                {
-                    _logService?.Info("BetConfig", $"🔧 [{ConfigName}] 清除旧的 ProcessId: {ProcessId}");
-                    ProcessId = 0;
-                }
+                // 清理旧的 ProcessId（使用内置窗口，ProcessId 为当前进程ID）
+                ProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
                 
                 // 创建浏览器客户端
                 var newBrowser = new BrowserClient(configId: Id);
@@ -335,37 +322,18 @@ namespace zhaocaimao.Models.AutoBet
                         Browser = newBrowser;
                     }
                     
-                    // 获取进程ID并保存
-                    if (newBrowser.IsProcessRunning)
-                    {
-                        try
-                        {
-                            var processField = newBrowser.GetType().GetField("_process", 
-                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                            if (processField != null)
-                            {
-                                var process = processField.GetValue(newBrowser) as System.Diagnostics.Process;
-                                if (process != null && !process.HasExited)
-                                {
-                                    ProcessId = process.Id;
-                                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器进程已启动: PID={ProcessId}");
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 获取进程ID失败: {ex.Message}");
-                        }
-                    }
+                    // 保存进程ID（使用内置窗口，ProcessId 为当前进程ID）
+                    ProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
+                    _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器窗口已创建: PID={ProcessId}");
                     
-                    // 🔥 等待浏览器连接到 Socket 服务器（最多等待5秒）
-                    _logService?.Info("BetConfig", $"⏳ [{ConfigName}] 等待浏览器连接到 Socket 服务器...");
-                    for (int i = 0; i < 10; i++)
+                    // 🔥 等待浏览器窗口初始化完成（最多等待10秒）
+                    _logService?.Info("BetConfig", $"⏳ [{ConfigName}] 等待浏览器窗口初始化...");
+                    for (int i = 0; i < 20; i++)
                     {
                         await Task.Delay(500);  // 每500ms检查一次
                         if (IsConnected)
                         {
-                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器已连接！等待时间: {i * 0.5}秒");
+                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] 浏览器窗口已初始化！等待时间: {i * 0.5}秒");
                             break;
                         }
                     }
@@ -422,31 +390,17 @@ namespace zhaocaimao.Models.AutoBet
         }
         
         /// <summary>
-        /// 浏览器断开连接的事件处理
+        /// 浏览器窗口关闭的事件处理
         /// </summary>
-        private void OnBrowserDisconnected(object? sender, EventArgs e)
+        private void OnBrowserFormClosed(object? sender, EventArgs e)
         {
-            _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器断开连接");
+            _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器窗口已关闭");
             
             lock (_browserLock)
             {
-                // 检查进程是否真的结束了
-                if (ProcessId > 0)
-                {
-                    if (IsProcessRunning(ProcessId))
-                    {
-                        _logService?.Warning("BetConfig", $"⚠️ [{ConfigName}] 浏览器进程 {ProcessId} 仍在运行，但连接已断开");
-                        _logService?.Info("BetConfig", $"   保留 ProcessId，监控线程将等待重连或进程退出");
-                    }
-                    else
-                    {
-                        _logService?.Info("BetConfig", $"🔧 [{ConfigName}] 浏览器进程 {ProcessId} 已结束，清除 ProcessId");
-                        ProcessId = 0;
-                    }
-                }
-                
                 // 清空浏览器对象引用，监控线程会自动重启
                 Browser = null;
+                ProcessId = 0;
             }
         }
         
