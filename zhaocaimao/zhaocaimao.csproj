@@ -11,6 +11,7 @@
     <Version>1.0.0</Version>
     <!-- 以管理员权限运行（需要在C:\images\创建文件夹） -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <!-- 排除文档文件夹，防止被编译 -->
@@ -56,10 +57,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="libs\Loader.dll">
+    <None Update="Loader.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="libs\WeixinX.dll">
+    <None Update="WeixinX.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
