@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using zhaocaimao.Contracts;
 using zhaocaimao.Services.AutoBet;
 
@@ -26,11 +27,41 @@ namespace zhaocaimao.Models.AutoBet
         
         /// <summary>
         /// 设置依赖服务（在 AutoBetService 中调用）
+        /// 🔥 如果配置已启用，立即启动监控线程并检查是否需要启动浏览器
         /// </summary>
         public void SetDependencies(ILogService logService, AutoBetSocketServer socketServer)
         {
             _logService = logService;
             _socketServer = socketServer;
+            
+            // 🔥 如果配置已启用，立即启动监控线程
+            if (IsEnabled)
+            {
+                _logService?.Info("BetConfig", $"📌 [{ConfigName}] 配置已启用，立即启动监控线程");
+                StartMonitoring();
+                
+                // 🔥 立即检查是否需要启动浏览器（不等待监控循环）
+                if (ShouldStartBrowser())
+                {
+                    _logService?.Info("BetConfig", $"🚀 [{ConfigName}] 配置已启用且浏览器未运行，立即启动浏览器");
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            _isStartingBrowser = true;
+                            await StartBrowserInternalAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logService?.Error("BetConfig", $"❌ [{ConfigName}] 启动浏览器时异常", ex);
+                        }
+                        finally
+                        {
+                            _isStartingBrowser = false;
+                        }
+                    });
+                }
+            }
         }
         
         #endregion

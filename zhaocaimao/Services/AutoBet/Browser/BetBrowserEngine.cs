@@ -344,19 +344,49 @@ namespace zhaocaimao.Services.AutoBet.Browser
                         }
                         
                         SharedModels.BetStandardOrderList? betOrders = null;
-                        if (data is Newtonsoft.Json.Linq.JArray jArray)
+                        
+                        // 🔥 支持多种数据格式
+                        if (data is SharedModels.BetStandardOrderList orderList)
                         {
+                            // 直接是 BetStandardOrderList 对象
+                            betOrders = orderList;
+                        }
+                        else if (data is Newtonsoft.Json.Linq.JArray jArray)
+                        {
+                            // 是 JArray，尝试反序列化
                             betOrders = jArray.ToObject<SharedModels.BetStandardOrderList>();
                         }
                         else if (data is Newtonsoft.Json.Linq.JObject betData)
                         {
+                            // 是 JObject，尝试反序列化
                             betOrders = betData.ToObject<SharedModels.BetStandardOrderList>();
+                        }
+                        else if (data is string betContentString)
+                        {
+                            // 🔥 如果是字符串，尝试解析（兼容旧格式）
+                            // 格式："1大10,2大10,3大10,4大10" 或 "1234大10"
+                            try
+                            {
+                                // 先尝试解析为标准格式
+                                var standardContent = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToString(betContentString);
+                                // 获取当前期号（如果没有，使用0）
+                                var currentIssueId = 0; // TODO: 从上下文获取期号
+                                betOrders = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(standardContent, currentIssueId);
+                            }
+                            catch (Exception parseEx)
+                            {
+                                OnLog?.Invoke($"❌ 解析投注内容失败: {parseEx.Message}");
+                                result.Success = false;
+                                result.ErrorMessage = $"解析投注内容失败: {parseEx.Message}";
+                                break;
+                            }
                         }
                         
                         if (betOrders == null || betOrders.Count == 0)
                         {
                             result.Success = false;
                             result.ErrorMessage = "投注内容为空";
+                            OnLog?.Invoke($"❌ 投注内容为空，数据类型: {data?.GetType().Name ?? "null"}");
                             break;
                         }
                         
@@ -458,6 +488,90 @@ namespace zhaocaimao.Services.AutoBet.Browser
                         result.Success = balance >= 0;
                         result.Data = new { balance };
                         result.ErrorMessage = result.Success ? null : "获取余额失败";
+                        break;
+                        
+                    case "获取Cookie":
+                        // 获取Cookie命令
+                        // WebView2 操作必须在 UI 线程执行
+                        try
+                        {
+                            if (_webView?.CoreWebView2 == null)
+                            {
+                                result.Success = false;
+                                result.ErrorMessage = "WebView2未初始化";
+                                break;
+                            }
+                            
+                            if (_webView.InvokeRequired)
+                            {
+                                var cookieResult = await Task.Run(async () =>
+                                {
+                                    var tcs = new TaskCompletionSource<(bool success, object? data, string message)>();
+                                    _webView.Invoke(async () =>
+                                    {
+                                        try
+                                        {
+                                            var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+                                            var cookieDict = new System.Collections.Generic.Dictionary<string, string>();
+                                            
+                                            foreach (var cookie in allCookies)
+                                            {
+                                                cookieDict[cookie.Name] = cookie.Value;
+                                            }
+                                            
+                                            var cookieData = new
+                                            {
+                                                url = _webView.CoreWebView2.Source,
+                                                cookies = cookieDict,
+                                                count = allCookies.Count
+                                            };
+                                            tcs.SetResult((true, cookieData, $"获取成功,共{allCookies.Count}个Cookie"));
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            OnLog?.Invoke($"❌ 获取Cookie失败: {ex.Message}");
+                                            tcs.SetResult((false, null, "获取Cookie失败"));
+                                        }
+                                    });
+                                    return await tcs.Task;
+                                });
+                                result.Success = cookieResult.success;
+                                result.Data = cookieResult.data;
+                                result.ErrorMessage = cookieResult.success ? null : cookieResult.message;
+                            }
+                            else
+                            {
+                                var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
+                                var cookieDict = new System.Collections.Generic.Dictionary<string, string>();
+                                
+                                foreach (var cookie in allCookies)
+                                {
+                                    cookieDict[cookie.Name] = cookie.Value;
+                                }
+                                
+                                result.Success = true;
+                                result.Data = new
+                                {
+                                    url = _webView.CoreWebView2.Source,
+                                    cookies = cookieDict,
+                                    count = allCookies.Count
+                                };
+                                result.ErrorMessage = null;
+                            }
+                            
+                            if (result.Success)
+                            {
+                                var count = (result.Data as dynamic)?.count ?? 0;
+                                OnLog?.Invoke($"📤 获取Cookie完成:共{count}个");
+                            }
+                        }
+                        catch (Exception cookieEx)
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "获取Cookie失败";
+                            result.Data = new { error = cookieEx.Message };
+                            OnLog?.Invoke($"❌ 获取Cookie失败:{cookieEx.Message}");
+                        }
                         break;
                         
                     case "心跳检测":

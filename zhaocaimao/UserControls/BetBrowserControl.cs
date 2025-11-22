@@ -89,6 +89,27 @@ namespace zhaocaimao.UserControls
         public bool IsInitialized => _engine?.IsInitialized ?? false;
         
         /// <summary>
+        /// WebView2 控件（供外部访问）
+        /// </summary>
+        public WebView2? WebView => _webView;
+        
+        /// <summary>
+        /// 导航到指定URL
+        /// </summary>
+        public void Navigate(string url)
+        {
+            _webView?.CoreWebView2?.Navigate(url);
+        }
+        
+        /// <summary>
+        /// 刷新页面
+        /// </summary>
+        public void Refresh()
+        {
+            _webView?.CoreWebView2?.Reload();
+        }
+        
+        /// <summary>
         /// 释放资源
         /// </summary>
         protected override void Dispose(bool disposing)
