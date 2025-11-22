@@ -62,6 +62,14 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Update="libs\Loader.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="libs\WeixinX.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <!-- 编译后自动复制 BsBrowserClient 的输出文件 -->
   <Target Name="CopyBrowserClient" AfterTargets="Build">

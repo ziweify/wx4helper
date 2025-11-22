@@ -55,5 +55,14 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="libs\Loader.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="libs\WeixinX.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 
 </Project>
