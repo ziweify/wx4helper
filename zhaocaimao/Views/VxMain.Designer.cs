@@ -996,7 +996,7 @@ namespace zhaocaimao
             btnOpenLotteryResult.RectPressColor = Color.FromArgb(91, 127, 166);
             btnOpenLotteryResult.Size = new Size(100, 40);
             btnOpenLotteryResult.TabIndex = 3;
-            btnOpenLotteryResult.Text = "开奖结果";
+            btnOpenLotteryResult.Text = "数据记录";
             btnOpenLotteryResult.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnOpenLotteryResult.Click += btnOpenLotteryResult_Click;
             // 

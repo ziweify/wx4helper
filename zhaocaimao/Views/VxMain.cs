@@ -2097,7 +2097,7 @@ namespace zhaocaimao
         }
 
         /// <summary>
-        /// 🔥 打开开奖结果窗口
+        /// 打开数据记录查看窗口
         /// </summary>
         private void btnOpenLotteryResult_Click(object sender, EventArgs e)
         {
@@ -2118,13 +2118,13 @@ namespace zhaocaimao
                     _lotteryResultForm.Show();
                 }
                 
-                lblStatus.Text = "开奖结果窗口已打开";
-                _logService.Info("VxMain", "开奖结果窗口已打开");
+                lblStatus.Text = "记录查询系统已打开";
+                _logService.Info("VxMain", "记录查询系统已打开");
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", "打开开奖结果窗口失败", ex);
-                UIMessageBox.ShowError($"打开开奖结果窗口失败: {ex.Message}");
+                _logService.Error("VxMain", "打开记录查询系统失败", ex);
+                UIMessageBox.ShowError($"打开记录查询系统失败: {ex.Message}");
             }
         }
 
