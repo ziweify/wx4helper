@@ -18,6 +18,8 @@ using System.Text.Json;
 using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SQLite;
+using System.Drawing;
+using System.Linq;
 
 namespace zhaocaimao
 {
@@ -1160,6 +1162,35 @@ namespace zhaocaimao
 
         private async void VxMain_Load(object sender, EventArgs e)
         {
+            // 设置窗口图标（从应用程序图标加载，如果文件存在）
+            try
+            {
+                // 尝试多个可能的路径
+                string[] possiblePaths = new[]
+                {
+                    Path.Combine(Application.StartupPath, "libs", "zhaocaimao.ico"),
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs", "zhaocaimao.ico"),
+                    Path.Combine(Application.StartupPath, "zhaocaimao.ico"),
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "zhaocaimao.ico")
+                };
+                
+                string? iconPath = possiblePaths.FirstOrDefault(File.Exists);
+                
+                if (iconPath != null)
+                {
+                    this.Icon = new Icon(iconPath);
+                    _logService.Info("VxMain", $"窗口图标已加载: {iconPath}");
+                }
+                else
+                {
+                    _logService.Info("VxMain", "未找到图标文件，使用默认图标");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("VxMain", $"加载窗口图标失败: {ex.Message}");
+            }
+            
             try
             {
                 // 🔥 显示版本号

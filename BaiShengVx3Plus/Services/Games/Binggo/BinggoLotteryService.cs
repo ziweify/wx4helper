@@ -1699,20 +1699,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             // 🔥 绘制每一期数据（确保期号连续，未开奖的显示空白）
                             for (int i = 0; i < issueIdList.Count && i < 32; i++)  // 最多32期
                             {
-                                int issueId = issueIdList[i];
+                                int loopIssueId = issueIdList[i];
                                 float currentY = rectY + (i * 28);  // 每行高度28像素
                                 
                                 // 🔥 绘制期号（无论是否开奖都显示）
-                                int issueShort = issueId % 1000;
+                                int issueShort = loopIssueId % 1000;
                                 DrawText(g, issueShort.ToString(), 2, currentY, font, System.Drawing.Color.Black);
                                 
                                 // 🔥 绘制开奖时间（无论是否开奖都显示，可以计算出来）
-                                DateTime openTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+                                DateTime openTime = BinggoTimeHelper.GetIssueOpenTime(loopIssueId);
                                 string time = openTime.ToString("HH:mm");
                                 DrawText(g, time, 60, currentY, font, System.Drawing.Color.Black);
                                 
                                 // 🔥 检查是否有开奖数据
-                                if (dataDict.TryGetValue(issueId, out var item) && item.IsOpened)
+                                if (dataDict.TryGetValue(loopIssueId, out var item) && item.IsOpened)
                                 {
                                     // 🔥 有开奖数据：正常显示开奖号码、和值、龙虎
                                     // 🔥 绘制5个开奖号码（参考 F5BotV2 第1664-1668行）

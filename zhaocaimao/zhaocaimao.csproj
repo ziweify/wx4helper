@@ -12,6 +12,9 @@
     <!-- 以管理员权限运行（需要在C:\images\创建文件夹） -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>AnyCPU;x64</Platforms>
+    <!-- 应用程序图标 - 用于桌面、任务栏和窗口（如果文件存在） -->
+    <ApplicationIcon Condition="Exists('libs\zhaocaimao.ico')">libs\zhaocaimao.ico</ApplicationIcon>
+    <ApplicationIcon>libs\zhaocaimao.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- 排除文档文件夹，防止被编译 -->
@@ -21,7 +24,10 @@
     <None Remove="0-资料\**" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="libs\1165z-ivqi2-001.ico" />
+    <!-- 应用程序图标文件（如果存在） -->
+    <Content Include="libs\zhaocaimao.ico" Condition="Exists('libs\zhaocaimao.ico')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -60,8 +66,41 @@
     <None Update="Loader.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="sound\mp3_fp.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="sound\mp3_kj.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="sound\mp3_kjlose.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="sound\mp3_shang.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="sound\mp3_xia.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="WeixinX.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="安装\DebugView++.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="安装\dotnet-sdk-8.0.416-win-x64.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="安装\MicrosoftEdgeSetup.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="安装\WeChatWin4.1.0.21.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="安装\运行库vc2013_x64.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="安装\运行库VC2015-2022_redist.x64.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

@@ -213,73 +213,7 @@ namespace zhaocaimao.Shared.Platform
         public bool IsForced { get; set; }
     }
 
-    /// <summary>
-    /// 投注平台枚举（直接使用中文名）
-    /// </summary>
-    public enum BetPlatform
-    {
-        云顶 = 0,
-        海峡 = 1,
-        红海 = 2,
-        通宝 = 3
-    }
-    
-    /// <summary>
-    /// 投注平台工具类
-    /// </summary>
-    public static class BetPlatformHelper
-    {
-        /// <summary>
-        /// 根据名称获取枚举（兼容旧数据）
-        /// </summary>
-        public static BetPlatform Parse(string name)
-        {
-            // 1. 尝试直接解析中文名
-            if (Enum.TryParse<BetPlatform>(name, out var platform))
-                return platform;
-            
-            // 2. 兼容旧的英文名
-            var legacyNames = new Dictionary<string, BetPlatform>
-            {
-                { "YunDing", BetPlatform.云顶 },
-                { "YunDing28", BetPlatform.云顶 },
-                { "HaiXia", BetPlatform.海峡 },
-                { "HaiXia28", BetPlatform.海峡 },
-                { "HongHai", BetPlatform.红海 },
-                { "HongHai28", BetPlatform.红海 },
-                { "TongBao", BetPlatform.通宝 },
-                { "TongBao28", BetPlatform.通宝 }
-            };
-            
-            if (legacyNames.TryGetValue(name, out var legacyPlatform))
-                return legacyPlatform;
-            
-            // 3. 默认返回云顶
-            return BetPlatform.云顶;
-        }
-        
-        /// <summary>
-        /// 根据索引获取平台
-        /// </summary>
-        public static BetPlatform GetByIndex(int index)
-        {
-            return index switch
-            {
-                0 => BetPlatform.云顶,
-                1 => BetPlatform.海峡,
-                2 => BetPlatform.红海,
-                3 => BetPlatform.通宝,
-                _ => BetPlatform.云顶
-            };
-        }
-        
-        /// <summary>
-        /// 获取平台索引
-        /// </summary>
-        public static int GetIndex(BetPlatform platform)
-        {
-            return (int)platform;
-        }
-    }
+    // 注意：BetPlatform 和 BetPlatformHelper 已在 zhaocaimao.Shared 项目中定义
+    // 这里不再重复定义，直接使用 zhaocaimao.Shared.Platform 命名空间中的类型
 }
 
