@@ -45,6 +45,16 @@ namespace zhaocaimao.Views
             
             // 🔧 绑定开发模式按钮事件
             btnRunDevSendCommand.Click += BtnRunDevSendCommand_Click;
+            
+            // 隐藏"连接设置"和"其他"选项卡
+            if (tabPageConnection != null)
+            {
+                uiTabControl1.TabPages.Remove(tabPageConnection);
+            }
+            if (tabPageOther != null)
+            {
+                uiTabControl1.TabPages.Remove(tabPageOther);
+            }
         }
 
         private void LoadSettings()
@@ -128,12 +138,14 @@ namespace zhaocaimao.Views
                 
                 // TODO: 保存到配置文件
                 _logService.Info("SettingsForm", $"设置已保存: Host={txtHost.Text}, Port={txtPort.Text}");
-                UIMessageBox.ShowSuccess("设置已保存！");
+                
+                // 使用简单的 MessageBox 替代 UIMessageBox，更简洁
+                MessageBox.Show("配置已保存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 _logService.Error("SettingsForm", "保存设置失败", ex);
-                UIMessageBox.ShowError($"保存失败:\n{ex.Message}");
+                MessageBox.Show($"保存失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         

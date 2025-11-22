@@ -71,10 +71,10 @@ namespace zhaocaimao.Views
             uiLabel3 = new Sunny.UI.UILabel();
             tabPageOther = new TabPage();
             grpSoundTest = new Sunny.UI.UIGroupBox();
-            btnTestSealing = new Sunny.UI.UIButton();
-            btnTestLottery = new Sunny.UI.UIButton();
-            btnTestCreditUp = new Sunny.UI.UIButton();
             btnTestCreditDown = new Sunny.UI.UIButton();
+            btnTestCreditUp = new Sunny.UI.UIButton();
+            btnTestLottery = new Sunny.UI.UIButton();
+            btnTestSealing = new Sunny.UI.UIButton();
             lblSoundTestResult = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
@@ -113,7 +113,7 @@ namespace zhaocaimao.Views
             // 
             // tabPageSystem
             // 
-            tabPageSystem.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            tabPageSystem.BackColor = Color.FromArgb(245, 247, 250);
             tabPageSystem.Controls.Add(grp开发模式选项);
             tabPageSystem.Controls.Add(chk收单关闭时不发送系统消息);
             tabPageSystem.Controls.Add(chkRunModelDev);
@@ -142,6 +142,7 @@ namespace zhaocaimao.Views
             grp开发模式选项.TabIndex = 1;
             grp开发模式选项.Text = "开发模式选项";
             grp开发模式选项.TextAlignment = ContentAlignment.MiddleLeft;
+            grp开发模式选项.Visible = false;
             // 
             // btnRunDevSendCommand
             // 
@@ -225,6 +226,7 @@ namespace zhaocaimao.Views
             chkRunModelDev.Size = new Size(338, 30);
             chkRunModelDev.TabIndex = 0;
             chkRunModelDev.Text = "开发模式（允许手动绑定群, 模拟各项数据）";
+            chkRunModelDev.Visible = false;
             // 
             // uiCheckBox1
             // 
@@ -237,6 +239,7 @@ namespace zhaocaimao.Views
             uiCheckBox1.Size = new Size(300, 30);
             uiCheckBox1.TabIndex = 0;
             uiCheckBox1.Text = "老板锁";
+            uiCheckBox1.Visible = false;
             // 
             // chkRunModeAdminSettings
             // 
@@ -249,15 +252,16 @@ namespace zhaocaimao.Views
             chkRunModeAdminSettings.Size = new Size(300, 30);
             chkRunModeAdminSettings.TabIndex = 0;
             chkRunModeAdminSettings.Text = "管理模式（允许手动绑定群）";
+            chkRunModeAdminSettings.Visible = false;
             // 
             // tabPageConnection
             // 
-            tabPageConnection.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            tabPageConnection.BackColor = Color.FromArgb(245, 247, 250);
             tabPageConnection.Controls.Add(uiGroupBox2);
             tabPageConnection.Controls.Add(uiGroupBox1);
             tabPageConnection.Location = new Point(0, 40);
             tabPageConnection.Name = "tabPageConnection";
-            tabPageConnection.Size = new Size(200, 60);
+            tabPageConnection.Size = new Size(800, 470);
             tabPageConnection.TabIndex = 0;
             tabPageConnection.Text = "连接设置";
             // 
@@ -461,12 +465,12 @@ namespace zhaocaimao.Views
             // 
             // tabPageTest
             // 
-            tabPageTest.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            tabPageTest.BackColor = Color.FromArgb(245, 247, 250);
             tabPageTest.Controls.Add(uiGroupBox4);
             tabPageTest.Controls.Add(uiGroupBox3);
             tabPageTest.Location = new Point(0, 40);
             tabPageTest.Name = "tabPageTest";
-            tabPageTest.Size = new Size(200, 60);
+            tabPageTest.Size = new Size(800, 470);
             tabPageTest.TabIndex = 1;
             tabPageTest.Text = "命令测试";
             // 
@@ -592,7 +596,7 @@ namespace zhaocaimao.Views
             // 
             // txtResult
             // 
-            txtResult.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtResult.BackColor = Color.FromArgb(245, 247, 250);
             txtResult.BorderStyle = BorderStyle.FixedSingle;
             txtResult.Font = new Font("Consolas", 10F);
             txtResult.Location = new Point(30, 140);
@@ -654,7 +658,7 @@ namespace zhaocaimao.Views
             // 
             // tabPageOther
             // 
-            tabPageOther.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            tabPageOther.BackColor = Color.FromArgb(245, 247, 250);
             tabPageOther.Controls.Add(grpSoundTest);
             tabPageOther.Location = new Point(0, 40);
             tabPageOther.Name = "tabPageOther";
@@ -680,31 +684,17 @@ namespace zhaocaimao.Views
             grpSoundTest.Text = "声音测试";
             grpSoundTest.TextAlignment = ContentAlignment.MiddleLeft;
             // 
-            // btnTestSealing
+            // btnTestCreditDown
             // 
-            btnTestSealing.Cursor = Cursors.Hand;
-            btnTestSealing.Font = new Font("微软雅黑", 12F);
-            btnTestSealing.Location = new Point(30, 50);
-            btnTestSealing.MinimumSize = new Size(1, 1);
-            btnTestSealing.Name = "btnTestSealing";
-            btnTestSealing.Size = new Size(150, 40);
-            btnTestSealing.TabIndex = 0;
-            btnTestSealing.Text = "🔔 测试封盘声音";
-            btnTestSealing.TipsFont = new Font("宋体", 9F);
-            btnTestSealing.Click += BtnTestSealing_Click;
-            // 
-            // btnTestLottery
-            // 
-            btnTestLottery.Cursor = Cursors.Hand;
-            btnTestLottery.Font = new Font("微软雅黑", 12F);
-            btnTestLottery.Location = new Point(200, 50);
-            btnTestLottery.MinimumSize = new Size(1, 1);
-            btnTestLottery.Name = "btnTestLottery";
-            btnTestLottery.Size = new Size(150, 40);
-            btnTestLottery.TabIndex = 1;
-            btnTestLottery.Text = "🎲 测试开奖声音";
-            btnTestLottery.TipsFont = new Font("宋体", 9F);
-            btnTestLottery.Click += BtnTestLottery_Click;
+            btnTestCreditDown.Cursor = Cursors.Hand;
+            btnTestCreditDown.Font = new Font("微软雅黑", 12F);
+            btnTestCreditDown.Location = new Point(540, 50);
+            btnTestCreditDown.MinimumSize = new Size(1, 1);
+            btnTestCreditDown.Name = "btnTestCreditDown";
+            btnTestCreditDown.Size = new Size(150, 40);
+            btnTestCreditDown.TabIndex = 3;
+            btnTestCreditDown.Text = "💸 测试下分声音";
+            btnTestCreditDown.Click += BtnTestCreditDown_Click;
             // 
             // btnTestCreditUp
             // 
@@ -716,21 +706,31 @@ namespace zhaocaimao.Views
             btnTestCreditUp.Size = new Size(150, 40);
             btnTestCreditUp.TabIndex = 2;
             btnTestCreditUp.Text = "💰 测试上分声音";
-            btnTestCreditUp.TipsFont = new Font("宋体", 9F);
             btnTestCreditUp.Click += BtnTestCreditUp_Click;
             // 
-            // btnTestCreditDown
+            // btnTestLottery
             // 
-            btnTestCreditDown.Cursor = Cursors.Hand;
-            btnTestCreditDown.Font = new Font("微软雅黑", 12F);
-            btnTestCreditDown.Location = new Point(540, 50);
-            btnTestCreditDown.MinimumSize = new Size(1, 1);
-            btnTestCreditDown.Name = "btnTestCreditDown";
-            btnTestCreditDown.Size = new Size(150, 40);
-            btnTestCreditDown.TabIndex = 3;
-            btnTestCreditDown.Text = "💸 测试下分声音";
-            btnTestCreditDown.TipsFont = new Font("宋体", 9F);
-            btnTestCreditDown.Click += BtnTestCreditDown_Click;
+            btnTestLottery.Cursor = Cursors.Hand;
+            btnTestLottery.Font = new Font("微软雅黑", 12F);
+            btnTestLottery.Location = new Point(200, 50);
+            btnTestLottery.MinimumSize = new Size(1, 1);
+            btnTestLottery.Name = "btnTestLottery";
+            btnTestLottery.Size = new Size(150, 40);
+            btnTestLottery.TabIndex = 1;
+            btnTestLottery.Text = "🎲 测试开奖声音";
+            btnTestLottery.Click += BtnTestLottery_Click;
+            // 
+            // btnTestSealing
+            // 
+            btnTestSealing.Cursor = Cursors.Hand;
+            btnTestSealing.Font = new Font("微软雅黑", 12F);
+            btnTestSealing.Location = new Point(30, 50);
+            btnTestSealing.MinimumSize = new Size(1, 1);
+            btnTestSealing.Name = "btnTestSealing";
+            btnTestSealing.Size = new Size(150, 40);
+            btnTestSealing.TabIndex = 0;
+            btnTestSealing.Text = "🔔 测试封盘声音";
+            btnTestSealing.Click += BtnTestSealing_Click;
             // 
             // lblSoundTestResult
             // 
@@ -741,7 +741,6 @@ namespace zhaocaimao.Views
             lblSoundTestResult.Size = new Size(700, 70);
             lblSoundTestResult.TabIndex = 4;
             lblSoundTestResult.Text = "点击按钮测试声音播放...";
-            lblSoundTestResult.TextAlign = ContentAlignment.TopLeft;
             // 
             // btnSave
             // 
