@@ -132,7 +132,7 @@ namespace zhaocaimao
             // 
             // ucBinggoDataCur
             // 
-            ucBinggoDataCur.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            ucBinggoDataCur.BackColor = Color.FromArgb(245, 247, 250);
             ucBinggoDataCur.BorderStyle = BorderStyle.FixedSingle;
             ucBinggoDataCur.Location = new Point(0, 5);
             ucBinggoDataCur.Name = "ucBinggoDataCur";
@@ -141,7 +141,7 @@ namespace zhaocaimao
             // 
             // ucBinggoDataLast
             // 
-            ucBinggoDataLast.BackColor = Color.FromArgb(248, 250, 252);  // 浅金色背景
+            ucBinggoDataLast.BackColor = Color.FromArgb(248, 250, 252);
             ucBinggoDataLast.Location = new Point(3, 89);
             ucBinggoDataLast.Name = "ucBinggoDataLast";
             ucBinggoDataLast.Size = new Size(239, 107);
@@ -150,7 +150,7 @@ namespace zhaocaimao
             // lblSealSeconds
             // 
             lblSealSeconds.Font = new Font("微软雅黑", 10F);
-            lblSealSeconds.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblSealSeconds.ForeColor = Color.FromArgb(90, 122, 138);
             lblSealSeconds.Location = new Point(5, 25);
             lblSealSeconds.Name = "lblSealSeconds";
             lblSealSeconds.Size = new Size(90, 23);
@@ -160,14 +160,16 @@ namespace zhaocaimao
             // 
             // txtSealSeconds
             // 
-            txtSealSeconds.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtSealSeconds.DoubleValue = 49D;
+            txtSealSeconds.FillColor = Color.FromArgb(245, 247, 250);
             txtSealSeconds.Font = new Font("微软雅黑", 10F);
+            txtSealSeconds.IntValue = 49;
             txtSealSeconds.Location = new Point(100, 23);
             txtSealSeconds.Margin = new Padding(4, 5, 4, 5);
             txtSealSeconds.MinimumSize = new Size(1, 16);
             txtSealSeconds.Name = "txtSealSeconds";
             txtSealSeconds.Padding = new Padding(5);
-            txtSealSeconds.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
+            txtSealSeconds.RectColor = Color.FromArgb(107, 143, 166);
             txtSealSeconds.ShowText = false;
             txtSealSeconds.Size = new Size(130, 29);
             txtSealSeconds.TabIndex = 1;
@@ -179,7 +181,7 @@ namespace zhaocaimao
             // lblMinBet
             // 
             lblMinBet.Font = new Font("微软雅黑", 10F);
-            lblMinBet.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblMinBet.ForeColor = Color.FromArgb(90, 122, 138);
             lblMinBet.Location = new Point(5, 58);
             lblMinBet.Name = "lblMinBet";
             lblMinBet.Size = new Size(90, 23);
@@ -189,14 +191,16 @@ namespace zhaocaimao
             // 
             // txtMinBet
             // 
-            txtMinBet.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtMinBet.DoubleValue = 1D;
+            txtMinBet.FillColor = Color.FromArgb(245, 247, 250);
             txtMinBet.Font = new Font("微软雅黑", 10F);
+            txtMinBet.IntValue = 1;
             txtMinBet.Location = new Point(100, 56);
             txtMinBet.Margin = new Padding(4, 5, 4, 5);
             txtMinBet.MinimumSize = new Size(1, 16);
             txtMinBet.Name = "txtMinBet";
             txtMinBet.Padding = new Padding(5);
-            txtMinBet.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
+            txtMinBet.RectColor = Color.FromArgb(107, 143, 166);
             txtMinBet.ShowText = false;
             txtMinBet.Size = new Size(130, 29);
             txtMinBet.TabIndex = 3;
@@ -208,7 +212,7 @@ namespace zhaocaimao
             // lblMaxBet
             // 
             lblMaxBet.Font = new Font("微软雅黑", 10F);
-            lblMaxBet.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblMaxBet.ForeColor = Color.FromArgb(90, 122, 138);
             lblMaxBet.Location = new Point(5, 91);
             lblMaxBet.Name = "lblMaxBet";
             lblMaxBet.Size = new Size(90, 23);
@@ -218,14 +222,16 @@ namespace zhaocaimao
             // 
             // txtMaxBet
             // 
-            txtMaxBet.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtMaxBet.DoubleValue = 10000D;
+            txtMaxBet.FillColor = Color.FromArgb(245, 247, 250);
             txtMaxBet.Font = new Font("微软雅黑", 10F);
+            txtMaxBet.IntValue = 10000;
             txtMaxBet.Location = new Point(100, 89);
             txtMaxBet.Margin = new Padding(4, 5, 4, 5);
             txtMaxBet.MinimumSize = new Size(1, 16);
             txtMaxBet.Name = "txtMaxBet";
             txtMaxBet.Padding = new Padding(5);
-            txtMaxBet.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
+            txtMaxBet.RectColor = Color.FromArgb(107, 143, 166);
             txtMaxBet.ShowText = false;
             txtMaxBet.Size = new Size(130, 29);
             txtMaxBet.TabIndex = 5;
@@ -237,7 +243,7 @@ namespace zhaocaimao
             // lblAutoBetSeparator
             // 
             lblAutoBetSeparator.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
-            lblAutoBetSeparator.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblAutoBetSeparator.ForeColor = Color.FromArgb(90, 122, 138);
             lblAutoBetSeparator.Location = new Point(5, 123);
             lblAutoBetSeparator.Name = "lblAutoBetSeparator";
             lblAutoBetSeparator.Size = new Size(225, 20);
@@ -248,7 +254,7 @@ namespace zhaocaimao
             // lblPlatform
             // 
             lblPlatform.Font = new Font("微软雅黑", 9F);
-            lblPlatform.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblPlatform.ForeColor = Color.FromArgb(90, 122, 138);
             lblPlatform.Location = new Point(5, 148);
             lblPlatform.Name = "lblPlatform";
             lblPlatform.Size = new Size(50, 20);
@@ -260,17 +266,17 @@ namespace zhaocaimao
             // 
             cbxPlatform.DataSource = null;
             cbxPlatform.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
-            cbxPlatform.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            cbxPlatform.FillColor = Color.FromArgb(245, 247, 250);
             cbxPlatform.Font = new Font("微软雅黑", 9F);
-            cbxPlatform.ItemHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
+            cbxPlatform.ItemHoverColor = Color.FromArgb(143, 168, 194);
             cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(245, 247, 250);
-            cbxPlatform.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
             cbxPlatform.Location = new Point(60, 146);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);
             cbxPlatform.MinimumSize = new Size(63, 0);
             cbxPlatform.Name = "cbxPlatform";
             cbxPlatform.Padding = new Padding(0, 0, 30, 2);
+            cbxPlatform.RectColor = Color.FromArgb(107, 143, 166);
             cbxPlatform.Size = new Size(170, 25);
             cbxPlatform.SymbolSize = 24;
             cbxPlatform.TabIndex = 8;
@@ -280,7 +286,7 @@ namespace zhaocaimao
             // lblAutoBetUsername
             // 
             lblAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            lblAutoBetUsername.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblAutoBetUsername.ForeColor = Color.FromArgb(90, 122, 138);
             lblAutoBetUsername.Location = new Point(5, 178);
             lblAutoBetUsername.Name = "lblAutoBetUsername";
             lblAutoBetUsername.Size = new Size(50, 20);
@@ -290,14 +296,14 @@ namespace zhaocaimao
             // 
             // txtAutoBetUsername
             // 
-            txtAutoBetUsername.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtAutoBetUsername.FillColor = Color.FromArgb(245, 247, 250);
             txtAutoBetUsername.Font = new Font("微软雅黑", 9F);
             txtAutoBetUsername.Location = new Point(60, 176);
             txtAutoBetUsername.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetUsername.MinimumSize = new Size(1, 16);
             txtAutoBetUsername.Name = "txtAutoBetUsername";
             txtAutoBetUsername.Padding = new Padding(5);
-            txtAutoBetUsername.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
+            txtAutoBetUsername.RectColor = Color.FromArgb(107, 143, 166);
             txtAutoBetUsername.ShowText = false;
             txtAutoBetUsername.Size = new Size(170, 25);
             txtAutoBetUsername.TabIndex = 10;
@@ -307,7 +313,7 @@ namespace zhaocaimao
             // lblAutoBetPassword
             // 
             lblAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            lblAutoBetPassword.ForeColor = Color.FromArgb(90, 122, 138);  // 深金色文字
+            lblAutoBetPassword.ForeColor = Color.FromArgb(90, 122, 138);
             lblAutoBetPassword.Location = new Point(5, 208);
             lblAutoBetPassword.Name = "lblAutoBetPassword";
             lblAutoBetPassword.Size = new Size(50, 20);
@@ -317,7 +323,7 @@ namespace zhaocaimao
             // 
             // txtAutoBetPassword
             // 
-            txtAutoBetPassword.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtAutoBetPassword.FillColor = Color.FromArgb(245, 247, 250);
             txtAutoBetPassword.Font = new Font("微软雅黑", 9F);
             txtAutoBetPassword.Location = new Point(60, 206);
             txtAutoBetPassword.Margin = new Padding(4, 5, 4, 5);
@@ -325,7 +331,7 @@ namespace zhaocaimao
             txtAutoBetPassword.Name = "txtAutoBetPassword";
             txtAutoBetPassword.Padding = new Padding(5);
             txtAutoBetPassword.PasswordChar = '*';
-            txtAutoBetPassword.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
+            txtAutoBetPassword.RectColor = Color.FromArgb(107, 143, 166);
             txtAutoBetPassword.ShowText = false;
             txtAutoBetPassword.Size = new Size(170, 25);
             txtAutoBetPassword.TabIndex = 12;
@@ -334,9 +340,9 @@ namespace zhaocaimao
             // 
             // btnStartBrowser
             // 
-            btnStartBrowser.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnStartBrowser.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnStartBrowser.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnStartBrowser.FillColor = Color.FromArgb(107, 143, 166);
+            btnStartBrowser.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnStartBrowser.FillPressColor = Color.FromArgb(91, 127, 166);
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
             btnStartBrowser.Location = new Point(120, 240);
             btnStartBrowser.MinimumSize = new Size(1, 1);
@@ -352,9 +358,9 @@ namespace zhaocaimao
             // 
             // btnConfigManager
             // 
-            btnConfigManager.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnConfigManager.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnConfigManager.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnConfigManager.FillColor = Color.FromArgb(107, 143, 166);
+            btnConfigManager.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnConfigManager.FillPressColor = Color.FromArgb(91, 127, 166);
             btnConfigManager.Font = new Font("微软雅黑", 9F);
             btnConfigManager.Location = new Point(120, 275);
             btnConfigManager.MinimumSize = new Size(1, 1);
@@ -370,7 +376,7 @@ namespace zhaocaimao
             // 
             // cmsMembers
             // 
-            cmsMembers.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            cmsMembers.BackColor = Color.FromArgb(245, 247, 250);
             cmsMembers.Font = new Font("微软雅黑", 10F);
             cmsMembers.ImageScalingSize = new Size(20, 20);
             cmsMembers.Items.AddRange(new ToolStripItem[] { tsmiClearBalance, tsmiDeleteMember, tsmiSetMemberType, toolStripSeparator1, tsmiViewBalanceChange });
@@ -522,13 +528,13 @@ namespace zhaocaimao
             pnl_fastsetting.Controls.Add(txtAutoBetPassword);
             pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Controls.Add(btnConfigManager);
-            pnl_fastsetting.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            pnl_fastsetting.FillColor = Color.FromArgb(245, 247, 250);
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             pnl_fastsetting.Location = new Point(5, 378);
             pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
-            pnl_fastsetting.RectColor = Color.FromArgb(107, 143, 166);  // 金色边框
+            pnl_fastsetting.RectColor = Color.FromArgb(107, 143, 166);
             pnl_fastsetting.Size = new Size(237, 305);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
@@ -582,11 +588,10 @@ namespace zhaocaimao
             dataGridViewCellStyle1.BackColor = Color.FromArgb(248, 250, 252);
             dgvContacts.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             dgvContacts.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dgvContacts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             dgvContacts.BackgroundColor = Color.White;
             dgvContacts.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle2.BackColor = Color.FromArgb(107, 143, 166);  // 亮金色表头
+            dataGridViewCellStyle2.BackColor = Color.FromArgb(107, 143, 166);
             dataGridViewCellStyle2.Font = new Font("微软雅黑", 12F);
             dataGridViewCellStyle2.ForeColor = Color.White;
             dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
@@ -597,7 +602,7 @@ namespace zhaocaimao
             dgvContacts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvContacts.EnableHeadersVisualStyles = false;
             dgvContacts.Font = new Font("微软雅黑", 12F);
-            dgvContacts.GridColor = Color.FromArgb(107, 143, 166);  // 金色网格线
+            dgvContacts.GridColor = Color.FromArgb(107, 143, 166);
             dgvContacts.Location = new Point(3, 43);
             dgvContacts.MultiSelect = false;
             dgvContacts.Name = "dgvContacts";
@@ -606,7 +611,7 @@ namespace zhaocaimao
             dataGridViewCellStyle3.BackColor = Color.FromArgb(248, 250, 252);
             dataGridViewCellStyle3.Font = new Font("微软雅黑", 12F);
             dataGridViewCellStyle3.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(107, 143, 166);  // 金色选中
+            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(107, 143, 166);
             dataGridViewCellStyle3.SelectionForeColor = Color.White;
             dataGridViewCellStyle3.WrapMode = DataGridViewTriState.True;
             dgvContacts.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
@@ -643,9 +648,9 @@ namespace zhaocaimao
             // 
             btnRefreshContacts.Cursor = Cursors.Hand;
             btnRefreshContacts.Dock = DockStyle.Right;
-            btnRefreshContacts.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnRefreshContacts.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnRefreshContacts.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnRefreshContacts.FillColor = Color.FromArgb(107, 143, 166);
+            btnRefreshContacts.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnRefreshContacts.FillPressColor = Color.FromArgb(91, 127, 166);
             btnRefreshContacts.Font = new Font("微软雅黑", 9F);
             btnRefreshContacts.Location = new Point(169, 0);
             btnRefreshContacts.MinimumSize = new Size(1, 1);
@@ -663,9 +668,9 @@ namespace zhaocaimao
             // 
             btnBindingContacts.Cursor = Cursors.Hand;
             btnBindingContacts.Dock = DockStyle.Right;
-            btnBindingContacts.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnBindingContacts.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnBindingContacts.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnBindingContacts.FillColor = Color.FromArgb(107, 143, 166);
+            btnBindingContacts.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnBindingContacts.FillPressColor = Color.FromArgb(91, 127, 166);
             btnBindingContacts.Font = new Font("微软雅黑", 9F);
             btnBindingContacts.Location = new Point(208, 0);
             btnBindingContacts.MinimumSize = new Size(1, 1);
@@ -683,7 +688,7 @@ namespace zhaocaimao
             // 
             txtCurrentContact.Cursor = Cursors.IBeam;
             txtCurrentContact.Dock = DockStyle.Fill;
-            txtCurrentContact.FillColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            txtCurrentContact.FillColor = Color.FromArgb(245, 247, 250);
             txtCurrentContact.Font = new Font("微软雅黑", 10F);
             txtCurrentContact.Location = new Point(0, 0);
             txtCurrentContact.Margin = new Padding(4, 5, 4, 5);
@@ -761,7 +766,7 @@ namespace zhaocaimao
             dgvMembers.BackgroundColor = Color.White;
             dgvMembers.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle6.BackColor = Color.FromArgb(107, 143, 166);  // 亮金色表头
+            dataGridViewCellStyle6.BackColor = Color.FromArgb(107, 143, 166);
             dataGridViewCellStyle6.Font = new Font("微软雅黑", 10F);
             dataGridViewCellStyle6.ForeColor = Color.White;
             dataGridViewCellStyle6.SelectionBackColor = SystemColors.Highlight;
@@ -773,7 +778,7 @@ namespace zhaocaimao
             dgvMembers.ContextMenuStrip = cmsMembers;
             dgvMembers.EnableHeadersVisualStyles = false;
             dgvMembers.Font = new Font("微软雅黑", 9F);
-            dgvMembers.GridColor = Color.FromArgb(107, 143, 166);  // 金色网格线
+            dgvMembers.GridColor = Color.FromArgb(107, 143, 166);
             dgvMembers.Location = new Point(0, 30);
             dgvMembers.MultiSelect = false;
             dgvMembers.Name = "dgvMembers";
@@ -781,7 +786,7 @@ namespace zhaocaimao
             dataGridViewCellStyle7.BackColor = Color.FromArgb(248, 250, 252);
             dataGridViewCellStyle7.Font = new Font("微软雅黑", 9F);
             dataGridViewCellStyle7.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle7.SelectionBackColor = Color.FromArgb(107, 143, 166);  // 金色选中
+            dataGridViewCellStyle7.SelectionBackColor = Color.FromArgb(107, 143, 166);
             dataGridViewCellStyle7.SelectionForeColor = Color.White;
             dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
             dgvMembers.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
@@ -852,7 +857,7 @@ namespace zhaocaimao
             dgvOrders.BackgroundColor = Color.White;
             dgvOrders.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
             dataGridViewCellStyle10.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle10.BackColor = Color.FromArgb(107, 143, 166);  // 亮金色表头
+            dataGridViewCellStyle10.BackColor = Color.FromArgb(107, 143, 166);
             dataGridViewCellStyle10.Font = new Font("微软雅黑", 10F);
             dataGridViewCellStyle10.ForeColor = Color.White;
             dataGridViewCellStyle10.SelectionBackColor = SystemColors.Highlight;
@@ -863,15 +868,14 @@ namespace zhaocaimao
             dgvOrders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvOrders.EnableHeadersVisualStyles = false;
             dgvOrders.Font = new Font("微软雅黑", 9F);
-            dgvOrders.GridColor = Color.FromArgb(107, 143, 166);  // 金色网格线
+            dgvOrders.GridColor = Color.FromArgb(107, 143, 166);
             dgvOrders.Location = new Point(0, 30);
-            dgvOrders.MultiSelect = true;
             dgvOrders.Name = "dgvOrders";
             dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle11.BackColor = Color.FromArgb(248, 250, 252);
             dataGridViewCellStyle11.Font = new Font("微软雅黑", 9F);
             dataGridViewCellStyle11.ForeColor = Color.FromArgb(48, 48, 48);
-            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(107, 143, 166);  // 金色选中
+            dataGridViewCellStyle11.SelectionBackColor = Color.FromArgb(107, 143, 166);
             dataGridViewCellStyle11.SelectionForeColor = Color.White;
             dataGridViewCellStyle11.WrapMode = DataGridViewTriState.True;
             dgvOrders.RowHeadersDefaultCellStyle = dataGridViewCellStyle11;
@@ -946,17 +950,17 @@ namespace zhaocaimao
             // btnClearData
             // 
             btnClearData.Cursor = Cursors.Hand;
-            btnClearData.FillColor = Color.FromArgb(90, 122, 138);  // 深金色背景（危险操作）
-            btnClearData.FillHoverColor = Color.FromArgb(91, 127, 166);  // 金色悬停
-            btnClearData.FillPressColor = Color.FromArgb(74, 95, 122);  // 深金色按下
+            btnClearData.FillColor = Color.FromArgb(90, 122, 138);
+            btnClearData.FillHoverColor = Color.FromArgb(91, 127, 166);
+            btnClearData.FillPressColor = Color.FromArgb(74, 95, 122);
             btnClearData.Font = new Font("微软雅黑", 10F);
-            btnClearData.Location = new Point(989, 12);
+            btnClearData.Location = new Point(1039, 12);
             btnClearData.MinimumSize = new Size(1, 1);
             btnClearData.Name = "btnClearData";
             btnClearData.RectColor = Color.FromArgb(90, 122, 138);
             btnClearData.RectHoverColor = Color.FromArgb(91, 127, 166);
             btnClearData.RectPressColor = Color.FromArgb(74, 95, 122);
-            btnClearData.Size = new Size(100, 40);
+            btnClearData.Size = new Size(75, 40);
             btnClearData.TabIndex = 4;
             btnClearData.Text = "清空数据";
             btnClearData.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -965,11 +969,11 @@ namespace zhaocaimao
             // btnCreditWithdrawManage
             // 
             btnCreditWithdrawManage.Cursor = Cursors.Hand;
-            btnCreditWithdrawManage.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnCreditWithdrawManage.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnCreditWithdrawManage.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnCreditWithdrawManage.FillColor = Color.FromArgb(107, 143, 166);
+            btnCreditWithdrawManage.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnCreditWithdrawManage.FillPressColor = Color.FromArgb(91, 127, 166);
             btnCreditWithdrawManage.Font = new Font("微软雅黑", 10F);
-            btnCreditWithdrawManage.Location = new Point(656, 12);
+            btnCreditWithdrawManage.Location = new Point(359, 12);
             btnCreditWithdrawManage.MinimumSize = new Size(1, 1);
             btnCreditWithdrawManage.Name = "btnCreditWithdrawManage";
             btnCreditWithdrawManage.RectColor = Color.FromArgb(107, 143, 166);
@@ -984,11 +988,11 @@ namespace zhaocaimao
             // btnOpenLotteryResult
             // 
             btnOpenLotteryResult.Cursor = Cursors.Hand;
-            btnOpenLotteryResult.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnOpenLotteryResult.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnOpenLotteryResult.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnOpenLotteryResult.FillColor = Color.FromArgb(107, 143, 166);
+            btnOpenLotteryResult.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnOpenLotteryResult.FillPressColor = Color.FromArgb(91, 127, 166);
             btnOpenLotteryResult.Font = new Font("微软雅黑", 10F);
-            btnOpenLotteryResult.Location = new Point(782, 12);
+            btnOpenLotteryResult.Location = new Point(485, 12);
             btnOpenLotteryResult.MinimumSize = new Size(1, 1);
             btnOpenLotteryResult.Name = "btnOpenLotteryResult";
             btnOpenLotteryResult.RectColor = Color.FromArgb(107, 143, 166);
@@ -1003,9 +1007,9 @@ namespace zhaocaimao
             // btnConnect
             // 
             btnConnect.Cursor = Cursors.Hand;
-            btnConnect.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnConnect.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnConnect.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnConnect.FillColor = Color.FromArgb(107, 143, 166);
+            btnConnect.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnConnect.FillPressColor = Color.FromArgb(91, 127, 166);
             btnConnect.FillSelectedColor = Color.FromArgb(91, 127, 166);
             btnConnect.Font = new Font("微软雅黑", 10F, FontStyle.Bold);
             btnConnect.Location = new Point(253, 12);
@@ -1025,11 +1029,11 @@ namespace zhaocaimao
             // btnLog
             // 
             btnLog.Cursor = Cursors.Hand;
-            btnLog.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnLog.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnLog.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnLog.FillColor = Color.FromArgb(107, 143, 166);
+            btnLog.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnLog.FillPressColor = Color.FromArgb(91, 127, 166);
             btnLog.Font = new Font("微软雅黑", 10F);
-            btnLog.Location = new Point(888, 12);
+            btnLog.Location = new Point(591, 12);
             btnLog.MinimumSize = new Size(1, 1);
             btnLog.Name = "btnLog";
             btnLog.RectColor = Color.FromArgb(107, 143, 166);
@@ -1044,18 +1048,17 @@ namespace zhaocaimao
             // btnSettings
             // 
             btnSettings.Cursor = Cursors.Hand;
-            btnSettings.Dock = DockStyle.Right;
-            btnSettings.FillColor = Color.FromArgb(107, 143, 166);  // 亮金色背景
-            btnSettings.FillHoverColor = Color.FromArgb(143, 168, 194);  // 金色悬停
-            btnSettings.FillPressColor = Color.FromArgb(91, 127, 166);  // 深金色按下
+            btnSettings.FillColor = Color.FromArgb(107, 143, 166);
+            btnSettings.FillHoverColor = Color.FromArgb(143, 168, 194);
+            btnSettings.FillPressColor = Color.FromArgb(91, 127, 166);
             btnSettings.Font = new Font("微软雅黑", 10F);
-            btnSettings.Location = new Point(1095, 5);
+            btnSettings.Location = new Point(1120, 12);
             btnSettings.MinimumSize = new Size(1, 1);
             btnSettings.Name = "btnSettings";
             btnSettings.RectColor = Color.FromArgb(107, 143, 166);
             btnSettings.RectHoverColor = Color.FromArgb(143, 168, 194);
             btnSettings.RectPressColor = Color.FromArgb(91, 127, 166);
-            btnSettings.Size = new Size(100, 50);
+            btnSettings.Size = new Size(75, 40);
             btnSettings.TabIndex = 0;
             btnSettings.Text = "设置";
             btnSettings.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -1063,7 +1066,7 @@ namespace zhaocaimao
             // 
             // statusStrip
             // 
-            statusStrip.BackColor = Color.FromArgb(245, 247, 250);  // 淡金色背景
+            statusStrip.BackColor = Color.FromArgb(245, 247, 250);
             statusStrip.Font = new Font("微软雅黑", 10F);
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { lblStatus });
