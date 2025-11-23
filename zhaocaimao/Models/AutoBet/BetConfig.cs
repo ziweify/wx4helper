@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using SQLite;
 
 namespace zhaocaimao.Models.AutoBet
@@ -120,11 +121,43 @@ namespace zhaocaimao.Models.AutoBet
         {
             if (_isEnabled != value)
             {
+                var oldValue = _isEnabled;
                 _isEnabled = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEnabled)));
                 
-                // 🔥 配置自管理模式：监控线程始终运行，内部检查 IsEnabled 状态
-                // 无需在 setter 中启动/停止监控线程
+                // 🔥 配置自管理模式：当 IsEnabled 变为 true 时，启动监控线程
+                if (value && !oldValue)
+                {
+                    // 从 false 变为 true，启动监控线程
+                    StartMonitoring();
+                    
+                    // 立即检查是否需要启动浏览器
+                    if (ShouldStartBrowser())
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                _isStartingBrowser = true;
+                                await StartBrowserInternalAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                // 使用日志服务记录错误（如果已注入）
+                                System.Diagnostics.Debug.WriteLine($"[BetConfig] 启动浏览器时异常: {ex.Message}");
+                            }
+                            finally
+                            {
+                                _isStartingBrowser = false;
+                            }
+                        });
+                    }
+                }
+                else if (!value && oldValue)
+                {
+                    // 从 true 变为 false，停止监控线程
+                    StopMonitoring();
+                }
             }
         }
     }

@@ -134,7 +134,12 @@ namespace zhaocaimao.Services.AutoBet
                                 }
                             };
                             
+                            // 🔥 确保窗口显示
                             newForm.Show();
+                            newForm.WindowState = FormWindowState.Normal;
+                            newForm.Visible = true;
+                            newForm.BringToFront();
+                            newForm.Activate();
                             tcs.SetResult(newForm);
                         }
                         catch (Exception ex)
@@ -174,7 +179,12 @@ namespace zhaocaimao.Services.AutoBet
                                     }
                                 };
                                 
+                                // 🔥 确保窗口显示
                                 newForm.Show();
+                                newForm.WindowState = FormWindowState.Normal;
+                                newForm.Visible = true;
+                                newForm.BringToFront();
+                                newForm.Activate();
                                 tcs.SetResult(newForm);
                             }
                             catch (Exception ex)

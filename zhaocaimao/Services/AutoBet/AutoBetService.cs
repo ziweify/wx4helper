@@ -1001,14 +1001,17 @@ namespace zhaocaimao.Services.AutoBet
                 }
                 
                 // 4️⃣ 自动登录
-                if (config.AutoLogin && !string.IsNullOrEmpty(config.Username))
+                if (config.AutoLogin && !string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
                 {
                     _log.Info("AutoBet", $"🔐 自动登录: {config.Username}");
-                    var loginResult = await newBrowserClient.SendCommandAsync("Login", new
+                    _log.Info("AutoBet", $"   账号: {config.Username}, 密码: ******");
+                    // 🔥 使用字典格式确保数据正确传递
+                    var loginData = new System.Collections.Generic.Dictionary<string, object>
                     {
-                        username = config.Username,
-                        password = config.Password
-                    });
+                        { "username", config.Username },
+                        { "password", config.Password }
+                    };
+                    var loginResult = await newBrowserClient.SendCommandAsync("Login", loginData);
                     
                     config.Status = loginResult.Success ? "已登录" : "登录失败";
                     SaveConfig(config);

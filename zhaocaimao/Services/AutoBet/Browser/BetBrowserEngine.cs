@@ -111,8 +111,9 @@ namespace zhaocaimao.Services.AutoBet.Browser
                 {
                     OnLog?.Invoke($"✅ 页面加载完成: {_webView.CoreWebView2.Source}");
                     
-                    // 触发自动登录
-                    await TryAutoLoginAsync();
+                    // 🔥 不在这里触发自动登录，因为 AutoBetService.StartBrowserInternal 会主动发送 Login 命令
+                    // 这里只记录页面加载完成，等待主程序发送登录命令
+                    OnLog?.Invoke("⏳ 等待主程序发送登录命令...");
                 }
                 else
                 {
@@ -216,63 +217,16 @@ namespace zhaocaimao.Services.AutoBet.Browser
         }
         
         /// <summary>
-        /// 尝试自动登录
+        /// 尝试自动登录（已废弃，改为由主程序主动发送 Login 命令）
+        /// 保留此方法以防万一，但不再自动调用
         /// </summary>
+        [Obsolete("自动登录已改为由主程序主动发送 Login 命令，此方法不再使用")]
         private async Task TryAutoLoginAsync()
         {
-            try
-            {
-                // 从 HTTP API 获取账号密码
-                var username = "";
-                var password = "";
-                
-                try
-                {
-                    var httpClient = new HttpClient();
-                    var response = await httpClient.GetAsync($"http://127.0.0.1:8888/api/config?configId={_configId}");
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var json = await response.Content.ReadAsStringAsync();
-                        var config = JObject.Parse(json);
-                        if (config["success"]?.Value<bool>() ?? false)
-                        {
-                            username = config["data"]?["Username"]?.ToString() ?? "";
-                            password = config["data"]?["Password"]?.ToString() ?? "";
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    OnLog?.Invoke($"⚠️ 获取配置异常: {ex.Message}");
-                }
-                
-                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-                {
-                    OnLog?.Invoke("⚠️ 未配置账号密码，跳过自动登录");
-                    return;
-                }
-                
-                // 调用平台脚本的登录方法
-                OnLog?.Invoke($"🔐 开始自动登录: {username}");
-                var result = await ExecuteCommandAsync("Login", new
-                {
-                    username = username,
-                    password = password
-                });
-                
-                if (result.Success)
-                {
-                    OnLog?.Invoke("✅ 自动登录成功！");
-                }
-                else
-                {
-                    OnLog?.Invoke($"⚠️ 自动登录失败: {result.ErrorMessage}");
-                }
-            }
-            catch (Exception ex)
-            {
-                OnLog?.Invoke($"❌ 自动登录异常: {ex.Message}");
-            }
+            // 🔥 不再自动登录，等待主程序发送 Login 命令
+            // 这样可以确保使用正确的账号密码，并且避免重复登录
+            OnLog?.Invoke("ℹ️ 自动登录已禁用，等待主程序发送登录命令");
+            await Task.CompletedTask;
         }
         
         /// <summary>
@@ -301,9 +255,45 @@ namespace zhaocaimao.Services.AutoBet.Browser
                             break;
                         }
                         
-                        var loginData = data as Newtonsoft.Json.Linq.JObject;
-                        var username = loginData?["username"]?.ToString() ?? "";
-                        var password = loginData?["password"]?.ToString() ?? "";
+                        // 🔥 支持多种数据格式
+                        string username = "";
+                        string password = "";
+                        
+                        if (data is Newtonsoft.Json.Linq.JObject loginData)
+                        {
+                            // 是 JObject，直接读取
+                            username = loginData["username"]?.ToString() ?? "";
+                            password = loginData["password"]?.ToString() ?? "";
+                        }
+                        else if (data != null)
+                        {
+                            // 尝试序列化后反序列化
+                            try
+                            {
+                                var json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+                                var obj = Newtonsoft.Json.Linq.JObject.Parse(json);
+                                username = obj["username"]?.ToString() ?? "";
+                                password = obj["password"]?.ToString() ?? "";
+                            }
+                            catch (Exception ex)
+                            {
+                                OnLog?.Invoke($"❌ 解析登录数据失败: {ex.Message}");
+                                result.Success = false;
+                                result.ErrorMessage = $"解析登录数据失败: {ex.Message}";
+                                break;
+                            }
+                        }
+                        
+                        // 🔥 记录日志以便调试
+                        OnLog?.Invoke($"📝 登录数据: username={(string.IsNullOrEmpty(username) ? "(空)" : username)}, password={(string.IsNullOrEmpty(password) ? "(空)" : "******")}");
+                        
+                        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "账号或密码为空";
+                            OnLog?.Invoke($"❌ 登录失败: 账号或密码为空");
+                            break;
+                        }
                         
                         // WebView2 操作必须在 UI 线程执行
                         if (_webView.InvokeRequired)

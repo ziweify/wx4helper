@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using zhaocaimao.Contracts;
@@ -34,6 +35,12 @@ namespace zhaocaimao.Models.AutoBet
             _logService = logService;
             _socketServer = socketServer;
             
+            // 🔥 记录配置状态以便调试
+            _logService?.Info("BetConfig", $"📋 [{ConfigName}] SetDependencies 被调用");
+            _logService?.Info("BetConfig", $"   IsEnabled: {IsEnabled}");
+            _logService?.Info("BetConfig", $"   Browser: {(Browser != null ? "已存在" : "不存在")}");
+            _logService?.Info("BetConfig", $"   IsConnected: {IsConnected}");
+            
             // 🔥 如果配置已启用，立即启动监控线程
             if (IsEnabled)
             {
@@ -41,7 +48,10 @@ namespace zhaocaimao.Models.AutoBet
                 StartMonitoring();
                 
                 // 🔥 立即检查是否需要启动浏览器（不等待监控循环）
-                if (ShouldStartBrowser())
+                bool shouldStart = ShouldStartBrowser();
+                _logService?.Info("BetConfig", $"🔍 [{ConfigName}] ShouldStartBrowser 返回: {shouldStart}");
+                
+                if (shouldStart)
                 {
                     _logService?.Info("BetConfig", $"🚀 [{ConfigName}] 配置已启用且浏览器未运行，立即启动浏览器");
                     _ = Task.Run(async () =>
@@ -49,7 +59,9 @@ namespace zhaocaimao.Models.AutoBet
                         try
                         {
                             _isStartingBrowser = true;
+                            _logService?.Info("BetConfig", $"▶️ [{ConfigName}] 开始执行 StartBrowserInternalAsync");
                             await StartBrowserInternalAsync();
+                            _logService?.Info("BetConfig", $"✅ [{ConfigName}] StartBrowserInternalAsync 执行完成");
                         }
                         catch (Exception ex)
                         {
@@ -61,6 +73,14 @@ namespace zhaocaimao.Models.AutoBet
                         }
                     });
                 }
+                else
+                {
+                    _logService?.Info("BetConfig", $"⏸️ [{ConfigName}] 不需要启动浏览器（可能已存在或正在启动）");
+                }
+            }
+            else
+            {
+                _logService?.Info("BetConfig", $"⏸️ [{ConfigName}] 配置未启用，不启动浏览器");
             }
         }
         
@@ -228,38 +248,37 @@ namespace zhaocaimao.Models.AutoBet
             // 0. 🔥 检查是否正在启动（防止重复启动）
             if (_isStartingBrowser)
             {
+                _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 正在启动中，返回 false");
                 return false;
             }
             
             // 1. 检查配置是否启用
             if (!IsEnabled)
             {
+                _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 配置未启用，返回 false");
                 return false;
             }
             
-            // 2. 检查是否已连接
-            if (IsConnected)
-            {
-                return false;
-            }
-            
-            // 3. 检查浏览器对象是否存在
+            // 2. 检查浏览器对象是否存在且已连接
             lock (_browserLock)
             {
-                if (Browser != null)
+                if (Browser != null && Browser.IsConnected)
                 {
-                    return false;  // 浏览器对象存在，可能正在启动或连接中
+                    _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器已存在且已连接，返回 false");
+                    return false; // 浏览器已存在且已连接
+                }
+                
+                // 3. 如果浏览器存在但未连接，也不启动（等待重连或清理）
+                if (Browser != null && !Browser.IsConnected)
+                {
+                    _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器存在但未连接，返回 false");
+                    return false; // 浏览器存在但未连接，等待清理或重连
                 }
             }
             
-            // 4. 检查浏览器窗口是否还在运行（使用内置窗口，检查窗口是否存在）
-            if (Browser != null && Browser.IsProcessRunning)
-            {
-                _logService?.Debug("BetConfig", $"⏳ [{ConfigName}] 浏览器窗口仍在运行，等待初始化...");
-                return false;
-            }
-            
-            return true;  // 所有条件都满足，应该启动浏览器
+            // 4. 浏览器不存在，需要启动
+            _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器不存在，返回 true");
+            return true;
         }
         
         /// <summary>
@@ -370,16 +389,19 @@ namespace zhaocaimao.Models.AutoBet
                     }
                     
                     // 🔥 自动登录（如果配置了账号密码）
-                    if (AutoLogin && !string.IsNullOrEmpty(Username))
+                    if (AutoLogin && !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
                     {
                         _logService?.Info("BetConfig", $"🔐 [{ConfigName}] 自动登录: {Username}");
+                        _logService?.Info("BetConfig", $"   账号: {Username}, 密码: {(string.IsNullOrEmpty(Password) ? "(空)" : "******")}");
                         try
                         {
-                            var loginResult = await newBrowser.SendCommandAsync("Login", new
+                            // 🔥 使用字典格式确保数据正确传递
+                            var loginData = new Dictionary<string, object>
                             {
-                                username = Username,
-                                password = Password
-                            });
+                                { "username", Username },
+                                { "password", Password }
+                            };
+                            var loginResult = await newBrowser.SendCommandAsync("Login", loginData);
                             
                             if (loginResult.Success)
                             {
