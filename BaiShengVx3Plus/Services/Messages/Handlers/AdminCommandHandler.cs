@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using System.Text.Json;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Core;
@@ -166,10 +167,11 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
             {
                 // 🔥 1. 获取群成员列表（参考 F5BotV2 Line 2638：GetMemberList）
                 // 使用 GetGroupContacts 命令，传入群ID作为参数
-                var response = await _socketClient.SendAsync<dynamic>("GetGroupContacts", groupWxid);
-                if (response == null)
+                // 🔥 使用 JsonDocument（与 GroupBindingService 保持一致）
+                var response = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", groupWxid);
+                if (response == null || response.RootElement.ValueKind != JsonValueKind.Array)
                 {
-                    _logService.Warning("AdminCommand", "获取群成员列表失败：响应为空");
+                    _logService.Warning("AdminCommand", $"获取群成员列表失败：响应为空或格式错误，ValueKind={(response?.RootElement.ValueKind ?? JsonValueKind.Null)}");
                     return (false, null);
                 }
 
@@ -177,33 +179,26 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 // 参考 WeixinX/WeixinX/Features.cpp Line 737-915
                 System.Collections.Generic.List<string> memberWxids = new System.Collections.Generic.List<string>();
                 
-                if (response is Newtonsoft.Json.Linq.JArray jArray)
+                // 🔥 解析 JsonElement 数组（与 GroupBindingService 保持一致）
+                _logService.Info("AdminCommand", $"解析为 JsonElement 数组，元素数量: {response.RootElement.GetArrayLength()}");
+                foreach (var item in response.RootElement.EnumerateArray())
                 {
-                    foreach (var item in jArray)
+                    if (item.ValueKind == JsonValueKind.Null || item.ValueKind == JsonValueKind.Undefined)
                     {
-                        var memberWxid = item["member_wxid"]?.ToString();
+                        continue;
+                    }
+                    
+                    if (item.TryGetProperty("member_wxid", out var wxidElement))
+                    {
+                        var memberWxid = wxidElement.GetString();
                         if (!string.IsNullOrEmpty(memberWxid))
                         {
                             memberWxids.Add(memberWxid);
                         }
                     }
                 }
-                else if (response is System.Collections.IEnumerable enumerable)
-                {
-                    foreach (var item in enumerable)
-                    {
-                        var memberWxid = item?.GetType().GetProperty("member_wxid")?.GetValue(item)?.ToString();
-                        if (!string.IsNullOrEmpty(memberWxid))
-                        {
-                            memberWxids.Add(memberWxid);
-                        }
-                    }
-                }
-                else
-                {
-                    _logService.Warning("AdminCommand", $"群成员列表格式不正确: {response.GetType().Name}");
-                    return (false, null);
-                }
+                
+                _logService.Info("AdminCommand", $"解析完成，成功提取 member_wxid 数量: {memberWxids.Count}");
 
                 if (memberWxids.Count == 0)
                 {
@@ -221,8 +216,12 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 }
                 
                 var existingMembers = _membersBindingList.ToList();
+                _logService.Info("AdminCommand", $"数据库中现有会员数: {existingMembers.Count}");
 
                 // 🔥 4. 检查每个成员是否已存在（参考 F5BotV2 Line 2645-2697）
+                int newMemberCount = 0;
+                int existingMemberCount = 0;
+                
                 foreach (var wxid in memberWxids)
                 {
                     if (string.IsNullOrEmpty(wxid)) continue;
@@ -231,6 +230,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     if (existingMember == null)
                     {
                         // 🔥 新成员，添加到数据库
+                        newMemberCount++;
                         _logService.Info("AdminCommand", $"发现新成员: {wxid}");
 
                         // 获取昵称
@@ -265,13 +265,43 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
 
                         _logService.Info("AdminCommand", $"新成员已添加: ID={addedMember?.Id}, 昵称={nickname}");
                     }
+                    else
+                    {
+                        // 🔥 已存在的会员，记录详细信息到日志
+                        existingMemberCount++;
+                        _logService.Info("AdminCommand", 
+                            $"🔄 已存在会员重新进群 - " +
+                            $"ID={existingMember.Id}, " +
+                            $"昵称={existingMember.Nickname}, " +
+                            $"微信ID={existingMember.Wxid}, " +
+                            $"状态={existingMember.State}, " +
+                            $"余额={existingMember.Balance:F2}, " +
+                            $"本期下注={existingMember.BetCur:F2}, " +
+                            $"待结算={existingMember.BetWait:F2}, " +
+                            $"今日下注={existingMember.BetToday:F2}, " +
+                            $"今日盈亏={existingMember.IncomeToday:F2}, " +
+                            $"今日上分={existingMember.CreditToday:F2}, " +
+                            $"今日下分={existingMember.WithdrawToday:F2}, " +
+                            $"总下注={existingMember.BetTotal:F2}, " +
+                            $"总盈亏={existingMember.IncomeTotal:F2}, " +
+                            $"总上分={existingMember.CreditTotal:F2}, " +
+                            $"总下分={existingMember.WithdrawTotal:F2}");
+                    }
                 }
 
+                _logService.Info("AdminCommand", $"刷新完成: 新成员={newMemberCount}, 已存在={existingMemberCount}, 欢迎消息数={welcomeMessages.Count}");
                 return (true, welcomeMessages);
             }
             catch (Exception ex)
             {
-                _logService.Error("AdminCommand", "刷新群成员失败", ex);
+                _logService.Error("AdminCommand", $"❌ 刷新群成员失败: {ex.Message}", ex);
+                _logService.Error("AdminCommand", $"   异常类型: {ex.GetType().FullName}");
+                _logService.Error("AdminCommand", $"   堆栈跟踪: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    _logService.Error("AdminCommand", $"   内部异常: {ex.InnerException.Message}");
+                    _logService.Error("AdminCommand", $"   内部异常堆栈: {ex.InnerException.StackTrace}");
+                }
                 return (false, null);
             }
         }
