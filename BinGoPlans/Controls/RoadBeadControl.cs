@@ -56,7 +56,39 @@ namespace BinGoPlans.Controls
                     });
                 }
             }
+            
+            // 计算并设置控件大小
+            UpdateControlSize();
+            
             Invalidate();
+        }
+        
+        /// <summary>
+        /// 更新控件大小
+        /// </summary>
+        private void UpdateControlSize()
+        {
+            if (_data.Count == 0)
+            {
+                this.Size = new Size(100, 100); // 默认最小大小
+                return;
+            }
+            
+            var columns = OrganizeDataIntoColumns();
+            int maxRows = columns.Count > 0 ? columns.Max(col => col.Count) : 0;
+            if (maxRows == 0)
+            {
+                this.Size = new Size(100, 100);
+                return;
+            }
+            
+            int colCount = columns.Count;
+            int rowCount = maxRows + 1; // +1 用于显示期号行
+            
+            int totalWidth = colCount * _cellSize;
+            int totalHeight = rowCount * _cellSize;
+            
+            this.Size = new Size(Math.Max(100, totalWidth), Math.Max(100, totalHeight));
         }
 
         /// <summary>
@@ -68,6 +100,7 @@ namespace BinGoPlans.Controls
             set
             {
                 _cellSize = Math.Max(20, Math.Min(50, value));
+                UpdateControlSize();
                 Invalidate();
             }
         }
@@ -86,15 +119,6 @@ namespace BinGoPlans.Controls
 
             int maxRows = columns.Count > 0 ? columns.Max(col => col.Count) : 0;
             if (maxRows == 0) return;
-
-            // 计算实际需要的列数和行数
-            int colCount = columns.Count;
-            int rowCount = maxRows + 1; // +1 用于显示期号行
-
-            // 更新控件大小以支持滚动（通过父Panel的滚动）
-            int totalWidth = colCount * _cellSize;
-            int totalHeight = rowCount * _cellSize;
-            this.Size = new Size(totalWidth, totalHeight);
 
             // 绘制路珠
             int currentX = 0;
