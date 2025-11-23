@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BsBrowserClient", "BsBrowse
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaiShengVx3Plus.Shared", "BaiShengVx3Plus.Shared\BaiShengVx3Plus.Shared.csproj", "{3CA71478-35CE-448F-A6E0-EBD4142F738E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinGoPlans", "BinGoPlans\BinGoPlans.csproj", "{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -125,6 +127,18 @@ Global
 		{3CA71478-35CE-448F-A6E0-EBD4142F738E}.Release|x64.Build.0 = Release|Any CPU
 		{3CA71478-35CE-448F-A6E0-EBD4142F738E}.Release|x86.ActiveCfg = Release|Any CPU
 		{3CA71478-35CE-448F-A6E0-EBD4142F738E}.Release|x86.Build.0 = Release|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Debug|x64.Build.0 = Debug|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Debug|x86.Build.0 = Debug|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x64.ActiveCfg = Release|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x64.Build.0 = Release|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x86.ActiveCfg = Release|Any CPU
+		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
