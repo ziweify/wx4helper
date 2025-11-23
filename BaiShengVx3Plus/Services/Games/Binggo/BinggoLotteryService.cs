@@ -1367,6 +1367,102 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (true, cancelReply, ods);
                 }
                 
+                // 🔥 3.1 处理全部取消命令 - 参考 F5BotV2 第2233行
+                if (msg == "全部取消" || msg == "取消全部")
+                {
+                    if (_currentIssueId == 0)
+                    {
+                        return (true, "系统初始化中，请稍后...", null);
+                    }
+                    
+                    // 🔥 检查是否已封盘（在发送封盘消息"时间到!停止进仓!以此为准!"之前都可以取消）
+                    if (_currentStatus == BinggoLotteryStatus.封盘中 || 
+                        _currentStatus == BinggoLotteryStatus.开奖中 ||
+                        _currentStatus == BinggoLotteryStatus.等待中)
+                    {
+                        return (true, $"{member.Nickname}\r时间到!不能取消!", null);
+                    }
+                    
+                    // 查找订单
+                    if (_orderService == null)
+                    {
+                        return (true, "系统错误，请稍后重试", null);
+                    }
+                    
+                    var orders = _orderService.GetPendingOrdersForMemberAndIssue(member.Wxid, _currentIssueId)
+                        .Where(o => o.OrderStatus != OrderStatus.已取消 && o.OrderStatus != OrderStatus.已完成)
+                        .ToList();
+                    
+                    if (orders == null || orders.Count == 0)
+                    {
+                        return (true, $"@{member.Nickname}\r当前期号无待处理订单", null);
+                    }
+                    
+                    // 🔥 取消所有订单（参考 F5BotV2 第2248-2264行）
+                    StringBuilder sbTxt = new StringBuilder(32);
+                    sbTxt.Append($"@{member.Nickname} ");
+                    float totalMoney = 0f;
+                    
+                    foreach (var ods in orders)
+                    {
+                        // 🔥 双重验证：确保只能取消当前期的订单（重要！）
+                        if (ods.IssueId != _currentIssueId)
+                        {
+                            _logService.Error("BinggoLotteryService", 
+                                $"❌ 取消订单期号不匹配！订单期号={ods.IssueId} 当前期号={_currentIssueId} 会员={member.Nickname} 订单ID={ods.Id}");
+                            continue;
+                        }
+                        
+                        _logService.Info("BinggoLotteryService", 
+                            $"✅ 取消订单验证通过: 会员={member.Nickname} 订单ID={ods.Id} 订单期号={ods.IssueId} 当前期号={_currentIssueId} 金额={ods.AmountTotal}");
+                        
+                        // 执行取消逻辑
+                        ods.OrderStatus = OrderStatus.已取消;
+                        _orderService.UpdateOrder(ods);
+                        
+                        // 🔥 退款给会员（参考 F5BotV2 第2301行）
+                        // 只有管理员不退款（因为下单时也没扣钱）
+                        if (member.State != MemberState.管理)
+                        {
+                            member.Balance += ods.AmountTotal;
+                            totalMoney += ods.AmountTotal;
+                        }
+                        
+                        // 🔥 减掉会员统计（参考 F5BotV2 第2302-2304行：OrderCancel 方法）
+                        // 🔥 重要：托单也要减掉统计！（因为下单时增加了统计）
+                        member.BetCur -= ods.AmountTotal;
+                        member.BetToday -= ods.AmountTotal;
+                        member.BetTotal -= ods.AmountTotal;
+                        member.BetWait -= ods.AmountTotal;  // 减掉待结算金额
+                        
+                        // 🔥 更新全局统计（参考 F5BotV2 第680-709行：OnMemberOrderCancel）
+                        if (_statisticsService != null && ods.OrderType != OrderType.托)
+                        {
+                            _logService.Info("BinggoLotteryService", 
+                                $"📊 调用统计服务减掉订单: 订单ID={ods.Id} 金额={ods.AmountTotal} 期号={ods.IssueId}");
+                            _statisticsService.OnOrderCanceled(ods);
+                        }
+                        
+                        // 🔥 回复格式 - 参考 F5BotV2 第2261行：{BetContentOriginal}|+{AmountTotal} 已取消\r
+                        sbTxt.Append($"{ods.BetContentOriginal}|+{ods.AmountTotal} 已取消\r");
+                        
+                        _logService.Info("BinggoLotteryService", 
+                            $"✅ 取消订单: {member.Nickname} - 期号:{_currentIssueId} - 订单ID:{ods.Id}");
+                    }
+                    
+                    if (member.State != MemberState.管理)
+                    {
+                        _logService.Info("BinggoLotteryService", 
+                            $"💰 退款: {member.Nickname} - 总退款 {totalMoney:F2}，退款后余额: {member.Balance:F2}");
+                    }
+                    
+                    _logService.Info("BinggoLotteryService", 
+                        $"📊 统计更新: {member.Nickname} - 减掉投注总计 - 今日下注 {member.BetToday:F2}");
+                    
+                    // 🔥 回复格式 - 参考 F5BotV2 第2264行：@{m.nickname} {BetContentOriginal}|+{AmountTotal} 已取消\r...
+                    return (true, sbTxt.ToString(), null);
+                }
+                
                 // 🔥 4. 处理投注消息
                 // 简单判断是否可能是下注消息
                 if (!messageContent.Any(char.IsDigit))

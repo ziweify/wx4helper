@@ -66,17 +66,17 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 }
                 
                 // 🔥 检查是否为上下分命令（上下分不受收单开关影响）
-                // 参考 F5BotV2：收单开关只影响投注订单，不影响上下分、查询、取消等操作
+                // 参考 F5BotV2：收单开关只影响投注订单，不影响上下分、查询等操作
                 string trimmedMsg = messageContent.Trim();
                 bool isCreditWithdrawCommand = Regex.IsMatch(trimmedMsg, @"^[上下]\d+$");
                 
                 // ✅ 检查是否开启收单（使用静态属性，由 VxMain 同步更新）
-                // 🔥 注意：上下分、查询、取消命令不受收单开关影响
+                // 🔥 注意：上下分、查询命令不受收单开关影响
+                // 🔥 取消命令受收单开关影响：关闭后不能取消，开启才能接收取消命令
                 if(!IsOrdersTaskingEnabled && !isCreditWithdrawCommand)
                 {
-                    // 🔥 如果是查询或取消命令，也允许通过
-                    if (trimmedMsg != "查" && trimmedMsg != "流水" && trimmedMsg != "货单" && 
-                        trimmedMsg != "取消" && trimmedMsg != "qx")
+                    // 🔥 如果是查询命令，允许通过
+                    if (trimmedMsg != "查" && trimmedMsg != "流水" && trimmedMsg != "货单")
                     {
                         return (false, null);
                     }
