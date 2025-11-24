@@ -175,40 +175,20 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return (false, null);
                 }
 
-                // 🔥 GetGroupContacts 返回的是 JSON 数组，每个元素包含 member_wxid 字段
-                // 参考 WeixinX/WeixinX/Features.cpp Line 737-915
-                System.Collections.Generic.List<string> memberWxids = new System.Collections.Generic.List<string>();
-                
-                // 🔥 解析 JsonElement 数组（与 GroupBindingService 保持一致）
+                // 🔥 2. 解析服务器返回的会员数据（完全按照 GroupBindingService.ParseServerMembers 的方式）
                 _logService.Info("AdminCommand", $"解析为 JsonElement 数组，元素数量: {response.RootElement.GetArrayLength()}");
-                foreach (var item in response.RootElement.EnumerateArray())
-                {
-                    if (item.ValueKind == JsonValueKind.Null || item.ValueKind == JsonValueKind.Undefined)
-                    {
-                        continue;
-                    }
-                    
-                    if (item.TryGetProperty("member_wxid", out var wxidElement))
-                    {
-                        var memberWxid = wxidElement.GetString();
-                        if (!string.IsNullOrEmpty(memberWxid))
-                        {
-                            memberWxids.Add(memberWxid);
-                        }
-                    }
-                }
-                
-                _logService.Info("AdminCommand", $"解析完成，成功提取 member_wxid 数量: {memberWxids.Count}");
+                var serverMembers = ParseServerMembers(response.RootElement, groupWxid);
+                _logService.Info("AdminCommand", $"解析完成: {serverMembers.Count} 个会员");
 
-                if (memberWxids.Count == 0)
+                if (serverMembers.Count == 0)
                 {
                     _logService.Warning("AdminCommand", "群成员列表为空");
                     return (false, null);
                 }
 
-                _logService.Info("AdminCommand", $"群成员总数: {memberWxids.Count}");
+                _logService.Info("AdminCommand", $"群成员总数: {serverMembers.Count}");
 
-                // 3. 获取当前数据库中的会员列表
+                // 🔥 3. 获取当前数据库中的会员列表
                 if (_membersBindingList == null || _db == null)
                 {
                     _logService.Warning("AdminCommand", "会员列表或数据库未初始化");
@@ -218,52 +198,53 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 var existingMembers = _membersBindingList.ToList();
                 _logService.Info("AdminCommand", $"数据库中现有会员数: {existingMembers.Count}");
 
-                // 🔥 4. 检查每个成员是否已存在（参考 F5BotV2 Line 2645-2697）
+                // 🔥 4. 检查每个服务器成员是否已存在（参考 F5BotV2 Line 2645-2697）
                 int newMemberCount = 0;
                 int existingMemberCount = 0;
                 
-                foreach (var wxid in memberWxids)
+                foreach (var serverMember in serverMembers)
                 {
-                    if (string.IsNullOrEmpty(wxid)) continue;
+                    if (string.IsNullOrEmpty(serverMember.Wxid)) continue;
 
-                    var existingMember = existingMembers.FirstOrDefault(m => m.Wxid == wxid);
+                    var existingMember = existingMembers.FirstOrDefault(m => m.Wxid == serverMember.Wxid);
                     if (existingMember == null)
                     {
-                        // 🔥 新成员，添加到数据库
+                        // 🔥 新成员，添加到数据库（使用解析出的完整信息）
                         newMemberCount++;
-                        _logService.Info("AdminCommand", $"发现新成员: {wxid}");
+                        _logService.Info("AdminCommand", $"发现新成员: {serverMember.Wxid}, 昵称={serverMember.Nickname}, 群昵称={serverMember.DisplayName}");
 
-                        // 获取昵称
-                        var nickname = await GetMemberNickname(wxid);
-
-                        // 创建新成员
+                        // 🔥 创建新成员，使用解析出的完整信息（与 GroupBindingService 保持一致）
                         var newMember = new V2Member
                         {
-                            Wxid = wxid,
-                            Nickname = nickname,
+                            Wxid = serverMember.Wxid,
+                            Nickname = serverMember.Nickname ?? string.Empty,
+                            DisplayName = serverMember.DisplayName ?? serverMember.Nickname ?? string.Empty,
+                            Account = serverMember.Account ?? string.Empty,
                             GroupWxId = groupWxid,
-                            State = MemberState.非会员, // 默认非会员
+                            State = MemberState.会员, // 🔥 与 GroupBindingService 保持一致，默认会员
                             Balance = 0,
                             BetToday = 0,
                             BetCur = 0,
                             BetWait = 0,
                             IncomeToday = 0,
                             CreditToday = 0,
-                            WithdrawToday = 0,
-                            Account = ""
+                            WithdrawToday = 0
                         };
 
                         // 添加到 BindingList（会自动同步到数据库）
                         _membersBindingList.Add(newMember);
 
                         // 重新获取（获得自增ID）
-                        var addedMember = _membersBindingList.FirstOrDefault(m => m.Wxid == wxid);
+                        var addedMember = _membersBindingList.FirstOrDefault(m => m.Wxid == serverMember.Wxid);
 
-                        // 🔥 生成欢迎消息 - 完全按照 F5BotV2 Line 2696 格式
-                        string welcomeMsg = $"^欢迎:[{addedMember?.Id ?? 0}]{nickname}";
+                        // 🔥 生成欢迎消息 - 使用 DisplayName（优先使用备注，如果备注为空则使用昵称）
+                        string displayName = !string.IsNullOrEmpty(addedMember?.DisplayName) 
+                            ? addedMember.DisplayName 
+                            : (!string.IsNullOrEmpty(addedMember?.Nickname) ? addedMember.Nickname : "未知");
+                        string welcomeMsg = $"^欢迎:[{addedMember?.Id ?? 0}]{displayName}";
                         welcomeMessages.Add(welcomeMsg);
 
-                        _logService.Info("AdminCommand", $"新成员已添加: ID={addedMember?.Id}, 昵称={nickname}");
+                        _logService.Info("AdminCommand", $"新成员已添加: ID={addedMember?.Id}, 昵称={addedMember?.Nickname}, 群昵称={addedMember?.DisplayName}, 账号={addedMember?.Account}");
                     }
                     else
                     {
@@ -307,24 +288,112 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         }
 
         /// <summary>
-        /// 获取成员昵称
+        /// 解析服务器返回的会员数据（完全按照 GroupBindingService.ParseServerMembers 的方式）
         /// </summary>
-        private async Task<string> GetMemberNickname(string wxid)
+        private List<V2Member> ParseServerMembers(JsonElement data, string groupWxId)
         {
+            var members = new List<V2Member>();
+            
             try
             {
-                var response = await _socketClient.SendAsync<dynamic>("GetContactProfile", wxid);
-                if (response != null && response.nickname != null)
+                if (data.ValueKind != JsonValueKind.Array)
                 {
-                    return response.nickname.ToString();
+                    _logService.Warning("AdminCommand", "服务器返回的数据不是数组");
+                    return members;
+                }
+                
+                foreach (var item in data.EnumerateArray())
+                {
+                    try
+                    {
+                        var member = new V2Member
+                        {
+                            GroupWxId = groupWxId,
+                            State = MemberState.会员  // 🔥 与 GroupBindingService 保持一致
+                        };
+                        
+                        // 🔥 解析 wxid（支持多种字段名，与 GroupBindingService 保持一致）
+                        if (item.TryGetProperty("member_wxid", out var memberWxid))
+                        {
+                            member.Wxid = memberWxid.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("username", out var username))
+                        {
+                            member.Wxid = username.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("wxid", out var wxid))
+                        {
+                            member.Wxid = wxid.GetString() ?? string.Empty;
+                        }
+                        
+                        if (string.IsNullOrEmpty(member.Wxid))
+                        {
+                            _logService.Warning("AdminCommand", "跳过无效会员：wxid 为空");
+                            continue;
+                        }
+                        
+                        // 🔥 解析昵称（支持多种字段名，与 GroupBindingService 保持一致）
+                        if (item.TryGetProperty("member_nickname", out var memberNickname))
+                        {
+                            member.Nickname = memberNickname.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("nick_name", out var nickName))
+                        {
+                            member.Nickname = nickName.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("nickname", out var nickname))
+                        {
+                            member.Nickname = nickname.GetString() ?? string.Empty;
+                        }
+                        
+                        // 🔥 解析备注名（作为群昵称，与 GroupBindingService 保持一致）
+                        if (item.TryGetProperty("member_remark", out var memberRemark))
+                        {
+                            string remark = memberRemark.GetString() ?? string.Empty;
+                            if (!string.IsNullOrEmpty(remark))
+                            {
+                                member.DisplayName = remark;
+                            }
+                            else
+                            {
+                                member.DisplayName = member.Nickname; // 备注为空时使用昵称
+                            }
+                        }
+                        else if (item.TryGetProperty("display_name", out var displayName))
+                        {
+                            member.DisplayName = displayName.GetString() ?? string.Empty;
+                        }
+                        else
+                        {
+                            member.DisplayName = member.Nickname; // 默认使用昵称
+                        }
+                        
+                        // 🔥 解析微信号（支持多种字段名，与 GroupBindingService 保持一致）
+                        if (item.TryGetProperty("member_alias", out var memberAlias))
+                        {
+                            member.Account = memberAlias.GetString() ?? string.Empty;
+                        }
+                        else if (item.TryGetProperty("alias", out var alias))
+                        {
+                            member.Account = alias.GetString() ?? string.Empty;
+                        }
+                        
+                        members.Add(member);
+                        _logService.Debug("AdminCommand", $"解析会员: {member.Nickname} ({member.Wxid}), 群昵称={member.DisplayName}, 账号={member.Account}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("AdminCommand", $"解析单个会员数据失败: {ex.Message}", ex);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logService.Warning("AdminCommand", $"获取昵称失败: {wxid}, {ex.Message}");
+                _logService.Error("AdminCommand", $"解析群成员数据失败: {ex.Message}", ex);
             }
-
-            return "未知";
+            
+            _logService.Info("AdminCommand", $"✅ 解析完成: 共 {members.Count} 个会员");
+            return members;
         }
 
         /// <summary>

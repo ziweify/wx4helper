@@ -1034,9 +1034,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----中~名单----\r{会员名}[余额] 纯利\r
                 // 🔥 重要：即使没有订单，也要发送中奖名单（只是没有会员数据）
                 var winningMessage = new System.Text.StringBuilder();
-                winningMessage.Append($"第{issueidLite}队\r");
-                winningMessage.Append($"{lotteryData.ToLotteryString()}\r");
-                winningMessage.Append($"----中~名单----\r");
+                winningMessage.Append($"第{issueidLite}队\r ");
+                winningMessage.Append($"{lotteryData.ToLotteryString()}\r ");
+                winningMessage.Append($"----中~名单----\r ");
                 
                 if (ordersReports != null && ordersReports.Count > 0)
                 {
@@ -1054,7 +1054,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         // 🔥 格式完全一致：{nickname}[{(int)balance}] {(int)profit - totalAmount}\r
                         // 盈利 = 总赢金额 - 投注总额 = 纯利（参考 F5BotV2 第 1458 行：{(int)order.Profit- order.AmountTotal}）
                         float netProfit = report.profit - report.totalAmount;  // 纯利 = 总赢 - 投注额
-                        winningMessage.Append($"{report.nickname.UnEscape()}[{(int)currentBalance}] {(int)netProfit}\r");
+                        winningMessage.Append($"{report.nickname.UnEscape()}[{(int)currentBalance}] {(int)netProfit}\r ");
                     }
                 }
                 
@@ -1069,10 +1069,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----留~名单----\r{会员名} 余额\r
                 // 🔥 重要：无论是否有订单，都要发送留分名单
                 var balanceMessage = new System.Text.StringBuilder();
-                balanceMessage.Append($"第{issueidLite}队 \r");
-                balanceMessage.Append($"{lotteryData.ToLotteryString()}\r");
-                balanceMessage.Append($"----留~名单----\r");
-                
+                balanceMessage.Append($"第{issueidLite}队\r ");
+                balanceMessage.Append($"{lotteryData.ToLotteryString()}\r ");
+                balanceMessage.Append($"----留~名单----\r ");
+
                 if (_membersBindingList != null)
                 {
                     foreach (var member in _membersBindingList)
@@ -1080,11 +1080,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         // 🔥 格式完全一致：{nickname} {(int)Balance}\r
                         if ((int)member.Balance >= 1)  // 余额 >= 1 才显示
                         {
-                            balanceMessage.Append($"{member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知"} {(int)member.Balance} \r");
+                            string name = "";
+                            if (member.Nickname == null)
+                                name = "";
+                            else
+                                name = member.Nickname.UnEscape();
+                            balanceMessage.Append($"{name} {(int)member.Balance}\r ");
                         }
                     }
                 }
-                
+
                 _logService.Info("BinggoLotteryService", $"📤 发送留分名单到群: {groupWxId}");
                 var response2 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, balanceMessage.ToString());
                 if (response2 != null)
@@ -2053,7 +2058,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();
                 int issueShort = issueId % 1000;
-                sbTxt.Append($"{issueShort} 时间到! 停止进仓! 以此为准!\r");
+                sbTxt.Append($"{issueShort} 时间到! 停止进仓! 以此为准!\r ");
                 
                 // 🔥 获取当期所有订单（参考 F5BotV2 第1228行）
                 var orders = _ordersBindingList?
@@ -2072,7 +2077,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 🔥 格式：{nickname}[{(int)BetFronMoney}]:{BetContentStandar}|计:{AmountTotal}\r
                     foreach (var ods in orders)
                     {
-                        sbTxt.Append($"{ods.Nickname ?? "未知"}[{(int)ods.BetFronMoney}]:{ods.BetContentStandar ?? ""}|计:{ods.AmountTotal}\r");
+                        sbTxt.Append($"{ods.Nickname ?? "未知"}[{(int)ods.BetFronMoney}]:{ods.BetContentStandar ?? ""}|计:{ods.AmountTotal}\r ");
                     }
                 }
                 
