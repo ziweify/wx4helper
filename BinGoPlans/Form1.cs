@@ -26,17 +26,7 @@ namespace BinGoPlans
     {
         private BinggoStatisticsService _statisticsService;
         private DataService _dataService;
-        private XtraTabControl _mainTabControl;
-        private ComboBoxEdit _positionCombo;
-        private ComboBoxEdit _playTypeCombo;
-        private ComboBoxEdit _trendPeriodCombo;
-        private DateEdit _datePicker;
-        private TextEdit _usernameEdit;
-        private TextEdit _passwordEdit;
-        private CheckEdit _autoLoginCheck;
         private bool _isLoggedIn = false;
-        private DevExpress.XtraGrid.GridControl _lotteryDataGrid;
-        private DevExpress.XtraGrid.Views.Grid.GridView _lotteryDataGridView;
 
         public Form1()
         {
@@ -53,171 +43,21 @@ namespace BinGoPlans
 
         private void InitializeUI()
         {
-            Text = "宾果数据统计系统";
-            Size = new Size(1600, 1000);
-            StartPosition = FormStartPosition.CenterScreen;
-
-            // 创建工具栏
-            CreateToolbar();
-
-            // 创建主选项卡
-            _mainTabControl = new XtraTabControl
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(5)
-            };
-
-            // 路珠统计选项卡
-            CreateRoadBeadTab();
-            // 走势图选项卡
-            CreateTrendTab();
-            // 连续统计选项卡
-            CreateConsecutiveStatsTab();
-            // 数量统计选项卡
-            CreateCountStatsTab();
-
-            // 添加到现有控件之后
-            Controls.Add(_mainTabControl);
-            Controls.SetChildIndex(_mainTabControl, 0);
-        }
-
-        private void CreateToolbar()
-        {
-            // 使用Designer中已定义的barManager1
-            // 创建一个工具栏Panel
-            var toolbarPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 50,
-                BackColor = Color.WhiteSmoke,
-                Padding = new Padding(5)
-            };
-
-            // 位置选择
-            var positionLabel = new Label
-            {
-                Text = "位置:",
-                Location = new Point(10, 15),
-                AutoSize = true
-            };
-            _positionCombo = new ComboBoxEdit
-            {
-                Location = new Point(60, 12),
-                Width = 100
-            };
-            _positionCombo.Properties.Items.AddRange(new[] { "P1", "P2", "P3", "P4", "P5", "总和" });
+            // 设置默认值
             _positionCombo.SelectedIndex = 0;
-            _positionCombo.SelectedIndexChanged += (s, e) => RefreshAllTabs();
-
-            // 玩法选择
-            var playTypeLabel = new Label
-            {
-                Text = "玩法:",
-                Location = new Point(180, 15),
-                AutoSize = true
-            };
-            _playTypeCombo = new ComboBoxEdit
-            {
-                Location = new Point(230, 12),
-                Width = 100
-            };
-            _playTypeCombo.Properties.Items.AddRange(new[] { "大小", "单双", "尾大小", "合单双", "龙虎" });
             _playTypeCombo.SelectedIndex = 0;
-            _playTypeCombo.SelectedIndexChanged += (s, e) => RefreshAllTabs();
-
-            // 走势周期选择
-            var trendPeriodLabel = new Label
-            {
-                Text = "走势周期:",
-                Location = new Point(350, 15),
-                AutoSize = true
-            };
-            _trendPeriodCombo = new ComboBoxEdit
-            {
-                Location = new Point(430, 12),
-                Width = 120
-            };
-            _trendPeriodCombo.Properties.Items.AddRange(new[] { "10期", "50期", "100期", "203期(日)", "3日", "一周", "一月", "5日线" });
             _trendPeriodCombo.SelectedIndex = 2;
+            _datePicker.DateTime = DateTime.Today;
+
+            // 绑定事件
+            _positionCombo.SelectedIndexChanged += (s, e) => RefreshAllTabs();
+            _playTypeCombo.SelectedIndexChanged += (s, e) => RefreshAllTabs();
             _trendPeriodCombo.SelectedIndexChanged += (s, e) => RefreshTrendTab();
-
-            // 日期选择
-            var dateLabel = new Label
-            {
-                Text = "日期:",
-                Location = new Point(570, 15),
-                AutoSize = true
-            };
-            _datePicker = new DateEdit
-            {
-                Location = new Point(620, 12),
-                Width = 120,
-                EditValue = DateTime.Today
-            };
-
-            // 登录配置
-            var usernameLabel = new Label
-            {
-                Text = "账号:",
-                Location = new Point(760, 15),
-                AutoSize = true
-            };
-            _usernameEdit = new TextEdit
-            {
-                Location = new Point(810, 12),
-                Width = 100
-            };
-
-            var passwordLabel = new Label
-            {
-                Text = "密码:",
-                Location = new Point(920, 15),
-                AutoSize = true
-            };
-            _passwordEdit = new TextEdit
-            {
-                Location = new Point(970, 12),
-                Width = 100
-            };
-            _passwordEdit.Properties.PasswordChar = '*';
-
-            _autoLoginCheck = new CheckEdit
-            {
-                Text = "自动登录",
-                Location = new Point(1080, 12),
-                Width = 80
-            };
-
-            // 登录按钮
-            var loginBtn = new SimpleButton
-            {
-                Text = "登录",
-                Location = new Point(1170, 10),
-                Width = 60
-            };
             loginBtn.Click += async (s, e) => await LoginAsync();
-
-            // 加载数据按钮
-            var loadDataBtn = new SimpleButton
-            {
-                Text = "加载数据",
-                Location = new Point(1240, 10),
-                Width = 100
-            };
             loadDataBtn.Click += async (s, e) => await LoadDataAsync();
 
-            toolbarPanel.Controls.AddRange(new Control[] 
-            { 
-                positionLabel, _positionCombo, 
-                playTypeLabel, _playTypeCombo,
-                trendPeriodLabel, _trendPeriodCombo,
-                dateLabel, _datePicker,
-                usernameLabel, _usernameEdit,
-                passwordLabel, _passwordEdit,
-                _autoLoginCheck,
-                loginBtn,
-                loadDataBtn
-            });
+            // 初始化表格列
+            InitializeLotteryDataGridColumns();
 
             // 加载保存的配置
             LoadConfig();
@@ -227,74 +67,6 @@ namespace BinGoPlans
             {
                 _ = LoginAsync(); // 异步执行，不等待
             }
-
-            Controls.Add(toolbarPanel);
-            Controls.SetChildIndex(toolbarPanel, 0);
-        }
-
-        private void CreateRoadBeadTab()
-        {
-            var tab = new XtraTabPage { Text = "路珠统计" };
-            var mainSplitContainer = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 400
-            };
-
-            // 上半部分：路珠显示（带滚动条）
-            var roadBeadPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                BackColor = Color.White
-            };
-            
-            var roadBeadControl = new RoadBeadControl
-            {
-                BackColor = Color.White,
-                Location = new Point(0, 0)
-            };
-            roadBeadControl.Tag = roadBeadControl;
-            
-            roadBeadPanel.Controls.Add(roadBeadControl);
-
-            // 下半部分：开奖数据表格
-            var bottomSplitContainer = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 200
-            };
-
-            // 开奖数据表格
-            _lotteryDataGrid = new DevExpress.XtraGrid.GridControl
-            {
-                Dock = DockStyle.Fill
-            };
-            _lotteryDataGridView = new DevExpress.XtraGrid.Views.Grid.GridView(_lotteryDataGrid);
-            _lotteryDataGrid.MainView = _lotteryDataGridView;
-            _lotteryDataGridView.OptionsView.ShowGroupPanel = false;
-            _lotteryDataGridView.OptionsBehavior.Editable = false;
-            _lotteryDataGridView.OptionsSelection.MultiSelect = false;
-            _lotteryDataGridView.OptionsView.ShowIndicator = true;
-
-            // 初始化列
-            InitializeLotteryDataGridColumns();
-
-            var infoPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.WhiteSmoke
-            };
-
-            bottomSplitContainer.Panel1.Controls.Add(_lotteryDataGrid);
-            bottomSplitContainer.Panel2.Controls.Add(infoPanel);
-
-            mainSplitContainer.Panel1.Controls.Add(roadBeadPanel);
-            mainSplitContainer.Panel2.Controls.Add(bottomSplitContainer);
-            tab.Controls.Add(mainSplitContainer);
-            _mainTabControl.TabPages.Add(tab);
         }
 
         private void InitializeLotteryDataGridColumns()
@@ -398,43 +170,6 @@ namespace BinGoPlans
             });
         }
 
-        private void CreateTrendTab()
-        {
-            var tab = new XtraTabPage { Text = "走势图" };
-            var trendChart = new TrendChartControl
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.White
-            };
-            trendChart.Tag = trendChart;
-            tab.Controls.Add(trendChart);
-            _mainTabControl.TabPages.Add(tab);
-        }
-
-        private void CreateConsecutiveStatsTab()
-        {
-            var tab = new XtraTabPage { Text = "连续统计" };
-            var consecutiveControl = new ConsecutiveStatsControl
-            {
-                Dock = DockStyle.Fill
-            };
-            consecutiveControl.Tag = consecutiveControl;
-            tab.Controls.Add(consecutiveControl);
-            _mainTabControl.TabPages.Add(tab);
-        }
-
-        private void CreateCountStatsTab()
-        {
-            var tab = new XtraTabPage { Text = "数量统计" };
-            var grid = new DevExpress.XtraGrid.GridControl
-            {
-                Dock = DockStyle.Fill
-            };
-            var view = new DevExpress.XtraGrid.Views.Grid.GridView(grid);
-            grid.MainView = view;
-            tab.Controls.Add(grid);
-            _mainTabControl.TabPages.Add(tab);
-        }
 
         private void RefreshAllTabs()
         {
@@ -446,14 +181,6 @@ namespace BinGoPlans
 
         private void RefreshRoadBeadTab()
         {
-            var tab = _mainTabControl.TabPages[0];
-            var splitContainer = tab.Controls.OfType<SplitContainer>().FirstOrDefault();
-            if (splitContainer == null) return;
-
-            var roadBeadPanel = splitContainer.Panel1.Controls.OfType<Panel>().FirstOrDefault();
-            if (roadBeadPanel == null) return;
-            
-            var roadBeadControl = roadBeadPanel.Controls.OfType<RoadBeadControl>().FirstOrDefault();
             if (roadBeadControl == null) return;
 
             var position = GetSelectedPosition();
@@ -507,9 +234,7 @@ namespace BinGoPlans
 
         private void RefreshTrendTab()
         {
-            var tab = _mainTabControl.TabPages[1];
-            var trendChart = tab.Controls.OfType<TrendChartControl>().FirstOrDefault();
-            if (trendChart == null) return;
+            if (trendChartControl == null) return;
 
             var period = _trendPeriodCombo.SelectedIndex;
             List<TrendDataPoint> data;
@@ -545,27 +270,23 @@ namespace BinGoPlans
                     break;
             }
 
-            trendChart.PlayType = GetSelectedPlayType();
-            trendChart.SetData(data);
+            trendChartControl.PlayType = GetSelectedPlayType();
+            trendChartControl.SetData(data);
         }
 
         private void RefreshConsecutiveStatsTab()
         {
-            var tab = _mainTabControl.TabPages[2];
-            var consecutiveControl = tab.Controls.OfType<ConsecutiveStatsControl>().FirstOrDefault();
-            if (consecutiveControl == null) return;
+            if (consecutiveStatsControl == null) return;
 
             var position = GetSelectedPosition();
             var playType = GetSelectedPlayType();
             var data = _statisticsService.GetConsecutiveStats(position, playType);
-            consecutiveControl.SetData(data);
+            consecutiveStatsControl.SetData(data);
         }
 
         private void RefreshCountStatsTab()
         {
-            var tab = _mainTabControl.TabPages[3];
-            var grid = tab.Controls.OfType<DevExpress.XtraGrid.GridControl>().FirstOrDefault();
-            if (grid == null) return;
+            if (countStatsGrid == null) return;
 
             var position = GetSelectedPosition();
             var playType = GetSelectedPlayType();
