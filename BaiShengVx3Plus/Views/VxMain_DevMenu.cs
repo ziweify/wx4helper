@@ -83,11 +83,21 @@ namespace BaiShengVx3Plus
             };
             testSoundItem.Click += MenuTestSound_Click;
             
+            // 📤 发送结算消息到微信群
+            var resendSettlementItem = new ToolStripMenuItem
+            {
+                Text = "📤 发送结算消息到微信群",
+                Name = "menuResendSettlement"
+            };
+            resendSettlementItem.Click += MenuResendSettlement_Click;
+            
             _devOptionsMenuItem.DropDownItems.Add(sendTestMessageItem);
             _devOptionsMenuItem.DropDownItems.Add(sendMessageSimulatorItem);
             _devOptionsMenuItem.DropDownItems.Add(setCurrentMemberItem);
             _devOptionsMenuItem.DropDownItems.Add(new ToolStripSeparator());
             _devOptionsMenuItem.DropDownItems.Add(testSoundItem);
+            _devOptionsMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            _devOptionsMenuItem.DropDownItems.Add(resendSettlementItem);
             
             cmsMembers.Items.Add(_devOptionsMenuItem);
             
@@ -493,6 +503,78 @@ namespace BaiShengVx3Plus
             {
                 _logService.Error("VxMain", $"调整余额失败: {ex.Message}", ex);
                 UIMessageBox.ShowError($"调整余额失败：{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 📤 发送结算消息到微信群
+        /// </summary>
+        private async void MenuResendSettlement_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 🔥 再次检查开发模式（防作弊）
+                if (!_configService.GetIsRunModeDev())
+                {
+                    _logService.Warning("VxMain", "⚠️ 非开发模式，无法发送结算消息");
+                    UIMessageBox.ShowWarning("请先在设置中启用开发模式！");
+                    return;
+                }
+
+                // 🔥 检查是否已绑定群
+                if (_groupBindingService.CurrentBoundGroup == null)
+                {
+                    _logService.Warning("VxMain", "未绑定群组");
+                    UIMessageBox.ShowWarning("请先绑定一个群组！");
+                    return;
+                }
+
+                // 🔥 检查微信连接
+                if (_socketClient == null || !_socketClient.IsConnected)
+                {
+                    _logService.Warning("VxMain", "微信未连接");
+                    UIMessageBox.ShowWarning("微信未连接，请先登录微信！");
+                    return;
+                }
+
+                // 确认操作
+                if (!UIMessageBox.ShowAsk("确定要重新发送结算消息到微信群吗？\n\n" +
+                    "系统将查找最新已开奖的期号，\n" +
+                    "并重新发送中~名单和留~名单。"))
+                {
+                    return;
+                }
+
+                _logService.Info("VxMain", "📤 开始重新发送结算消息...");
+
+                // 🔥 调用开奖服务的重新发送方法
+                // 注意：需要将 IBinggoLotteryService 转换为 BinggoLotteryService 才能调用 ResendSettlementMessagesAsync
+                // 或者通过接口添加这个方法
+                if (_lotteryService is Services.Games.Binggo.BinggoLotteryService lotteryService)
+                {
+                    var (success, message) = await lotteryService.ResendSettlementMessagesAsync();
+                    
+                    if (success)
+                    {
+                        _logService.Info("VxMain", $"✅ {message}");
+                        UIMessageBox.ShowSuccess($"结算消息已重新发送！\n\n{message}");
+                    }
+                    else
+                    {
+                        _logService.Warning("VxMain", $"⚠️ {message}");
+                        UIMessageBox.ShowWarning($"重新发送结算消息失败！\n\n{message}");
+                    }
+                }
+                else
+                {
+                    _logService.Error("VxMain", "无法获取 BinggoLotteryService 实例");
+                    UIMessageBox.ShowError("系统错误：无法获取开奖服务实例！");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"重新发送结算消息失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"重新发送结算消息失败！\n\n{ex.Message}");
             }
         }
         

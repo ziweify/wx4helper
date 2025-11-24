@@ -1010,6 +1010,129 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         }
         
         /// <summary>
+        /// 🔥 重新发送结算消息到微信群（开发选项功能）
+        /// 获取最新已开奖的期号，重新发送中~名单和留~名单
+        /// </summary>
+        public async Task<(bool success, string message)> ResendSettlementMessagesAsync()
+        {
+            try
+            {
+                // 🔥 1. 检查是否已绑定群和微信连接
+                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
+                {
+                    return (false, "未绑定群或微信未登录");
+                }
+
+                // 🔥 2. 获取上一期的开奖数据（固定返回上一期）
+                int currentIssueId = _currentIssueId;
+                int lastIssueId = currentIssueId - 1;
+                
+                if (lastIssueId <= 0)
+                {
+                    return (false, "当前期号无效，无法获取上一期数据");
+                }
+
+                BinggoLotteryData? lotteryData = await GetLotteryDataAsync(lastIssueId, forceRefresh: false);
+                
+                if (lotteryData == null || !lotteryData.IsOpened)
+                {
+                    return (false, $"上一期 {lastIssueId} 未开奖或数据不存在");
+                }
+
+                int issueId = lotteryData.IssueId;
+                int issueidLite = issueId % 1000; // 期号后3位
+
+                // 🔥 3. 获取当期所有订单（参考 F5BotV2 第 1420 行）
+                // 🔥 查询条件：期号匹配，且不是已取消/未知状态
+                // 🔥 重要：托单也要正常发送到微信（显示在中~名单和留~名单中）
+                var allOrders = _ordersBindingList?.ToList() ?? new List<V2MemberOrder>();
+                _logService.Info("BinggoLotteryService", $"📋 订单列表总数: {allOrders.Count}");
+                
+                var orders = allOrders
+                    .Where(o => o.IssueId == issueId 
+                        && o.OrderStatus != OrderStatus.已取消 
+                        && o.OrderStatus != OrderStatus.未知)
+                    .ToList();
+                
+                _logService.Info("BinggoLotteryService", $"📋 期号 {issueId} 的待结算订单数: {orders.Count}");
+                if (orders.Count > 0)
+                {
+                    foreach (var o in orders)
+                    {
+                        _logService.Info("BinggoLotteryService", 
+                            $"  订单ID={o.Id}, 状态={o.OrderStatus}, 类型={o.OrderType}, 期号={o.IssueId}, 金额={o.AmountTotal}");
+                    }
+                }
+
+                // 🔥 4. 统计订单报告（参考 F5BotV2 第 1429-1450 行，与 OnLotteryOpenedAsync 完全一致）
+                var ordersReports = new Dictionary<string, (string nickname, float balance, float totalAmount, float profit)>();
+
+                if (orders != null && _orderService != null)
+                {
+                    foreach (var order in orders)
+                    {
+                        // 🔥 注意：这里不重新结算订单，因为订单已经结算过了
+                        // 直接使用已结算的订单数据统计
+
+                        // 统计输赢数据，整合显示给会员看的（参考 F5BotV2 第 1436-1449 行）
+                        var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
+                        if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
+
+                        // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
+                        string nickname = order.Nickname.UnEscape() ?? member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知";
+
+                        // 🔥 注意：这里不缓存余额，因为余额在结算过程中会被更新
+                        // 余额将在发送消息时重新获取最新值（参考 F5BotV2 第 1454 行）
+                        if (!ordersReports.ContainsKey(order.Wxid))
+                        {
+                            ordersReports[order.Wxid] = (
+                                nickname,
+                                0f,  // 🔥 不缓存余额，将在发送时重新获取
+                                order.AmountTotal,
+                                order.Profit
+                            );
+                        }
+                        else
+                        {
+                            var existing = ordersReports[order.Wxid];
+                            ordersReports[order.Wxid] = (
+                                existing.nickname,
+                                0f,  // 🔥 不缓存余额，将在发送时重新获取
+                                existing.totalAmount + order.AmountTotal,
+                                existing.profit + order.Profit
+                            );
+                        }
+                    }
+
+                    if (orders.Count > 0)
+                    {
+                        _logService.Info("BinggoLotteryService", $"✅ 统计完成: {orders.Count} 单");
+                    }
+                }
+
+                // 🔥 5. 转换为列表格式（用于发送消息，与 OnLotteryOpenedAsync 完全一致）
+                var ordersReportsList = ordersReports.Select(kvp => (
+                    wxid: kvp.Key,
+                    nickname: kvp.Value.nickname,
+                    balance: kvp.Value.balance,
+                    totalAmount: kvp.Value.totalAmount,
+                    profit: kvp.Value.profit
+                )).ToList();
+
+                // 🔥 6. 调用发送结算消息方法
+                await SendSettlementMessagesAsync(lotteryData, groupWxId, issueidLite, ordersReportsList);
+
+                return (true, $"已重新发送期号 {issueId} 的结算消息");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoLotteryService", $"重新发送结算消息失败: {ex.Message}", ex);
+                return (false, $"重新发送结算消息失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 🔥 发送结算消息到微信群（参考 F5BotV2: On已开奖）
         /// 格式：第{issueid_lite}队\r{开奖号码}\r----中~名单----\r{会员名}[余额] 纯利\r
         /// 🔥 重要：无论是否有订单，都要发送这两个名单（参考 F5BotV2 第 1462、1474 行）
