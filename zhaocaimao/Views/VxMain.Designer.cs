@@ -51,13 +51,14 @@ namespace zhaocaimao
             txtMinBet = new Sunny.UI.UITextBox();
             lblMaxBet = new Label();
             txtMaxBet = new Sunny.UI.UITextBox();
-            lblAutoBetSeparator = new Label();
             lblPlatform = new Label();
             cbxPlatform = new Sunny.UI.UIComboBox();
             lblAutoBetUsername = new Label();
             txtAutoBetUsername = new Sunny.UI.UITextBox();
             lblAutoBetPassword = new Label();
             txtAutoBetPassword = new Sunny.UI.UITextBox();
+            lblOdds = new Label();
+            txtOdds = new Sunny.UI.UIDoubleUpDown();
             btnStartBrowser = new Sunny.UI.UIButton();
             btnConfigManager = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
@@ -240,22 +241,11 @@ namespace zhaocaimao
             txtMaxBet.Watermark = "最大投注金额";
             txtMaxBet.TextChanged += TxtMaxBet_TextChanged;
             // 
-            // lblAutoBetSeparator
-            // 
-            lblAutoBetSeparator.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
-            lblAutoBetSeparator.ForeColor = Color.FromArgb(90, 122, 138);
-            lblAutoBetSeparator.Location = new Point(5, 123);
-            lblAutoBetSeparator.Name = "lblAutoBetSeparator";
-            lblAutoBetSeparator.Size = new Size(225, 20);
-            lblAutoBetSeparator.TabIndex = 6;
-            lblAutoBetSeparator.Text = "━━━ 自动投注 ━━━";
-            lblAutoBetSeparator.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // lblPlatform
             // 
             lblPlatform.Font = new Font("微软雅黑", 9F);
             lblPlatform.ForeColor = Color.FromArgb(90, 122, 138);
-            lblPlatform.Location = new Point(5, 148);
+            lblPlatform.Location = new Point(5, 124);
             lblPlatform.Name = "lblPlatform";
             lblPlatform.Size = new Size(50, 20);
             lblPlatform.TabIndex = 7;
@@ -271,7 +261,7 @@ namespace zhaocaimao
             cbxPlatform.ItemHoverColor = Color.FromArgb(143, 168, 194);
             cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(245, 247, 250);
-            cbxPlatform.Location = new Point(60, 146);
+            cbxPlatform.Location = new Point(60, 122);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);
             cbxPlatform.MinimumSize = new Size(63, 0);
             cbxPlatform.Name = "cbxPlatform";
@@ -287,7 +277,7 @@ namespace zhaocaimao
             // 
             lblAutoBetUsername.Font = new Font("微软雅黑", 9F);
             lblAutoBetUsername.ForeColor = Color.FromArgb(90, 122, 138);
-            lblAutoBetUsername.Location = new Point(5, 178);
+            lblAutoBetUsername.Location = new Point(5, 154);
             lblAutoBetUsername.Name = "lblAutoBetUsername";
             lblAutoBetUsername.Size = new Size(50, 20);
             lblAutoBetUsername.TabIndex = 9;
@@ -298,7 +288,7 @@ namespace zhaocaimao
             // 
             txtAutoBetUsername.FillColor = Color.FromArgb(245, 247, 250);
             txtAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            txtAutoBetUsername.Location = new Point(60, 176);
+            txtAutoBetUsername.Location = new Point(60, 152);
             txtAutoBetUsername.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetUsername.MinimumSize = new Size(1, 16);
             txtAutoBetUsername.Name = "txtAutoBetUsername";
@@ -314,7 +304,7 @@ namespace zhaocaimao
             // 
             lblAutoBetPassword.Font = new Font("微软雅黑", 9F);
             lblAutoBetPassword.ForeColor = Color.FromArgb(90, 122, 138);
-            lblAutoBetPassword.Location = new Point(5, 208);
+            lblAutoBetPassword.Location = new Point(5, 184);
             lblAutoBetPassword.Name = "lblAutoBetPassword";
             lblAutoBetPassword.Size = new Size(50, 20);
             lblAutoBetPassword.TabIndex = 11;
@@ -325,7 +315,7 @@ namespace zhaocaimao
             // 
             txtAutoBetPassword.FillColor = Color.FromArgb(245, 247, 250);
             txtAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            txtAutoBetPassword.Location = new Point(60, 206);
+            txtAutoBetPassword.Location = new Point(60, 182);
             txtAutoBetPassword.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetPassword.MinimumSize = new Size(1, 16);
             txtAutoBetPassword.Name = "txtAutoBetPassword";
@@ -338,13 +328,41 @@ namespace zhaocaimao
             txtAutoBetPassword.TextAlignment = ContentAlignment.MiddleLeft;
             txtAutoBetPassword.Watermark = "投注密码";
             // 
+            // lblOdds
+            // 
+            lblOdds.Font = new Font("微软雅黑", 9F);
+            lblOdds.Location = new Point(5, 214);
+            lblOdds.Name = "lblOdds";
+            lblOdds.Size = new Size(50, 20);
+            lblOdds.TabIndex = 13;
+            lblOdds.Text = "赔率:";
+            lblOdds.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtOdds
+            // 
+            txtOdds.DecimalPlaces = 2;
+            txtOdds.Font = new Font("微软雅黑", 9F);
+            txtOdds.Location = new Point(60, 212);
+            txtOdds.Margin = new Padding(4, 5, 4, 5);
+            txtOdds.Maximum = 2.5D;
+            txtOdds.Minimum = 1D;
+            txtOdds.MinimumSize = new Size(1, 16);
+            txtOdds.Name = "txtOdds";
+            txtOdds.Padding = new Padding(5);
+            txtOdds.ShowText = false;
+            txtOdds.Size = new Size(170, 25);
+            txtOdds.TabIndex = 14;
+            txtOdds.Text = null;
+            txtOdds.TextAlignment = ContentAlignment.MiddleLeft;
+            txtOdds.Value = 1.97D;
+            // 
             // btnStartBrowser
             // 
             btnStartBrowser.FillColor = Color.FromArgb(107, 143, 166);
             btnStartBrowser.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnStartBrowser.FillPressColor = Color.FromArgb(91, 127, 166);
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
-            btnStartBrowser.Location = new Point(120, 240);
+            btnStartBrowser.Location = new Point(120, 270);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
             btnStartBrowser.RectColor = Color.FromArgb(107, 143, 166);
@@ -362,7 +380,7 @@ namespace zhaocaimao
             btnConfigManager.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnConfigManager.FillPressColor = Color.FromArgb(91, 127, 166);
             btnConfigManager.Font = new Font("微软雅黑", 9F);
-            btnConfigManager.Location = new Point(120, 275);
+            btnConfigManager.Location = new Point(120, 305);
             btnConfigManager.MinimumSize = new Size(1, 1);
             btnConfigManager.Name = "btnConfigManager";
             btnConfigManager.RectColor = Color.FromArgb(107, 143, 166);
@@ -519,13 +537,14 @@ namespace zhaocaimao
             pnl_fastsetting.Controls.Add(txtMinBet);
             pnl_fastsetting.Controls.Add(lblMaxBet);
             pnl_fastsetting.Controls.Add(txtMaxBet);
-            pnl_fastsetting.Controls.Add(lblAutoBetSeparator);
             pnl_fastsetting.Controls.Add(lblPlatform);
             pnl_fastsetting.Controls.Add(cbxPlatform);
             pnl_fastsetting.Controls.Add(lblAutoBetUsername);
             pnl_fastsetting.Controls.Add(txtAutoBetUsername);
             pnl_fastsetting.Controls.Add(lblAutoBetPassword);
             pnl_fastsetting.Controls.Add(txtAutoBetPassword);
+            pnl_fastsetting.Controls.Add(lblOdds);
+            pnl_fastsetting.Controls.Add(txtOdds);
             pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Controls.Add(btnConfigManager);
             pnl_fastsetting.FillColor = Color.FromArgb(245, 247, 250);
@@ -1176,15 +1195,14 @@ namespace zhaocaimao
         private Sunny.UI.UITextBox txtMinBet;
         private System.Windows.Forms.Label lblMaxBet;
         private Sunny.UI.UITextBox txtMaxBet;
-        
-        // 🤖 自动投注控件
-        private System.Windows.Forms.Label lblAutoBetSeparator;
         private System.Windows.Forms.Label lblPlatform;
         private Sunny.UI.UIComboBox cbxPlatform;
         private System.Windows.Forms.Label lblAutoBetUsername;
         private Sunny.UI.UITextBox txtAutoBetUsername;
         private System.Windows.Forms.Label lblAutoBetPassword;
         private Sunny.UI.UITextBox txtAutoBetPassword;
+        private System.Windows.Forms.Label lblOdds;
+        private Sunny.UI.UIDoubleUpDown txtOdds;
         private Sunny.UI.UIButton btnStartBrowser;
         private Sunny.UI.UIButton btnConfigManager;
         private Sunny.UI.UISwitch swi_OrdersTasking;

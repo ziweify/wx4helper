@@ -61,7 +61,16 @@ namespace zhaocaimao.Services.Configuration
         public float GetMinBet() => _configuration.MinBet;
         public float GetMaxBet() => _configuration.MaxBet;
         public float GetMaxBetPerIssue() => _configuration.MaxBetPerIssue;
-        public Dictionary<string, float> GetOdds() => _configuration.Odds;
+        
+        /// <summary>
+        /// 🔥 获取微信订单统一赔率（用于订单结算）
+        /// </summary>
+        public float GetWechatOrderOdds() => _configuration.WechatOrderOdds;
+        
+        /// <summary>
+        /// 🔥 获取当前选择的盘口（界面状态，保存在 appsettings.json）
+        /// </summary>
+        public string GetCurrentSelectedPlatform() => _configuration.CurrentSelectedPlatform ?? "";
         
         public bool GetIsRunModeAdmin() => _configuration.IsRunModeAdmin;
         
@@ -164,6 +173,40 @@ namespace zhaocaimao.Services.Configuration
                 _logService.Info("ConfigurationService", $"最大投注已更新: {oldValue} → {value}");
                 SaveConfiguration();
                 OnConfigurationChanged("MaxBet", oldValue, value);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 设置微信订单统一赔率（用于订单结算）
+        /// </summary>
+        public void SetWechatOrderOdds(float value)
+        {
+            if (_configuration.WechatOrderOdds != value)
+            {
+                var oldValue = _configuration.WechatOrderOdds;
+                _configuration.WechatOrderOdds = value;
+                
+                _logService.Info("ConfigurationService", $"微信订单赔率已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 设置当前选择的盘口（界面状态，保存在 appsettings.json）
+        /// </summary>
+        public void SetCurrentSelectedPlatform(string value)
+        {
+            if (_configuration.CurrentSelectedPlatform != value)
+            {
+                var oldValue = _configuration.CurrentSelectedPlatform;
+                _configuration.CurrentSelectedPlatform = value ?? "";
+                
+                _logService.Info("ConfigurationService", $"当前选择的盘口已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
             }
         }
         

@@ -50,6 +50,10 @@ namespace zhaocaimao
         // 🔥 ORM 数据库连接（双库结构）
         private SQLiteConnection? _globalDb;  // 全局数据库: business.db (飞单配置、开奖数据)
         private SQLiteConnection? _db;  // 微信专属数据库: business_{wxid}.db (会员、订单、投注记录等)
+        
+        // 🔥 赔率控件步进控制
+        private double _lastOddsValue = 1.97;  // 记录上一次的赔率值，用于检测按钮点击
+        private Sunny.UI.UIDoubleUpDown.OnValueChanged? _oddsValueChangedHandler;  // 保存事件处理程序引用，用于解绑
         private string _currentDbPath = "";  // 当前微信专属数据库路径
         
         // 数据绑定列表
@@ -425,8 +429,8 @@ namespace zhaocaimao
                 // 📌 BetRecordService: 已在 AutoBetService.SetDatabase 中初始化
                 _logService.Info("VxMain", "✅ BetRecordService 将在 AutoBetService.SetDatabase 中自动初始化");
                 
-                // 🤖 数据库设置完成后，加载自动投注设置
-                LoadAutoBetSettings();
+                // 🔥 注意：LoadAutoBetSettings() 已在 VxMain_Load 中调用（在 InitializePlatformComboBox() 之后）
+                // 这里不再调用，避免重复加载和时序问题
                 
                 // 🔊 添加声音测试按钮（动态创建）
                 AddSoundTestButton();
@@ -1213,6 +1217,12 @@ namespace zhaocaimao
                 }
                 
                 lblStatus.Text = "正在初始化...";
+                
+                // 🔥 初始化平台下拉框（使用统一数据源）- 必须在 LoadAutoBetSettings 之前调用
+                InitializePlatformComboBox();
+                
+                // 🔥 重新加载自动投注设置（确保平台下拉框已初始化后再加载）
+                LoadAutoBetSettings();
                 
                 // 隐藏不需要显示的列
                 if (dgvContacts.Columns.Count > 0)
@@ -3522,6 +3532,8 @@ namespace zhaocaimao
         #region 🤖 自动投注 UI 和逻辑
 
         private System.Threading.Timer? _saveTimer;
+        private System.Threading.Timer? _oddsTimer;  // 🔥 赔率防抖定时器
+        private EventHandler? _platformSelectedIndexChangedHandler;  // 🔥 保存平台下拉框事件处理程序，用于解绑
 
         /// <summary>
         /// 初始化自动投注 UI 事件（控件已在 Designer 中创建）
@@ -3532,8 +3544,8 @@ namespace zhaocaimao
             {
                 _logService.Info("VxMain", "🤖 初始化自动投注UI事件绑定...");
                 
-                // 从默认配置加载设置
-                LoadAutoBetSettings();
+                // 🔥 注意：LoadAutoBetSettings() 已在 VxMain_Load 中调用（在 InitializePlatformComboBox() 之后）
+                // 这里不再调用，避免重复加载和时序问题
                 
                 // ✅ 加载应用设置（绑定到 ConfigViewModel，支持双向自动同步）
                 swi_OrdersTasking.DataBindings.Add(
@@ -3546,7 +3558,8 @@ namespace zhaocaimao
 
                 // 绑定自动保存事件（使用防抖机制）
                 // 下拉框：立即保存
-                cbxPlatform.SelectedIndexChanged += (s, e) => SaveAutoBetSettings();
+                _platformSelectedIndexChangedHandler = (s, e) => SaveAutoBetSettings();
+                cbxPlatform.SelectedIndexChanged += _platformSelectedIndexChangedHandler;
                 
                 // 文本框：延迟保存（防抖：用户停止输入1秒后再保存）
                 txtAutoBetUsername.TextChanged += (s, e) => 
@@ -3574,6 +3587,87 @@ namespace zhaocaimao
                     _saveTimer?.Dispose();
                     _saveTimer = null;
                     SaveAutoBetSettings();
+                };
+                
+                // 🔥 赔率设置：防抖验证和保存，并处理步进（0.01）
+                _oddsValueChangedHandler = (sender, value) =>
+                {
+                    try
+                    {
+                        double currentValue = value;
+                        double diff = Math.Abs(currentValue - _lastOddsValue);
+                        
+                        // 🔥 如果变化量接近 1.0（可能是默认步进），则调整为 0.01 步进
+                        if (diff > 0.5 && diff < 1.5)
+                        {
+                            // 检测到可能是按钮点击导致的大步进，调整为 0.01 步进
+                            double newValue = currentValue > _lastOddsValue 
+                                ? _lastOddsValue + 0.01 
+                                : _lastOddsValue - 0.01;
+                            
+                            // 限制在有效范围内
+                            newValue = Math.Max(1.0, Math.Min(2.5, newValue));
+                            
+                            // 临时解绑事件避免递归
+                            if (_oddsValueChangedHandler != null)
+                            {
+                                txtOdds.ValueChanged -= _oddsValueChangedHandler;
+                                txtOdds.Value = newValue;
+                                txtOdds.ValueChanged += _oddsValueChangedHandler;
+                            }
+                            
+                            _lastOddsValue = newValue;
+                            _logService.Debug("VxMain", $"🔍 赔率步进调整: {currentValue:F2} → {newValue:F2}");
+                            
+                            // 触发防抖保存
+                            DebounceValidateAndSaveOdds();
+                            return;
+                        }
+                        
+                        // 🔥 如果变化量不是 0.01 的倍数，且变化量较大（可能是按钮点击），则调整到最近的 0.01 倍数
+                        if (diff > 0.01 && diff < 0.5)
+                        {
+                            // 计算应该增加还是减少
+                            double step = currentValue > _lastOddsValue ? 0.01 : -0.01;
+                            double newValue = _lastOddsValue + step;
+                            
+                            // 限制在有效范围内
+                            newValue = Math.Max(1.0, Math.Min(2.5, newValue));
+                            
+                            // 如果调整后的值与当前值不同，则更新
+                            if (Math.Abs(newValue - currentValue) > 0.001)
+                            {
+                                if (_oddsValueChangedHandler != null)
+                                {
+                                    txtOdds.ValueChanged -= _oddsValueChangedHandler;
+                                    txtOdds.Value = newValue;
+                                    txtOdds.ValueChanged += _oddsValueChangedHandler;
+                                }
+                                _lastOddsValue = newValue;
+                                _logService.Debug("VxMain", $"🔍 赔率步进调整: {currentValue:F2} → {newValue:F2}");
+                                DebounceValidateAndSaveOdds();
+                                return;
+                            }
+                        }
+                        
+                        _lastOddsValue = currentValue;
+                        _logService.Debug("VxMain", $"🔍 赔率值变化: {currentValue:F2}");
+                        DebounceValidateAndSaveOdds();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", "处理赔率值变化失败", ex);
+                    }
+                };
+                txtOdds.ValueChanged += _oddsValueChangedHandler;
+                
+                // 🔥 双重保险：失去焦点时立即保存（防止复制粘贴后立即关闭程序导致数据丢失）
+                txtOdds.LostFocus += (s, e) => 
+                {
+                    _logService.Debug("VxMain", "🔍 赔率失去焦点，取消防抖定时器并立即验证保存");
+                    _oddsTimer?.Dispose();
+                    _oddsTimer = null;
+                    ValidateAndSaveOdds();
                 };
                 
                 _logService.Info("VxMain", "✅ 自动投注UI事件已绑定（包含 TextChanged 和 LostFocus）");
@@ -3617,6 +3711,84 @@ namespace zhaocaimao
         }
 
         /// <summary>
+        /// 初始化平台下拉框（使用统一数据源）
+        /// </summary>
+        private void InitializePlatformComboBox()
+        {
+            try
+            {
+                var platformNames = BetPlatformHelper.GetAllPlatformNames();
+                cbxPlatform.Items.Clear();
+                cbxPlatform.Items.AddRange(platformNames);
+                _logService.Info("VxMain", $"✅ 平台下拉框已初始化，共 {platformNames.Length} 个平台");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化平台下拉框失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 防抖验证并保存赔率（延迟1秒）
+        /// </summary>
+        private void DebounceValidateAndSaveOdds()
+        {
+            _oddsTimer?.Dispose();
+            _oddsTimer = new System.Threading.Timer(_ =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(ValidateAndSaveOdds));
+                }
+                else
+                {
+                    ValidateAndSaveOdds();
+                }
+            }, null, 1000, System.Threading.Timeout.Infinite);
+            
+            _logService.Debug("VxMain", "⏳ 赔率已修改，将在1秒后验证并保存（防抖机制）");
+        }
+
+        /// <summary>
+        /// 验证并保存赔率（范围：1.0 - 2.5，默认：1.97）
+        /// </summary>
+        private void ValidateAndSaveOdds()
+        {
+            try
+            {
+                double oddsValue = txtOdds.Value;
+                
+                // 🔥 验证范围：< 1 或 > 2.5 都重置为 1.97
+                if (oddsValue < 1.0 || oddsValue > 2.5)
+                {
+                    string reason = oddsValue < 1.0 
+                        ? "赔率不能小于 1.0" 
+                        : "赔率不能大于 2.5";
+                    
+                    _logService.Warning("VxMain", $"❌ 赔率验证失败: {oddsValue:F2} - {reason}，重置为 1.97");
+                    
+                    // 重置为默认值
+                    txtOdds.Value = 1.97;
+                    
+                    // 显示提示
+                    UIMessageBox.Show($"赔率设置失败：{reason}\n已重置为默认值 1.97", 
+                        "提示", UIStyle.Orange, UIMessageBoxButtons.OK);
+                    
+                    return;
+                }
+                
+                // 🔥 保存到全局配置（微信订单统一赔率，用于订单结算）
+                _configService.SetWechatOrderOdds((float)oddsValue);
+                
+                _logService.Info("VxMain", $"✅ 赔率已保存: {oddsValue:F2}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "验证并保存赔率失败", ex);
+            }
+        }
+
+        /// <summary>
         /// 从默认配置加载自动投注设置
         /// 🔥 如果默认配置不存在，会创建一个新的默认配置（账号密码为空）
         /// </summary>
@@ -3624,35 +3796,94 @@ namespace zhaocaimao
         {
             try
             {
-                // 🔥 加载设置时，临时解绑事件，避免触发自动启动
+                // 🔥 确保平台下拉框已初始化（如果为空，先初始化）
+                if (cbxPlatform.Items.Count == 0)
+                {
+                    InitializePlatformComboBox();
+                }
+                
+                // 🔥 加载设置时，临时解绑事件，避免触发自动启动和保存
                 _logService.Info("VxMain", "📋 加载自动投注设置（临时解绑事件）...");
                 swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
                 
+                // 🔥 临时解绑平台下拉框事件，避免加载时触发保存
+                if (_platformSelectedIndexChangedHandler != null)
+                {
+                    cbxPlatform.SelectedIndexChanged -= _platformSelectedIndexChangedHandler;
+                }
+                
                 var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
+                
+                // 🔥 优先从 appsettings.json 读取当前选择的盘口（界面状态）
+                string? currentPlatform = _configService.GetCurrentSelectedPlatform();
+                int platformIndex = -1;
+                
+                if (!string.IsNullOrEmpty(currentPlatform))
+                {
+                    // 从 appsettings.json 读取的盘口
+                    try
+                    {
+                        var savedPlatform = BetPlatformHelper.Parse(currentPlatform);
+                        platformIndex = BetPlatformHelper.GetIndex(savedPlatform);
+                        _logService.Info("VxMain", $"📋 从 appsettings.json 读取当前选择的盘口: {currentPlatform}, Index={platformIndex}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Warning("VxMain", $"解析 appsettings.json 中的盘口失败: {currentPlatform}, {ex.Message}");
+                    }
+                }
+                
+                // 🔥 如果 appsettings.json 中没有，则从默认配置读取
+                if (platformIndex < 0 && defaultConfig != null)
+                {
+                    var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
+                    platformIndex = BetPlatformHelper.GetIndex(platform);
+                    _logService.Info("VxMain", $"📋 从默认配置读取盘口: {defaultConfig.Platform}, Index={platformIndex}");
+                    
+                    // 🔥 同步到 appsettings.json（界面状态）
+                    _configService.SetCurrentSelectedPlatform(defaultConfig.Platform);
+                }
+                
+                // 🔥 设置下拉框选择
+                if (platformIndex >= 0 && platformIndex < cbxPlatform.Items.Count)
+                {
+                    cbxPlatform.SelectedIndex = platformIndex;
+                    _logService.Info("VxMain", $"✅ 设置平台下拉框: Index={platformIndex}, SelectedIndex={cbxPlatform.SelectedIndex}");
+                }
+                else
+                {
+                    // 如果都无效，使用第一个平台
+                    cbxPlatform.SelectedIndex = 0;
+                    _logService.Warning("VxMain", $"⚠️ 平台索引无效，使用第一个平台: Index={platformIndex}");
+                }
                 
                 if (defaultConfig != null)
                 {
-                    // 加载平台（使用共享库统一转换）
-                    var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
-                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
 
                     // 加载账号密码（如果为空，显示空白是正常的）
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
                     txtAutoBetPassword.Text = defaultConfig.Password ?? "";
                     
-                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
+                    // 🔥 加载微信订单统一赔率（从全局配置，默认 1.97）
+                    var odds = _configService.GetWechatOrderOdds();
+                    if (odds <= 0) odds = 1.97f;  // 如果未设置，使用默认值
+                    _lastOddsValue = odds;  // 初始化记录值
+                    txtOdds.Value = odds;
+                    
+                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}, 赔率={odds:F2}");
                 }
                 else
                 {
                     // 🔥 默认配置不存在，创建一个新的（账号密码为空）
                     _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
                     
-                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    // 🔥 使用当前选择的平台（从 appsettings.json 或第一个平台）
+                    var defaultPlatform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
                     var newConfig = new Models.AutoBet.BetConfig
                     {
                         ConfigName = "默认配置",
-                        Platform = platform.ToString(),
-                        PlatformUrl = PlatformUrlManager.GetDefaultUrl(platform),
+                        Platform = defaultPlatform.ToString(),
+                        PlatformUrl = PlatformUrlManager.GetDefaultUrl(defaultPlatform),
                         Username = "",  // 🔥 初始为空，用户需要手动输入
                         Password = "",  // 🔥 初始为空，用户需要手动输入
                         IsDefault = true,
@@ -3662,12 +3893,19 @@ namespace zhaocaimao
                     
                     _autoBetService.SaveConfig(newConfig);
                     
-                    // 加载到UI
-                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
+                    // 🔥 同步到 appsettings.json（界面状态）
+                    _configService.SetCurrentSelectedPlatform(defaultPlatform.ToString());
+                    
                     txtAutoBetUsername.Text = "";
                     txtAutoBetPassword.Text = "";
                     
-                    _logService.Info("VxMain", "✅ 已创建新的默认配置（账号密码为空，需要用户输入）");
+                    // 🔥 加载微信订单统一赔率（从全局配置，默认 1.97）
+                    var odds = _configService.GetWechatOrderOdds();
+                    if (odds <= 0) odds = 1.97f;  // 如果未设置，使用默认值
+                    _lastOddsValue = odds;  // 初始化记录值
+                    txtOdds.Value = odds;
+                    
+                    _logService.Info("VxMain", $"✅ 已创建新的默认配置: 平台={defaultPlatform}, 赔率={odds:F2}（账号密码为空，需要用户输入）");
                 }
                 
                 _logService.Info("VxMain", "✅ 自动投注设置加载完成");
@@ -3680,7 +3918,14 @@ namespace zhaocaimao
             {
                 // 🔥 重新绑定事件
                 swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
-                _logService.Info("VxMain", "✅ 自动投注开关事件已重新绑定");
+                
+                // 🔥 重新绑定平台下拉框事件（如果已解绑）
+                if (_platformSelectedIndexChangedHandler != null)
+                {
+                    cbxPlatform.SelectedIndexChanged += _platformSelectedIndexChangedHandler;
+                }
+                
+                _logService.Info("VxMain", "✅ 自动投注事件已重新绑定");
             }
         }
 
@@ -3696,17 +3941,24 @@ namespace zhaocaimao
         {
             try
             {
+                // 🔥 确保平台下拉框已初始化（如果为空，先初始化）
+                if (cbxPlatform.Items.Count == 0)
+                {
+                    InitializePlatformComboBox();
+                }
+                
                 var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
                 if (defaultConfig == null)
                 {
                     // 🔥 如果默认配置不存在，创建一个新的
                     _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
                     
-                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
+                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    string platformName = platform.ToString();
                     defaultConfig = new Models.AutoBet.BetConfig
                     {
                         ConfigName = "默认配置",
-                        Platform = platform.ToString(),
+                        Platform = platformName,
                         PlatformUrl = PlatformUrlManager.GetDefaultUrl(platform),
                         Username = txtAutoBetUsername.Text,
                         Password = txtAutoBetPassword.Text,
@@ -3716,13 +3968,27 @@ namespace zhaocaimao
                     };
                     
                     _autoBetService.SaveConfig(defaultConfig);
-                    _logService.Info("VxMain", "✅ 已创建新的默认配置");
+                    
+                    // 🔥 同时保存到 appsettings.json（界面状态）
+                    _configService.SetCurrentSelectedPlatform(platformName);
+                    _logService.Info("VxMain", $"✅ 已创建新的默认配置，并保存到 appsettings.json: {platformName}");
                 }
                 else
                 {
-                    // 保存平台（使用共享库统一转换）
-                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
-                    defaultConfig.Platform = platform.ToString();
+                    // 🔥 保存平台（使用共享库统一转换）
+                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    string platformName = platform.ToString();
+                    bool platformChanged = defaultConfig.Platform != platformName;
+                    
+                    if (platformChanged)
+                    {
+                        _logService.Info("VxMain", $"📝 检测到平台变化: {defaultConfig.Platform} → {platformName}");
+                        defaultConfig.Platform = platformName;
+                    }
+                    
+                    // 🔥 同时保存到 appsettings.json（界面状态）
+                    _configService.SetCurrentSelectedPlatform(platformName);
+                    _logService.Info("VxMain", $"💾 已保存当前选择的盘口到 appsettings.json: {platformName}");
                     
                     // 🔥 不再自动覆盖平台URL，保留用户手动修改的值
                     // 如果用户需要修改URL，应该在配置管理器中手动修改
@@ -3731,10 +3997,6 @@ namespace zhaocaimao
                     {
                         defaultConfig.PlatformUrl = PlatformUrlManager.GetDefaultUrl(platform);
                         _logService.Info("VxMain", $"URL为空，已自动设置为默认URL: {defaultConfig.PlatformUrl}");
-                    }
-                    else
-                    {
-                        _logService.Info("VxMain", $"保留用户设置的URL: {defaultConfig.PlatformUrl}");
                     }
 
                     // 保存账号密码
@@ -3745,20 +4007,21 @@ namespace zhaocaimao
                     bool usernameChanged = defaultConfig.Username != username;
                     bool passwordChanged = defaultConfig.Password != password;
                     
-                    if (usernameChanged || passwordChanged)
+                    if (platformChanged || usernameChanged || passwordChanged)
                     {
-                        _logService.Info("VxMain", $"📝 检测到账号/密码变化:");
+                        if (platformChanged)
+                            _logService.Info("VxMain", $"📝 平台变化: {defaultConfig.Platform} → {platform}");
                         if (usernameChanged)
-                            _logService.Info("VxMain", $"   账号: {defaultConfig.Username ?? "(空)"} → {username ?? "(空)"}");
+                            _logService.Info("VxMain", $"📝 账号变化: {defaultConfig.Username ?? "(空)"} → {username ?? "(空)"}");
                         if (passwordChanged)
-                            _logService.Info("VxMain", $"   密码: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "***")} → {(string.IsNullOrEmpty(password) ? "(空)" : "***")}");
+                            _logService.Info("VxMain", $"📝 密码变化: {(string.IsNullOrEmpty(defaultConfig.Password) ? "(空)" : "***")} → {(string.IsNullOrEmpty(password) ? "(空)" : "***")}");
                     }
                     
                     defaultConfig.Username = username;
                     defaultConfig.Password = password;
                     defaultConfig.LastUpdateTime = DateTime.Now;  // 🔥 强制触发更新
 
-                    // 保存到数据库
+                    // 保存到数据库（BindingList 会自动保存）
                     _autoBetService.SaveConfig(defaultConfig);
 
                     _logService.Info("VxMain", "✅ 自动投注设置已保存到数据库");
