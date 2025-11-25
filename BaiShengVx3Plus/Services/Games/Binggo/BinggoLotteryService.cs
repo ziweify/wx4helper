@@ -1192,15 +1192,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 格式：第{issueid_lite}队\r{开奖号码}\r----留~名单----\r{会员名} 余额\r
                 // 🔥 重要：无论是否有订单，都要发送留分名单
                 var balanceMessage = new System.Text.StringBuilder();
-                balanceMessage.Append($"第{issueidLite}队\r ");
-                balanceMessage.Append($"{lotteryData.ToLotteryString()}\r ");
-                balanceMessage.Append($"----留~名单----\r ");
+                balanceMessage.Append($"第{issueidLite}队\r");
+                balanceMessage.Append($"{lotteryData.ToLotteryString()}\r");
+                balanceMessage.Append($"----留~名单----\r");
 
                 if (_membersBindingList != null)
                 {
                     foreach (var member in _membersBindingList)
                     {
-                        // 🔥 格式完全一致：{nickname} {(int)Balance}\r
+                        // 🔥 格式完全一致：{nickname} {(int)Balance}\r（参考 F5BotV2 第1469行）
                         if ((int)member.Balance >= 1)  // 余额 >= 1 才显示
                         {
                             string name = "";
@@ -1208,7 +1208,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                                 name = "";
                             else
                                 name = member.Nickname.UnEscape();
-                            balanceMessage.Append($"{name} {(int)member.Balance}\r ");
+                            // 🔥 确保换行符后面没有空格（与 F5BotV2 保持一致）
+                            balanceMessage.Append($"{name} {(int)member.Balance}\r");
                         }
                     }
                 }

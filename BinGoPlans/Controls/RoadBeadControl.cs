@@ -83,7 +83,7 @@ namespace BinGoPlans.Controls
             }
             
             int colCount = columns.Count;
-            int rowCount = maxRows + 1; // +1 用于显示期号行
+            int rowCount = maxRows + 2; // +1 用于显示期号行，+1 用于显示当天第几期行
             
             int totalWidth = colCount * _cellSize;
             int totalHeight = rowCount * _cellSize;
@@ -128,9 +128,22 @@ namespace BinGoPlans.Controls
 
                 int startIssueId = column[0].IssueId;
                 int issueTail = startIssueId % 100; // 期号尾后2位
+                
+                // 🔥 计算当天第几期（1-203）- 使用 BinGoData 的计算逻辑
+                int dayIndex = CalculateDayIndex(startIssueId);
 
-                // 绘制第0行：期号
-                var issueRect = new Rectangle(currentX, 0, _cellSize - 1, _cellSize - 1);
+                // 绘制第0行：当天第几期
+                var dayIndexRect = new Rectangle(currentX, 0, _cellSize - 1, _cellSize - 1);
+                g.FillRectangle(Brushes.LightBlue, dayIndexRect);
+                g.DrawRectangle(Pens.Black, dayIndexRect);
+                var dayIndexText = dayIndex.ToString();
+                var dayIndexTextSize = g.MeasureString(dayIndexText, _issueFont);
+                var dayIndexTextX = dayIndexRect.X + (dayIndexRect.Width - dayIndexTextSize.Width) / 2;
+                var dayIndexTextY = dayIndexRect.Y + (dayIndexRect.Height - dayIndexTextSize.Height) / 2;
+                g.DrawString(dayIndexText, _issueFont, Brushes.Black, dayIndexTextX, dayIndexTextY);
+
+                // 绘制第1行：期号尾后2位
+                var issueRect = new Rectangle(currentX, _cellSize, _cellSize - 1, _cellSize - 1);
                 g.FillRectangle(Brushes.LightGray, issueRect);
                 g.DrawRectangle(Pens.Black, issueRect);
                 var issueText = issueTail.ToString("00");
@@ -139,11 +152,11 @@ namespace BinGoPlans.Controls
                 var issueTextY = issueRect.Y + (issueRect.Height - issueTextSize.Height) / 2;
                 g.DrawString(issueText, _issueFont, Brushes.Black, issueTextX, issueTextY);
 
-                // 绘制数据行（从第1行开始）
+                // 绘制数据行（从第2行开始）
                 for (int row = 0; row < column.Count; row++)
                 {
                     var item = column[row];
-                    var rect = new Rectangle(currentX, (row + 1) * _cellSize, _cellSize - 1, _cellSize - 1);
+                    var rect = new Rectangle(currentX, (row + 2) * _cellSize, _cellSize - 1, _cellSize - 1);
 
                     // 绘制背景色
                     var colorName = item.Result.GetColorName();
@@ -203,6 +216,33 @@ namespace BinGoPlans.Controls
             }
 
             return columns;
+        }
+
+        /// <summary>
+        /// 计算期号在当天是第几期（1-203）
+        /// 参考 BaiShengVx3Plus.Shared.Models.Games.Binggo.BinGoData.CalculateDayIndex
+        /// </summary>
+        private static int CalculateDayIndex(int issueId)
+        {
+            const int FIRST_ISSUE_ID = 114000001;  // 基准期号 (2025-01-01 第1期)
+            const int ISSUES_PER_DAY = 203;        // 每天203期
+            
+            int value = issueId - FIRST_ISSUE_ID;
+            
+            if (value >= 0)
+            {
+                // result = value % 203 + 1
+                // 例如：value = 0, result = 1 (第1期)
+                //      value = 202, result = 203 (第203期)
+                //      value = 203, result = 1 (第2天第1期)
+                return value % ISSUES_PER_DAY + 1;
+            }
+            else
+            {
+                // 处理负数（历史期号）
+                int result = value % ISSUES_PER_DAY + 1;
+                return ISSUES_PER_DAY - Math.Abs(result);
+            }
         }
 
         protected override void Dispose(bool disposing)

@@ -357,21 +357,18 @@ namespace BinGoPlans
 
         private async Task LoadDataAsync()
         {
-            if (!_isLoggedIn)
-            {
-                XtraMessageBox.Show("请先登录", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
             var selectedDate = _datePicker.DateTime.Date;
 
             try
             {
-                await _dataService.LoadFromApiAsync(selectedDate);
+                // 使用新的加载逻辑：先从 SQLite 加载，如果没有再从网络获取
+                await _dataService.LoadDataByDateAsync(selectedDate);
                 RefreshAllTabs();
                 RefreshTrendTab();
                 RefreshLotteryDataGrid();
-                XtraMessageBox.Show($"数据加载成功！共加载 {selectedDate:yyyy-MM-dd} 的数据", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                var dataCount = _statisticsService.GetAllData().Count;
+                XtraMessageBox.Show($"数据加载成功！共加载 {dataCount} 条数据", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -383,21 +380,45 @@ namespace BinGoPlans
         {
             if (_lotteryDataGrid == null) return;
 
-            var allData = _statisticsService.GetAllData();
-            var displayData = allData.Select(d => new
+            // 直接使用 BinGoDataEntity（继承自 BinGoData），避免不必要的转换
+            var dataList = _dataService.GetCurrentDataList();
+
+            // 直接使用 BinGoData 的便捷属性进行显示
+            var displayData = dataList.Select(d => new
             {
-                IssueId = d.IssueId,
-                LotteryData = d.LotteryData,
-                P1Number = d.P1?.Number ?? 0,
-                P2Number = d.P2?.Number ?? 0,
-                P3Number = d.P3?.Number ?? 0,
-                P4Number = d.P4?.Number ?? 0,
-                P5Number = d.P5?.Number ?? 0,
-                SumNumber = d.PSum?.Number ?? 0,
-                SumSize = d.PSum?.GetSizeText() ?? "",
-                SumOddEven = d.PSum?.GetOddEvenText() ?? "",
-                DragonTiger = d.GetDragonTigerText(),
-                OpenTime = d.OpenTime.ToString("yyyy-MM-dd HH:mm:ss")
+                d.IssueId,
+                d.DayIndex,
+                d.OpenTimeString,
+                d.OpenDateString,
+                P1 = d.P1Number,
+                P2 = d.P2Number,
+                P3 = d.P3Number,
+                P4 = d.P4Number,
+                P5 = d.P5Number,
+                Sum = d.SumNumber,
+                P1Size = d.P1Size,
+                P2Size = d.P2Size,
+                P3Size = d.P3Size,
+                P4Size = d.P4Size,
+                P5Size = d.P5Size,
+                SumSize = d.SumSize,
+                P1OddEven = d.P1OddEven,
+                P2OddEven = d.P2OddEven,
+                P3OddEven = d.P3OddEven,
+                P4OddEven = d.P4OddEven,
+                P5OddEven = d.P5OddEven,
+                SumOddEven = d.SumOddEven,
+                P1TailSize = d.P1TailSize,
+                P2TailSize = d.P2TailSize,
+                P3TailSize = d.P3TailSize,
+                P4TailSize = d.P4TailSize,
+                P5TailSize = d.P5TailSize,
+                P1SumOddEven = d.P1SumOddEven,
+                P2SumOddEven = d.P2SumOddEven,
+                P3SumOddEven = d.P3SumOddEven,
+                P4SumOddEven = d.P4SumOddEven,
+                P5SumOddEven = d.P5SumOddEven,
+                DragonTiger = d.DragonTigerText
             }).ToList();
 
             _lotteryDataGrid.DataSource = displayData;
