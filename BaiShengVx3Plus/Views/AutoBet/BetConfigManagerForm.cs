@@ -168,6 +168,9 @@ namespace BaiShengVx3Plus.Views.AutoBet
         {
             try
             {
+                // 🔥 初始化平台下拉框（使用统一数据源）
+                InitializePlatformComboBox();
+                
                 // 加载配置列表
                 LoadConfigs();
                 
@@ -184,6 +187,24 @@ namespace BaiShengVx3Plus.Views.AutoBet
             {
                 _logService.Error("ConfigManager", "加载配置管理器失败", ex);
                 UIMessageBox.Show($"加载失败: {ex.Message}", "错误", UIStyle.Red, UIMessageBoxButtons.OK);
+            }
+        }
+        
+        /// <summary>
+        /// 初始化平台下拉框（使用统一数据源）
+        /// </summary>
+        private void InitializePlatformComboBox()
+        {
+            try
+            {
+                var platformNames = BetPlatformHelper.GetAllPlatformNames();
+                cbxPlatform.Items.Clear();
+                cbxPlatform.Items.AddRange(platformNames);
+                _logService.Info("ConfigManager", $"✅ 平台下拉框已初始化，共 {platformNames.Length} 个平台");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("ConfigManager", "初始化平台下拉框失败", ex);
             }
         }
 

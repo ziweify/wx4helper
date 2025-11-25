@@ -61,7 +61,6 @@ namespace BaiShengVx3Plus.Services.Configuration
         public float GetMinBet() => _configuration.MinBet;
         public float GetMaxBet() => _configuration.MaxBet;
         public float GetMaxBetPerIssue() => _configuration.MaxBetPerIssue;
-        public Dictionary<string, float> GetOdds() => _configuration.Odds;
         
         public bool GetIsRunModeAdmin() => _configuration.IsRunModeAdmin;
         
@@ -117,6 +116,28 @@ namespace BaiShengVx3Plus.Services.Configuration
             }
         }
         
+        /// <summary>
+        /// 🔥 获取微信订单统一赔率（用于订单结算）
+        /// </summary>
+        public float GetWechatOrderOdds() => _configuration.WechatOrderOdds;
+        
+        /// <summary>
+        /// 🔥 设置微信订单统一赔率（用于订单结算）
+        /// </summary>
+        public void SetWechatOrderOdds(float value)
+        {
+            if (_configuration.WechatOrderOdds != value)
+            {
+                var oldValue = _configuration.WechatOrderOdds;
+                _configuration.WechatOrderOdds = value;
+                
+                _logService.Info("ConfigurationService", $"微信订单赔率已更新: {oldValue} → {value}");
+                
+                // 自动保存
+                SaveConfiguration();
+            }
+        }
+
         /// <summary>
         /// 🔥 设置提前封盘秒数（统一使用 SealSecondsAhead）
         /// </summary>

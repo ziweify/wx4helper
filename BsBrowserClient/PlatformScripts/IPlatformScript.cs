@@ -1,5 +1,4 @@
 using BaiShengVx3Plus.Shared.Models;
-using BsBrowserClient.Models;  // 🔥 OddsInfo 在 BsBrowserClient.Models 中
 using BsBrowserClient.Services;
 using System.Threading.Tasks;
 
@@ -23,7 +22,7 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 下注
         /// </summary>
-        Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders);
+        Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BetStandardOrderList orders);
         
         /// <summary>
         /// 处理响应（拦截到的数据）
@@ -33,6 +32,6 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 获取赔率列表
         /// </summary>
-        System.Collections.Generic.List<BsBrowserClient.Models.OddsInfo> GetOddsList();
+        System.Collections.Generic.List<OddsInfo> GetOddsList();
     }
 }

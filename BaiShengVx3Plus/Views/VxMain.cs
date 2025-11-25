@@ -48,6 +48,10 @@ namespace BaiShengVx3Plus
         // 🔥 ORM 数据库连接（双库结构）
         private SQLiteConnection? _globalDb;  // 全局数据库: business.db (飞单配置、开奖数据)
         private SQLiteConnection? _db;  // 微信专属数据库: business_{wxid}.db (会员、订单、投注记录等)
+        
+        // 🔥 赔率控件步进控制
+        private double _lastOddsValue = 1.97;  // 记录上一次的赔率值，用于检测按钮点击
+        private Sunny.UI.UIDoubleUpDown.OnValueChanged? _oddsValueChangedHandler;  // 保存事件处理程序引用，用于解绑
         private string _currentDbPath = "";  // 当前微信专属数据库路径
         
         // 数据绑定列表
@@ -1146,6 +1150,9 @@ namespace BaiShengVx3Plus
                 }
                 
                 lblStatus.Text = "正在初始化...";
+                
+                // 🔥 初始化平台下拉框（使用统一数据源）
+                InitializePlatformComboBox();
                 
                 // 隐藏不需要显示的列
                 if (dgvContacts.Columns.Count > 0)
@@ -3450,6 +3457,7 @@ namespace BaiShengVx3Plus
         #region 🤖 自动投注 UI 和逻辑
 
         private System.Threading.Timer? _saveTimer;
+        private System.Threading.Timer? _oddsTimer;  // 🔥 赔率防抖定时器
 
         /// <summary>
         /// 初始化自动投注 UI 事件（控件已在 Designer 中创建）
@@ -3488,6 +3496,78 @@ namespace BaiShengVx3Plus
                     DebounceSaveSettings();
                 };
                 
+                // 🔥 赔率设置：防抖验证和保存，并处理步进（0.01）
+                _oddsValueChangedHandler = (sender, value) =>
+                {
+                    try
+                    {
+                        double currentValue = value;
+                        double diff = Math.Abs(currentValue - _lastOddsValue);
+                        
+                        // 🔥 如果变化量接近 1.0（可能是默认步进），则调整为 0.01 步进
+                        if (diff > 0.5 && diff < 1.5)
+                        {
+                            // 检测到可能是按钮点击导致的大步进，调整为 0.01 步进
+                            double newValue = currentValue > _lastOddsValue 
+                                ? _lastOddsValue + 0.01 
+                                : _lastOddsValue - 0.01;
+                            
+                            // 限制在有效范围内
+                            newValue = Math.Max(1.0, Math.Min(2.5, newValue));
+                            
+                            // 临时解绑事件避免递归
+                            if (_oddsValueChangedHandler != null)
+                            {
+                                txtOdds.ValueChanged -= _oddsValueChangedHandler;
+                                txtOdds.Value = newValue;
+                                txtOdds.ValueChanged += _oddsValueChangedHandler;
+                            }
+                            
+                            _lastOddsValue = newValue;
+                            _logService.Debug("VxMain", $"🔍 赔率步进调整: {currentValue:F2} → {newValue:F2}");
+                            
+                            // 触发防抖保存
+                            DebounceValidateAndSaveOdds();
+                            return;
+                        }
+                        
+                        // 🔥 如果变化量不是 0.01 的倍数，且变化量较大（可能是按钮点击），则调整到最近的 0.01 倍数
+                        if (diff > 0.01 && diff < 0.5)
+                        {
+                            // 计算应该增加还是减少
+                            double step = currentValue > _lastOddsValue ? 0.01 : -0.01;
+                            double newValue = _lastOddsValue + step;
+                            
+                            // 限制在有效范围内
+                            newValue = Math.Max(1.0, Math.Min(2.5, newValue));
+                            
+                            // 如果调整后的值与当前值不同，则更新
+                            if (Math.Abs(newValue - currentValue) > 0.001)
+                            {
+                                if (_oddsValueChangedHandler != null)
+                                {
+                                    txtOdds.ValueChanged -= _oddsValueChangedHandler;
+                                    txtOdds.Value = newValue;
+                                    txtOdds.ValueChanged += _oddsValueChangedHandler;
+                                }
+                                _lastOddsValue = newValue;
+                                _logService.Debug("VxMain", $"🔍 赔率步进调整: {currentValue:F2} → {newValue:F2}");
+                                DebounceValidateAndSaveOdds();
+                                return;
+                            }
+                        }
+                        
+                        _lastOddsValue = currentValue;
+                        _logService.Debug("VxMain", $"🔍 赔率值变化: {currentValue:F2}");
+                        DebounceValidateAndSaveOdds();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("VxMain", "处理赔率值变化失败", ex);
+                    }
+                };
+                txtOdds.ValueChanged += _oddsValueChangedHandler;
+                
                 // 🔥 双重保险：失去焦点时立即保存（防止复制粘贴后立即关闭程序导致数据丢失）
                 txtAutoBetUsername.LostFocus += (s, e) => 
                 {
@@ -3502,6 +3582,14 @@ namespace BaiShengVx3Plus
                     _saveTimer?.Dispose();
                     _saveTimer = null;
                     SaveAutoBetSettings();
+                };
+                
+                txtOdds.LostFocus += (s, e) => 
+                {
+                    _logService.Debug("VxMain", "🔍 赔率失去焦点，取消防抖定时器并立即验证保存");
+                    _oddsTimer?.Dispose();
+                    _oddsTimer = null;
+                    ValidateAndSaveOdds();
                 };
                 
                 _logService.Info("VxMain", "✅ 自动投注UI事件已绑定（包含 TextChanged 和 LostFocus）");
@@ -3545,6 +3633,154 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
+        /// 防抖验证和保存赔率（用户停止输入1秒后才验证和保存）
+        /// </summary>
+        private void DebounceValidateAndSaveOdds()
+        {
+            // 取消之前的计时器
+            _oddsTimer?.Dispose();
+            
+            // 创建新的计时器，1秒后执行验证和保存
+            _oddsTimer = new System.Threading.Timer(_ =>
+            {
+                // 在UI线程上执行验证和保存
+                this.Invoke(() =>
+                {
+                    _logService.Info("VxMain", "⏰ 赔率防抖定时器触发：验证并保存赔率");
+                    ValidateAndSaveOdds();
+                    _oddsTimer?.Dispose();
+                    _oddsTimer = null;
+                });
+            }, null, 1000, System.Threading.Timeout.Infinite);
+            
+            _logService.Debug("VxMain", "⏳ 赔率已修改，将在1秒后验证并保存（防抖机制）");
+        }
+
+        /// <summary>
+        /// 验证并保存赔率（范围：1.0 - 2.5，默认：1.97）
+        /// </summary>
+        private void ValidateAndSaveOdds()
+        {
+            try
+            {
+                double oddsValue = txtOdds.Value;
+                
+                // 🔥 验证范围：< 1 或 > 2.5 都重置为 1.97
+                if (oddsValue < 1.0 || oddsValue > 2.5)
+                {
+                    string reason = oddsValue < 1.0 
+                        ? "赔率不能小于 1.0" 
+                        : "赔率不能大于 2.5";
+                    
+                    _logService.Warning("VxMain", $"❌ 赔率验证失败: {oddsValue:F2} - {reason}，重置为 1.97");
+                    
+                    // 重置为默认值
+                    txtOdds.Value = 1.97;
+                    
+                    // 显示提示
+                    UIMessageBox.Show($"赔率设置失败：{reason}\n已重置为默认值 1.97", 
+                        "提示", UIStyle.Orange, UIMessageBoxButtons.OK);
+                    
+                    return;
+                }
+                
+                // 🔥 保存到全局配置（微信订单统一赔率，用于订单结算）
+                _configService.SetWechatOrderOdds((float)oddsValue);
+                
+                _logService.Info("VxMain", $"✅ 赔率已保存: {oddsValue:F2}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "验证并保存赔率失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 初始化平台下拉框（使用统一数据源）
+        /// </summary>
+        private void InitializePlatformComboBox()
+        {
+            try
+            {
+                var platformNames = BetPlatformHelper.GetAllPlatformNames();
+                cbxPlatform.Items.Clear();
+                cbxPlatform.Items.AddRange(platformNames);
+                _logService.Info("VxMain", $"✅ 平台下拉框已初始化，共 {platformNames.Length} 个平台");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化平台下拉框失败", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 赔率控件值变化事件处理（实现 0.01 步进）
+        /// </summary>
+        private void TxtOdds_ValueChanged(object? sender, double e)
+        {
+            try
+            {
+                double currentValue = txtOdds.Value;
+                double diff = Math.Abs(currentValue - _lastOddsValue);
+                
+                // 🔥 如果变化量接近 1.0（可能是默认步进），则调整为 0.01 步进
+                if (diff > 0.5 && diff < 1.5)
+                {
+                    // 检测到可能是按钮点击导致的大步进，调整为 0.01 步进
+                    double newValue = currentValue > _lastOddsValue 
+                        ? _lastOddsValue + 0.01 
+                        : _lastOddsValue - 0.01;
+                    
+                    // 限制在有效范围内
+                    newValue = Math.Max(1.0, Math.Min(2.5, newValue));
+                    
+                    // 临时解绑事件避免递归
+                    txtOdds.ValueChanged -= TxtOdds_ValueChanged;
+                    txtOdds.Value = newValue;
+                    txtOdds.ValueChanged += TxtOdds_ValueChanged;
+                    
+                    _lastOddsValue = newValue;
+                    _logService.Debug("VxMain", $"🔍 赔率步进调整: {currentValue:F2} → {newValue:F2}");
+                    
+                    // 触发防抖保存
+                    DebounceValidateAndSaveOdds();
+                    return;
+                }
+                
+                // 🔥 如果变化量不是 0.01 的倍数，且变化量较大（可能是按钮点击），则调整到最近的 0.01 倍数
+                if (diff > 0.01 && diff < 0.5)
+                {
+                    // 计算应该增加还是减少
+                    double step = currentValue > _lastOddsValue ? 0.01 : -0.01;
+                    double newValue = _lastOddsValue + step;
+                    
+                    // 限制在有效范围内
+                    newValue = Math.Max(1.0, Math.Min(2.5, newValue));
+                    
+                    // 如果调整后的值与当前值不同，则更新
+                    if (Math.Abs(newValue - currentValue) > 0.001)
+                    {
+                        txtOdds.ValueChanged -= TxtOdds_ValueChanged;
+                        txtOdds.Value = newValue;
+                        txtOdds.ValueChanged += TxtOdds_ValueChanged;
+                        _lastOddsValue = newValue;
+                        _logService.Debug("VxMain", $"🔍 赔率步进调整: {currentValue:F2} → {newValue:F2}");
+                        DebounceValidateAndSaveOdds();
+                        return;
+                    }
+                }
+                
+                _lastOddsValue = currentValue;
+                _logService.Debug("VxMain", $"🔍 赔率值变化: {currentValue:F2}");
+                DebounceValidateAndSaveOdds();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "处理赔率值变化失败", ex);
+            }
+        }
+        
+        /// <summary>
         /// 从默认配置加载自动投注设置
         /// 🔥 如果默认配置不存在，会创建一个新的默认配置（账号密码为空）
         /// </summary>
@@ -3568,7 +3804,13 @@ namespace BaiShengVx3Plus
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
                     txtAutoBetPassword.Text = defaultConfig.Password ?? "";
                     
-                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}");
+                    // 🔥 加载微信订单统一赔率（从全局配置，默认 1.97）
+                    var odds = _configService.GetWechatOrderOdds();
+                    if (odds <= 0) odds = 1.97f;  // 如果未设置，使用默认值
+                    _lastOddsValue = odds;  // 初始化记录值
+                    txtOdds.Value = odds;
+                    
+                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}, 赔率={odds:F2}");
                 }
                 else
                 {
@@ -3594,6 +3836,7 @@ namespace BaiShengVx3Plus
                     cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
                     txtAutoBetUsername.Text = "";
                     txtAutoBetPassword.Text = "";
+                    txtOdds.Value = 1.97;  // 🔥 默认赔率
                     
                     _logService.Info("VxMain", "✅ 已创建新的默认配置（账号密码为空，需要用户输入）");
                 }

@@ -169,9 +169,18 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 // 使用 GetGroupContacts 命令，传入群ID作为参数
                 // 🔥 使用 JsonDocument（与 GroupBindingService 保持一致）
                 var response = await _socketClient.SendAsync<JsonDocument>("GetGroupContacts", groupWxid);
-                if (response == null || response.RootElement.ValueKind != JsonValueKind.Array)
+                if (response == null)
                 {
-                    _logService.Warning("AdminCommand", $"获取群成员列表失败：响应为空或格式错误，ValueKind={(response?.RootElement.ValueKind ?? JsonValueKind.Null)}");
+                    _logService.Warning("AdminCommand", "获取群成员列表失败：响应为空");
+                    return (false, null);
+                }
+                
+                // 🔥 调试：记录响应的完整结构
+                _logService.Debug("AdminCommand", $"响应类型: {response.RootElement.ValueKind}, 响应内容: {response.RootElement.GetRawText().Substring(0, Math.Min(500, response.RootElement.GetRawText().Length))}");
+                
+                if (response.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    _logService.Warning("AdminCommand", $"获取群成员列表失败：响应格式错误，ValueKind={response.RootElement.ValueKind}");
                     return (false, null);
                 }
 
@@ -209,16 +218,16 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     var existingMember = existingMembers.FirstOrDefault(m => m.Wxid == serverMember.Wxid);
                     if (existingMember == null)
                     {
-                        // 🔥 新成员，添加到数据库（使用解析出的完整信息）
+                        // 🔥 新成员，添加到数据库（完全按照 GroupBindingService 的方式）
                         newMemberCount++;
                         _logService.Info("AdminCommand", $"发现新成员: {serverMember.Wxid}, 昵称={serverMember.Nickname}, 群昵称={serverMember.DisplayName}");
 
-                        // 🔥 创建新成员，使用解析出的完整信息（与 GroupBindingService 保持一致）
+                        // 🔥 创建新成员，使用解析出的完整信息（完全按照 GroupBindingService）
                         var newMember = new V2Member
                         {
                             Wxid = serverMember.Wxid,
                             Nickname = serverMember.Nickname ?? string.Empty,
-                            DisplayName = serverMember.DisplayName ?? serverMember.Nickname ?? string.Empty,
+                            DisplayName = serverMember.DisplayName ?? string.Empty,
                             Account = serverMember.Account ?? string.Empty,
                             GroupWxId = groupWxid,
                             State = MemberState.会员, // 🔥 与 GroupBindingService 保持一致，默认会员
@@ -288,7 +297,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         }
 
         /// <summary>
-        /// 解析服务器返回的会员数据（完全按照 GroupBindingService.ParseServerMembers 的方式）
+        /// 解析服务器返回的会员数据（完全复制 GroupBindingService.ParseServerMembers 的实现，确保一致）
         /// </summary>
         private List<V2Member> ParseServerMembers(JsonElement data, string groupWxId)
         {
@@ -309,10 +318,10 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                         var member = new V2Member
                         {
                             GroupWxId = groupWxId,
-                            State = MemberState.会员  // 🔥 与 GroupBindingService 保持一致
+                            State = MemberState.会员
                         };
                         
-                        // 🔥 解析 wxid（支持多种字段名，与 GroupBindingService 保持一致）
+                        // 🔥 解析 wxid（支持多种字段名，完全按照 GroupBindingService）
                         if (item.TryGetProperty("member_wxid", out var memberWxid))
                         {
                             member.Wxid = memberWxid.GetString() ?? string.Empty;
@@ -332,7 +341,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                             continue;
                         }
                         
-                        // 🔥 解析昵称（支持多种字段名，与 GroupBindingService 保持一致）
+                        // 🔥 解析昵称（支持多种字段名，完全按照 GroupBindingService）
                         if (item.TryGetProperty("member_nickname", out var memberNickname))
                         {
                             member.Nickname = memberNickname.GetString() ?? string.Empty;
@@ -346,7 +355,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                             member.Nickname = nickname.GetString() ?? string.Empty;
                         }
                         
-                        // 🔥 解析备注名（作为群昵称，与 GroupBindingService 保持一致）
+                        // 🔥 解析备注名（作为群昵称，完全按照 GroupBindingService）
                         if (item.TryGetProperty("member_remark", out var memberRemark))
                         {
                             string remark = memberRemark.GetString() ?? string.Empty;
@@ -368,7 +377,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                             member.DisplayName = member.Nickname; // 默认使用昵称
                         }
                         
-                        // 🔥 解析微信号（支持多种字段名，与 GroupBindingService 保持一致）
+                        // 🔥 解析微信号（支持多种字段名，完全按照 GroupBindingService）
                         if (item.TryGetProperty("member_alias", out var memberAlias))
                         {
                             member.Account = memberAlias.GetString() ?? string.Empty;
@@ -379,7 +388,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                         }
                         
                         members.Add(member);
-                        _logService.Debug("AdminCommand", $"解析会员: {member.Nickname} ({member.Wxid}), 群昵称={member.DisplayName}, 账号={member.Account}");
+                        _logService.Debug("AdminCommand", $"解析会员: {member.Nickname} ({member.Wxid})");
                     }
                     catch (Exception ex)
                     {

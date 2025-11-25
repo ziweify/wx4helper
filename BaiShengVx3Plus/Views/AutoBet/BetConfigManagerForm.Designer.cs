@@ -534,7 +534,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             cbxPlatform.FillColor = Color.White;
             cbxPlatform.Font = new Font("微软雅黑", 10F);
             cbxPlatform.ItemHoverColor = Color.FromArgb(155, 200, 255);
-            cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
+            // 🔥 平台列表将在 BetConfigManagerForm_Load 中从 BetPlatformHelper 统一初始化
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(235, 243, 255);
             cbxPlatform.Location = new Point(150, 85);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);

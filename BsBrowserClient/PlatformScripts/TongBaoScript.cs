@@ -1,5 +1,4 @@
 using BaiShengVx3Plus.Shared.Models;
-using BsBrowserClient.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
@@ -668,9 +667,9 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 获取赔率列表（用于赔率显示窗口）
         /// </summary>
-        public List<BsBrowserClient.Models.OddsInfo> GetOddsList()
+        public List<OddsInfo> GetOddsList()
         {
-            var oddsList = new List<BsBrowserClient.Models.OddsInfo>();
+            var oddsList = new List<OddsInfo>();
             
             if (_oddsMap.Count == 0)
             {
@@ -693,7 +692,7 @@ namespace BsBrowserClient.PlatformScripts
                 // 🔥 获取实际赔率值（如果没有则使用默认值1.97）
                 var odds = _oddsValues.ContainsKey(name) ? _oddsValues[name] : 1.97f;
                 
-                oddsList.Add(new BsBrowserClient.Models.OddsInfo(car, play, name, odds, oddsId));
+                oddsList.Add(new OddsInfo(car, play, name, oddsId, odds));
             }
             
             return oddsList;

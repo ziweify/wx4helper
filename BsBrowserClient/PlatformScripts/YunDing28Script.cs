@@ -1,5 +1,4 @@
 using BaiShengVx3Plus.Shared.Models;
-using BsBrowserClient.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
@@ -369,10 +368,10 @@ namespace BsBrowserClient.PlatformScripts
         /// <summary>
         /// 获取赔率列表（用于赔率显示窗口）
         /// </summary>
-        public List<BsBrowserClient.Models.OddsInfo> GetOddsList()
+        public List<OddsInfo> GetOddsList()
         {
             Log("⚠️ 云顶28平台赔率功能待实现");
-            return new List<BsBrowserClient.Models.OddsInfo>();
+            return new List<OddsInfo>();
         }
     }
 }

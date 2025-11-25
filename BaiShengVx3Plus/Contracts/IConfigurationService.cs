@@ -41,6 +41,11 @@ namespace BaiShengVx3Plus.Contracts
         float GetMaxBetPerIssue();
         
         /// <summary>
+        /// 🔥 获取微信订单统一赔率（用于订单结算）
+        /// </summary>
+        float GetWechatOrderOdds();
+        
+        /// <summary>
         /// 获取收单关闭时不发送系统消息状态
         /// </summary>
         bool Get收单关闭时不发送系统消息();
@@ -98,6 +103,11 @@ namespace BaiShengVx3Plus.Contracts
         /// 🔥 设置最大投注金额
         /// </summary>
         void SetMaxBet(float value);
+        
+        /// <summary>
+        /// 🔥 设置微信订单统一赔率（用于订单结算）
+        /// </summary>
+        void SetWechatOrderOdds(float value);
         
         /// <summary>
         /// 设置收单关闭时不发送系统消息状态

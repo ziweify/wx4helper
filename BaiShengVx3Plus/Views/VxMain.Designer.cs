@@ -51,13 +51,14 @@ namespace BaiShengVx3Plus
             txtMinBet = new Sunny.UI.UIIntegerUpDown();
             lblMaxBet = new Label();
             txtMaxBet = new Sunny.UI.UIIntegerUpDown();
-            lblAutoBetSeparator = new Label();
             lblPlatform = new Label();
             cbxPlatform = new Sunny.UI.UIComboBox();
             lblAutoBetUsername = new Label();
             txtAutoBetUsername = new Sunny.UI.UITextBox();
             lblAutoBetPassword = new Label();
             txtAutoBetPassword = new Sunny.UI.UITextBox();
+            lblOdds = new Label();
+            txtOdds = new Sunny.UI.UIDoubleUpDown();
             btnStartBrowser = new Sunny.UI.UIButton();
             btnConfigManager = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
@@ -223,20 +224,10 @@ namespace BaiShengVx3Plus
             txtMaxBet.Text = "10000";
             txtMaxBet.TextAlignment = ContentAlignment.MiddleCenter;
             // 
-            // lblAutoBetSeparator
-            // 
-            lblAutoBetSeparator.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
-            lblAutoBetSeparator.Location = new Point(5, 123);
-            lblAutoBetSeparator.Name = "lblAutoBetSeparator";
-            lblAutoBetSeparator.Size = new Size(225, 20);
-            lblAutoBetSeparator.TabIndex = 6;
-            lblAutoBetSeparator.Text = "━━━ 自动投注 ━━━";
-            lblAutoBetSeparator.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // lblPlatform
             // 
             lblPlatform.Font = new Font("微软雅黑", 9F);
-            lblPlatform.Location = new Point(5, 148);
+            lblPlatform.Location = new Point(5, 124);
             lblPlatform.Name = "lblPlatform";
             lblPlatform.Size = new Size(50, 20);
             lblPlatform.TabIndex = 7;
@@ -250,9 +241,9 @@ namespace BaiShengVx3Plus
             cbxPlatform.FillColor = Color.White;
             cbxPlatform.Font = new Font("微软雅黑", 9F);
             cbxPlatform.ItemHoverColor = Color.FromArgb(155, 200, 255);
-            cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
+            // 🔥 平台列表将在 VxMain_Load 中从 BetPlatformHelper 统一初始化
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(235, 243, 255);
-            cbxPlatform.Location = new Point(60, 146);
+            cbxPlatform.Location = new Point(60, 122);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);
             cbxPlatform.MinimumSize = new Size(63, 0);
             cbxPlatform.Name = "cbxPlatform";
@@ -266,7 +257,7 @@ namespace BaiShengVx3Plus
             // lblAutoBetUsername
             // 
             lblAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            lblAutoBetUsername.Location = new Point(5, 178);
+            lblAutoBetUsername.Location = new Point(5, 154);
             lblAutoBetUsername.Name = "lblAutoBetUsername";
             lblAutoBetUsername.Size = new Size(50, 20);
             lblAutoBetUsername.TabIndex = 9;
@@ -276,7 +267,7 @@ namespace BaiShengVx3Plus
             // txtAutoBetUsername
             // 
             txtAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            txtAutoBetUsername.Location = new Point(60, 176);
+            txtAutoBetUsername.Location = new Point(60, 152);
             txtAutoBetUsername.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetUsername.MinimumSize = new Size(1, 16);
             txtAutoBetUsername.Name = "txtAutoBetUsername";
@@ -290,7 +281,7 @@ namespace BaiShengVx3Plus
             // lblAutoBetPassword
             // 
             lblAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            lblAutoBetPassword.Location = new Point(5, 208);
+            lblAutoBetPassword.Location = new Point(5, 184);
             lblAutoBetPassword.Name = "lblAutoBetPassword";
             lblAutoBetPassword.Size = new Size(50, 20);
             lblAutoBetPassword.TabIndex = 11;
@@ -300,7 +291,7 @@ namespace BaiShengVx3Plus
             // txtAutoBetPassword
             // 
             txtAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            txtAutoBetPassword.Location = new Point(60, 206);
+            txtAutoBetPassword.Location = new Point(60, 182);
             txtAutoBetPassword.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetPassword.MinimumSize = new Size(1, 16);
             txtAutoBetPassword.Name = "txtAutoBetPassword";
@@ -311,6 +302,33 @@ namespace BaiShengVx3Plus
             txtAutoBetPassword.TabIndex = 12;
             txtAutoBetPassword.TextAlignment = ContentAlignment.MiddleLeft;
             txtAutoBetPassword.Watermark = "投注密码";
+            // 
+            // lblOdds
+            // 
+            lblOdds.Font = new Font("微软雅黑", 9F);
+            lblOdds.Location = new Point(5, 214);
+            lblOdds.Name = "lblOdds";
+            lblOdds.Size = new Size(50, 20);
+            lblOdds.TabIndex = 13;
+            lblOdds.Text = "赔率:";
+            lblOdds.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtOdds
+            // 
+            txtOdds.Font = new Font("微软雅黑", 9F);
+            txtOdds.Location = new Point(60, 212);
+            txtOdds.Margin = new Padding(4, 5, 4, 5);
+            txtOdds.MinimumSize = new Size(1, 16);
+            txtOdds.Name = "txtOdds";
+            txtOdds.Padding = new Padding(5);
+            txtOdds.Size = new Size(170, 25);
+            txtOdds.TabIndex = 14;
+            txtOdds.TextAlignment = ContentAlignment.MiddleLeft;
+            txtOdds.Value = 1.97D;
+            txtOdds.DecimalPlaces = 2;
+            txtOdds.Minimum = 1D;
+            txtOdds.Maximum = 2.5D;
+            // txtOdds.Increment = 0.01D;  // UIDoubleUpDown 不支持 Increment 属性
             // 
             // btnStartBrowser
             // 
@@ -481,13 +499,14 @@ namespace BaiShengVx3Plus
             pnl_fastsetting.Controls.Add(txtMinBet);
             pnl_fastsetting.Controls.Add(lblMaxBet);
             pnl_fastsetting.Controls.Add(txtMaxBet);
-            pnl_fastsetting.Controls.Add(lblAutoBetSeparator);
             pnl_fastsetting.Controls.Add(lblPlatform);
             pnl_fastsetting.Controls.Add(cbxPlatform);
             pnl_fastsetting.Controls.Add(lblAutoBetUsername);
             pnl_fastsetting.Controls.Add(txtAutoBetUsername);
             pnl_fastsetting.Controls.Add(lblAutoBetPassword);
             pnl_fastsetting.Controls.Add(txtAutoBetPassword);
+            pnl_fastsetting.Controls.Add(lblOdds);
+            pnl_fastsetting.Controls.Add(txtOdds);
             pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Controls.Add(btnConfigManager);
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -819,7 +838,6 @@ namespace BaiShengVx3Plus
             dgvOrders.Font = new Font("微软雅黑", 10F);
             dgvOrders.GridColor = Color.FromArgb(80, 160, 255);
             dgvOrders.Location = new Point(0, 30);
-            dgvOrders.MultiSelect = true;
             dgvOrders.Name = "dgvOrders";
             dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle11.BackColor = Color.FromArgb(235, 243, 255);
@@ -1095,15 +1113,14 @@ namespace BaiShengVx3Plus
         private Sunny.UI.UIIntegerUpDown txtMinBet;
         private System.Windows.Forms.Label lblMaxBet;
         private Sunny.UI.UIIntegerUpDown txtMaxBet;
-        
-        // 🤖 自动投注控件
-        private System.Windows.Forms.Label lblAutoBetSeparator;
         private System.Windows.Forms.Label lblPlatform;
         private Sunny.UI.UIComboBox cbxPlatform;
         private System.Windows.Forms.Label lblAutoBetUsername;
         private Sunny.UI.UITextBox txtAutoBetUsername;
         private System.Windows.Forms.Label lblAutoBetPassword;
         private Sunny.UI.UITextBox txtAutoBetPassword;
+        private System.Windows.Forms.Label lblOdds;
+        private Sunny.UI.UIDoubleUpDown txtOdds;
         private Sunny.UI.UIButton btnStartBrowser;
         private Sunny.UI.UIButton btnConfigManager;
         private Sunny.UI.UISwitch swi_OrdersTasking;

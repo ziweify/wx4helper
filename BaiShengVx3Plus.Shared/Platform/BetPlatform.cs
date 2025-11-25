@@ -5,14 +5,29 @@ using System.Linq;
 namespace BaiShengVx3Plus.Shared.Platform
 {
     /// <summary>
-    /// 投注平台枚举（直接使用中文名）
+    /// 投注平台枚举（直接使用中文名，参考 F5BotV2 BetSiteType）
     /// </summary>
     public enum BetPlatform
     {
-        云顶 = 0,
-        海峡 = 1,
-        红海 = 2,
-        通宝 = 3
+        不使用盘口 = 0,
+        元宇宙2 = 1,
+        海峡 = 2,
+        QT = 3,
+        茅台 = 5,
+        太平洋 = 6,
+        蓝A = 7,
+        红海 = 8,
+        S880 = 9,
+        ADK = 10,
+        红海无名 = 11,
+        果然 = 12,
+        蓝B = 15,
+        AC = 16,
+        通宝 = 17,
+        通宝PC = 18,
+        HY168 = 19,
+        bingo168 = 20,
+        云顶 = 21  // 🔥 保留云顶（现有项目使用）
     }
     
     /// <summary>
@@ -118,26 +133,45 @@ namespace BaiShengVx3Plus.Shared.Platform
         }
         
         /// <summary>
-        /// 根据索引获取平台
+        /// 获取所有平台列表（按枚举顺序）
         /// </summary>
-        public static BetPlatform GetByIndex(int index)
+        private static BetPlatform[]? _allPlatforms;
+        
+        private static BetPlatform[] GetAllPlatforms()
         {
-            return index switch
+            if (_allPlatforms == null)
             {
-                0 => BetPlatform.云顶,
-                1 => BetPlatform.海峡,
-                2 => BetPlatform.红海,
-                3 => BetPlatform.通宝,
-                _ => BetPlatform.云顶
-            };
+                _allPlatforms = Enum.GetValues(typeof(BetPlatform))
+                    .Cast<BetPlatform>()
+                    .OrderBy(p => (int)p)
+                    .ToArray();
+            }
+            return _allPlatforms;
         }
         
         /// <summary>
-        /// 获取平台索引
+        /// 根据索引获取平台（索引对应下拉框中的位置）
+        /// </summary>
+        public static BetPlatform GetByIndex(int index)
+        {
+            var platforms = GetAllPlatforms();
+            if (index >= 0 && index < platforms.Length)
+                return platforms[index];
+            return BetPlatform.不使用盘口; // 默认返回第一个
+        }
+        
+        /// <summary>
+        /// 获取平台索引（对应下拉框中的位置）
         /// </summary>
         public static int GetIndex(BetPlatform platform)
         {
-            return (int)platform;
+            var platforms = GetAllPlatforms();
+            for (int i = 0; i < platforms.Length; i++)
+            {
+                if (platforms[i] == platform)
+                    return i;
+            }
+            return 0; // 默认返回第一个索引
         }
     }
 }

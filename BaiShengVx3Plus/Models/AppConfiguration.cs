@@ -57,17 +57,11 @@ namespace BaiShengVx3Plus.Models
         // ========================================
         
         /// <summary>
-        /// 赔率配置 (例如：{"大": 1.97, "小": 1.97})
+        /// 微信订单统一赔率（用于订单结算）
+        /// 独立于网站投注赔率，用于微信下单时的订单结算计算
+        /// 注意：网站投注赔率在浏览器端（BsBrowserClient）通过拦截网站响应动态获取，不在此配置中
         /// </summary>
-        public Dictionary<string, float> Odds { get; set; } = new()
-        {
-            { "大", 1.97f },
-            { "小", 1.97f },
-            { "单", 1.97f },
-            { "双", 1.97f },
-            { "龙", 1.97f },
-            { "虎", 1.97f }
-        };
+        public float WechatOrderOdds { get; set; } = 1.97f;
         
         /// <summary>
         /// 最小单注金额

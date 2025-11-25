@@ -175,9 +175,24 @@ public partial class Form1 : Form
         {
             BetPlatform.云顶 => new YunDing28Script(_webView!, betLogCallback),
             BetPlatform.通宝 => new TongBaoScript(_webView!, betLogCallback),
-            BetPlatform.海峡 => new YunDing28Script(_webView!, betLogCallback), // 暂用云顶脚本
-            BetPlatform.红海 => new YunDing28Script(_webView!, betLogCallback), // 暂用云顶脚本
-            _ => new YunDing28Script(_webView!, betLogCallback)
+            BetPlatform.通宝PC => new TongBaoPcScript(_webView!, betLogCallback),
+            BetPlatform.海峡 => new HaiXiaScript(_webView!, betLogCallback),
+            BetPlatform.红海 => new HongHaiScript(_webView!, betLogCallback),
+            BetPlatform.红海无名 => new HongHaiWuMingScript(_webView!, betLogCallback),
+            BetPlatform.茅台 => new Mt168Script(_webView!, betLogCallback),
+            BetPlatform.太平洋 => new Mt168Script(_webView!, betLogCallback), // 使用茅台脚本
+            BetPlatform.QT => new QtScript(_webView!, betLogCallback),
+            BetPlatform.蓝B => new QtScript(_webView!, betLogCallback), // 使用QT脚本
+            BetPlatform.S880 => new S880Script(_webView!, betLogCallback),
+            BetPlatform.ADK => new ADKScript(_webView!, betLogCallback),
+            BetPlatform.果然 => new Kk888Script(_webView!, betLogCallback),
+            BetPlatform.AC => new AcScript(_webView!, betLogCallback),
+            BetPlatform.HY168 => new Hy168bingoScript(_webView!, betLogCallback),
+            BetPlatform.bingo168 => new Hy168bingoScript(_webView!, betLogCallback),
+            BetPlatform.蓝A => new LanAScript(_webView!, betLogCallback),
+            BetPlatform.元宇宙2 => new YYZ2Script(_webView!, betLogCallback),
+            BetPlatform.不使用盘口 => new NoneSiteScript(_webView!, betLogCallback),
+            _ => new YunDing28Script(_webView!, betLogCallback) // 默认使用云顶脚本
         };
     }
     

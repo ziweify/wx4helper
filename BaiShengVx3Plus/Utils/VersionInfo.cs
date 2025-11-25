@@ -11,7 +11,7 @@ namespace BaiShengVx3Plus.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "32.1.32";  // "31.8.7"
+        public const string Version = "32.1.33";  // "31.8.7"
 
         /// <summary>
         /// 版本名称

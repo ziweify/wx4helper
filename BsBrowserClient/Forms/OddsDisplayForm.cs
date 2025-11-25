@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using BsBrowserClient.Models;
+using BaiShengVx3Plus.Shared.Models;
 
 namespace BsBrowserClient.Forms
 {
