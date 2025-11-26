@@ -212,11 +212,11 @@ namespace zhaocaimao.Services.GroupBinding
                 BindGroup(contact);
                 SetDatabase(db);
                 
-                // 🔥 2. 复用已有 BindingList 或创建新实例
+                // 🔥 2. 复用已有 BindingList 或创建新实例（共享数据库架构：所有 BindingList 需要 groupWxId 用于数据隔离）
                 bool isFirstTimeBinding = existingMembersBindingList == null;
                 
                 var membersBindingList = existingMembersBindingList ?? new V2MemberBindingList(db, contact.Wxid);
-                var ordersBindingList = existingOrdersBindingList ?? new V2OrderBindingList(db);
+                var ordersBindingList = existingOrdersBindingList ?? new V2OrderBindingList(db, contact.Wxid);  // 🔥 添加 groupWxId 参数
                 var creditWithdrawsBindingList = existingCreditWithdrawsBindingList ?? new V2CreditWithdrawBindingList(db);
                 
                 if (isFirstTimeBinding)

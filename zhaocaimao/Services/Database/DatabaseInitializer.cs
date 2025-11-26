@@ -141,25 +141,21 @@ namespace zhaocaimao.Services.Database
         }
 
         /// <summary>
-        /// 🔥 初始化全局数据库表（business.db）
-        /// 存储全局共享数据：自动投注配置、开奖数据等
+        /// 🔥 初始化共享数据库所有表（business.db）
+        /// 架构说明：所有微信号共享此数据库，数据按 GroupWxId 隔离
         /// </summary>
-        public void InitializeGlobalTables(SQLiteConnection db)
+        public void InitializeAllTables(SQLiteConnection db)
         {
             try
             {
-                Log("info", "🗄️ 初始化全局数据库表...");
+                Log("info", "🗄️ 初始化共享数据库表（business.db）...");
 
                 // ========================================
-                // 🔥 自动投注配置表（全局共享）
+                // 全局表（全局共享，不按 GroupWxId 隔离）
                 // ========================================
 
                 db.CreateTable<BetConfig>();
                 Log("debug", "✓ 全局表: BetConfig");
-
-                // ========================================
-                // 🔥 游戏开奖数据表（全局共享）
-                // ========================================
 
                 db.CreateTable<BinggoLotteryData>();
                 Log("debug", "✓ 全局表: BinggoLotteryData");
@@ -167,68 +163,64 @@ namespace zhaocaimao.Services.Database
                 db.CreateTable<BinggoBetItem>();
                 Log("debug", "✓ 全局表: BinggoBetItem");
 
-                // ========================================
-                // 🔥 投注记录表（全局共享）
-                // ========================================
-
                 db.CreateTable<Models.AutoBet.BetRecord>();
                 Log("debug", "✓ 全局表: BetRecord");
 
-                Log("info", "✅ 全局数据库表初始化完成（4张表）");
-            }
-            catch (Exception ex)
-            {
-                Log("error", $"初始化全局数据库表失败: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 🔥 初始化微信专属数据库表（business_{wxid}.db）
-        /// 存储微信账号专属数据：会员、订单、上下分记录等
-        /// </summary>
-        public void InitializeWxTables(SQLiteConnection db)
-        {
-            try
-            {
-                Log("info", "🗄️ 初始化微信专属数据库表...");
-
                 // ========================================
-                // 🔥 核心业务表（微信账号专属）
+                // 业务表（按 GroupWxId 隔离）
                 // ========================================
 
                 db.CreateTable<V2Member>();
-                Log("debug", "✓ 微信专属表: V2Member");
+                Log("debug", "✓ 业务表: V2Member (按 GroupWxId 隔离)");
 
                 db.CreateTable<V2MemberOrder>();
-                Log("debug", "✓ 微信专属表: V2MemberOrder");
+                Log("debug", "✓ 业务表: V2MemberOrder (按 GroupWxId 隔离)");
 
                 db.CreateTable<V2CreditWithdraw>();
-                Log("debug", "✓ 微信专属表: V2CreditWithdraw");
+                Log("debug", "✓ 业务表: V2CreditWithdraw (按 GroupWxId 隔离)");
 
                 db.CreateTable<V2BalanceChange>();
-                Log("debug", "✓ 微信专属表: V2BalanceChange");
+                Log("debug", "✓ 业务表: V2BalanceChange (按 GroupWxId 隔离)");
 
                 // ========================================
-                // 🔥 基础数据表（微信账号专属）
+                // 基础表（所有微信号共享）
                 // ========================================
 
                 db.CreateTable<WxContact>();
-                Log("debug", "✓ 微信专属表: WxContact");
+                Log("debug", "✓ 基础表: WxContact");
 
                 db.CreateTable<WxUserInfo>();
-                Log("debug", "✓ 微信专属表: WxUserInfo");
+                Log("debug", "✓ 基础表: WxUserInfo");
 
-                // 🔥 注意：LogEntry 表在日志数据库中，不在微信专属数据库中
-                // 微信专属数据库不需要 LogEntry 表
-
-                Log("info", "✅ 微信专属数据库表初始化完成（6张表）");
+                Log("info", "✅ 共享数据库表初始化完成（10张表）");
+                Log("info", "📌 架构说明：所有微信号共享此数据库，数据按 GroupWxId 隔离");
             }
             catch (Exception ex)
             {
-                Log("error", $"初始化微信专属数据库表失败: {ex.Message}");
+                Log("error", $"初始化共享数据库表失败: {ex.Message}");
                 throw;
             }
+        }
+        
+        /// <summary>
+        /// 🔥 废弃：InitializeGlobalTables（已合并到 InitializeAllTables）
+        /// 保留此方法仅为兼容旧代码，实际调用 InitializeAllTables
+        /// </summary>
+        [Obsolete("已废弃，请使用 InitializeAllTables")]
+        public void InitializeGlobalTables(SQLiteConnection db)
+        {
+            InitializeAllTables(db);
+        }
+
+        /// <summary>
+        /// 🔥 废弃：InitializeWxTables（已合并到 InitializeAllTables）
+        /// 保留此方法仅为兼容旧代码，实际调用 InitializeAllTables
+        /// </summary>
+        [Obsolete("已废弃，请使用 InitializeAllTables")]
+        public void InitializeWxTables(SQLiteConnection db)
+        {
+            // 不再需要微信专属表，所有表都在共享数据库中
+            Log("warning", "⚠️ InitializeWxTables 已废弃，数据库架构已改为共享模式");
         }
     }
 }

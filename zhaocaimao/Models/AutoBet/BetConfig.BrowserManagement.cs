@@ -245,21 +245,28 @@ namespace zhaocaimao.Models.AutoBet
         /// </summary>
         private bool ShouldStartBrowser()
         {
-            // 0. 🔥 检查是否正在启动（防止重复启动）
+            // 0. 🔥 检查平台是否为 "不使用盘口"（不需要启动浏览器）
+            if (Platform == "不使用盘口" || string.IsNullOrWhiteSpace(Platform))
+            {
+                _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 平台为'{Platform}'，不需要启动浏览器，返回 false");
+                return false;
+            }
+            
+            // 1. 🔥 检查是否正在启动（防止重复启动）
             if (_isStartingBrowser)
             {
                 _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 正在启动中，返回 false");
                 return false;
             }
             
-            // 1. 检查配置是否启用
+            // 2. 检查配置是否启用
             if (!IsEnabled)
             {
                 _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 配置未启用，返回 false");
                 return false;
             }
             
-            // 2. 检查浏览器对象是否存在且已连接
+            // 3. 检查浏览器对象是否存在且已连接
             lock (_browserLock)
             {
                 if (Browser != null && Browser.IsConnected)
@@ -268,15 +275,27 @@ namespace zhaocaimao.Models.AutoBet
                     return false; // 浏览器已存在且已连接
                 }
                 
-                // 3. 如果浏览器存在但未连接，也不启动（等待重连或清理）
+                // 4. 🔥 如果浏览器存在但未连接（窗口已关闭），清理并允许重启
                 if (Browser != null && !Browser.IsConnected)
                 {
-                    _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器存在但未连接，返回 false");
-                    return false; // 浏览器存在但未连接，等待清理或重连
+                    _logService?.Info("BetConfig", $"   [ShouldStartBrowser] 检测到浏览器窗口已关闭，清理旧实例并允许重启");
+                    try
+                    {
+                        Browser.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService?.Warning("BetConfig", $"清理浏览器对象时异常: {ex.Message}");
+                    }
+                    Browser = null;
+                    
+                    // 清理后，允许重新启动
+                    _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 已清理，返回 true 允许重启");
+                    return true;
                 }
             }
             
-            // 4. 浏览器不存在，需要启动
+            // 5. 浏览器不存在，需要启动
             _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器不存在，返回 true");
             return true;
         }
@@ -434,6 +453,16 @@ namespace zhaocaimao.Models.AutoBet
             catch (Exception ex)
             {
                 _logService?.Error("BetConfig", $"❌ [{ConfigName}] 启动浏览器时发生异常", ex);
+                _logService?.Error("BetConfig", $"📋 异常详情: {ex.Message}");
+                _logService?.Error("BetConfig", $"📍 堆栈跟踪:\n{ex.StackTrace}");
+                
+                // 检查是否是WebView2相关异常
+                if (ex.Message.Contains("WebView2") || ex.Message.Contains("Edge") || ex.Message.Contains("初始化超时"))
+                {
+                    _logService?.Warning("BetConfig", $"🔧 WebView2 运行时可能未安装，请访问：");
+                    _logService?.Warning("BetConfig", $"   https://go.microsoft.com/fwlink/p/?LinkId=2124703");
+                }
+                
                 lock (_browserLock)
                 {
                     Browser?.Dispose(killProcess: true);

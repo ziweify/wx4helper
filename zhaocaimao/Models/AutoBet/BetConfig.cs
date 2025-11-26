@@ -143,8 +143,9 @@ namespace zhaocaimao.Models.AutoBet
                             }
                             catch (Exception ex)
                             {
-                                // 使用日志服务记录错误（如果已注入）
-                                System.Diagnostics.Debug.WriteLine($"[BetConfig] 启动浏览器时异常: {ex.Message}");
+                                // 🔥 增强异常日志记录
+                                _logService?.Error("BetConfig", $"❌ [{ConfigName}] 监控任务启动浏览器时异常", ex);
+                                System.Diagnostics.Debug.WriteLine($"[BetConfig] 启动浏览器时异常: {ex.Message}\n{ex.StackTrace}");
                             }
                             finally
                             {

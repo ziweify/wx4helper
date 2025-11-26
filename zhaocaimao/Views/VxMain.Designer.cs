@@ -259,7 +259,8 @@ namespace zhaocaimao
             cbxPlatform.FillColor = Color.FromArgb(245, 247, 250);
             cbxPlatform.Font = new Font("微软雅黑", 9F);
             cbxPlatform.ItemHoverColor = Color.FromArgb(143, 168, 194);
-            cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
+            // 🔥 不在设计器中添加平台，改为在代码中动态加载（确保和 BetPlatform 枚举一致）
+            // cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(245, 247, 250);
             cbxPlatform.Location = new Point(60, 122);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);
@@ -362,7 +363,7 @@ namespace zhaocaimao
             btnStartBrowser.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnStartBrowser.FillPressColor = Color.FromArgb(91, 127, 166);
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
-            btnStartBrowser.Location = new Point(120, 270);
+            btnStartBrowser.Location = new Point(120, 243);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
             btnStartBrowser.RectColor = Color.FromArgb(107, 143, 166);
@@ -380,7 +381,7 @@ namespace zhaocaimao
             btnConfigManager.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnConfigManager.FillPressColor = Color.FromArgb(91, 127, 166);
             btnConfigManager.Font = new Font("微软雅黑", 9F);
-            btnConfigManager.Location = new Point(120, 305);
+            btnConfigManager.Location = new Point(120, 279);
             btnConfigManager.MinimumSize = new Size(1, 1);
             btnConfigManager.Name = "btnConfigManager";
             btnConfigManager.RectColor = Color.FromArgb(107, 143, 166);
@@ -529,6 +530,7 @@ namespace zhaocaimao
             // 
             // pnl_fastsetting
             // 
+            pnl_fastsetting.AutoScroll = true;
             pnl_fastsetting.Controls.Add(swi_OrdersTasking);
             pnl_fastsetting.Controls.Add(swiAutoOrdersBet);
             pnl_fastsetting.Controls.Add(lblSealSeconds);
@@ -554,7 +556,7 @@ namespace zhaocaimao
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
             pnl_fastsetting.RectColor = Color.FromArgb(107, 143, 166);
-            pnl_fastsetting.Size = new Size(237, 305);
+            pnl_fastsetting.Size = new Size(237, 345);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;

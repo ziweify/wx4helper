@@ -129,7 +129,10 @@ namespace zhaocaimao.Services.AutoBet
                                 {
                                     if (_browserForm == newForm)
                                     {
+                                        Console.WriteLine($"[BrowserClient-{_configId}] ⚠️ 浏览器窗口已关闭");
+                                        Console.WriteLine($"[BrowserClient-{_configId}] 💡 提示：如果需要继续飞单，请重新开启飞单开关或在配置管理器中启动浏览器");
                                         _browserForm = null;
+                                        // 🔥 不自动重启浏览器，由监控线程检测 IsConnected=false 后自动重启
                                     }
                                 }
                             };
@@ -202,17 +205,36 @@ namespace zhaocaimao.Services.AutoBet
                 // 等待窗口创建完成
                 newForm = await tcs.Task;
                 
-                // 等待浏览器初始化
+                // 🔥 等待浏览器初始化（增加到 30 秒，首次安装 WebView2 可能需要更长时间）
                 int retryCount = 0;
-                while (retryCount < 20 && (newForm == null || !newForm.IsInitialized))
+                int maxRetry = 60; // 30 秒 (60 * 500ms)
+                while (retryCount < maxRetry && (newForm == null || !newForm.IsInitialized))
                 {
                     await Task.Delay(500);
                     retryCount++;
+                    
+                    // 每 5 秒输出一次等待状态
+                    if (retryCount % 10 == 0)
+                    {
+                        Console.WriteLine($"[BrowserClient] ⏳ 等待浏览器初始化... ({retryCount * 0.5}/{maxRetry * 0.5}秒)");
+                    }
                 }
                 
                 if (newForm == null || !newForm.IsInitialized)
                 {
-                    throw new Exception("浏览器窗口初始化超时");
+                    string formStatus = newForm == null ? "窗口未创建" : "窗口已创建但未初始化";
+                    throw new Exception($"❌ 浏览器窗口初始化超时（等待了{retryCount * 0.5}秒）\n" +
+                        $"📊 当前状态：{formStatus}\n" +
+                        $"🔍 可能原因：\n" +
+                        $"  1. WebView2 运行时未安装或首次初始化耗时较长\n" +
+                        $"  2. 网络连接问题导致页面加载失败\n" +
+                        $"  3. 防火墙或杀毒软件阻止了 WebView2\n" +
+                        $"  4. 系统资源不足（内存/CPU占用过高）\n" +
+                        $"💡 建议：\n" +
+                        $"  - 检查 Windows 更新，确保 Edge 浏览器已安装\n" +
+                        $"  - 前往 https://go.microsoft.com/fwlink/p/?LinkId=2124703 手动下载 WebView2 运行时\n" +
+                        $"  - 检查防火墙/杀毒软件设置\n" +
+                        $"  - 重启程序后重试");
                 }
                 
                 lock (_browserLock)
@@ -224,7 +246,17 @@ namespace zhaocaimao.Services.AutoBet
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BrowserClient] 启动浏览器窗口失败: {ex.Message}");
+                Console.WriteLine($"[BrowserClient-{_configId}] ❌ 启动浏览器窗口失败");
+                Console.WriteLine($"[BrowserClient-{_configId}] 📋 异常类型: {ex.GetType().Name}");
+                Console.WriteLine($"[BrowserClient-{_configId}] 📋 异常消息: {ex.Message}");
+                Console.WriteLine($"[BrowserClient-{_configId}] 📍 堆栈跟踪:\n{ex.StackTrace}");
+                
+                // 检查内部异常
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[BrowserClient-{_configId}] 🔗 内部异常: {ex.InnerException.Message}");
+                }
+                
                 Dispose();
                 throw;
             }
@@ -240,12 +272,31 @@ namespace zhaocaimao.Services.AutoBet
             {
                 browserForm = _browserForm;
                 
-                if (browserForm == null || browserForm.IsDisposed || !browserForm.IsInitialized)
+                // 🔥 增强诊断信息：准确说明失败原因
+                if (browserForm == null)
                 {
                     return new BetResult
                     {
                         Success = false,
-                        ErrorMessage = "浏览器未初始化"
+                        ErrorMessage = "浏览器窗口未创建（browserForm == null）"
+                    };
+                }
+                
+                if (browserForm.IsDisposed)
+                {
+                    return new BetResult
+                    {
+                        Success = false,
+                        ErrorMessage = "浏览器窗口已关闭（IsDisposed）"
+                    };
+                }
+                
+                if (!browserForm.IsInitialized)
+                {
+                    return new BetResult
+                    {
+                        Success = false,
+                        ErrorMessage = "浏览器未完成初始化（WebView2 未就绪）"
                     };
                 }
             }

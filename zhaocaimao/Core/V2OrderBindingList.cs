@@ -21,10 +21,12 @@ namespace zhaocaimao.Core
     {
         private readonly SQLiteConnection _db;
         private readonly SynchronizationContext? _syncContext;
+        private readonly string _groupWxId;  // 🔥 群组ID（用于共享数据库数据隔离）
 
-        public V2OrderBindingList(SQLiteConnection db)
+        public V2OrderBindingList(SQLiteConnection db, string groupWxId)
         {
             _db = db;
+            _groupWxId = groupWxId;
             
             // 🔥 捕获 UI 线程的 SynchronizationContext
             _syncContext = SynchronizationContext.Current;
@@ -126,12 +128,14 @@ namespace zhaocaimao.Core
         }
 
         /// <summary>
-        /// 从数据库加载所有订单
+        /// 从数据库加载所有订单（按 GroupWxId 过滤）
         /// 🔥 必须在 UI 线程调用
+        /// 🔥 共享数据库架构：按 GroupWxId 隔离不同群的数据
         /// </summary>
         public void LoadFromDatabase()
         {
             var orders = _db.Table<V2MemberOrder>()
+                .Where(o => o.GroupWxId == _groupWxId)  // 🔥 按群组ID过滤
                 .OrderByDescending(o => o.TimeStampBet)
                 .ToList();
 
