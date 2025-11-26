@@ -605,24 +605,27 @@ namespace zhaocaimao.Services.Games.Binggo
         }
         
         /// <summary>
-        /// 从配置服务获取微信订单统一赔率
+        /// 从配置服务获取微信订单统一赔率（用于订单结算）
+        /// 🔥 这是独立于网站投注赔率的配置，专门用于微信下单时的订单结算计算
         /// </summary>
         private float GetOddsFromConfig(BinggoBetContent betContent)
         {
             try
             {
-                // 🔥 直接从配置服务获取微信订单统一赔率
-                float odds = _configService.GetWechatOrderOdds();
-                if (odds <= 0)
+                // 🔥 获取微信订单统一赔率（所有玩法都使用同一个值）
+                var odds = _configService.GetWechatOrderOdds();
+                if (odds > 0)
                 {
-                    _logService.Debug("BinggoOrderService", "配置中微信订单统一赔率无效或为0，使用默认值 1.97");
-                    return 1.97f;
+                    return odds;
                 }
-                return odds;
+                
+                // 🔥 如果配置中没有或为0，使用默认值
+                _logService.Debug("BinggoOrderService", "微信订单赔率配置未设置或为0，使用默认值 1.97");
+                return 1.97f;
             }
             catch (Exception ex)
             {
-                _logService.Error("BinggoOrderService", "获取微信订单统一赔率配置失败，使用默认值 1.97", ex);
+                _logService.Error("BinggoOrderService", "获取微信订单赔率配置失败，使用默认值 1.97", ex);
                 return 1.97f;
             }
         }

@@ -60,8 +60,11 @@ namespace zhaocaimao.Shared.Platform
             if (_platformUrls.TryGetValue(platformName, out var defaultUrl))
                 return defaultUrl;
 
-            // 3. 尝试通过 BetPlatform 枚举解析（如果存在）
-            // 注意：zhaocaimao 项目可能没有 BetPlatformHelper，这里先返回空字符串
+            // 3. 尝试通过 BetPlatform 枚举解析
+            var platform = BetPlatformHelper.Parse(platformName);
+            if (_platformUrls.TryGetValue(platform.ToString(), out var enumUrl))
+                return enumUrl;
+
             return "";
         }
 
