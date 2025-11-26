@@ -216,7 +216,7 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 bool isFirstTimeBinding = existingMembersBindingList == null;
                 
                 var membersBindingList = existingMembersBindingList ?? new V2MemberBindingList(db, contact.Wxid);
-                var ordersBindingList = existingOrdersBindingList ?? new V2OrderBindingList(db);
+                var ordersBindingList = existingOrdersBindingList ?? new V2OrderBindingList(db, contact.Wxid);
                 var creditWithdrawsBindingList = existingCreditWithdrawsBindingList ?? new V2CreditWithdrawBindingList(db);
                 
                 if (isFirstTimeBinding)

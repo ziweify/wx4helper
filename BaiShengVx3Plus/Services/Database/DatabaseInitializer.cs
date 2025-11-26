@@ -186,7 +186,9 @@ namespace BaiShengVx3Plus.Services.Database
         /// <summary>
         /// 🔥 初始化微信专属数据库表（business_{wxid}.db）
         /// 存储微信账号专属数据：会员、订单、上下分记录等
+        /// ⚠️ 已废弃：改用 InitializeAllTables（共享数据库模式）
         /// </summary>
+        [Obsolete("已废弃，请使用 InitializeAllTables（共享数据库模式）")]
         public void InitializeWxTables(SQLiteConnection db)
         {
             try
@@ -227,6 +229,74 @@ namespace BaiShengVx3Plus.Services.Database
             catch (Exception ex)
             {
                 Log("error", $"初始化微信专属数据库表失败: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 🔥 初始化所有表（共享数据库模式）
+        /// 
+        /// 架构说明：
+        /// 1. 所有微信号共享一个数据库: business.db
+        /// 2. 数据通过 GroupWxId 字段隔离不同群组
+        /// 3. 换号后数据自动接管（只要在同一个群）
+        /// 
+        /// 参考 F5BotV2 设计：所有数据在 v2.bat，按 GroupWxId 区分
+        /// </summary>
+        public void InitializeAllTables(SQLiteConnection db)
+        {
+            try
+            {
+                Log("info", "🗄️ 初始化共享数据库表（business.db）...");
+
+                // ========================================
+                // 🔥 全局数据表（不区分群组）
+                // ========================================
+
+                db.CreateTable<BetConfig>();
+                Log("debug", "✓ 全局表: BetConfig");
+
+                db.CreateTable<BinggoLotteryData>();
+                Log("debug", "✓ 全局表: BinggoLotteryData");
+
+                db.CreateTable<BinggoBetItem>();
+                Log("debug", "✓ 全局表: BinggoBetItem");
+
+                db.CreateTable<Models.AutoBet.BetRecord>();
+                Log("debug", "✓ 全局表: BetRecord");
+
+                // ========================================
+                // 🔥 业务数据表（按 GroupWxId 隔离）
+                // ========================================
+
+                db.CreateTable<V2Member>();
+                Log("debug", "✓ 业务表: V2Member (按 GroupWxId 隔离)");
+
+                db.CreateTable<V2MemberOrder>();
+                Log("debug", "✓ 业务表: V2MemberOrder (按 GroupWxId 隔离)");
+
+                db.CreateTable<V2CreditWithdraw>();
+                Log("debug", "✓ 业务表: V2CreditWithdraw (按 GroupWxId 隔离)");
+
+                db.CreateTable<V2BalanceChange>();
+                Log("debug", "✓ 业务表: V2BalanceChange (按 GroupWxId 隔离)");
+
+                // ========================================
+                // 🔥 基础数据表
+                // ========================================
+
+                db.CreateTable<WxContact>();
+                Log("debug", "✓ 基础表: WxContact");
+
+                db.CreateTable<WxUserInfo>();
+                Log("debug", "✓ 基础表: WxUserInfo");
+
+                Log("info", "✅ 共享数据库表初始化完成（10张表）");
+                Log("info", "📌 架构说明：所有微信号共享此数据库，数据按 GroupWxId 隔离");
+            }
+            catch (Exception ex)
+            {
+                Log("error", $"初始化共享数据库表失败: {ex.Message}");
                 throw;
             }
         }

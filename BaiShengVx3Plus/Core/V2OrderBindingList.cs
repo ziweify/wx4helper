@@ -20,11 +20,13 @@ namespace BaiShengVx3Plus.Core
     public class V2OrderBindingList : BindingList<V2MemberOrder>
     {
         private readonly SQLiteConnection _db;
+        private readonly string _groupWxId;
         private readonly SynchronizationContext? _syncContext;
 
-        public V2OrderBindingList(SQLiteConnection db)
+        public V2OrderBindingList(SQLiteConnection db, string groupWxId)
         {
             _db = db;
+            _groupWxId = groupWxId;
             
             // 🔥 捕获 UI 线程的 SynchronizationContext
             _syncContext = SynchronizationContext.Current;
@@ -132,6 +134,7 @@ namespace BaiShengVx3Plus.Core
         public void LoadFromDatabase()
         {
             var orders = _db.Table<V2MemberOrder>()
+                .Where(o => o.GroupWxId == _groupWxId)  // 🔥 按 GroupWxId 过滤
                 .OrderByDescending(o => o.TimeStampBet)
                 .ToList();
 

@@ -45,9 +45,11 @@ namespace BaiShengVx3Plus
         private readonly ViewModels.ConfigViewModel _configViewModel; // 📝 配置 ViewModel（用于数据绑定）
         private readonly ViewModels.SettingViewModel _settingViewModel; // 🌐 设置 ViewModel（全局单例）
         
-        // 🔥 ORM 数据库连接（双库结构）
-        private SQLiteConnection? _globalDb;  // 全局数据库: business.db (飞单配置、开奖数据)
-        private SQLiteConnection? _db;  // 微信专属数据库: business_{wxid}.db (会员、订单、投注记录等)
+        // 🔥 ORM 数据库连接（共享数据库架构）
+        private SQLiteConnection? _db;  // 共享数据库: business.db (所有微信号共享，按 GroupWxId 隔离)
+        
+        // 🔥 标志：是否正在加载配置（防止触发自动保存）
+        private bool _isLoadingAutoBetSettings = false;
         
         // 🔥 赔率控件步进控制
         private double _lastOddsValue = 1.97;  // 记录上一次的赔率值，用于检测按钮点击
@@ -202,39 +204,43 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
-        /// 初始化数据库（使用 ORM，双库结构）
+        /// 初始化数据库（共享数据库架构）
         /// 
-        /// 🔥 数据库命名规则（优化后）：
-        /// 1. 全局数据库: business.db（存储全局共享数据）
-        ///    - AutoBetConfigs（飞单配置）
-        ///    - BinggoLotteryData（开奖数据）
-        ///    - BinggoBetItem（开奖下注项）
+        /// 🔥 新架构设计（参考 F5BotV2）：
+        /// 1. 所有微信号共享一个数据库: business.db
+        /// 2. 数据通过 GroupWxId 字段隔离不同群组
+        /// 3. 换号后数据自动接管（只要在同一个群）
         /// 
-        /// 2. 微信专属数据库: business_{wxid}.db（存储微信账号专属数据）
-        ///    - V2Member（会员信息）
-        ///    - V2MemberOrder（订单信息）
-        ///    - V2CreditWithdraw（上下分记录）
-        ///    - V2BalanceChange（资金变动记录）
-        ///    - BetOrderRecord（投注记录）
-        ///    - WxContact（联系人）
-        ///    - WxUserInfo（用户信息）
-        ///    - LogEntry（日志）
+        /// 🔥 数据库表结构：
+        /// - 全局数据表（不区分群组）：
+        ///   - BetConfig（飞单配置）
+        ///   - BinggoLotteryData（开奖数据）
+        ///   - BinggoBetItem（开奖下注项）
+        ///   - BetRecord（投注记录）
         /// 
-        /// 3. 日志数据库: logs.db（全局共享，暂未使用）
+        /// - 业务数据表（按 GroupWxId 隔离）：
+        ///   - V2Member（会员信息）
+        ///   - V2MemberOrder（订单信息）
+        ///   - V2CreditWithdraw（上下分记录）
+        ///   - V2BalanceChange（资金变动记录）
+        /// 
+        /// - 基础数据表：
+        ///   - WxContact（联系人）
+        ///   - WxUserInfo（用户信息）
         /// 
         /// 🔥 重要设计原则：
-        /// 1. 数据库操作（增删改查）= 同步执行，保证数据一致性，避免污染
-        /// 2. UI 更新（状态文本等）= 异步执行，避免阻塞 UI 线程，保证流畅
+        /// 1. 数据库操作（增删改查）= 同步执行，保证数据一致性
+        /// 2. UI 更新（状态文本等）= 异步执行，避免阻塞 UI 线程
         /// 3. 数据绑定（DataSource）= 同步执行，确保数据立即生效
         /// </summary>
-        /// <param name="wxid">微信ID，"default" 表示仅初始化全局数据库，其他为实际微信ID</param>
+        /// <param name="wxid">微信ID（已废弃，保留仅为兼容性）</param>
         private void InitializeDatabase(string wxid)
         {
             try
             {
-                // ========================================
-                // 🔥 步骤1: 初始化全局数据库（始终打开）
-                // ========================================
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", "🔄 数据库架构：共享数据库模式（所有微信号共享）");
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -242,81 +248,46 @@ namespace BaiShengVx3Plus
                     "Data");
                 Directory.CreateDirectory(dataDirectory);
                 
-                // 🔥 全局数据库：business.db（始终打开，存储全局共享数据）
-                string globalDbPath = Path.Combine(dataDirectory, "business.db");
+                // 🔥 统一使用 business.db（所有微信号共享）
+                string dbPath = Path.Combine(dataDirectory, "business.db");
+                _currentDbPath = dbPath;
                 
-                if (_globalDb == null || _globalDb.DatabasePath != globalDbPath)
+                if (_db == null || _db.DatabasePath != dbPath)
                 {
-                    _globalDb?.Close();
-                    _globalDb = new SQLiteConnection(globalDbPath);
-                    _logService.Info("VxMain", $"✅ 全局数据库已打开: {globalDbPath}");
-                    
-                    // 🔥 配置为最可靠模式（数据完整性优先）
-                    ConfigureDatabaseReliability(_globalDb, "全局数据库");
-                    
-                    // 🔥 使用统一的数据库初始化器创建全局表
-                    var databaseInitializer = Program.ServiceProvider?.GetService<Services.Database.DatabaseInitializer>();
-                    if (databaseInitializer != null)
-                    {
-                        databaseInitializer.InitializeGlobalTables(_globalDb);
-                    }
-                    else
-                    {
-                        // 如果 DatabaseInitializer 不可用，使用旧方法（向后兼容）
-                        InitializeGlobalTables(_globalDb);
-                    }
-                }
-                
-                // ========================================
-                // 🔥 步骤2: 初始化微信专属数据库（如果需要）
-                // ========================================
-                
-                if (wxid != "default")
-                {
-                    // 关闭旧的微信专属数据库连接
                     _db?.Close();
-                    _db = null;
-                    
-                    // 🔥 微信专属数据库：business_{wxid}.db
-                    string wxDbPath = Path.Combine(dataDirectory, $"business_{wxid}.db");
-                    _currentDbPath = wxDbPath;
-                    
-                    _logService.Info("VxMain", $"初始化微信专属数据库: {wxDbPath}");
-                    _db = new SQLiteConnection(wxDbPath);
+                    _db = new SQLiteConnection(dbPath);
+                    _logService.Info("VxMain", $"✅ 共享数据库已打开: {dbPath}");
                     
                     // 🔥 配置为最可靠模式（数据完整性优先）
-                    ConfigureDatabaseReliability(_db, "微信专属数据库");
+                    ConfigureDatabaseReliability(_db, "共享数据库");
                     
-                    // 🔥 使用统一的数据库初始化器创建微信专属表
+                    // 🔥 使用统一的数据库初始化器创建所有表
                     var databaseInitializer = Program.ServiceProvider?.GetService<Services.Database.DatabaseInitializer>();
                     if (databaseInitializer != null)
                     {
-                        databaseInitializer.InitializeWxTables(_db);
+                        databaseInitializer.InitializeAllTables(_db);
                     }
                     else
                     {
                         // 如果 DatabaseInitializer 不可用，使用旧方法（向后兼容）
-                        InitializeWxTables(_db);
+                        _logService.Warning("VxMain", "⚠️ DatabaseInitializer 不可用，使用旧方法初始化");
+                        InitializeAllTables(_db);
                     }
-                    
-                    // 🔥 将数据库连接传递给群组绑定服务
-                    if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)
-                    {
-                        groupBindingService.SetDatabase(_db);
-                    }
-                    
-                    _logService.Info("VxMain", "✅ 微信专属数据库已准备，等待绑定群后加载数据");
                 }
-                else
+                
+                // 🔥 将数据库连接传递给所有服务
+                if (_groupBindingService is Services.GroupBinding.GroupBindingService groupBindingService)
                 {
-                    _logService.Info("VxMain", "✅ 仅初始化全局数据库（默认模式）");
+                    groupBindingService.SetDatabase(_db);
                 }
                 
+                _logService.Info("VxMain", "✅ 共享数据库已准备，所有微信号可访问");
+                _logService.Info("VxMain", "📌 数据隔离：通过 GroupWxId 字段区分不同群组");
+                
                 // ========================================
-                // 🔥 步骤3: 初始化炳狗服务
+                // 🔥 初始化炳狗服务
                 // ========================================
                 
-                // 🔥 根据初始化场景，选择初始化方法
                 if (wxid == "default")
                 {
                     // 首次启动：初始化全局服务（只执行一次）
@@ -327,10 +298,6 @@ namespace BaiShengVx3Plus
                     // 微信连接成功：只初始化微信专属服务
                     InitializeWxServices();
                 }
-                
-                // ========================================
-                // 🔥 步骤4: 日志记录
-                // ========================================
                 
                 _logService.Info("VxMain", $"✓ 数据库初始化完成");
             }
@@ -408,21 +375,21 @@ namespace BaiShengVx3Plus
             {
                 _logService.Info("VxMain", "🎮 初始化全局服务（仅执行一次）...");
                 
-                // 🔥 检查全局数据库是否已初始化
-                if (_globalDb == null)
+                // 🔥 检查共享数据库是否已初始化
+                if (_db == null)
                 {
-                    _logService.Error("VxMain", "❌ 全局数据库未初始化，无法初始化全局服务！");
+                    _logService.Error("VxMain", "❌ 共享数据库未初始化，无法初始化全局服务！");
                     return;
                 }
                 
-                // 🔥 1. 设置全局数据库连接
+                // 🔥 1. 设置共享数据库连接
                 // - AutoBetService: AutoBetConfigs（飞单配置）
-                _autoBetService.SetDatabase(_globalDb);
-                _logService.Info("VxMain", "✅ AutoBetService 已设置全局数据库（AutoBetConfigs）");
+                _autoBetService.SetDatabase(_db);
+                _logService.Info("VxMain", "✅ AutoBetService 已设置共享数据库（AutoBetConfigs）");
                 
                 // - LotteryService: BinggoLotteryData（开奖数据）
-                _lotteryService.SetDatabase(_globalDb);
-                _logService.Info("VxMain", "✅ LotteryService 已设置全局数据库（BinggoLotteryData）");
+                _lotteryService.SetDatabase(_db);
+                _logService.Info("VxMain", "✅ LotteryService 已设置共享数据库（BinggoLotteryData）");
                 
                 // 📌 BetRecordService: 已在 AutoBetService.SetDatabase 中初始化
                 _logService.Info("VxMain", "✅ BetRecordService 将在 AutoBetService.SetDatabase 中自动初始化");
@@ -441,8 +408,8 @@ namespace BaiShengVx3Plus
                 _autoBetService.StartMonitoring();
                 _logService.Info("VxMain", "✅ 配置初始化完成");
                 
-                // 2. 创建开奖数据 BindingList（使用全局数据库）
-                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_globalDb, _logService);
+                // 2. 创建开奖数据 BindingList（使用共享数据库）
+                _lotteryDataBindingList = new BinggoLotteryDataBindingList(_db, _logService);
                 _lotteryDataBindingList.LoadFromDatabase(100);
                 
                 // 3. 设置开奖服务的 BindingList（用于自动更新 UI）
@@ -1151,8 +1118,16 @@ namespace BaiShengVx3Plus
                 
                 lblStatus.Text = "正在初始化...";
                 
-                // 🔥 初始化平台下拉框（使用统一数据源）
-                InitializePlatformComboBox();
+                // 🔥 平台下拉框已在 InitializeDataBindings() -> LoadAutoBetSettings() 中初始化
+                // 不要在这里重复调用 InitializePlatformComboBox()，否则会清空下拉框并触发事件导致配置被重置
+                
+                // 🔍 诊断：检查平台下拉框在窗体加载时的状态
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", "🔍 [诊断] 窗体加载时 cbxPlatform 状态:");
+                _logService.Info("VxMain", $"🔍 [诊断]   Items.Count = {cbxPlatform.Items.Count}");
+                _logService.Info("VxMain", $"🔍 [诊断]   SelectedIndex = {cbxPlatform.SelectedIndex}");
+                _logService.Info("VxMain", $"🔍 [诊断]   Text = \"{cbxPlatform.Text}\"");
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 
                 // 隐藏不需要显示的列
                 if (dgvContacts.Columns.Count > 0)
@@ -1201,6 +1176,15 @@ namespace BaiShengVx3Plus
                     await Task.Delay(2000);  // 等待2秒，确保数据库已初始化
                     await LoadRecentLotteryDataAsync();
                 });
+                
+                // 🔍 诊断：在窗体加载完成后最终检查 cbxPlatform 状态
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", "🔍 [诊断] VxMain_Load 完成时 cbxPlatform 最终状态:");
+                _logService.Info("VxMain", $"🔍 [诊断]   Items.Count = {cbxPlatform.Items.Count}");
+                _logService.Info("VxMain", $"🔍 [诊断]   SelectedIndex = {cbxPlatform.SelectedIndex}");
+                _logService.Info("VxMain", $"🔍 [诊断]   Text = \"{cbxPlatform.Text}\"");
+                _logService.Info("VxMain", $"🔍 [诊断]   SelectedItem = {(cbxPlatform.SelectedItem != null ? $"\"{cbxPlatform.SelectedItem}\"" : "null")}");
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             catch (Exception ex)
             {
@@ -1793,7 +1777,7 @@ namespace BaiShengVx3Plus
                     
                     // 首次创建 BindingList
                     _membersBindingList = new V2MemberBindingList(_db, contact.Wxid);
-                    _ordersBindingList = new V2OrderBindingList(_db);
+                    _ordersBindingList = new V2OrderBindingList(_db, contact.Wxid);
                     _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);
                 }
                 else
@@ -3702,10 +3686,23 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", "🔍 [诊断] 开始初始化平台下拉框");
+                _logService.Info("VxMain", $"🔍 [诊断] 当前线程: {Thread.CurrentThread.ManagedThreadId}");
+                _logService.Info("VxMain", $"🔍 [诊断] InvokeRequired: {InvokeRequired}");
+                
                 var platformNames = BetPlatformHelper.GetAllPlatformNames();
+                _logService.Info("VxMain", $"🔍 [诊断] 获取到 {platformNames.Length} 个平台名称");
+                
                 cbxPlatform.Items.Clear();
+                _logService.Info("VxMain", $"🔍 [诊断] Items.Clear() 后 Count = {cbxPlatform.Items.Count}");
+                
                 cbxPlatform.Items.AddRange(platformNames);
-                _logService.Info("VxMain", $"✅ 平台下拉框已初始化，共 {platformNames.Length} 个平台");
+                _logService.Info("VxMain", $"🔍 [诊断] Items.AddRange() 后 Count = {cbxPlatform.Items.Count}");
+                _logService.Info("VxMain", $"🔍 [诊断] 平台列表: {string.Join(", ", platformNames)}");
+                _logService.Info("VxMain", $"🔍 [诊断] SelectedIndex = {cbxPlatform.SelectedIndex}, Text = \"{cbxPlatform.Text}\"");
+                _logService.Info("VxMain", "✅ 平台下拉框已初始化");
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             catch (Exception ex)
             {
@@ -3788,17 +3785,103 @@ namespace BaiShengVx3Plus
         {
             try
             {
+                _isLoadingAutoBetSettings = true;  // 🔥 设置标志，防止触发自动保存
+                
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", "🔍 [诊断] 开始加载自动投注设置");
+                _logService.Info("VxMain", $"🔍 [诊断] 当前线程: {Thread.CurrentThread.ManagedThreadId}");
+                _logService.Info("VxMain", $"🔍 [诊断] InvokeRequired: {InvokeRequired}");
+                
+                // 🔥 确保平台下拉框已初始化（修复：调用顺序问题）
+                _logService.Info("VxMain", $"🔍 [诊断] cbxPlatform.Items.Count = {cbxPlatform.Items.Count}");
+                if (cbxPlatform.Items.Count == 0)
+                {
+                    _logService.Info("VxMain", "📋 平台下拉框未初始化，先初始化平台列表...");
+                    InitializePlatformComboBox();
+                }
+                else
+                {
+                    _logService.Info("VxMain", "📋 平台下拉框已有数据，无需重新初始化");
+                }
+                
                 // 🔥 加载设置时，临时解绑事件，避免触发自动启动
                 _logService.Info("VxMain", "📋 加载自动投注设置（临时解绑事件）...");
                 swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
                 
-                var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
+                var configList = _autoBetService.GetConfigsBindingList();
+                _logService.Info("VxMain", $"🔍 [诊断] GetConfigsBindingList() = {(configList != null ? $"存在 ({configList.Count} 条)" : "null")}");
+                
+                var defaultConfig = configList?.FirstOrDefault(c => c.IsDefault);
+                _logService.Info("VxMain", $"🔍 [诊断] defaultConfig = {(defaultConfig != null ? "存在" : "null")}");
+                
+                if (defaultConfig != null)
+                {
+                    _logService.Info("VxMain", $"🔍 [诊断] defaultConfig 详情:");
+                    _logService.Info("VxMain", $"🔍 [诊断]   ConfigName = \"{defaultConfig.ConfigName}\"");
+                    _logService.Info("VxMain", $"🔍 [诊断]   Platform = \"{defaultConfig.Platform}\"");
+                    _logService.Info("VxMain", $"🔍 [诊断]   IsDefault = {defaultConfig.IsDefault}");
+                    _logService.Info("VxMain", $"🔍 [诊断]   IsEnabled = {defaultConfig.IsEnabled}");
+                }
                 
                 if (defaultConfig != null)
                 {
                     // 加载平台（使用共享库统一转换）
+                    _logService.Info("VxMain", $"🔍 [诊断] 开始加载平台配置");
+                    _logService.Info("VxMain", $"🔍 [诊断] defaultConfig.Platform = \"{defaultConfig.Platform}\"");
+                    _logService.Info("VxMain", $"🔍 [诊断] cbxPlatform.Items.Count = {cbxPlatform.Items.Count}");
+                    _logService.Info("VxMain", $"🔍 [诊断] 设置前 cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
+                    _logService.Info("VxMain", $"🔍 [诊断] 设置前 cbxPlatform.Text = \"{cbxPlatform.Text}\"");
+                    
+                    // 列出所有Items
+                    for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                    {
+                        _logService.Info("VxMain", $"🔍 [诊断] Items[{i}] = \"{cbxPlatform.Items[i]}\"");
+                    }
+                    
                     var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
-                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
+                    _logService.Info("VxMain", $"🔍 [诊断] 解析后的平台枚举: {platform} ({(int)platform})");
+                    
+                    var index = BetPlatformHelper.GetIndex(platform);
+                    _logService.Info("VxMain", $"🔍 [诊断] 计算的索引: {index}");
+                    
+                    if (index >= 0 && index < cbxPlatform.Items.Count)
+                    {
+                        _logService.Info("VxMain", $"🔍 [诊断] 准备设置 SelectedIndex = {index}");
+                        _logService.Info("VxMain", $"🔍 [诊断] 对应的项名称: \"{cbxPlatform.Items[index]}\"");
+                        
+                        // 🔥 确保在UI线程中设置（关键修复）
+                        if (InvokeRequired)
+                        {
+                            _logService.Warning("VxMain", "⚠️ [诊断] 当前不在UI线程，使用Invoke设置");
+                            Invoke(new Action(() =>
+                            {
+                                cbxPlatform.SelectedIndex = index;
+                                _logService.Info("VxMain", $"🔍 [诊断] (Invoke中) 设置后 SelectedIndex = {cbxPlatform.SelectedIndex}, Text = \"{cbxPlatform.Text}\"");
+                            }));
+                        }
+                        else
+                        {
+                            _logService.Info("VxMain", "✅ [诊断] 当前在UI线程，直接设置");
+                            cbxPlatform.SelectedIndex = index;
+                        }
+                        
+                        _logService.Info("VxMain", $"🔍 [诊断] 设置后 cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
+                        _logService.Info("VxMain", $"🔍 [诊断] 设置后 cbxPlatform.Text = \"{cbxPlatform.Text}\"");
+                        _logService.Info("VxMain", $"🔍 [诊断] 设置后 cbxPlatform.SelectedItem = {(cbxPlatform.SelectedItem != null ? $"\"{cbxPlatform.SelectedItem}\"" : "null")}");
+                        
+                        if (cbxPlatform.SelectedIndex == index && !string.IsNullOrEmpty(cbxPlatform.Text))
+                        {
+                            _logService.Info("VxMain", $"✅ [诊断] SelectedIndex 设置成功！");
+                        }
+                        else
+                        {
+                            _logService.Warning("VxMain", $"⚠️ [诊断] SelectedIndex 设置可能失败！Index={cbxPlatform.SelectedIndex}, Text=\"{cbxPlatform.Text}\"");
+                        }
+                    }
+                    else
+                    {
+                        _logService.Warning("VxMain", $"⚠️ [诊断] 索引超出范围: index={index}, Items.Count={cbxPlatform.Items.Count}");
+                    }
 
                     // 加载账号密码（如果为空，显示空白是正常的）
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
@@ -3816,8 +3899,12 @@ namespace BaiShengVx3Plus
                 {
                     // 🔥 默认配置不存在，创建一个新的（账号密码为空）
                     _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
+                    _logService.Info("VxMain", $"🔍 cbxPlatform.Items.Count = {cbxPlatform.Items.Count}");
+                    _logService.Info("VxMain", $"🔍 cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
                     
                     var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    _logService.Info("VxMain", $"🔍 默认平台: {platform} ({(int)platform})");
+                    
                     var newConfig = new Models.AutoBet.BetConfig
                     {
                         ConfigName = "默认配置",
@@ -3833,25 +3920,38 @@ namespace BaiShengVx3Plus
                     _autoBetService.SaveConfig(newConfig);
                     
                     // 加载到UI
-                    cbxPlatform.SelectedIndex = BetPlatformHelper.GetIndex(platform);
+                    var index = BetPlatformHelper.GetIndex(platform);
+                    _logService.Info("VxMain", $"🔍 设置索引: {index}");
+                    cbxPlatform.SelectedIndex = index;
                     txtAutoBetUsername.Text = "";
                     txtAutoBetPassword.Text = "";
                     txtOdds.Value = 1.97;  // 🔥 默认赔率
                     
-                    _logService.Info("VxMain", "✅ 已创建新的默认配置（账号密码为空，需要用户输入）");
+                    _logService.Info("VxMain", $"✅ 已创建新的默认配置: 平台={platform}, 索引={index}, 显示={cbxPlatform.Text}");
                 }
                 
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 _logService.Info("VxMain", "✅ 自动投注设置加载完成");
+                _logService.Info("VxMain", $"🔍 [诊断] 最终状态:");
+                _logService.Info("VxMain", $"🔍 [诊断]   cbxPlatform.Items.Count = {cbxPlatform.Items.Count}");
+                _logService.Info("VxMain", $"🔍 [诊断]   cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
+                _logService.Info("VxMain", $"🔍 [诊断]   cbxPlatform.Text = \"{cbxPlatform.Text}\"");
+                _logService.Info("VxMain", $"🔍 [诊断]   cbxPlatform.SelectedItem = {(cbxPlatform.SelectedItem != null ? $"\"{cbxPlatform.SelectedItem}\"" : "null")}");
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             catch (Exception ex)
             {
                 _logService.Error("VxMain", "加载自动投注设置失败", ex);
+                _logService.Error("VxMain", $"🔍 [诊断] 异常堆栈: {ex.StackTrace}");
             }
             finally
             {
                 // 🔥 重新绑定事件
                 swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
                 _logService.Info("VxMain", "✅ 自动投注开关事件已重新绑定");
+                
+                // 🔥 重置标志，允许后续触发自动保存
+                _isLoadingAutoBetSettings = false;
             }
         }
 
@@ -3865,6 +3965,13 @@ namespace BaiShengVx3Plus
         /// </summary>
         private void SaveAutoBetSettings()
         {
+            // 🔥 如果正在加载配置，跳过自动保存（防止覆盖正在加载的数据）
+            if (_isLoadingAutoBetSettings)
+            {
+                _logService.Info("VxMain", "⏸️ 正在加载配置，跳过自动保存");
+                return;
+            }
+            
             try
             {
                 var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
@@ -4407,9 +4514,63 @@ namespace BaiShengVx3Plus
         #region 数据库表初始化
 
         /// <summary>
+        /// 🔥 初始化所有表（共享数据库模式）- 旧方法版本
+        /// 合并全局表和微信专属表，用于向后兼容
+        /// </summary>
+        private void InitializeAllTables(SQLiteConnection db)
+        {
+            try
+            {
+                _logService.Info("VxMain", "🗄️ 初始化共享数据库表（旧方法）...");
+
+                // 全局数据表
+                db.CreateTable<Models.AutoBet.BetConfig>();
+                _logService.Debug("VxMain", "✓ 全局表: BetConfig");
+
+                db.CreateTable<Models.Games.Binggo.BinggoLotteryData>();
+                _logService.Debug("VxMain", "✓ 全局表: BinggoLotteryData");
+
+                db.CreateTable<Models.Games.Binggo.BinggoBetItem>();
+                _logService.Debug("VxMain", "✓ 全局表: BinggoBetItem");
+
+                db.CreateTable<Models.AutoBet.BetRecord>();
+                _logService.Debug("VxMain", "✓ 全局表: BetRecord");
+
+                // 业务数据表（按 GroupWxId 隔离）
+                db.CreateTable<V2Member>();
+                _logService.Debug("VxMain", "✓ 业务表: V2Member");
+
+                db.CreateTable<V2MemberOrder>();
+                _logService.Debug("VxMain", "✓ 业务表: V2MemberOrder");
+
+                db.CreateTable<V2CreditWithdraw>();
+                _logService.Debug("VxMain", "✓ 业务表: V2CreditWithdraw");
+
+                db.CreateTable<V2BalanceChange>();
+                _logService.Debug("VxMain", "✓ 业务表: V2BalanceChange");
+
+                // 基础数据表
+                db.CreateTable<WxContact>();
+                _logService.Debug("VxMain", "✓ 基础表: WxContact");
+
+                db.CreateTable<WxUserInfo>();
+                _logService.Debug("VxMain", "✓ 基础表: WxUserInfo");
+
+                _logService.Info("VxMain", "✅ 共享数据库表初始化完成（10张表）");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "初始化共享数据库表失败", ex);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// 🔥 初始化全局数据库表（business.db）
         /// 存储全局共享数据，所有微信账号共用
+        /// ⚠️ 已废弃：改用 InitializeAllTables（共享数据库模式）
         /// </summary>
+        [Obsolete("已废弃，请使用 InitializeAllTables（共享数据库模式）")]
         private void InitializeGlobalTables(SQLiteConnection db)
         {
             try
@@ -4448,7 +4609,9 @@ namespace BaiShengVx3Plus
         /// <summary>
         /// 🔥 初始化微信专属数据库表（business_{wxid}.db）
         /// 存储微信账号专属数据：会员、订单、上下分记录、投注记录等
+        /// ⚠️ 已废弃：改用 InitializeAllTables（共享数据库模式）
         /// </summary>
+        [Obsolete("已废弃，请使用 InitializeAllTables（共享数据库模式）")]
         private void InitializeWxTables(SQLiteConnection db)
         {
             try

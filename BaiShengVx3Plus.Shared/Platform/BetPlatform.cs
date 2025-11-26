@@ -88,10 +88,11 @@ namespace BaiShengVx3Plus.Shared.Platform
         
         /// <summary>
         /// 获取所有平台名称（用于UI下拉框）
+        /// 🔥 修复：必须和 GetAllPlatforms() 保持相同顺序（按枚举值排序）
         /// </summary>
         public static string[] GetAllPlatformNames()
         {
-            return Enum.GetNames(typeof(BetPlatform));
+            return GetAllPlatforms().Select(p => p.ToString()).ToArray();
         }
         
         /// <summary>
@@ -133,11 +134,11 @@ namespace BaiShengVx3Plus.Shared.Platform
         }
         
         /// <summary>
-        /// 获取所有平台列表（按枚举顺序）
+        /// 获取所有平台列表（按枚举值顺序）
         /// </summary>
         private static BetPlatform[]? _allPlatforms;
         
-        private static BetPlatform[] GetAllPlatforms()
+        public static BetPlatform[] GetAllPlatforms()
         {
             if (_allPlatforms == null)
             {
