@@ -76,6 +76,8 @@ namespace zhaocaimao.Services.Games.Binggo
                 _logService.Info("OrderValidator", $"🔍 开始验证单注金额限制: MinBet={minBet}, MaxBet={maxBet}");
                 
                 // 🔥 步骤1：对当前订单内的投注项分组求和
+                // 🔥 关键修复：必须使用 TotalAmount（Amount × Quantity），而不是 Amount
+                // 🔥 例如：5555大20000 会被解析为 1个 BinggoBetItem(5, 大, Amount=20000, Quantity=4, TotalAmount=80000)
                 var currentOrderGrouped = new Dictionary<string, decimal>();
                 foreach (var item in betContent.Items)
                 {
@@ -84,7 +86,7 @@ namespace zhaocaimao.Services.Games.Binggo
                     {
                         currentOrderGrouped[key] = 0;
                     }
-                    currentOrderGrouped[key] += item.Amount;
+                    currentOrderGrouped[key] += item.TotalAmount;  // 🔥 使用 TotalAmount，而不是 Amount
                 }
                 
                 _logService.Info("OrderValidator", 
