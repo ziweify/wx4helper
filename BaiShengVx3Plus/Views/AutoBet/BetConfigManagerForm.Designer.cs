@@ -52,10 +52,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             chkShowBrowser = new Sunny.UI.UICheckBox();
             chkAutoLogin = new Sunny.UI.UICheckBox();
             chkEnabled = new Sunny.UI.UICheckBox();
-            txtMaxBetAmount = new Sunny.UI.UITextBox();
-            lblMaxBetAmount = new Sunny.UI.UILabel();
-            txtMinBetAmount = new Sunny.UI.UITextBox();
-            lblMinBetAmount = new Sunny.UI.UILabel();
             txtPassword = new Sunny.UI.UITextBox();
             lblPassword = new Sunny.UI.UILabel();
             txtUsername = new Sunny.UI.UITextBox();
@@ -319,10 +315,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
             pnlBasicContent.Controls.Add(chkShowBrowser);
             pnlBasicContent.Controls.Add(chkAutoLogin);
             pnlBasicContent.Controls.Add(chkEnabled);
-            pnlBasicContent.Controls.Add(txtMaxBetAmount);
-            pnlBasicContent.Controls.Add(lblMaxBetAmount);
-            pnlBasicContent.Controls.Add(txtMinBetAmount);
-            pnlBasicContent.Controls.Add(lblMinBetAmount);
             pnlBasicContent.Controls.Add(txtPassword);
             pnlBasicContent.Controls.Add(lblPassword);
             pnlBasicContent.Controls.Add(txtUsername);
@@ -348,7 +340,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             // 
             btnTestConnection.Cursor = Cursors.Hand;
             btnTestConnection.Font = new Font("微软雅黑", 10F);
-            btnTestConnection.Location = new Point(150, 420);
+            btnTestConnection.Location = new Point(150, 370);
             btnTestConnection.MinimumSize = new Size(1, 1);
             btnTestConnection.Name = "btnTestConnection";
             btnTestConnection.Size = new Size(150, 35);
@@ -362,7 +354,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             chkShowBrowser.Cursor = Cursors.Hand;
             chkShowBrowser.Font = new Font("微软雅黑", 10F);
             chkShowBrowser.ForeColor = Color.FromArgb(48, 48, 48);
-            chkShowBrowser.Location = new Point(150, 370);
+            chkShowBrowser.Location = new Point(150, 320);
             chkShowBrowser.MinimumSize = new Size(1, 1);
             chkShowBrowser.Name = "chkShowBrowser";
             chkShowBrowser.Size = new Size(200, 29);
@@ -375,7 +367,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
             chkAutoLogin.Cursor = Cursors.Hand;
             chkAutoLogin.Font = new Font("微软雅黑", 10F);
             chkAutoLogin.ForeColor = Color.FromArgb(48, 48, 48);
-            chkAutoLogin.Location = new Point(380, 335);
+            chkAutoLogin.Location = new Point(380, 285);
             chkAutoLogin.MinimumSize = new Size(1, 1);
             chkAutoLogin.Name = "chkAutoLogin";
             chkAutoLogin.Size = new Size(150, 29);
@@ -388,68 +380,12 @@ namespace BaiShengVx3Plus.Views.AutoBet
             chkEnabled.Cursor = Cursors.Hand;
             chkEnabled.Font = new Font("微软雅黑", 10F);
             chkEnabled.ForeColor = Color.FromArgb(48, 48, 48);
-            chkEnabled.Location = new Point(150, 335);
+            chkEnabled.Location = new Point(150, 285);
             chkEnabled.MinimumSize = new Size(1, 1);
             chkEnabled.Name = "chkEnabled";
             chkEnabled.Size = new Size(150, 29);
             chkEnabled.TabIndex = 14;
             chkEnabled.Text = "启用此配置";
-            // 
-            // txtMaxBetAmount
-            // 
-            txtMaxBetAmount.DoubleValue = 10000D;
-            txtMaxBetAmount.Font = new Font("微软雅黑", 10F);
-            txtMaxBetAmount.IntValue = 10000;
-            txtMaxBetAmount.Location = new Point(480, 285);
-            txtMaxBetAmount.Margin = new Padding(4, 5, 4, 5);
-            txtMaxBetAmount.MinimumSize = new Size(1, 16);
-            txtMaxBetAmount.Name = "txtMaxBetAmount";
-            txtMaxBetAmount.Padding = new Padding(5);
-            txtMaxBetAmount.ShowText = false;
-            txtMaxBetAmount.Size = new Size(200, 30);
-            txtMaxBetAmount.TabIndex = 13;
-            txtMaxBetAmount.Text = "10000";
-            txtMaxBetAmount.TextAlignment = ContentAlignment.MiddleLeft;
-            txtMaxBetAmount.Watermark = "";
-            // 
-            // lblMaxBetAmount
-            // 
-            lblMaxBetAmount.Font = new Font("微软雅黑", 10F);
-            lblMaxBetAmount.ForeColor = Color.FromArgb(48, 48, 48);
-            lblMaxBetAmount.Location = new Point(370, 285);
-            lblMaxBetAmount.Name = "lblMaxBetAmount";
-            lblMaxBetAmount.Size = new Size(100, 30);
-            lblMaxBetAmount.TabIndex = 12;
-            lblMaxBetAmount.Text = "最大金额:";
-            lblMaxBetAmount.TextAlign = ContentAlignment.MiddleRight;
-            // 
-            // txtMinBetAmount
-            // 
-            txtMinBetAmount.DoubleValue = 1D;
-            txtMinBetAmount.Font = new Font("微软雅黑", 10F);
-            txtMinBetAmount.IntValue = 1;
-            txtMinBetAmount.Location = new Point(150, 285);
-            txtMinBetAmount.Margin = new Padding(4, 5, 4, 5);
-            txtMinBetAmount.MinimumSize = new Size(1, 16);
-            txtMinBetAmount.Name = "txtMinBetAmount";
-            txtMinBetAmount.Padding = new Padding(5);
-            txtMinBetAmount.ShowText = false;
-            txtMinBetAmount.Size = new Size(200, 30);
-            txtMinBetAmount.TabIndex = 11;
-            txtMinBetAmount.Text = "1";
-            txtMinBetAmount.TextAlignment = ContentAlignment.MiddleLeft;
-            txtMinBetAmount.Watermark = "";
-            // 
-            // lblMinBetAmount
-            // 
-            lblMinBetAmount.Font = new Font("微软雅黑", 10F);
-            lblMinBetAmount.ForeColor = Color.FromArgb(48, 48, 48);
-            lblMinBetAmount.Location = new Point(40, 285);
-            lblMinBetAmount.Name = "lblMinBetAmount";
-            lblMinBetAmount.Size = new Size(100, 30);
-            lblMinBetAmount.TabIndex = 10;
-            lblMinBetAmount.Text = "最小金额:";
-            lblMinBetAmount.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtPassword
             // 
@@ -1118,10 +1054,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
         private Sunny.UI.UICheckBox chkShowBrowser;
         private Sunny.UI.UICheckBox chkAutoLogin;
         private Sunny.UI.UICheckBox chkEnabled;
-        private Sunny.UI.UITextBox txtMaxBetAmount;
-        private Sunny.UI.UILabel lblMaxBetAmount;
-        private Sunny.UI.UITextBox txtMinBetAmount;
-        private Sunny.UI.UILabel lblMinBetAmount;
         private Sunny.UI.UITextBox txtPassword;
         private Sunny.UI.UILabel lblPassword;
         private Sunny.UI.UITextBox txtUsername;

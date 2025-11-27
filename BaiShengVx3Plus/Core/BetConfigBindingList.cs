@@ -37,6 +37,40 @@ namespace BaiShengVx3Plus.Core
             {
                 _db.CreateTable<BetConfig>();
                 _log.Info("BetConfig", "✅ BetConfig表已创建/验证");
+                
+                // 🔥 数据库迁移：确保关键列存在
+                // ProcessId 和 LastUpdateTime 是新添加的列，旧数据库可能没有
+                try
+                {
+                    // 检查 ProcessId 列是否存在
+                    var tableInfo = _db.GetTableInfo("AutoBetConfigs");
+                    bool hasProcessId = tableInfo.Any(col => col.Name == "ProcessId");
+                    bool hasLastUpdateTime = tableInfo.Any(col => col.Name == "LastUpdateTime");
+                    
+                    if (!hasProcessId)
+                    {
+                        _log.Info("BetConfig", "🔧 迁移：添加 ProcessId 列...");
+                        _db.Execute("ALTER TABLE AutoBetConfigs ADD COLUMN ProcessId INTEGER DEFAULT 0");
+                        _log.Info("BetConfig", "✅ ProcessId 列已添加");
+                    }
+                    
+                    if (!hasLastUpdateTime)
+                    {
+                        _log.Info("BetConfig", "🔧 迁移：添加 LastUpdateTime 列...");
+                        _db.Execute("ALTER TABLE AutoBetConfigs ADD COLUMN LastUpdateTime TEXT");
+                        _log.Info("BetConfig", "✅ LastUpdateTime 列已添加");
+                    }
+                    
+                    if (hasProcessId && hasLastUpdateTime)
+                    {
+                        _log.Info("BetConfig", "✅ 数据库表结构检查完成，所有必需列都存在");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.Warning("BetConfig", $"⚠️ 数据库迁移失败: {ex.Message}");
+                    _log.Warning("BetConfig", "如果是新数据库，这个警告可以忽略");
+                }
             }
         }
 

@@ -319,6 +319,13 @@ namespace BaiShengVx3Plus.Models.AutoBet
                 // 创建浏览器客户端
                 var newBrowser = new BrowserClient(configId: Id);
                 
+                // 🔥 先设置到 Browser 属性，让 OnBrowserConnected 能找到它
+                lock (_browserLock)
+                {
+                    Browser = newBrowser;
+                }
+                _logService?.Info("BetConfig", $"✅ [{ConfigName}] BrowserClient 对象已创建并设置");
+                
                 // 🔥 启动浏览器进程（异步调用）
                 bool started = await newBrowser.StartAsync(
                     port: 0,  // 0 = 使用默认端口
@@ -329,11 +336,6 @@ namespace BaiShengVx3Plus.Models.AutoBet
                 
                 if (started)
                 {
-                    // 🔥 启动成功后再设置到 Browser 属性
-                    lock (_browserLock)
-                    {
-                        Browser = newBrowser;
-                    }
                     
                     // 获取进程ID并保存
                     if (newBrowser.IsProcessRunning)

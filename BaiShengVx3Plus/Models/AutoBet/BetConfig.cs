@@ -248,6 +248,13 @@ namespace BaiShengVx3Plus.Models.AutoBet
     /// 浏览器进程ID（运行时数据，不持久化）
     /// </summary>
     public int ProcessId { get; set; } = 0;
+    
+    /// <summary>
+    /// 🔥 首次发现"进程在运行但未连接"的时间
+    /// 用于确保等待 2-3 秒后再启动新浏览器，避免在浏览器重连过程中误启动
+    /// </summary>
+    [Ignore]
+    public DateTime? WaitingForConnectionSince { get; set; }
         
         /// <summary>
         /// 🔥 浏览器客户端（运行时对象，不保存到数据库）

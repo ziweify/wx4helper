@@ -264,8 +264,6 @@ namespace BaiShengVx3Plus.Views.AutoBet
                 if (dgvConfigs.Columns["PlatformUrl"] != null) dgvConfigs.Columns["PlatformUrl"].Visible = false;
                 if (dgvConfigs.Columns["Cookies"] != null) dgvConfigs.Columns["Cookies"].Visible = false;
                 if (dgvConfigs.Columns["Notes"] != null) dgvConfigs.Columns["Notes"].Visible = false;
-                if (dgvConfigs.Columns["MinBetAmount"] != null) dgvConfigs.Columns["MinBetAmount"].Visible = false;
-                if (dgvConfigs.Columns["MaxBetAmount"] != null) dgvConfigs.Columns["MaxBetAmount"].Visible = false;
                 if (dgvConfigs.Columns["ShowBrowser"] != null) dgvConfigs.Columns["ShowBrowser"].Visible = false;
                 if (dgvConfigs.Columns["AutoLogin"] != null) dgvConfigs.Columns["AutoLogin"].Visible = false;
                 if (dgvConfigs.Columns["Status"] != null) dgvConfigs.Columns["Status"].Visible = false;

@@ -331,8 +331,16 @@ namespace BaiShengVx3Plus.Services.AutoBet
             public StreamWriter Writer { get; set; } = null!;
             
             /// <summary>
+            /// 🔥 连接建立时间（用于避免刚建立连接时的误判）
+            /// </summary>
+            public DateTime ConnectedTime { get; set; } = DateTime.Now;
+            
+            /// <summary>
             /// 🔥 可靠的连接状态检测
             /// TcpClient.Connected 不可靠，必须使用 Socket.Poll 检测
+            /// 
+            /// 修复：刚建立的连接（2秒内）跳过 Poll 检查，避免误判
+            /// 原因：刚连接时 Poll 可能返回 true 但 Available=0，导致误判为断开
             /// </summary>
             public bool IsConnected
             {
@@ -343,7 +351,15 @@ namespace BaiShengVx3Plus.Services.AutoBet
                         if (Client == null || Client.Client == null)
                             return false;
                         
-                        // 🔥 使用 Socket.Poll 进行可靠的连接检测
+                        // 🔥 连接建立后的前2秒，只检查 Connected 属性（避免 Poll 误判）
+                        var connectionAge = (DateTime.Now - ConnectedTime).TotalSeconds;
+                        if (connectionAge < 2.0)
+                        {
+                            // 新连接：只使用 TcpClient.Connected（虽然不够准确，但避免误判）
+                            return Client.Connected;
+                        }
+                        
+                        // 🔥 连接建立2秒后，使用 Socket.Poll 进行可靠检测
                         // Poll(1, SelectMode.SelectRead) 检查是否有可读数据
                         // Available == 0 表示连接已关闭（有可读事件但无数据）
                         if (Client.Client.Poll(1, SelectMode.SelectRead) && Client.Client.Available == 0)
