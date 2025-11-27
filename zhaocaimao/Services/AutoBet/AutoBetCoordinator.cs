@@ -72,20 +72,12 @@ namespace zhaocaimao.Services.AutoBet
                 if (!config.IsEnabled)
                 {
                     _log.Info("AutoBet", $"📌 设置配置 [{config.ConfigName}] 为启用状态");
-                    config.IsEnabled = true;  // PropertyChanged 自动保存，监控任务会看到
+                    config.IsEnabled = true;  // PropertyChanged 自动保存，监控任务会自动启动浏览器
+                    _autoBetService.SaveConfig(config);
                 }
                 
-                // 🔥 2. 等待浏览器连接（最多3秒）
-                //    - 如果已有老浏览器，会在1-2秒内重连
-                //    - 如果没有，监控任务会在2秒后启动新浏览器
-                var success = await _autoBetService.StartBrowser(configId);
-                if (!success)
-                {
-                    _log.Error("AutoBet", "启动浏览器失败");
-                    return false;
-                }
-                
-                // 3. 订阅开奖事件
+                // 🔥 2. 订阅开奖事件（这才是 Coordinator 的职责）
+                //    浏览器将由监控线程自动管理（检测间隔：2秒）
                 _lotteryService.IssueChanged += LotteryService_IssueChanged;
                 _lotteryService.StatusChanged += LotteryService_StatusChanged;
                 

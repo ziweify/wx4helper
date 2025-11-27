@@ -266,18 +266,27 @@ namespace zhaocaimao.Models.AutoBet
                 return false;
             }
             
-            // 3. 检查浏览器对象是否存在且已连接
+            // 3. 检查浏览器对象是否存在
             lock (_browserLock)
             {
+                // 🔥 如果浏览器存在且已连接，不需要启动
                 if (Browser != null && Browser.IsConnected)
                 {
                     _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器已存在且已连接，返回 false");
-                    return false; // 浏览器已存在且已连接
+                    return false;
                 }
                 
-                // 4. 🔥 如果浏览器存在但未连接（窗口已关闭），清理并允许重启
+                // 🔥 如果浏览器存在但未连接，需要区分两种情况：
                 if (Browser != null && !Browser.IsConnected)
                 {
+                    // 情况1：正在启动中（_isStartingBrowser=true），不要清理！
+                    if (_isStartingBrowser)
+                    {
+                        _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器正在启动，等待初始化完成，返回 false");
+                        return false; // 不清理，等待启动完成
+                    }
+                    
+                    // 情况2：浏览器窗口确实已关闭（_isStartingBrowser=false），清理并允许重启
                     _logService?.Info("BetConfig", $"   [ShouldStartBrowser] 检测到浏览器窗口已关闭，清理旧实例并允许重启");
                     try
                     {
@@ -295,7 +304,7 @@ namespace zhaocaimao.Models.AutoBet
                 }
             }
             
-            // 5. 浏览器不存在，需要启动
+            // 4. 浏览器不存在，需要启动
             _logService?.Debug("BetConfig", $"   [ShouldStartBrowser] 浏览器不存在，返回 true");
             return true;
         }
@@ -375,7 +384,14 @@ namespace zhaocaimao.Models.AutoBet
                 // 创建浏览器客户端
                 var newBrowser = new BrowserClient(configId: Id);
                 
-                // 🔥 启动浏览器进程（异步调用）
+                // 🔥 先设置到 Browser 属性，防止监控线程误判为"已关闭"并清理
+                lock (_browserLock)
+                {
+                    Browser = newBrowser;
+                }
+                _logService?.Info("BetConfig", $"✅ [{ConfigName}] BrowserClient 对象已创建并设置");
+                
+                // 🔥 启动浏览器窗口（异步调用）
                 bool started = await newBrowser.StartAsync(
                     port: 0,  // 0 = 使用默认端口
                     configName: ConfigName,
@@ -385,11 +401,6 @@ namespace zhaocaimao.Models.AutoBet
                 
                 if (started)
                 {
-                    // 🔥 启动成功后再设置到 Browser 属性
-                    lock (_browserLock)
-                    {
-                        Browser = newBrowser;
-                    }
                     
                     // 保存进程ID（使用内置窗口，ProcessId 为当前进程ID）
                     ProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
