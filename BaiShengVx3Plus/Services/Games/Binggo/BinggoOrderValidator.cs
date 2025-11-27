@@ -1,4 +1,5 @@
 using BaiShengVx3Plus.Contracts;
+using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Models.Games.Binggo;
 using System;
@@ -10,18 +11,25 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
     /// 
     /// 功能：
     /// 1. 验证会员余额
-    /// 2. 验证下注金额限额
+    /// 2. 验证下注金额限额（单注 + 当期累计）
     /// 3. 验证下注状态（是否封盘）
+    /// 
+    /// 🔥 参考 F5BotV2 第2445-2509行：_OrderLimitDic 机制
     /// </summary>
     public class BinggoOrderValidator
     {
         private readonly ILogService _logService;
         private readonly IConfigurationService _configService;
+        private readonly IBinggoOrderService _orderService;
         
-        public BinggoOrderValidator(ILogService logService, IConfigurationService configService)
+        public BinggoOrderValidator(
+            ILogService logService, 
+            IConfigurationService configService,
+            IBinggoOrderService orderService)
         {
             _logService = logService;
             _configService = configService;
+            _orderService = orderService;
         }
         
         /// <summary>
@@ -30,12 +38,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <param name="member">会员信息</param>
         /// <param name="betContent">下注内容</param>
         /// <param name="currentStatus">当前开奖状态</param>
+        /// <param name="currentIssueId">当前期号（用于查询累计金额）</param>
         /// <param name="errorMessage">错误信息（验证失败时）</param>
         /// <returns>是否验证通过</returns>
         public bool ValidateBet(
             V2Member member, 
             BinggoBetContent betContent, 
             BinggoLotteryStatus currentStatus,
+            int currentIssueId,
             out string errorMessage)
         {
             errorMessage = string.Empty;
@@ -59,31 +69,68 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return false;
                 }
                 
-                // 4. 验证单注金额
+                // 4. 验证单注金额 + 当期累计金额
+                // 🔥 参考 F5BotV2 第2445-2480行：_OrderLimitDic 机制
+                // 既限制单注，也限制当期累计总额
                 float minBet = _configService.GetMinBet();
                 float maxBet = _configService.GetMaxBet();
                 _logService.Info("BinggoOrderValidator", $"🔍 开始验证单注金额限制: MinBet={minBet}, MaxBet={maxBet}");
                 
                 foreach (var item in betContent.Items)
                 {
-                    _logService.Info("BinggoOrderValidator", $"   - 检查投注项: 车{item.CarNumber} {item.PlayType}, 金额={item.Amount}");
+                    // 🔥 F5BotV2 第2446行：key = $"{betitem.car}{betitem.play}"
+                    string key = $"{item.CarNumber}{item.PlayType}";
                     
+                    _logService.Info("BinggoOrderValidator", $"   - 检查投注项: {key}, 金额={item.Amount}");
+                    
+                    // 4.1 检查单注最小金额（F5BotV2 第2450行）
                     if (item.Amount < (decimal)minBet)
                     {
-                        errorMessage = $"单注金额不能小于 {minBet} 元";
+                        // 🔥 F5BotV2 第2452行格式：@{nickname} 进仓失败!{key}不能小于{minBet}
+                        errorMessage = $"进仓失败!{key}不能小于{minBet}";
                         _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
                         return false;
                     }
                     
-                    if (item.Amount > (decimal)maxBet)
+                    // 🔥 4.2 检查当期累计金额（F5BotV2 第2447-2480行）
+                    var accumulatedAmount = _orderService.GetIssueBetAmountByItem(
+                        currentIssueId, item.CarNumber, item.PlayType.ToString());
+                    
+                    _logService.Info("BinggoOrderValidator", 
+                        $"   - 当期已累计: {accumulatedAmount}, MaxBet: {maxBet}");
+                    
+                    if (accumulatedAmount == 0)
                     {
-                        errorMessage = $"单注金额不能超过 {maxBet} 元";
-                        _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
-                        return false;
+                        // 🔥 第一次投注：检查单注是否超过最大金额（F5BotV2 第2456-2460行）
+                        if (item.Amount > (decimal)maxBet)
+                        {
+                            // 🔥 F5BotV2 第2458行格式：@{nickname} 进仓失败!{key}超限,当前{amount},剩:{maxBet}
+                            errorMessage = $"进仓失败!{key}超限,当前{item.Amount},剩:{maxBet}";
+                            _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        // 🔥 第二次及以后投注：检查是否超过剩余额度（F5BotV2 第2472-2477行）
+                        decimal maxLimit = (decimal)maxBet - accumulatedAmount;
+                        
+                        _logService.Info("BinggoOrderValidator", 
+                            $"   - 剩余额度: {maxLimit}, 当前投注: {item.Amount}");
+                        
+                        if (item.Amount > maxLimit)
+                        {
+                            // 🔥 F5BotV2 第2475行格式：@{nickname} 进仓失败!{key}超限,当前{amount},剩余:{maxLimit}
+                            errorMessage = $"进仓失败!{key}超限,当前{item.Amount},剩余:{maxLimit}";
+                            _logService.Warning("BinggoOrderValidator", $"❌ {errorMessage}");
+                            _logService.Warning("BinggoOrderValidator", 
+                                $"   详情: MaxBet={maxBet}, 已累计={accumulatedAmount}, 剩余={maxLimit}");
+                            return false;
+                        }
                     }
                 }
                 
-                _logService.Info("BinggoOrderValidator", "✅ 单注金额验证通过");
+                _logService.Info("BinggoOrderValidator", "✅ 单注金额验证通过（含当期累计限额检查）");
                 
                 // 5. 验证总金额
                 decimal totalAmount = betContent.TotalAmount;

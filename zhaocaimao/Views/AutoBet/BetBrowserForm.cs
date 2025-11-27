@@ -88,8 +88,17 @@ namespace zhaocaimao.Views.AutoBet
             InitializeComponent();
             InitializeLogSystem();
             
-            // 浏览器初始化在 Load 事件中异步执行
-            this.Load += async (s, e) => await InitializeBrowserAsync();
+            // 🔥 浏览器初始化在 Load 事件中异步执行
+            // 注意：不能使用 async lambda，否则设计器无法解析
+            this.Load += BetBrowserForm_Load;
+        }
+        
+        /// <summary>
+        /// 窗体加载事件（异步初始化浏览器）
+        /// </summary>
+        private async void BetBrowserForm_Load(object? sender, EventArgs e)
+        {
+            await InitializeBrowserAsync();
         }
         
         private void InitializeComponent()

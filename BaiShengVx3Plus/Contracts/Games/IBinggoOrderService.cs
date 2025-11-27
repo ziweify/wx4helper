@@ -74,6 +74,16 @@ namespace BaiShengVx3Plus.Contracts.Games
         IEnumerable<V2MemberOrder> GetPendingOrdersForMemberAndIssue(string wxid, int issueId);
         
         /// <summary>
+        /// 🔥 获取当期指定投注项的累计金额（用于限额验证）
+        /// 参考 F5BotV2 第2447-2480行的 _OrderLimitDic 机制
+        /// </summary>
+        /// <param name="issueId">期号</param>
+        /// <param name="carNumber">车号</param>
+        /// <param name="playType">玩法（如"大"、"小"）</param>
+        /// <returns>累计金额</returns>
+        decimal GetIssueBetAmountByItem(int issueId, int carNumber, string playType);
+        
+        /// <summary>
         /// 更新订单（用于投注后更新状态）
         /// </summary>
         void UpdateOrder(V2MemberOrder order);
