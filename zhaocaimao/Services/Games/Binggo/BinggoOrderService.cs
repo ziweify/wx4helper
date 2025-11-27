@@ -105,8 +105,8 @@ namespace zhaocaimao.Services.Games.Binggo
                     return (false, betContent.ErrorMessage, null);
                 }
                 
-                // 2. 验证下注
-                if (!_validator.ValidateBet(member, betContent, currentStatus, out string errorMessage))
+                // 2. 验证下注（🔥 传入当前期号用于累计金额检查）
+                if (!_validator.ValidateBet(member, betContent, currentStatus, issueId, out string errorMessage))
                 {
                     _logService.Warning("OrderService", 
                         $"验证下注失败: {errorMessage}");
@@ -118,7 +118,8 @@ namespace zhaocaimao.Services.Games.Binggo
                         return (false, $"@{member.Nickname} 客官你的荷包是否不足!", null);
                     }
                     
-                    return (false, errorMessage, null);
+                    // 🔥 限额超限消息（参考 F5BotV2 第2458、2475行）
+                    return (false, $"@{member.Nickname} {errorMessage}", null);
                 }
                 
                 // 3. 创建订单（完全参考 F5BotV2 的 V2MemberOrder 构造函数）
@@ -566,6 +567,59 @@ namespace zhaocaimao.Services.Games.Binggo
             {
                 _logService.Error("OrderService", $"查询待处理订单失败:会员{wxid} 期号{issueId}", ex);
                 return Enumerable.Empty<V2MemberOrder>();
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 获取当期指定投注项的累计金额（用于限额验证）
+        /// 参考 F5BotV2 第2447-2480行的 _OrderLimitDic 机制
+        /// </summary>
+        public decimal GetIssueBetAmountByItem(int issueId, int carNumber, string playType)
+        {
+            if (_ordersBindingList == null) return 0;
+            
+            try
+            {
+                // 🔥 从 BindingList（内存表）查询当期所有订单
+                var orders = _ordersBindingList
+                    .Where(o => o.IssueId == issueId)
+                    .ToList();
+                
+                if (!orders.Any())
+                    return 0;
+                
+                decimal total = 0;
+                
+                // 遍历所有订单，累计指定投注项的金额
+                foreach (var order in orders)
+                {
+                    if (string.IsNullOrEmpty(order.BetContent))
+                        continue;
+                    
+                    // 解析投注内容（格式:"1大10,2小20,3单30"）
+                    var betContent = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContent(order.BetContent, issueId);
+                    
+                    if (betContent == null || betContent.Count == 0)
+                        continue;
+                    
+                    // 查找匹配的投注项（betContent 本身就是 List<BetStandardOrder>）
+                    foreach (var item in betContent)
+                    {
+                        // 比较车号（枚举转int）和玩法（枚举转字符串）
+                        if ((int)item.Car == carNumber && item.Play.ToString() == playType)
+                        {
+                            total += item.MoneySum;
+                        }
+                    }
+                }
+                
+                return total;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("OrderService", 
+                    $"获取当期投注项累计金额失败: 期号{issueId} 车{carNumber}{playType}", ex);
+                return 0;
             }
         }
         
