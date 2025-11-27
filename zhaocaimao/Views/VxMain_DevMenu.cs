@@ -22,8 +22,19 @@ namespace zhaocaimao
         private void InitializeMemberContextMenu()
         {
             // ========================================
-            // 🔥 1. 添加常规功能：手动调整余额（原有菜单基础上增加）
+            // 🔥 1. 添加常规功能（原有菜单基础上增加）
             // ========================================
+            
+            // 🔄 刷新会员（从服务器重新获取群成员列表，更新昵称）
+            var refreshMembersItem = new ToolStripMenuItem
+            {
+                Text = "🔄 刷新会员",
+                Name = "menuRefreshMembers"
+            };
+            refreshMembersItem.Click += MenuRefreshMembers_Click;
+            cmsMembers.Items.Add(refreshMembersItem);
+            
+            // 💰 手动调整余额
             var adjustBalanceItem = new ToolStripMenuItem
             {
                 Text = "💰 手动调整余额",
@@ -412,6 +423,55 @@ namespace zhaocaimao
         }
         
         #region 常用功能菜单事件
+        
+        /// <summary>
+        /// 🔄 刷新会员（从服务器重新获取群成员列表，自动更新昵称）
+        /// </summary>
+        private async void MenuRefreshMembers_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 检查是否已绑定群
+                if (_groupBindingService.CurrentBoundGroup == null)
+                {
+                    UIMessageBox.ShowWarning("请先绑定一个群组！");
+                    return;
+                }
+                
+                // 检查会员列表是否已初始化
+                if (_membersBindingList == null)
+                {
+                    UIMessageBox.ShowWarning("会员列表未初始化！");
+                    return;
+                }
+                
+                _logService.Info("VxMain", $"🔄 开始刷新群成员: {_groupBindingService.CurrentBoundGroup.Nickname}");
+                
+                // 🔥 调用 GroupBindingService 的刷新方法
+                var (success, memberCount) = await _groupBindingService.RefreshCurrentGroupMembersAsync(
+                    _socketClient,
+                    _membersBindingList);
+                
+                if (success)
+                {
+                    _logService.Info("VxMain", $"✅ 刷新完成: {memberCount} 个会员");
+                    UIMessageBox.ShowSuccess($"刷新成功！\n\n共 {memberCount} 个会员\n\n昵称变化已自动更新并记录到日志。");
+                    
+                    // 🔥 刷新统计数据
+                    _statisticsService.UpdateStatistics();
+                }
+                else
+                {
+                    _logService.Warning("VxMain", "刷新失败，请检查网络连接");
+                    UIMessageBox.ShowWarning("刷新失败！\n\n无法从服务器获取群成员列表，\n请检查网络连接或微信登录状态。");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", $"刷新会员失败: {ex.Message}", ex);
+                UIMessageBox.ShowError($"刷新会员失败！\n\n{ex.Message}");
+            }
+        }
         
         /// <summary>
         /// 💰 手动调整余额

@@ -68,6 +68,67 @@ namespace zhaocaimao.Services.GroupBinding
         }
         
         /// <summary>
+        /// 🔥 刷新当前绑定群的成员数据（供外部调用）
+        /// 
+        /// 使用场景：
+        /// 1. 点击"刷新会员"按钮
+        /// 2. 管理命令"刷新"
+        /// 
+        /// 功能：
+        /// - 从服务器重新获取群成员列表
+        /// - 自动检测并更新昵称变化
+        /// - 记录变化日志
+        /// - 自动保存到数据库
+        /// </summary>
+        public async Task<(bool success, int memberCount)> RefreshCurrentGroupMembersAsync(
+            IWeixinSocketClient socketClient,
+            V2MemberBindingList membersBindingList)
+        {
+            try
+            {
+                if (CurrentBoundGroup == null)
+                {
+                    _logService.Warning("GroupBindingService", "当前未绑定群组，无法刷新");
+                    return (false, 0);
+                }
+                
+                _logService.Info("GroupBindingService", $"🔄 刷新群成员: {CurrentBoundGroup.Nickname}");
+                
+                // 🔥 从服务器获取群成员列表
+                var serverResult = await socketClient.SendAsync<System.Text.Json.JsonDocument>("GetGroupContacts", CurrentBoundGroup.Wxid);
+                
+                if (serverResult == null || serverResult.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+                {
+                    _logService.Warning("GroupBindingService", "获取群成员失败");
+                    return (false, 0);
+                }
+                
+                // 🔥 解析服务器返回的会员数据
+                var serverMembers = ParseServerMembers(serverResult.RootElement, CurrentBoundGroup.Wxid);
+                _logService.Info("GroupBindingService", $"解析完成: {serverMembers.Count} 个");
+                
+                // 🔥 智能合并数据（会记录昵称变化日志）
+                var mergedMembers = LoadAndMergeMembers(serverMembers, CurrentBoundGroup.Wxid);
+                _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
+                
+                // 🔥 更新 BindingList
+                membersBindingList.Clear();
+                foreach (var member in mergedMembers)
+                {
+                    membersBindingList.Add(member);
+                }
+                
+                _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");
+                return (true, membersBindingList.Count);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("GroupBindingService", "刷新群成员失败", ex);
+                return (false, 0);
+            }
+        }
+        
+        /// <summary>
         /// 🔥 智能加载和合并群成员数据
         /// 
         /// 核心逻辑：
@@ -118,9 +179,48 @@ namespace zhaocaimao.Services.GroupBinding
                     if (dbMember != null)
                     {
                         // 情况1: 数据库中存在 → 使用数据库数据（保留历史统计）
-                        // 但更新基本信息（昵称、群昵称可能变化）
-                        dbMember.Nickname = serverMember.Nickname;
-                        dbMember.DisplayName = serverMember.DisplayName;
+                        // 🔥 检查并更新基本信息（昵称、群昵称可能变化）
+                        
+                        bool nicknameChanged = false;
+                        bool displayNameChanged = false;
+                        string oldNickname = dbMember.Nickname;
+                        string oldDisplayName = dbMember.DisplayName;
+                        
+                        // 🔥 检查昵称是否变化
+                        if (!string.IsNullOrEmpty(serverMember.Nickname) && 
+                            serverMember.Nickname != dbMember.Nickname)
+                        {
+                            dbMember.Nickname = serverMember.Nickname;
+                            nicknameChanged = true;
+                        }
+                        
+                        // 🔥 检查DisplayName（群昵称/备注）是否变化
+                        if (!string.IsNullOrEmpty(serverMember.DisplayName) && 
+                            serverMember.DisplayName != dbMember.DisplayName)
+                        {
+                            dbMember.DisplayName = serverMember.DisplayName;
+                            displayNameChanged = true;
+                        }
+                        
+                        // 🔥 记录变化日志
+                        if (nicknameChanged || displayNameChanged)
+                        {
+                            _logService.Warning("GroupBindingService", 
+                                $"🔄 会员信息已更新 - ID={dbMember.Id}, 微信ID={dbMember.Wxid}");
+                            
+                            if (nicknameChanged)
+                            {
+                                _logService.Warning("GroupBindingService", 
+                                    $"   ✏️ 昵称变更: [{oldNickname}] → [{dbMember.Nickname}]");
+                            }
+                            
+                            if (displayNameChanged)
+                            {
+                                _logService.Warning("GroupBindingService", 
+                                    $"   ✏️ 群昵称变更: [{oldDisplayName}] → [{dbMember.DisplayName}]" +
+                                    $" （留分名单将使用新名称）");
+                            }
+                        }
                         
                         // 如果之前是"已退群"，现在恢复为原状态或"会员"
                         if (dbMember.State == MemberState.已退群)

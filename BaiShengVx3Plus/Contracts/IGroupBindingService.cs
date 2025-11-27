@@ -40,6 +40,26 @@ namespace BaiShengVx3Plus.Contracts
         void UnbindGroup();
         
         /// <summary>
+        /// 🔥 刷新当前绑定群的成员数据
+        /// 
+        /// 使用场景：
+        /// 1. 点击"刷新会员"按钮
+        /// 2. 管理命令"刷新"
+        /// 
+        /// 功能：
+        /// - 从服务器重新获取群成员列表
+        /// - 自动检测并更新昵称变化
+        /// - 记录变化日志
+        /// - 自动保存到数据库
+        /// </summary>
+        /// <param name="socketClient">Socket 客户端</param>
+        /// <param name="membersBindingList">会员 BindingList</param>
+        /// <returns>(是否成功, 会员数量)</returns>
+        Task<(bool success, int memberCount)> RefreshCurrentGroupMembersAsync(
+            IWeixinSocketClient socketClient,
+            Core.V2MemberBindingList membersBindingList);
+        
+        /// <summary>
         /// 智能加载群成员
         /// 
         /// 逻辑：

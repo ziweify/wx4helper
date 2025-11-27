@@ -257,25 +257,62 @@ namespace zhaocaimao.Services.Messages.Handlers
                     }
                     else
                     {
-                        // 🔥 已存在的会员，记录详细信息到日志
+                        // 🔥 已存在的会员，检查昵称和DisplayName是否有变化并更新
                         existingMemberCount++;
-                        _logService.Info("AdminCommand", 
-                            $"🔄 已存在会员重新进群 - " +
-                            $"ID={existingMember.Id}, " +
-                            $"昵称={existingMember.Nickname}, " +
-                            $"微信ID={existingMember.Wxid}, " +
-                            $"状态={existingMember.State}, " +
-                            $"余额={existingMember.Balance:F2}, " +
-                            $"本期下注={existingMember.BetCur:F2}, " +
-                            $"待结算={existingMember.BetWait:F2}, " +
-                            $"今日下注={existingMember.BetToday:F2}, " +
-                            $"今日盈亏={existingMember.IncomeToday:F2}, " +
-                            $"今日上分={existingMember.CreditToday:F2}, " +
-                            $"今日下分={existingMember.WithdrawToday:F2}, " +
-                            $"总下注={existingMember.BetTotal:F2}, " +
-                            $"总盈亏={existingMember.IncomeTotal:F2}, " +
-                            $"总上分={existingMember.CreditTotal:F2}, " +
-                            $"总下分={existingMember.WithdrawTotal:F2}");
+                        
+                        bool nicknameChanged = false;
+                        bool displayNameChanged = false;
+                        string oldNickname = existingMember.Nickname;
+                        string oldDisplayName = existingMember.DisplayName;
+                        
+                        // 🔥 检查昵称是否变化
+                        if (!string.IsNullOrEmpty(serverMember.Nickname) && 
+                            serverMember.Nickname != existingMember.Nickname)
+                        {
+                            existingMember.Nickname = serverMember.Nickname;
+                            nicknameChanged = true;
+                        }
+                        
+                        // 🔥 检查DisplayName（群昵称/备注）是否变化
+                        if (!string.IsNullOrEmpty(serverMember.DisplayName) && 
+                            serverMember.DisplayName != existingMember.DisplayName)
+                        {
+                            existingMember.DisplayName = serverMember.DisplayName;
+                            displayNameChanged = true;
+                        }
+                        
+                        // 🔥 如果有变化，记录详细的变化日志
+                        if (nicknameChanged || displayNameChanged)
+                        {
+                            _logService.Warning("AdminCommand", 
+                                $"🔄 会员信息已更新 - ID={existingMember.Id}, 微信ID={existingMember.Wxid}");
+                            
+                            if (nicknameChanged)
+                            {
+                                _logService.Warning("AdminCommand", 
+                                    $"   ✏️ 昵称变更: [{oldNickname}] → [{existingMember.Nickname}]");
+                            }
+                            
+                            if (displayNameChanged)
+                            {
+                                _logService.Warning("AdminCommand", 
+                                    $"   ✏️ 群昵称变更: [{oldDisplayName}] → [{existingMember.DisplayName}]" +
+                                    $" （留分名单将使用新名称）");
+                            }
+                            
+                            // 🔥 V2MemberBindingList 会通过监听 PropertyChanged 事件自动保存到数据库
+                            // 由于 V2Member 实现了 INotifyPropertyChanged，上面的属性修改会自动触发保存
+                        }
+                        else
+                        {
+                            _logService.Info("AdminCommand", 
+                                $"🔄 已存在会员（无变化） - " +
+                                $"ID={existingMember.Id}, " +
+                                $"昵称={existingMember.Nickname}, " +
+                                $"微信ID={existingMember.Wxid}, " +
+                                $"状态={existingMember.State}, " +
+                                $"余额={existingMember.Balance:F2}");
+                        }
                     }
                 }
 

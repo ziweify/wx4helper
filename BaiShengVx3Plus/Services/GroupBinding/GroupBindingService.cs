@@ -68,6 +68,49 @@ namespace BaiShengVx3Plus.Services.GroupBinding
         }
         
         /// <summary>
+        /// 🔥 刷新当前绑定群的成员数据（供外部调用）
+        /// 
+        /// 使用场景：
+        /// 1. 点击"刷新会员"按钮
+        /// 2. 管理命令"刷新"
+        /// 
+        /// 功能：
+        /// - 从服务器重新获取群成员列表
+        /// - 自动检测并更新昵称变化
+        /// - 记录变化日志
+        /// - 自动保存到数据库
+        /// </summary>
+        public async Task<(bool success, int memberCount)> RefreshCurrentGroupMembersAsync(
+            IWeixinSocketClient socketClient,
+            V2MemberBindingList membersBindingList)
+        {
+            try
+            {
+                if (CurrentBoundGroup == null)
+                {
+                    _logService.Warning("GroupBindingService", "当前未绑定群组，无法刷新");
+                    return (false, 0);
+                }
+                
+                _logService.Info("GroupBindingService", $"🔄 刷新群成员: {CurrentBoundGroup.Nickname}");
+                
+                // 🔥 调用内部刷新方法
+                bool success = await RefreshGroupMembersInternalAsync(
+                    CurrentBoundGroup.Wxid,
+                    socketClient,
+                    membersBindingList,
+                    clearBeforeLoad: true);
+                
+                return (success, membersBindingList.Count);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("GroupBindingService", "刷新群成员失败", ex);
+                return (false, 0);
+            }
+        }
+        
+        /// <summary>
         /// 🔥 智能加载和合并群成员数据
         /// 
         /// 核心逻辑：
@@ -118,9 +161,48 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                     if (dbMember != null)
                     {
                         // 情况1: 数据库中存在 → 使用数据库数据（保留历史统计）
-                        // 但更新基本信息（昵称、群昵称可能变化）
-                        dbMember.Nickname = serverMember.Nickname;
-                        dbMember.DisplayName = serverMember.DisplayName;
+                        // 🔥 检查并更新基本信息（昵称、群昵称可能变化）
+                        
+                        bool nicknameChanged = false;
+                        bool displayNameChanged = false;
+                        string oldNickname = dbMember.Nickname;
+                        string oldDisplayName = dbMember.DisplayName;
+                        
+                        // 🔥 检查昵称是否变化
+                        if (!string.IsNullOrEmpty(serverMember.Nickname) && 
+                            serverMember.Nickname != dbMember.Nickname)
+                        {
+                            dbMember.Nickname = serverMember.Nickname;
+                            nicknameChanged = true;
+                        }
+                        
+                        // 🔥 检查DisplayName（群昵称/备注）是否变化
+                        if (!string.IsNullOrEmpty(serverMember.DisplayName) && 
+                            serverMember.DisplayName != dbMember.DisplayName)
+                        {
+                            dbMember.DisplayName = serverMember.DisplayName;
+                            displayNameChanged = true;
+                        }
+                        
+                        // 🔥 记录变化日志
+                        if (nicknameChanged || displayNameChanged)
+                        {
+                            _logService.Warning("GroupBindingService", 
+                                $"🔄 会员信息已更新 - ID={dbMember.Id}, 微信ID={dbMember.Wxid}");
+                            
+                            if (nicknameChanged)
+                            {
+                                _logService.Warning("GroupBindingService", 
+                                    $"   ✏️ 昵称变更: [{oldNickname}] → [{dbMember.Nickname}]");
+                            }
+                            
+                            if (displayNameChanged)
+                            {
+                                _logService.Warning("GroupBindingService", 
+                                    $"   ✏️ 群昵称变更: [{oldDisplayName}] → [{dbMember.DisplayName}]" +
+                                    $" （留分名单将使用新名称）");
+                            }
+                        }
                         
                         // 如果之前是"已退群"，现在恢复为原状态或"会员"
                         if (dbMember.State == MemberState.已退群)
@@ -178,6 +260,118 @@ namespace BaiShengVx3Plus.Services.GroupBinding
             {
                 _logService.Error("GroupBindingService", "合并群成员数据失败", ex);
                 return serverMembers;
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 刷新群成员数据（公共方法）
+        /// 
+        /// 职责：
+        /// 1. 从服务器获取群成员列表
+        /// 2. 智能合并数据库和服务器数据
+        /// 3. 更新 BindingList
+        /// 4. 记录昵称变化日志
+        /// 
+        /// 用途：
+        /// - 绑定群时调用（BindGroupCompleteAsync）
+        /// - 刷新会员时调用（RefreshCurrentGroupMembersAsync）
+        /// </summary>
+        private async Task<bool> RefreshGroupMembersInternalAsync(
+            string groupWxid,
+            IWeixinSocketClient socketClient,
+            V2MemberBindingList membersBindingList,
+            bool clearBeforeLoad)
+        {
+            try
+            {
+                _logService.Info("GroupBindingService", $"🔄 开始刷新群成员: {groupWxid}");
+                
+                // 🔥 1. 获取服务器数据
+                var serverResult = await socketClient.SendAsync<JsonDocument>("GetGroupContacts", groupWxid);
+                
+                if (serverResult == null)
+                {
+                    _logService.Warning("GroupBindingService", "获取群成员失败: 返回 null");
+                    
+                    // 服务器获取失败，只加载数据库数据
+                    await Task.Run(() =>
+                    {
+                        if (clearBeforeLoad)
+                        {
+                            membersBindingList.Clear();
+                        }
+                        membersBindingList.LoadFromDatabase();
+                    });
+                    _logService.Info("GroupBindingService", $"从数据库加载: {membersBindingList.Count} 个会员");
+                    return false;
+                }
+                
+                _logService.Info("GroupBindingService", $"获取成功，类型: {serverResult.RootElement.ValueKind}");
+                
+                // 🔥 2. 开发模式：使用模拟数据
+                if (_configService.GetIsRunModeDev())
+                {
+                    _logService.Info("GroupBindingService", "🔧 开发模式：使用模拟群成员数据");
+                    
+                    var mockMembers = new[]
+                    {
+                        new { username = "M100", Balance = 100f, wxid = "wxid_m100", nick_name = "nick100" },
+                        new { username = "M200", Balance = 200f, wxid = "wxid_m200", nick_name = "nick200" },
+                        new { username = "M300", Balance = 300f, wxid = "wxid_m300", nick_name = "nick300"},
+                        new { username = "M400", Balance = 400f, wxid = "wxid_m400", nick_name = "nick400" },
+                        new { username = "M500", Balance = 500f, wxid = "wxid_m500", nick_name = "nick500" }
+                    };
+                    
+                    serverResult = JsonDocument.Parse(JsonConvert.SerializeObject(mockMembers));
+                    _logService.Info("GroupBindingService", $"✅ 模拟数据: {mockMembers.Length} 个会员");
+                }
+                
+                if (serverResult.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    _logService.Warning("GroupBindingService", $"格式错误，只加载数据库数据，ValueKind={serverResult.RootElement.ValueKind}");
+                    
+                    await Task.Run(() =>
+                    {
+                        if (clearBeforeLoad)
+                        {
+                            membersBindingList.Clear();
+                        }
+                        membersBindingList.LoadFromDatabase();
+                    });
+                    _logService.Info("GroupBindingService", $"从数据库加载: {membersBindingList.Count} 个会员");
+                    return false;
+                }
+                
+                // 🔥 3. 解析服务器返回的会员数据
+                int arrayLength = serverResult.RootElement.GetArrayLength();
+                _logService.Info("GroupBindingService", $"开始解析 {arrayLength} 个群成员");
+                
+                var serverMembers = ParseServerMembers(serverResult.RootElement, groupWxid);
+                _logService.Info("GroupBindingService", $"解析完成: {serverMembers.Count} 个");
+                
+                // 🔥 4. 智能合并数据（数据库 + 服务器，会记录昵称变化日志）
+                var mergedMembers = LoadAndMergeMembers(serverMembers, groupWxid);
+                _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
+                
+                // 🔥 5. 更新 BindingList
+                if (clearBeforeLoad)
+                {
+                    membersBindingList.Clear();
+                    _logService.Info("GroupBindingService", "已清空会员列表，准备重新加载");
+                }
+                
+                foreach (var member in mergedMembers)
+                {
+                    membersBindingList.Add(member);
+                }
+                
+                _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("GroupBindingService", $"刷新群成员失败: {ex.Message}", ex);
+                return false;
             }
         }
         
@@ -281,95 +475,12 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 
                 _logService.Info("GroupBindingService", $"✅ 从数据库加载: {creditWithdrawsBindingList.Count} 条上下分记录");
                 
-                // 🔥 4.5. 获取全局配置（从 IConfigurationService）
-                bool isRunModeDev = _configService.GetIsRunModeDev();
-                _logService.Info("GroupBindingService", $"✅ 全局配置: IsRunModeDev = {isRunModeDev}");
-                
-                // 🔥 5. 获取服务器数据并智能合并会员
-                _logService.Info("GroupBindingService", $"开始获取群成员: {contact.Nickname} ({contact.Wxid})");
-                
-                var serverResult = await socketClient.SendAsync<JsonDocument>("GetGroupContacts", contact.Wxid);
-                
-                // 🔥 检查返回结果
-                if (serverResult == null)
-                {
-                    _logService.Warning("GroupBindingService", "获取群成员失败: 返回 null");
-                }
-                else
-                {
-                    _logService.Info("GroupBindingService", $"获取成功，类型: {serverResult.RootElement.ValueKind}");
-                    if (serverResult.RootElement.ValueKind == JsonValueKind.Array)
-                    {
-                        _logService.Info("GroupBindingService", $"数组长度: {serverResult.RootElement.GetArrayLength()}");
-                    }
-                }
-                
-                // 🔥 5.1. 开发模式：使用模拟数据
-                if (_configService.GetIsRunModeDev())
-                {
-                    _logService.Info("GroupBindingService", "🔧 开发模式：使用模拟群成员数据");
-                    
-                    var mockMembers = new[]
-                    {
-                        new { username = "M100", Balance = 100f, wxid = "wxid_m100", nick_name = "nick100" },
-                        new { username = "M200", Balance = 200f, wxid = "wxid_m200", nick_name = "nick200" },
-                        new { username = "M300", Balance = 300f, wxid = "wxid_m300", nick_name = "nick300"},
-                        new { username = "M400", Balance = 400f, wxid = "wxid_m400", nick_name = "nick400" },
-                        new { username = "M500", Balance = 500f, wxid = "wxid_m500", nick_name = "nick500" }
-                    };
-                    
-                    serverResult = JsonDocument.Parse(JsonConvert.SerializeObject(mockMembers));
-                    _logService.Info("GroupBindingService", $"✅ 模拟数据: {mockMembers.Length} 个会员");
-                }
-
-                if (serverResult == null || serverResult.RootElement.ValueKind != JsonValueKind.Array)
-                {
-                    // 服务器获取失败，只加载数据库数据
-                    _logService.Warning("GroupBindingService", $"获取失败或格式错误，只加载数据库数据");
-                    if (serverResult != null)
-                    {
-                        _logService.Warning("GroupBindingService", $"ValueKind={serverResult.RootElement.ValueKind}");
-                    }
-                    
-                    await Task.Run(() =>
-                    {
-                        // 🔥 关键修复：如果是复用已有实例，先 Clear() 再加载
-                        if (!isFirstTimeBinding)
-                        {
-                            membersBindingList.Clear();
-                        }
-                        membersBindingList.LoadFromDatabase();
-                    });
-                    _logService.Info("GroupBindingService", $"从数据库加载: {membersBindingList.Count} 个会员");
-                }
-                else
-                {
-                    // 🔥 6. 解析服务器返回的会员数据
-                    int arrayLength = serverResult.RootElement.GetArrayLength();
-                    _logService.Info("GroupBindingService", $"开始解析 {arrayLength} 个群成员");
-                    
-                    var serverMembers = ParseServerMembers(serverResult.RootElement, contact.Wxid);
-                    _logService.Info("GroupBindingService", $"解析完成: {serverMembers.Count} 个");
-                    
-                    // 🔥 7. 智能合并数据（数据库 + 服务器）
-                    var mergedMembers = LoadAndMergeMembers(serverMembers, contact.Wxid);
-                    _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
-                    
-                    // 🔥 8. 加载合并后的完整列表
-                    // 🔥 关键修复：如果是复用已有实例，先 Clear() 再 Add
-                    if (!isFirstTimeBinding)
-                    {
-                        membersBindingList.Clear();
-                        _logService.Info("GroupBindingService", "已清空会员列表，准备重新加载");
-                    }
-                    
-                    foreach (var member in mergedMembers)
-                    {
-                        membersBindingList.Add(member);
-                    }
-                    
-                    _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");
-                }
+                // 🔥 5. 刷新群成员数据（调用提取的公共方法）
+                await RefreshGroupMembersInternalAsync(
+                    contact.Wxid, 
+                    socketClient, 
+                    membersBindingList, 
+                    clearBeforeLoad: !isFirstTimeBinding);
                 
                 // 🔥 9. 更新会员的上下分统计
                 creditWithdrawsBindingList.UpdateMemberStatistics(membersBindingList);
