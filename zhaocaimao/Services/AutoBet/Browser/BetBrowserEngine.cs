@@ -130,14 +130,29 @@ namespace zhaocaimao.Services.AutoBet.Browser
             var platformEnum = BetPlatformHelper.Parse(_platform);
             Action<string> logCallback = (msg) => OnLog?.Invoke(msg);
             
-            // 🔥 根据平台创建对应的脚本实例
+            // 🔥 根据平台创建对应的脚本实例（参考 F5BotV2 BetSiteFactory）
             _platformScript = platformEnum switch
             {
-                BetPlatform.云顶 => CreateYunDing28Script(logCallback),
+                BetPlatform.不使用盘口 => CreateNoneSiteScript(logCallback),
+                BetPlatform.元宇宙2 => CreateYYZ2Script(logCallback),
+                BetPlatform.海峡 => CreateHaiXiaScript(logCallback),
+                BetPlatform.QT => CreateQtScript(logCallback),
+                BetPlatform.茅台 => CreateMt168Script(logCallback),
+                BetPlatform.太平洋 => CreateMt168Script(logCallback), // 🔥 复用茅台脚本（F5BotV2也是如此）
+                BetPlatform.蓝A => CreateLanAScript(logCallback),
+                BetPlatform.红海 => CreateHongHaiScript(logCallback),
+                BetPlatform.S880 => CreateS880Script(logCallback),
+                BetPlatform.ADK => CreateADKScript(logCallback),
+                BetPlatform.红海无名 => CreateHongHaiWuMingScript(logCallback),
+                BetPlatform.果然 => CreateKk888Script(logCallback), // 🔥 Kk888（F5BotV2中的Kk888Member）
+                BetPlatform.蓝B => CreateQtScript(logCallback), // 🔥 修正：蓝B 使用QT脚本（F5BotV2也是如此）
+                BetPlatform.AC => CreateAcScript(logCallback),
                 BetPlatform.通宝 => CreateTongBaoScript(logCallback),
-                BetPlatform.海峡 => CreateYunDing28Script(logCallback), // 暂用云顶脚本
-                BetPlatform.红海 => CreateYunDing28Script(logCallback), // 暂用云顶脚本
-                _ => CreateYunDing28Script(logCallback)
+                BetPlatform.通宝PC => CreateTongBaoPcScript(logCallback),
+                BetPlatform.HY168 => CreateHy168Script(logCallback),
+                BetPlatform.bingo168 => CreateHy168Script(logCallback), // 🔥 bingo168 使用HY168脚本
+                BetPlatform.云顶 => CreateYunDing28Script(logCallback),
+                _ => CreateNoneSiteScript(logCallback) // 默认使用"不使用盘口"
             };
         }
         
@@ -169,6 +184,230 @@ namespace zhaocaimao.Services.AutoBet.Browser
             catch (Exception ex)
             {
                 OnLog?.Invoke($"❌ 创建通宝脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建"不使用盘口"脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateNoneSiteScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.NoneSiteScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建NoneSite脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建元宇宙2脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateYYZ2Script(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.YYZ2Script(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建元宇宙2脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建海峡脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateHaiXiaScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.HaiXiaScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建海峡脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建QT脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateQtScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.QtScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建QT脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建茅台脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateMt168Script(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.Mt168Script(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建茅台脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建蓝A脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateLanAScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.LanAScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建蓝A脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建红海脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateHongHaiScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.HongHaiScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建红海脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建S880脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateS880Script(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.S880Script(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建S880脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建ADK脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateADKScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.ADKScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建ADK脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建红海无名脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateHongHaiWuMingScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.HongHaiWuMingScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建红海无名脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建AC脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateAcScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.AcScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建AC脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建通宝PC脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateTongBaoPcScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.TongBaoPcScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建通宝PC脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建Kk888脚本（果然）
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateKk888Script(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.Kk888Script(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建Kk888脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建HY168脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateHy168Script(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.Hy168bingoScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建HY168脚本失败: {ex.Message}");
                 return null;
             }
         }

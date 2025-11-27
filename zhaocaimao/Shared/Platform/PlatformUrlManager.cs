@@ -8,34 +8,15 @@ namespace zhaocaimao.Shared.Platform
     /// <summary>
     /// 平台URL管理器（统一管理所有平台的默认URL）
     /// 支持从服务器接口获取URL，支持强制更新
+    /// 
+    /// 🔥 数据源：所有URL从 BetPlatformHelper 获取，避免重复维护
     /// </summary>
     public static class PlatformUrlManager
     {
         /// <summary>
-        /// 平台URL映射表（唯一数据源）
-        /// </summary>
-        private static readonly Dictionary<string, string> _platformUrls = new()
-        {
-            // 中文平台名称
-            { "通宝", "https://yb666.fr.win2000.cc" },
-            { "云顶", "https://www.yunding28.com" },
-            { "海峡", "https://www.haixia28.com" },
-            { "红海", "https://www.honghai28.com" },
-            
-            // 兼容旧平台名称
-            { "TongBao", "https://yb666.fr.win2000.cc" },
-            { "YunDing", "https://www.yunding28.com" },
-            { "YunDing28", "https://www.yunding28.com" },
-            { "HaiXia", "https://www.haixia28.com" },
-            { "HaiXia28", "https://www.haixia28.com" },
-            { "HongHai", "https://www.honghai28.com" },
-            { "HongHai28", "https://www.honghai28.com" }
-        };
-
-        /// <summary>
         /// 强制更新的URL映射（优先级高于默认URL，用于服务器推送的更新）
         /// </summary>
-        private static readonly Dictionary<string, string> _forcedUrls = new();
+        private static readonly Dictionary<string, string> _forcedUrls = new Dictionary<string, string>();
 
         /// <summary>
         /// 服务器URL更新事件
@@ -56,16 +37,15 @@ namespace zhaocaimao.Shared.Platform
             if (_forcedUrls.TryGetValue(platformName, out var forcedUrl))
                 return forcedUrl;
 
-            // 2. 检查默认URL映射
-            if (_platformUrls.TryGetValue(platformName, out var defaultUrl))
-                return defaultUrl;
-
-            // 3. 尝试通过 BetPlatform 枚举解析
-            var platform = BetPlatformHelper.Parse(platformName);
-            if (_platformUrls.TryGetValue(platform.ToString(), out var enumUrl))
-                return enumUrl;
-
-            return "";
+            // 2. 从 BetPlatformHelper 获取默认URL（唯一数据源）
+            try
+            {
+                return BetPlatformHelper.GetDefaultUrl(platformName);
+            }
+            catch
+            {
+                return "";
+            }
         }
 
         /// <summary>
@@ -75,7 +55,13 @@ namespace zhaocaimao.Shared.Platform
         /// <returns>平台URL</returns>
         public static string GetDefaultUrl(BetPlatform platform)
         {
-            return GetDefaultUrl(platform.ToString());
+            // 1. 先检查强制更新的URL
+            var platformName = platform.ToString();
+            if (_forcedUrls.TryGetValue(platformName, out var forcedUrl))
+                return forcedUrl;
+
+            // 2. 从 BetPlatformHelper 获取
+            return BetPlatformHelper.GetDefaultUrl(platform);
         }
 
         /// <summary>
@@ -184,7 +170,14 @@ namespace zhaocaimao.Shared.Platform
         /// <returns>平台URL字典</returns>
         public static Dictionary<string, string> GetAllUrls()
         {
-            var result = new Dictionary<string, string>(_platformUrls);
+            // 从 BetPlatformHelper 获取所有平台的默认URL
+            var result = new Dictionary<string, string>();
+            
+            foreach (var platform in BetPlatformHelper.GetAllPlatforms())
+            {
+                var name = platform.ToString();
+                result[name] = BetPlatformHelper.GetDefaultUrl(platform);
+            }
             
             // 合并强制更新的URL（覆盖默认URL）
             foreach (var kvp in _forcedUrls)
@@ -215,8 +208,4 @@ namespace zhaocaimao.Shared.Platform
         public string NewUrl { get; set; } = "";
         public bool IsForced { get; set; }
     }
-
-    // 注意：BetPlatform 和 BetPlatformHelper 已在 zhaocaimao.Shared 项目中定义
-    // 这里不再重复定义，直接使用 zhaocaimao.Shared.Platform 命名空间中的类型
 }
-

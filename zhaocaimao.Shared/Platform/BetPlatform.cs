@@ -48,32 +48,121 @@ namespace zhaocaimao.Shared.Platform
     public static class BetPlatformHelper
     {
         /// <summary>
-        /// 所有平台配置（唯一数据源）
+        /// 🔥 所有平台配置（唯一数据源，参考 F5BotV2 BetSiteFactory）
+        /// 维护此文件即可同步更新"配置管理"和"快速设置"的盘口选项
         /// </summary>
         private static readonly Dictionary<BetPlatform, PlatformInfo> _platforms = new()
         {
             {
-                BetPlatform.云顶, new PlatformInfo
+                BetPlatform.不使用盘口, new PlatformInfo
                 {
-                    Platform = BetPlatform.云顶,
-                    DefaultUrl = "https://yd28.vip",
-                    LegacyNames = new[] { "YunDing", "YunDing28", "yunding", "yunding28" }
+                    Platform = BetPlatform.不使用盘口,
+                    DefaultUrl = "about:blank",
+                    LegacyNames = new[] { "None", "NoneSite" }
+                }
+            },
+            {
+                BetPlatform.元宇宙2, new PlatformInfo
+                {
+                    Platform = BetPlatform.元宇宙2,
+                    DefaultUrl = "http://yyz.168app.net/2/",
+                    LegacyNames = new[] { "YYZ2", "YuanYuZhou2", "YuanYuZhou" }
                 }
             },
             {
                 BetPlatform.海峡, new PlatformInfo
                 {
                     Platform = BetPlatform.海峡,
-                    DefaultUrl = "https://hx28.vip",
-                    LegacyNames = new[] { "HaiXia", "HaiXia28", "haixia", "haixia28" }
+                    DefaultUrl = "https://4921031761-cj.mm666.co/",
+                    LegacyNames = new[] { "HaiXia", "HaiXia28", "HX", "HX666" }
+                }
+            },
+            {
+                BetPlatform.QT, new PlatformInfo
+                {
+                    Platform = BetPlatform.QT,
+                    DefaultUrl = "http://119.23.246.81/qt/",
+                    LegacyNames = new[] { "Qt", "QTBet" }
+                }
+            },
+            {
+                BetPlatform.茅台, new PlatformInfo
+                {
+                    Platform = BetPlatform.茅台,
+                    DefaultUrl = "https://8912794526-tky.c4ux0uslgd.com/",
+                    LegacyNames = new[] { "MaoTai", "Mt168", "MT" }
+                }
+            },
+            {
+                BetPlatform.太平洋, new PlatformInfo
+                {
+                    Platform = BetPlatform.太平洋,
+                    DefaultUrl = "https://8912794526-tky.c4ux0uslgd.com/",  // 🔥 复用茅台URL（F5BotV2中两者共用）
+                    LegacyNames = new[] { "TaiPingYang", "TPY" }
+                }
+            },
+            {
+                BetPlatform.蓝A, new PlatformInfo
+                {
+                    Platform = BetPlatform.蓝A,
+                    DefaultUrl = "https://lana.example.com/",  // 🔥 需要用户手动配置（F5BotV2中未设置默认URL）
+                    LegacyNames = new[] { "LanA", "BlueA" }
                 }
             },
             {
                 BetPlatform.红海, new PlatformInfo
                 {
                     Platform = BetPlatform.红海,
-                    DefaultUrl = "https://hh28.vip",
-                    LegacyNames = new[] { "HongHai", "HongHai28", "honghai", "honghai28" }
+                    DefaultUrl = "https://pjpctreyoobvf.6f888.net/#/",
+                    LegacyNames = new[] { "HongHai", "HH" }
+                }
+            },
+            {
+                BetPlatform.S880, new PlatformInfo
+                {
+                    Platform = BetPlatform.S880,
+                    DefaultUrl = "http://47.106.119.141:880/",
+                    LegacyNames = new[] { "s880" }
+                }
+            },
+            {
+                BetPlatform.ADK, new PlatformInfo
+                {
+                    Platform = BetPlatform.ADK,
+                    DefaultUrl = "https://yk.adkdkdkd.com/",
+                    LegacyNames = new[] { "adk" }
+                }
+            },
+            {
+                BetPlatform.红海无名, new PlatformInfo
+                {
+                    Platform = BetPlatform.红海无名,
+                    DefaultUrl = "https://pjpctreyoobvf.6f888.net/#/",
+                    LegacyNames = new[] { "HongHaiWuMing", "HHWM" }
+                }
+            },
+            {
+                BetPlatform.果然, new PlatformInfo
+                {
+                    Platform = BetPlatform.果然,
+                    DefaultUrl = "https://kk888.link/",
+                    LegacyNames = new[] { "GuoRan", "Kk888" }
+                }
+            },
+            {
+                BetPlatform.蓝B, new PlatformInfo
+                {
+                    Platform = BetPlatform.蓝B,
+                    DefaultUrl = "http://119.23.246.81/qt/",  // 🔥 复用QT的URL（F5BotV2中两者共用QtBet脚本）
+                    LegacyNames = new[] { "LanB", "BlueB" }
+                }
+            },
+            {
+                BetPlatform.AC, new PlatformInfo
+                {
+                    Platform = BetPlatform.AC,
+                    DefaultUrl = "https://3151135604-acyl.yy777.co/",
+                    LegacyNames = new[] { "ac", "Ac" }
                 }
             },
             {
@@ -81,11 +170,41 @@ namespace zhaocaimao.Shared.Platform
                 {
                     Platform = BetPlatform.通宝,
                     DefaultUrl = "https://tbfowenb.fr.cvv66.top/",
-                    LegacyNames = new[] { "TongBao", "TongBao28", "tongbao", "tongbao28" }
+                    LegacyNames = new[] { "TongBao", "TB" }
+                }
+            },
+            {
+                BetPlatform.通宝PC, new PlatformInfo
+                {
+                    Platform = BetPlatform.通宝PC,
+                    DefaultUrl = "https://tbfowenb.fr.cvv66.top/",
+                    LegacyNames = new[] { "TongBaoPC", "TBPC" }
+                }
+            },
+            {
+                BetPlatform.HY168, new PlatformInfo
+                {
+                    Platform = BetPlatform.HY168,
+                    DefaultUrl = "http://hy.168bingo.top/",
+                    LegacyNames = new[] { "hy168", "HY" }
+                }
+            },
+            {
+                BetPlatform.bingo168, new PlatformInfo
+                {
+                    Platform = BetPlatform.bingo168,
+                    DefaultUrl = "http://hy.168bingo.top/",  // 🔥 复用HY168的URL（F5BotV2中两者共用）
+                    LegacyNames = new[] { "Bingo168", "bingo" }
+                }
+            },
+            {
+                BetPlatform.云顶, new PlatformInfo
+                {
+                    Platform = BetPlatform.云顶,
+                    DefaultUrl = "https://yd28.vip",
+                    LegacyNames = new[] { "YunDing", "YunDing28", "YD" }
                 }
             }
-            // 注意：其他新增平台（元宇宙2、QT、茅台等）的URL配置需要在 PlatformUrlManager 中配置
-            // 这里只配置有明确URL的平台
         };
         
         /// <summary>
@@ -106,15 +225,15 @@ namespace zhaocaimao.Shared.Platform
             if (Enum.TryParse<BetPlatform>(name, out var platform))
                 return platform;
             
-            // 2. 兼容旧的英文名
+            // 2. 兼容旧的英文名（支持 F5BotV2 的旧数据格式）
             foreach (var kvp in _platforms)
             {
                 if (kvp.Value.LegacyNames.Any(n => n.Equals(name, StringComparison.OrdinalIgnoreCase)))
                     return kvp.Key;
             }
             
-            // 3. 默认返回云顶
-            return BetPlatform.云顶;
+            // 3. 默认返回"不使用盘口"（避免误操作）
+            return BetPlatform.不使用盘口;
         }
         
         /// <summary>
