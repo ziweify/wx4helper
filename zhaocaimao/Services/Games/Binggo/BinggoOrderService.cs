@@ -37,6 +37,10 @@ namespace zhaocaimao.Services.Games.Binggo
         // 参考用户要求："所有会员表，订单表的操作，要变成同步操作。而且是应用级别的同步"
         private static readonly object _memberBalanceLock = new object();
         
+        // 🔥 限额检查锁：保护"查询累计金额→验证限额→保存订单"的原子操作
+        // 防止并发竞态导致限额超限（参考 F5BotV2 _OrderLimitDic 机制）
+        private static readonly object _orderLimitCheckLock = new object();
+        
         public BinggoOrderService(
             ILogService logService,
             IBinggoLotteryService lotteryService,
@@ -105,31 +109,46 @@ namespace zhaocaimao.Services.Games.Binggo
                     return (false, betContent.ErrorMessage, null);
                 }
                 
-                // 2. 验证下注（🔥 传入当前期号用于累计金额检查）
-                if (!_validator.ValidateBet(member, betContent, currentStatus, issueId, out string errorMessage))
+                // 2. 🔥 验证下注 + 创建订单（使用锁保护，防止并发竞态）
+                V2MemberOrder? order = null;
+                lock (_orderLimitCheckLock)
                 {
-                    _logService.Warning("OrderService", 
-                        $"验证下注失败: {errorMessage}");
-                    
-                    // 🔥 余额不足消息格式完全按照 F5BotV2 第2430行：@{m.nickname} {Reply_余额不足}
-                    // Reply_余额不足 = "客官你的荷包是否不足!"（F5BotV2 第194行）
-                    if (errorMessage == "余额不足")
+                    // 2.1 查询当期所有投注项的累计金额（🔥 在锁内查询，确保是最新数据）
+                    var accumulatedAmounts = new Dictionary<string, decimal>();
+                    foreach (var item in betContent.Items)
                     {
-                        return (false, $"@{member.Nickname} 客官你的荷包是否不足!", null);
+                        string key = $"{item.CarNumber}{item.PlayType}";
+                        if (!accumulatedAmounts.ContainsKey(key))
+                        {
+                            accumulatedAmounts[key] = GetIssueBetAmountByItem(issueId, item.CarNumber, item.PlayType.ToString());
+                        }
                     }
                     
-                    // 🔥 限额超限消息（参考 F5BotV2 第2458、2475行）
-                    return (false, $"@{member.Nickname} {errorMessage}", null);
-                }
-                
-                // 3. 创建订单（完全参考 F5BotV2 的 V2MemberOrder 构造函数）
-                long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
-                
-                // 🔥 记录注前金额和注后金额
-                float betFronMoney = member.Balance;  // 下注前余额
-                float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（暂存）
-                
-                var order = new V2MemberOrder
+                    // 2.2 验证下注（传入累计金额字典）
+                    if (!_validator.ValidateBet(member, betContent, currentStatus, accumulatedAmounts, out string errorMessage))
+                    {
+                        _logService.Warning("OrderService", 
+                            $"验证下注失败: {errorMessage}");
+                        
+                        // 🔥 余额不足消息格式完全按照 F5BotV2 第2430行：@{m.nickname} {Reply_余额不足}
+                        // Reply_余额不足 = "客官你的荷包是否不足!"（F5BotV2 第194行）
+                        if (errorMessage == "余额不足")
+                        {
+                            return (false, $"@{member.Nickname} 客官你的荷包是否不足!", null);
+                        }
+                        
+                        // 🔥 限额超限消息（参考 F5BotV2 第2458、2475行）
+                        return (false, $"@{member.Nickname} {errorMessage}", null);
+                    }
+                    
+                    // 2.3 验证通过，立即创建订单对象（在锁内，确保原子性）
+                    long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
+                    
+                    // 🔥 记录注前金额和注后金额
+                    float betFronMoney = member.Balance;  // 下注前余额
+                    float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（暂存）
+                    
+                    order = new V2MemberOrder
                 {
                     // 🔥 会员信息
                     Wxid = member.Wxid,
@@ -169,12 +188,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     BetAmount = betContent.TotalAmount
                 };
                 
-                // 🔥 4. 使用应用级别的锁保护会员余额和订单的同步更新
+                // 🔥 2.4 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
                 // 参考 F5BotV2: V2Member.AddOrder 方法（第430-439行）
-                lock (_memberBalanceLock)
-                {
-                    // 4.1 扣除余额
+                    lock (_memberBalanceLock)
+                    {
+                        // 2.4.1 扣除余额
                     // 🔥 重要：托单也要扣钱！（用户要求："托照样正常结算，什么都是走正常流程的，仅仅不投注而已"）
                     // 只有管理员不扣钱
                     if (member.State != MemberState.管理)
@@ -188,7 +207,7 @@ namespace zhaocaimao.Services.Games.Binggo
                             $"🔒 [下单] {member.Nickname} - 扣除 {betContent.TotalAmount:F2}，扣除后余额: {member.Balance:F2}");
                     }
                     
-                    // 4.2 增加待结算金额和统计（参考 F5BotV2 第 546 行）
+                    // 2.4.2 增加待结算金额和统计（参考 F5BotV2 第 546 行）
                     // 🔥 重要：托单也要增加统计！（会员个人统计）
                     member.BetWait += (float)betContent.TotalAmount;
                     member.BetToday += (float)betContent.TotalAmount;
@@ -198,20 +217,23 @@ namespace zhaocaimao.Services.Games.Binggo
                     _logService.Info("OrderService", 
                         $"🔒 [下单] {member.Nickname} - 待结算: {member.BetWait:F2}, 今日下注: {member.BetToday:F2}");
                     
-                    // 4.3 保存订单（插入到列表顶部，保持"最新在上"）
-                    if (_ordersBindingList != null && _ordersBindingList.Count > 0)
-                    {
-                        _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                        // 2.4.3 保存订单（插入到列表顶部，保持"最新在上"）
+                        if (_ordersBindingList != null && _ordersBindingList.Count > 0)
+                        {
+                            _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                        }
+                        else
+                        {
+                            _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
+                        }
+                        
+                        _logService.Info("OrderService", 
+                            $"🔒 [下单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
                     }
-                    else
-                    {
-                        _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
-                    }
+                    // 🔥 锁释放：会员余额、订单数据已同步写入
                     
-                    _logService.Info("OrderService", 
-                        $"🔒 [下单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
-                }
-                // 🔥 锁释放：会员余额、订单数据已同步写入
+                } // 🔥 关闭 _orderLimitCheckLock 锁
+                // 锁释放：限额验证-订单创建的原子操作完成
                 
                 _logService.Info("OrderService", 
                     $"✅ 订单创建成功: {member.Nickname} - {betContent.ToStandardString()} - {betContent.TotalAmount:F2}元");
@@ -573,6 +595,11 @@ namespace zhaocaimao.Services.Games.Binggo
         /// <summary>
         /// 🔥 获取当期指定投注项的累计金额（用于限额验证）
         /// 参考 F5BotV2 第2447-2480行的 _OrderLimitDic 机制
+        /// 
+        /// 🎯 重要：
+        /// 1. 只统计当期订单（期号变更后自动重置）
+        /// 2. 排除已取消的订单（F5BotV2 第2517-2544行：取消时恢复额度）
+        /// 3. 实时查询，无需手动清空（F5BotV2 第1258行：封盘后 Clear）
         /// </summary>
         public decimal GetIssueBetAmountByItem(int issueId, int carNumber, string playType)
         {
@@ -581,8 +608,9 @@ namespace zhaocaimao.Services.Games.Binggo
             try
             {
                 // 🔥 从 BindingList（内存表）查询当期所有订单
+                // 🔥 排除已取消的订单（参考 F5BotV2 第2517-2544行：OnOrderMoneyLimitCacel 恢复额度）
                 var orders = _ordersBindingList
-                    .Where(o => o.IssueId == issueId)
+                    .Where(o => o.IssueId == issueId && o.OrderStatus != OrderStatus.已取消)
                     .ToList();
                 
                 if (!orders.Any())

@@ -1,8 +1,8 @@
 using zhaocaimao.Contracts;
-using zhaocaimao.Contracts.Games;
 using zhaocaimao.Models;
 using zhaocaimao.Models.Games.Binggo;
 using System;
+using System.Collections.Generic;
 
 namespace zhaocaimao.Services.Games.Binggo
 {
@@ -20,16 +20,13 @@ namespace zhaocaimao.Services.Games.Binggo
     {
         private readonly ILogService _logService;
         private readonly IConfigurationService _configService;
-        private readonly IBinggoOrderService _orderService;
         
         public BinggoOrderValidator(
             ILogService logService, 
-            IConfigurationService configService,
-            IBinggoOrderService orderService)
+            IConfigurationService configService)
         {
             _logService = logService;
             _configService = configService;
-            _orderService = orderService;
         }
         
         /// <summary>
@@ -38,14 +35,14 @@ namespace zhaocaimao.Services.Games.Binggo
         /// <param name="member">会员信息</param>
         /// <param name="betContent">下注内容</param>
         /// <param name="currentStatus">当前开奖状态</param>
-        /// <param name="currentIssueId">当前期号（用于查询累计金额）</param>
+        /// <param name="accumulatedAmounts">当期已累计金额字典（key="{车号}{玩法}", value=累计金额）</param>
         /// <param name="errorMessage">错误信息（验证失败时）</param>
         /// <returns>是否验证通过</returns>
         public bool ValidateBet(
             V2Member member, 
             BinggoBetContent betContent, 
             BinggoLotteryStatus currentStatus,
-            int currentIssueId,
+            Dictionary<string, decimal> accumulatedAmounts,
             out string errorMessage)
         {
             errorMessage = string.Empty;
@@ -93,8 +90,12 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     
                     // 🔥 4.2 检查当期累计金额（F5BotV2 第2447-2480行）
-                    var accumulatedAmount = _orderService.GetIssueBetAmountByItem(
-                        currentIssueId, item.CarNumber, item.PlayType.ToString());
+                    // 🔥 从传入的字典中获取累计金额（避免循环依赖）
+                    decimal accumulatedAmount = 0;
+                    if (accumulatedAmounts.TryGetValue(key, out var accumulated))
+                    {
+                        accumulatedAmount = accumulated;
+                    }
                     
                     _logService.Info("OrderValidator", 
                         $"   - 当期已累计: {accumulatedAmount}, MaxBet: {maxBet}");
