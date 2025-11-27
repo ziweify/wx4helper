@@ -246,7 +246,7 @@ namespace zhaocaimao
                 
                 var dataDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "智能管理系统",
+                    "zhaocaimao",
                     "Data");
                 Directory.CreateDirectory(dataDirectory);
                 
@@ -2188,7 +2188,7 @@ namespace zhaocaimao
                         // 🔥 使用 AppData\Local 目录存储备份
                         var backupDirectory = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "智能管理系统",
+                            "zhaocaimao",
                             "Data",
                             "Backup");
                         

@@ -68,84 +68,93 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 // 4. 验证单注金额 + 当期累计金额
                 // 🔥 参考 F5BotV2 第2445-2480行：_OrderLimitDic 机制
-                // 既限制单注，也限制当期累计总额
+                // 🔥 关键改进：先对当前订单内的投注项按 {车号}{玩法} 分组求和
+                // 🔥 防止漏洞：用户输入 "11111大20000" 会被解析为 5 个 "1大20000"
+                //             如果不分组，每个都单独检查，会绕过限额！
                 float minBet = _configService.GetMinBet();
                 float maxBet = _configService.GetMaxBet();
                 _logService.Info("OrderValidator", $"🔍 开始验证单注金额限制: MinBet={minBet}, MaxBet={maxBet}");
                 
+                // 🔥 步骤1：对当前订单内的投注项分组求和
+                var currentOrderGrouped = new Dictionary<string, decimal>();
                 foreach (var item in betContent.Items)
                 {
-                    // 🔥 F5BotV2 第2446行：key = $"{betitem.car}{betitem.play}"
                     string key = $"{item.CarNumber}{item.PlayType}";
+                    if (!currentOrderGrouped.ContainsKey(key))
+                    {
+                        currentOrderGrouped[key] = 0;
+                    }
+                    currentOrderGrouped[key] += item.Amount;
+                }
+                
+                _logService.Info("OrderValidator", 
+                    $"📊 当前订单分组后共 {currentOrderGrouped.Count} 个投注项（原始 {betContent.Items.Count} 个）");
+                
+                // 🔥 步骤2：对分组后的每个投注项进行限额检查
+                foreach (var kvp in currentOrderGrouped)
+                {
+                    string key = kvp.Key;
+                    decimal currentAmount = kvp.Value;
                     
-                    _logService.Info("OrderValidator", $"   - 检查投注项: {key}, 金额={item.Amount}");
+                    _logService.Info("OrderValidator", $"   - 检查投注项: {key}, 本单金额={currentAmount}");
                     
                     // 4.1 检查单注最小金额（F5BotV2 第2450行）
-                    if (item.Amount < (decimal)minBet)
+                    if (currentAmount < (decimal)minBet)
                     {
                         // 🔥 F5BotV2 第2452行格式：@{nickname} 进仓失败!{key}不能小于{minBet}
-                        errorMessage = $"进仓失败!{key}不能小于{minBet}";
-                        _logService.Warning("OrderValidator", $"❌ {errorMessage}（实际: {item.Amount}）");
+                        // 🔥 数字格式：整数（不带小数点）
+                        errorMessage = $"进仓失败!{key}不能小于{(int)minBet}";
+                        _logService.Warning("OrderValidator", $"❌ {errorMessage}（实际: {currentAmount}）");
                         return false;
                     }
                     
-                    // 🔥 4.2 检查当期累计金额（F5BotV2 第2447-2480行）
-                    // 🔥 从传入的字典中获取累计金额（避免循环依赖）
-                    decimal accumulatedAmount = 0;
+                    // 🔥 4.2 检查当期累计金额（历史 + 本单）
+                    decimal historicalAmount = 0;
                     if (accumulatedAmounts.TryGetValue(key, out var accumulated))
                     {
-                        accumulatedAmount = accumulated;
+                        historicalAmount = accumulated;
                     }
+                    
+                    // 🔥 总累计 = 历史累计 + 本单金额
+                    decimal totalAccumulated = historicalAmount + currentAmount;
                     
                     _logService.Info("OrderValidator", 
-                        $"   - 当期已累计: {accumulatedAmount}, MaxBet: {maxBet}");
+                        $"   - 历史累计: {historicalAmount}, 本单: {currentAmount}, 总计: {totalAccumulated}, 限额: {maxBet}");
                     
-                    if (accumulatedAmount == 0)
+                    // 🔥 检查总累计是否超过限额
+                    if (totalAccumulated > (decimal)maxBet)
                     {
-                        // 🔥 第一次投注：检查单注是否超过最大金额（F5BotV2 第2456-2460行）
-                        if (item.Amount > (decimal)maxBet)
-                        {
-                            // 🔥 F5BotV2 第2458行格式：@{nickname} 进仓失败!{key}超限,当前{amount},剩:{maxBet}
-                            errorMessage = $"进仓失败!{key}超限,当前{item.Amount},剩:{maxBet}";
-                            _logService.Warning("OrderValidator", $"❌ {errorMessage}");
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        // 🔥 第二次及以后投注：检查是否超过剩余额度（F5BotV2 第2472-2477行）
-                        decimal maxLimit = (decimal)maxBet - accumulatedAmount;
+                        // 🔥 计算剩余额度
+                        decimal remaining = (decimal)maxBet - historicalAmount;
                         
-                        _logService.Info("OrderValidator", 
-                            $"   - 剩余额度: {maxLimit}, 当前投注: {item.Amount}");
-                        
-                        if (item.Amount > maxLimit)
+                        // 🔥 F5BotV2 精确格式（参考第2458、2475行）
+                        // 🔥 数字格式：整数（不带小数点）
+                        // 🔥 第一次投注用"剩:"，后续投注用"剩余:"
+                        if (historicalAmount == 0)
                         {
-                            // 🔥 F5BotV2 第2475行格式：@{nickname} 进仓失败!{key}超限,当前{amount},剩余:{maxLimit}
-                            errorMessage = $"进仓失败!{key}超限,当前{item.Amount},剩余:{maxLimit}";
-                            _logService.Warning("OrderValidator", $"❌ {errorMessage}");
-                            _logService.Warning("OrderValidator", 
-                                $"   详情: MaxBet={maxBet}, 已累计={accumulatedAmount}, 剩余={maxLimit}");
-                            return false;
+                            // 第一次投注，本单就超限（F5BotV2 第2458行）
+                            errorMessage = $"进仓失败!{key}超限,当前{(int)currentAmount},剩:{(int)maxBet}";
                         }
+                        else
+                        {
+                            // 已有历史投注，加上本单超限（F5BotV2 第2475行）
+                            errorMessage = $"进仓失败!{key}超限,当前{(int)currentAmount},剩余:{(int)remaining}";
+                        }
+                        
+                        _logService.Warning("OrderValidator", $"❌ {errorMessage}");
+                        _logService.Warning("OrderValidator", 
+                            $"   详情: MaxBet={maxBet}, 历史累计={historicalAmount}, 本单={currentAmount}, 总计={totalAccumulated}");
+                        return false;
                     }
                 }
                 
                 _logService.Info("OrderValidator", "✅ 单注金额验证通过（含当期累计限额检查）");
                 
-                // 5. 验证总金额
-                decimal totalAmount = betContent.TotalAmount;
-                float maxBetPerIssue = _configService.GetMaxBetPerIssue();
-                
-                if (totalAmount > (decimal)maxBetPerIssue)
-                {
-                    errorMessage = $"单期总投注不能超过 {maxBetPerIssue} 元";
-                    return false;
-                }
-                
-                // 6. 验证余额
+                // 5. 验证余额（自然限制，无需人为限制单期总金额）
                 // 🔥 重要：托单也要验证余额！（托单是正常玩家，走正常流程）
                 // 只有管理员不验证余额（管理员不扣钱）
+                decimal totalAmount = betContent.TotalAmount;
+                
                 if (member.State != MemberState.管理)
                 {
                     if ((decimal)member.Balance < totalAmount)
