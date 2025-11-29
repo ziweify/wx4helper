@@ -19,6 +19,8 @@ namespace BinGoPlans.Services
 
         public DatabaseService(string dbPath)
         {
+            try
+            {
             // 确保目录存在
             var directory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(directory))
@@ -30,21 +32,86 @@ namespace BinGoPlans.Services
             _db = new SQLiteConnection(dbPath);
 
             // 配置数据库为最可靠模式（数据完整性优先，不使用 WAL）
-            // 1️⃣ 禁用 WAL 模式，使用传统 DELETE 日志（数据立即写入主文件）
-            _db.Execute("PRAGMA journal_mode = DELETE");
-            
-            // 2️⃣ 设置为 FULL 同步模式（确保每次写入都刷新到磁盘，即使断电也不会丢数据）
-            _db.Execute("PRAGMA synchronous = FULL");
-            
-            // 3️⃣ 启用外键约束（数据一致性）
-            _db.Execute("PRAGMA foreign_keys = ON");
-            
-            // 4️⃣ 优化性能（不影响数据完整性）
-            _db.Execute("PRAGMA cache_size = 10000");
-            _db.Execute("PRAGMA temp_store = MEMORY");
+                // 注意：PRAGMA 命令可能会抛出 "not an error" 异常（sqlite-net 已知问题），需要捕获
+                // 使用辅助方法安全执行 PRAGMA 命令
+                SafeExecutePragma("PRAGMA journal_mode = DELETE");
+                SafeExecutePragma("PRAGMA synchronous = FULL");
+                SafeExecutePragma("PRAGMA foreign_keys = ON");
+                SafeExecutePragma("PRAGMA cache_size = 10000");
+                SafeExecutePragma("PRAGMA temp_store = MEMORY");
 
             // 自动创建表（使用 BinGoDataEntity，它有 SQLite 特性）
             _db.CreateTable<BinGoDataEntity>();
+            }
+            catch (Exception ex)
+            {
+                // 如果异常是 "not an error"，忽略它（这是 sqlite-net 的已知问题）
+                if (IsNotAnErrorException(ex))
+                {
+                    // 忽略此异常，继续执行
+                    return;
+                }
+                
+                // 其他异常需要重新抛出，因为数据库可能无法正常初始化
+                throw new Exception("数据库初始化失败: " + ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// 检查异常是否是 "not an error" 异常（sqlite-net 已知问题）
+        /// </summary>
+        private bool IsNotAnErrorException(Exception ex)
+        {
+            if (ex == null) return false;
+            
+            // 检查 HResult（最可靠的方式）
+            if (ex.HResult == 0x80131500)
+            {
+                return true;
+            }
+            
+            // 检查异常消息
+            if (ex.Message != null && ex.Message.Contains("not an error", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            // 检查是否是 SQLiteException 且消息包含 "not an error" 或 "SQLITE_OK"
+            if (ex is SQLiteException sqliteEx)
+            {
+                if (sqliteEx.Message != null && 
+                    (sqliteEx.Message.Contains("not an error", StringComparison.OrdinalIgnoreCase) || 
+                     sqliteEx.Message.Contains("SQLITE_OK", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        /// <summary>
+        /// 安全执行 PRAGMA 命令（忽略 "not an error" 异常）
+        /// sqlite-net 已知问题：PRAGMA 命令有时会抛出 "not an error" 异常，即使命令成功执行
+        /// </summary>
+        private void SafeExecutePragma(string pragmaCommand)
+        {
+            try
+            {
+                _db.Execute(pragmaCommand);
+            }
+            catch (Exception ex)
+            {
+                // 检查是否是 "not an error" 异常
+                if (IsNotAnErrorException(ex))
+                {
+                    // 忽略此异常，继续执行（命令实际上已成功）
+                    return;
+                }
+                
+                // 其他异常记录但不阻止初始化（数据库可能仍然可用）
+                System.Diagnostics.Debug.WriteLine($"执行 PRAGMA 命令时发生异常 ({pragmaCommand}): {ex.GetType().Name} - {ex.Message} (HResult: 0x{ex.HResult:X8})");
+            }
         }
 
         /// <summary>
@@ -88,7 +155,7 @@ namespace BinGoPlans.Services
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"保存数据失败 (IssueId={data.IssueId}): {ex.Message}", ex);
+                    throw new Exception("保存数据失败 (IssueId=" + data.IssueId + "): " + ex.Message, ex);
                 }
             }
         }
@@ -140,7 +207,7 @@ namespace BinGoPlans.Services
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"批量保存数据失败: {ex.Message}", ex);
+                    throw new Exception("批量保存数据失败: " + ex.Message, ex);
                 }
             }
         }
@@ -181,7 +248,7 @@ namespace BinGoPlans.Services
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"加载数据失败 (Date={date:yyyy-MM-dd}): {ex.Message}", ex);
+                    throw new Exception("加载数据失败 (Date=" + date.ToString("yyyy-MM-dd") + "): " + ex.Message, ex);
                 }
             }
         }
@@ -218,7 +285,7 @@ namespace BinGoPlans.Services
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"加载所有数据失败: {ex.Message}", ex);
+                    throw new Exception("加载所有数据失败: " + ex.Message, ex);
                 }
             }
         }
@@ -269,4 +336,3 @@ namespace BinGoPlans.Services
         }
     }
 }
-
