@@ -83,7 +83,7 @@ namespace BinGoPlans.Controls
             }
             
             int colCount = columns.Count;
-            int rowCount = maxRows + 2; // +1 用于显示期号行，+1 用于显示当天第几期行
+            int rowCount = maxRows + 3; // +1 用于显示数量行，+1 用于显示期号行，+1 用于显示当天第几期行
             
             int totalWidth = colCount * _cellSize;
             int totalHeight = rowCount * _cellSize;
@@ -132,8 +132,21 @@ namespace BinGoPlans.Controls
                 // 🔥 计算当天第几期（1-203）- 使用 BinGoData 的计算逻辑
                 int dayIndex = CalculateDayIndex(startIssueId);
 
-                // 绘制第0行：当天第几期
-                var dayIndexRect = new Rectangle(currentX, 0, _cellSize - 1, _cellSize - 1);
+                // 计算该列的数量（该列中相同结果的数量）
+                int columnCount = column.Count;
+
+                // 绘制第0行：数量（显示该列的数量）
+                var countRect = new Rectangle(currentX, 0, _cellSize - 1, _cellSize - 1);
+                g.FillRectangle(Brushes.LightYellow, countRect);
+                g.DrawRectangle(Pens.Black, countRect);
+                var countText = columnCount.ToString();
+                var countTextSize = g.MeasureString(countText, _font);
+                var countTextX = countRect.X + (countRect.Width - countTextSize.Width) / 2;
+                var countTextY = countRect.Y + (countRect.Height - countTextSize.Height) / 2;
+                g.DrawString(countText, _font, Brushes.Black, countTextX, countTextY);
+
+                // 绘制第1行：当天第几期
+                var dayIndexRect = new Rectangle(currentX, _cellSize, _cellSize - 1, _cellSize - 1);
                 g.FillRectangle(Brushes.LightBlue, dayIndexRect);
                 g.DrawRectangle(Pens.Black, dayIndexRect);
                 var dayIndexText = dayIndex.ToString();
@@ -142,8 +155,8 @@ namespace BinGoPlans.Controls
                 var dayIndexTextY = dayIndexRect.Y + (dayIndexRect.Height - dayIndexTextSize.Height) / 2;
                 g.DrawString(dayIndexText, _issueFont, Brushes.Black, dayIndexTextX, dayIndexTextY);
 
-                // 绘制第1行：期号尾后2位
-                var issueRect = new Rectangle(currentX, _cellSize, _cellSize - 1, _cellSize - 1);
+                // 绘制第2行：期号尾后2位
+                var issueRect = new Rectangle(currentX, _cellSize * 2, _cellSize - 1, _cellSize - 1);
                 g.FillRectangle(Brushes.LightGray, issueRect);
                 g.DrawRectangle(Pens.Black, issueRect);
                 var issueText = issueTail.ToString("00");
@@ -152,11 +165,11 @@ namespace BinGoPlans.Controls
                 var issueTextY = issueRect.Y + (issueRect.Height - issueTextSize.Height) / 2;
                 g.DrawString(issueText, _issueFont, Brushes.Black, issueTextX, issueTextY);
 
-                // 绘制数据行（从第2行开始）
+                // 绘制数据行（从第3行开始）
                 for (int row = 0; row < column.Count; row++)
                 {
                     var item = column[row];
-                    var rect = new Rectangle(currentX, (row + 2) * _cellSize, _cellSize - 1, _cellSize - 1);
+                    var rect = new Rectangle(currentX, (row + 3) * _cellSize, _cellSize - 1, _cellSize - 1);
 
                     // 绘制背景色
                     var colorName = item.Result.GetColorName();
