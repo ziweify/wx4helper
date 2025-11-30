@@ -181,16 +181,16 @@ namespace BinGoPlans
 
         private void RefreshRoadBeadTab()
         {
-            if (roadBeadControl == null) return;
-
             var position = GetSelectedPosition();
-            var playType = GetSelectedPlayType();
             
             // 获取所有数据并按时间排序
             var allData = _statisticsService.GetAllData().ToList();
             
-            // 根据数据生成路珠数据和期号列表（保持顺序一致）
-            var roadBeadData = new List<Statistics.PositionPlayResult>();
+            // 生成4组路珠数据：大小、单双、尾大小、和单双
+            var sizeData = new List<Statistics.PositionPlayResult>();
+            var oddEvenData = new List<Statistics.PositionPlayResult>();
+            var tailSizeData = new List<Statistics.PositionPlayResult>();
+            var sumOddEvenData = new List<Statistics.PositionPlayResult>();
             var issueIds = new List<int>();
             
             foreach (var lotteryData in allData)
@@ -198,38 +198,53 @@ namespace BinGoPlans
                 var ball = lotteryData.GetBallNumber(position);
                 if (ball == null) continue;
 
-                Statistics.PlayResult result = playType switch
-                {
-                    Statistics.GamePlayType.Size => ball.Size == GameSizeType.Big 
-                        ? Statistics.PlayResult.Big 
-                        : Statistics.PlayResult.Small,
-                    Statistics.GamePlayType.OddEven => ball.OddEven == GameOddEvenType.Odd 
-                        ? Statistics.PlayResult.Odd 
-                        : Statistics.PlayResult.Even,
-                    Statistics.GamePlayType.TailSize => ball.TailSize == GameTailSizeType.TailBig 
-                        ? Statistics.PlayResult.TailBig 
-                        : Statistics.PlayResult.TailSmall,
-                    Statistics.GamePlayType.SumOddEven => ball.SumOddEven == GameSumOddEvenType.SumOdd 
-                        ? Statistics.PlayResult.SumOdd 
-                        : Statistics.PlayResult.SumEven,
-                    Statistics.GamePlayType.DragonTiger => position == BallPosition.Sum
-                        ? (lotteryData.DragonTiger == GameDragonTigerType.Dragon 
-                            ? Statistics.PlayResult.Dragon
-                            : lotteryData.DragonTiger == GameDragonTigerType.Tiger 
-                            ? Statistics.PlayResult.Tiger
-                            : Statistics.PlayResult.Draw)
-                        : Statistics.PlayResult.Unknown,
-                    _ => Statistics.PlayResult.Unknown
-                };
-
-                if (result != Statistics.PlayResult.Unknown)
-                {
-                    roadBeadData.Add(new Statistics.PositionPlayResult(position, playType, result));
-                    issueIds.Add(lotteryData.IssueId);
-                }
+                // 大小
+                var sizeResult = ball.Size == GameSizeType.Big 
+                    ? Statistics.PlayResult.Big 
+                    : Statistics.PlayResult.Small;
+                sizeData.Add(new Statistics.PositionPlayResult(position, Statistics.GamePlayType.Size, sizeResult));
+                
+                // 单双
+                var oddEvenResult = ball.OddEven == GameOddEvenType.Odd 
+                    ? Statistics.PlayResult.Odd 
+                    : Statistics.PlayResult.Even;
+                oddEvenData.Add(new Statistics.PositionPlayResult(position, Statistics.GamePlayType.OddEven, oddEvenResult));
+                
+                // 尾大小
+                var tailSizeResult = ball.TailSize == GameTailSizeType.TailBig 
+                    ? Statistics.PlayResult.TailBig 
+                    : Statistics.PlayResult.TailSmall;
+                tailSizeData.Add(new Statistics.PositionPlayResult(position, Statistics.GamePlayType.TailSize, tailSizeResult));
+                
+                // 和单双
+                var sumOddEvenResult = ball.SumOddEven == GameSumOddEvenType.SumOdd 
+                    ? Statistics.PlayResult.SumOdd 
+                    : Statistics.PlayResult.SumEven;
+                sumOddEvenData.Add(new Statistics.PositionPlayResult(position, Statistics.GamePlayType.SumOddEven, sumOddEvenResult));
+                
+                issueIds.Add(lotteryData.IssueId);
             }
             
-            roadBeadControl.SetData(roadBeadData, issueIds);
+            // 更新4个路珠控件
+            if (roadBeadSizeControl != null)
+            {
+                roadBeadSizeControl.SetData(sizeData, issueIds);
+            }
+            
+            if (roadBeadOddEvenControl != null)
+            {
+                roadBeadOddEvenControl.SetData(oddEvenData, issueIds);
+            }
+            
+            if (roadBeadTailSizeControl != null)
+            {
+                roadBeadTailSizeControl.SetData(tailSizeData, issueIds);
+            }
+            
+            if (roadBeadSumOddEvenControl != null)
+            {
+                roadBeadSumOddEvenControl.SetData(sumOddEvenData, issueIds);
+            }
         }
 
         private void RefreshTrendTab()

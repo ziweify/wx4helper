@@ -182,8 +182,8 @@ namespace BinGoPlans.Controls
                     // 绘制边框
                     g.DrawRectangle(Pens.Black, rect);
 
-                    // 绘制文本
-                    var text = item.Result.GetDisplayText();
+                    // 绘制文本（简化显示：尾大/尾小显示为"大"/"小"，合单/合双显示为"单"/"双"）
+                    var text = GetSimplifiedDisplayText(item.Result);
                     var textSize = g.MeasureString(text, _font);
                     var textX = rect.X + (rect.Width - textSize.Width) / 2;
                     var textY = rect.Y + (rect.Height - textSize.Height) / 2;
@@ -229,6 +229,29 @@ namespace BinGoPlans.Controls
             }
 
             return columns;
+        }
+
+        /// <summary>
+        /// 获取简化的显示文本（用于路珠显示）
+        /// 尾大/尾小显示为"大"/"小"，合单/合双显示为"单"/"双"
+        /// </summary>
+        private static string GetSimplifiedDisplayText(PlayResult result)
+        {
+            return result switch
+            {
+                PlayResult.Big => "大",
+                PlayResult.Small => "小",
+                PlayResult.Odd => "单",
+                PlayResult.Even => "双",
+                PlayResult.TailBig => "大",      // 尾大简化为"大"
+                PlayResult.TailSmall => "小",    // 尾小简化为"小"
+                PlayResult.SumOdd => "单",       // 合单简化为"单"
+                PlayResult.SumEven => "双",      // 合双简化为"双"
+                PlayResult.Dragon => "龙",
+                PlayResult.Tiger => "虎",
+                PlayResult.Draw => "和",
+                _ => "?"
+            };
         }
 
         /// <summary>
