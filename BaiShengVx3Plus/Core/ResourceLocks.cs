@@ -74,6 +74,40 @@ namespace BaiShengVx3Plus.Core
         /// </summary>
         public static readonly object OrderLimitCheckLock = new object();
         
+        /// <summary>
+        /// BindingList 更新锁 - 保护 BindingList 的 Clear/Add 操作和读取操作
+        /// 
+        /// 🔥 使用此锁的场景：
+        /// 1. 刷新/绑定群时的 Clear() + Add() 操作
+        /// 2. GetMemberByWxid() 读取会员数据
+        /// 
+        /// 🔥 为什么需要？
+        /// 问题：绑定群时会 Clear() 清空列表，然后 Add() 新数据
+        /// 风险：在 Clear() 和 Add() 之间，GetMemberByWxid() 会返回 null
+        /// 更严重：即使在 Clear() 前获取了 member，Clear+Add 后这个引用失效！
+        /// 
+        /// 场景模拟：
+        /// T1: [消息线程] member = GetMemberByWxid(wxid);  // 获取旧对象
+        /// T2: [UI线程] Clear();  // 清空
+        /// T3: [UI线程] Add(new V2Member);  // 添加新对象
+        /// T4: [消息线程] member.Balance -= 500;  // 💥 修改的是旧对象！
+        /// T5: [消息线程] _ordersBindingList.Insert(order);  // 订单保存到新列表
+        /// 结果：订单已保存，但余额没扣（修改的是旧对象）！
+        /// 
+        /// 使用锁后：
+        /// lock (BindingListUpdateLock)
+        /// {
+        ///     Clear();
+        ///     Add(...);
+        /// }
+        /// 
+        /// lock (BindingListUpdateLock)
+        /// {
+        ///     member = GetMemberByWxid(wxid);  // 保证读取的是最新对象
+        /// }
+        /// </summary>
+        public static readonly object BindingListUpdateLock = new object();
+        
         // 🔥 未来扩展：其他全局锁可以在这里添加
         // public static readonly object ConfigurationLock = new object();
         // public static readonly object StatisticsLock = new object();

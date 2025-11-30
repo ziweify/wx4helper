@@ -204,12 +204,41 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                             }
                         }
                         
-                        // 如果之前是"已退群"，现在恢复为原状态或"会员"
+                        // 🔥 如果之前是"已退群"，重新加入时全部复位
                         if (dbMember.State == MemberState.已退群)
                         {
-                            dbMember.State = MemberState.会员;
+                            string oldState = dbMember.State.ToString();
+                            
+                            // 🔥 关键修复：重新加入时，所有数据复位（包括状态）
+                            // 记录之前的完整数据（用于审计）
+                            _logService.Warning("GroupBindingService", 
+                                $"📋 会员重新加入（数据复位）: " +
+                                $"Wxid={dbMember.Wxid}, " +
+                                $"昵称={dbMember.Nickname}, " +
+                                $"原状态={oldState}, " +
+                                $"原余额={dbMember.Balance:F2}, " +
+                                $"原待结算={dbMember.BetWait:F2}, " +
+                                $"原总下注={dbMember.BetTotal:F2}, " +
+                                $"原总盈利={dbMember.IncomeTotal:F2}, " +
+                                $"原总上分={dbMember.CreditTotal:F2}, " +
+                                $"原总下分={dbMember.WithdrawTotal:F2}");
+                            
+                            // 🔥 复位所有数据（财务 + 状态）
+                            dbMember.State = MemberState.会员;  // ← 强制复位为"会员"
+                            dbMember.Balance = 0;
+                            dbMember.BetWait = 0;
+                            dbMember.BetToday = 0;
+                            dbMember.BetTotal = 0;
+                            dbMember.BetCur = 0;
+                            dbMember.IncomeToday = 0;
+                            dbMember.IncomeTotal = 0;
+                            dbMember.CreditToday = 0;
+                            dbMember.CreditTotal = 0;
+                            dbMember.WithdrawToday = 0;
+                            dbMember.WithdrawTotal = 0;
+                            
                             _logService.Info("GroupBindingService", 
-                                $"会员 {dbMember.Nickname} 重新加入群组");
+                                $"✅ 会员 {dbMember.Nickname} 重新加入群组，所有数据已复位（状态=会员，余额=0）");
                         }
                         
                         mergedMembers.Add(dbMember);
@@ -217,12 +246,25 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                     else
                     {
                         // 情况2: 数据库中不存在 → 新增会员
-                        serverMember.GroupWxId = groupWxId;
-                        serverMember.State = MemberState.会员;  // 默认状态
+                        // 🔥 关键：新会员的财务数据全部清0（初始化状态）
+                serverMember.GroupWxId = groupWxId;
+                serverMember.State = MemberState.会员;  // 默认状态
+                serverMember.Balance = 0;  // 余额清0
+                serverMember.BetWait = 0;  // 待结算清0
+                serverMember.BetToday = 0;
+                serverMember.BetTotal = 0;
+                serverMember.BetCur = 0;
+                serverMember.IncomeToday = 0;
+                serverMember.IncomeTotal = 0;
+                serverMember.CreditToday = 0;
+                serverMember.CreditTotal = 0;
+                serverMember.WithdrawToday = 0;
+                serverMember.WithdrawTotal = 0;
+                        
                         mergedMembers.Add(serverMember);
                         
                         _logService.Info("GroupBindingService", 
-                            $"新增会员: {serverMember.Nickname} ({serverMember.Wxid})");
+                            $"新增会员（初始化状态）: {serverMember.Nickname} ({serverMember.Wxid})");
                     }
                 }
                 
@@ -237,11 +279,27 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                         // 情况3: 数据库有但服务器没返回 → 标记为"已退群"
                         if (dbMember.State != MemberState.已退群 && dbMember.State != MemberState.已删除)
                         {
+                            // 🔥 记录会员退群前的完整数据（用于审计）
+                            _logService.Warning("GroupBindingService", 
+                                $"📋 会员退群（完整数据记录）: " +
+                                $"Wxid={dbMember.Wxid}, " +
+                                $"昵称={dbMember.Nickname}, " +
+                                $"备注={dbMember.Nickname ?? "无"}, " +
+                                $"原状态={dbMember.State}, " +
+                                $"余额={dbMember.Balance:F2}, " +
+                                $"待结算={dbMember.BetWait:F2}, " +
+                                $"今日下注={dbMember.BetToday:F2}, " +
+                                $"总下注={dbMember.BetTotal:F2}, " +
+                                $"今日盈利={dbMember.IncomeToday:F2}, " +
+                                $"总盈利={dbMember.IncomeTotal:F2}, " +
+                                $"今日上分={dbMember.CreditToday:F2}, " +
+                                $"总上分={dbMember.CreditTotal:F2}, " +
+                                $"今日下分={dbMember.WithdrawToday:F2}, " +
+                                $"总下分={dbMember.WithdrawTotal:F2}, " +
+                                $"群ID={dbMember.GroupWxId}");
+                            
                             dbMember.State = MemberState.已退群;
                             mergedMembers.Add(dbMember);
-                            
-                            _logService.Warning("GroupBindingService", 
-                                $"会员 {dbMember.Nickname} 已退群");
                         }
                         else if (dbMember.State == MemberState.已退群)
                         {
@@ -354,18 +412,87 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
                 
                 // 🔥 5. 更新 BindingList
-                if (clearBeforeLoad)
+                // 🔥 关键修复：使用锁保护 Clear/Add 操作，防止并发问题
+                lock (Core.ResourceLocks.BindingListUpdateLock)
                 {
-                    membersBindingList.Clear();
-                    _logService.Info("GroupBindingService", "已清空会员列表，准备重新加载");
+                    if (clearBeforeLoad)
+                    {
+                        // 切换到不同的群：清空旧数据，添加新数据
+                        membersBindingList.Clear();
+                        _logService.Info("GroupBindingService", "切换群：已清空会员列表，准备重新加载");
+                        
+                        foreach (var member in mergedMembers)
+                        {
+                            membersBindingList.Add(member);
+                        }
+                    }
+                    else
+                    {
+                        // 刷新同一个群：采用更新模式（不清空，避免引用失效）
+                        _logService.Info("GroupBindingService", "刷新同一个群：采用更新模式（逐个更新，避免引用失效）");
+                        
+                        // 🔥 更新模式：更新现有会员，添加新会员，移除已退群的
+                        foreach (var newMember in mergedMembers)
+                        {
+                            var existingMember = membersBindingList.FirstOrDefault(m => m.Wxid == newMember.Wxid);
+                            if (existingMember != null)
+                            {
+                                // 更新现有会员的数据（保持引用不变）
+                                existingMember.Nickname = newMember.Nickname;
+                                existingMember.State = newMember.State;
+                                existingMember.DisplayName = newMember.DisplayName;
+                                // 不更新余额等财务数据（从数据库加载的是最新的）
+                                existingMember.Balance = newMember.Balance;
+                                existingMember.BetWait = newMember.BetWait;
+                                existingMember.BetToday = newMember.BetToday;
+                                existingMember.BetTotal = newMember.BetTotal;
+                                existingMember.IncomeToday = newMember.IncomeToday;
+                                existingMember.IncomeTotal = newMember.IncomeTotal;
+                                existingMember.CreditToday = newMember.CreditToday;
+                                existingMember.CreditTotal = newMember.CreditTotal;
+                                existingMember.WithdrawToday = newMember.WithdrawToday;
+                                existingMember.WithdrawTotal = newMember.WithdrawTotal;
+                            }
+                            else
+                            {
+                                // 新成员：添加到列表
+                                membersBindingList.Add(newMember);
+                                _logService.Info("GroupBindingService", $"新成员: {newMember.Nickname}");
+                            }
+                        }
+                        
+                        // 移除已退群的会员
+                        var mergedWxids = mergedMembers.Select(m => m.Wxid).ToHashSet();
+                        var toRemove = membersBindingList.Where(m => !mergedWxids.Contains(m.Wxid)).ToList();
+                        foreach (var member in toRemove)
+                        {
+                            // 🔥 关键修复：移除前记录完整的会员数据（用于审计和恢复）
+                            _logService.Warning("GroupBindingService", 
+                                $"📋 移除已退群会员（完整数据记录）: " +
+                                $"Wxid={member.Wxid}, " +
+                                $"昵称={member.Nickname}, " +
+                                $"备注={member.Nickname ?? "无"}, " +
+                                $"状态={member.State}, " +
+                                $"余额={member.Balance:F2}, " +
+                                $"待结算={member.BetWait:F2}, " +
+                                $"今日下注={member.BetToday:F2}, " +
+                                $"总下注={member.BetTotal:F2}, " +
+                                $"今日盈利={member.IncomeToday:F2}, " +
+                                $"总盈利={member.IncomeTotal:F2}, " +
+                                $"今日上分={member.CreditToday:F2}, " +
+                                $"总上分={member.CreditTotal:F2}, " +
+                                $"今日下分={member.WithdrawToday:F2}, " +
+                                $"总下分={member.WithdrawTotal:F2}, " +
+                                $"群ID={member.GroupWxId}, " +
+                                $"创建时间={DateTime.Now:yyyy-MM-dd HH:mm:ss}, " +
+                                $"更新时间={DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                            
+                            membersBindingList.Remove(member);
+                        }
+                    }
+                    
+                    _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");
                 }
-                
-                foreach (var member in mergedMembers)
-                {
-                    membersBindingList.Add(member);
-                }
-                
-                _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");
                 return true;
             }
             catch (Exception ex)
@@ -394,7 +521,8 @@ namespace BaiShengVx3Plus.Services.GroupBinding
             IBinggoLotteryService lotteryService,
             V2MemberBindingList? existingMembersBindingList = null,
             V2OrderBindingList? existingOrdersBindingList = null,
-            V2CreditWithdrawBindingList? existingCreditWithdrawsBindingList = null)
+            V2CreditWithdrawBindingList? existingCreditWithdrawsBindingList = null,
+            bool isSameGroup = false)
         {
             var result = new GroupBindingResult { Group = contact };
             
@@ -475,12 +603,19 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 
                 _logService.Info("GroupBindingService", $"✅ 从数据库加载: {creditWithdrawsBindingList.Count} 条上下分记录");
                 
-                // 🔥 5. 刷新群成员数据（调用提取的公共方法）
+                // 🔥 6. 刷新群成员数据（调用提取的公共方法）
+                // 🔥 关键优化：只有切换到不同的群时才清空列表
+                // 如果是同一个群（刷新），采用更新模式，避免 member 引用失效
+                bool clearBeforeLoad = !isSameGroup;
+                
+                _logService.Info("GroupBindingService", 
+                    $"刷新模式: 同一个群={isSameGroup}, 清空列表={clearBeforeLoad}");
+                
                 await RefreshGroupMembersInternalAsync(
-                    contact.Wxid, 
-                    socketClient, 
-                    membersBindingList, 
-                    clearBeforeLoad: !isFirstTimeBinding);
+                    contact.Wxid,
+                    socketClient,
+                    membersBindingList,
+                    clearBeforeLoad: clearBeforeLoad);
                 
                 // 🔥 9. 更新会员的上下分统计
                 creditWithdrawsBindingList.UpdateMemberStatistics(membersBindingList);

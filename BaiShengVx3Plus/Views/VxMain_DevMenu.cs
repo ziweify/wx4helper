@@ -434,8 +434,12 @@ namespace BaiShengVx3Plus
         
         #region 常用功能菜单事件
         
+        // 🔥 刷新会员的频率限制
+        private DateTime _lastRefreshMembersTime = DateTime.MinValue;
+        
         /// <summary>
         /// 🔄 刷新会员（从服务器重新获取群成员列表，自动更新昵称）
+        /// 🔥 添加频率限制，防止频繁点击
         /// </summary>
         private async void MenuRefreshMembers_Click(object? sender, EventArgs e)
         {
@@ -454,6 +458,18 @@ namespace BaiShengVx3Plus
                     UIMessageBox.ShowWarning("会员列表未初始化！");
                     return;
                 }
+                
+                // 🔥 频率限制：防止频繁刷新
+                var now = DateTime.Now;
+                if ((now - _lastRefreshMembersTime).TotalSeconds < 3)
+                {
+                    var remainingSeconds = 3 - (int)(now - _lastRefreshMembersTime).TotalSeconds;
+                    _logService.Warning("VxMain", $"刷新太频繁，请 {remainingSeconds} 秒后重试");
+                    UIMessageBox.ShowWarning($"刷新太频繁，请 {remainingSeconds} 秒后重试");
+                    return;
+                }
+                
+                _lastRefreshMembersTime = now;
                 
                 _logService.Info("VxMain", $"🔄 开始刷新群成员: {_groupBindingService.CurrentBoundGroup.Nickname}");
                 

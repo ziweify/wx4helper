@@ -834,6 +834,11 @@ namespace BaiShengVx3Plus
             return _groupBindingService.CurrentBoundGroup?.Wxid;
         }
         
+        // 🔥 刷新频率限制
+        private DateTime _lastRefreshContactsTime = DateTime.MinValue;
+        private DateTime _lastBindGroupTime = DateTime.MinValue;
+        private const int MinRefreshIntervalSeconds = 3;  // 最小刷新间隔（秒）
+        
         private void InitializeDataBindings()
         {
             // 绑定联系人列表
@@ -1712,6 +1717,8 @@ namespace BaiShengVx3Plus
         /// 3. 获取服务器数据
         /// 4. 智能合并数据库和服务器数据
         /// 5. 加载到 UI（自动保存）
+        /// 
+        /// 🔥 添加频率限制，防止频繁点击
         /// </summary>
         private async void btnBindingContacts_Click(object sender, EventArgs e)
         {
@@ -1721,6 +1728,18 @@ namespace BaiShengVx3Plus
                 UIMessageBox.ShowWarning("请先选择一个联系人");
                 return;
             }
+            
+            // 🔥 频率限制：防止频繁绑定
+            var now = DateTime.Now;
+            if ((now - _lastBindGroupTime).TotalSeconds < MinRefreshIntervalSeconds)
+            {
+                var remainingSeconds = MinRefreshIntervalSeconds - (int)(now - _lastBindGroupTime).TotalSeconds;
+                _logService.Warning("VxMain", $"绑定操作太频繁，请 {remainingSeconds} 秒后重试");
+                UIMessageBox.ShowWarning($"绑定操作太频繁，请 {remainingSeconds} 秒后重试");
+                return;
+            }
+            
+            _lastBindGroupTime = now;
 
             try
             {
@@ -1768,8 +1787,12 @@ namespace BaiShengVx3Plus
                     return;
                 }
                 
-                // 🔥 1. 判断是否首次绑定
+                // 🔥 1. 判断绑定类型
                 bool isFirstTimeBinding = _membersBindingList == null;
+                string? currentGroupWxid = GetCurrentGroupWxId();
+                bool isSameGroup = !isFirstTimeBinding && 
+                                   !string.IsNullOrEmpty(currentGroupWxid) && 
+                                   currentGroupWxid == contact.Wxid;
                 
                 if (isFirstTimeBinding)
                 {
@@ -1780,11 +1803,20 @@ namespace BaiShengVx3Plus
                     _ordersBindingList = new V2OrderBindingList(_db, contact.Wxid);
                     _creditWithdrawsBindingList = new V2CreditWithdrawBindingList(_db);
                 }
+                else if (isSameGroup)
+                {
+                    _logService.Info("VxMain", 
+                        $"✅ 刷新同一个群（{contact.Wxid}），采用更新模式（不清空列表，避免引用失效）");
+                    
+                    // 同一个群：不清零统计，保持现有数据，只更新会员信息
+                    // 这样可以避免 member 引用失效
+                }
                 else
                 {
-                    _logService.Info("VxMain", "✅ 复用已有 BindingList（避免引用断裂）");
+                    _logService.Info("VxMain", 
+                        $"✅ 切换群（{currentGroupWxid} → {contact.Wxid}），复用 BindingList（但会清空数据）");
                     
-                    // 清零统计（数据会在 GroupBindingService 中重新加载）
+                    // 不同的群：清零统计（数据会在 GroupBindingService 中清空并重新加载）
                     _statisticsService.UpdateStatistics(setZero: true);
                 }
                 
@@ -2244,25 +2276,108 @@ namespace BaiShengVx3Plus
                 _logService.Info("VxMain", "✅ 统计数据已清空");
                 
                 // ========================================
-                // 🔥 步骤5：清空48小时之前的上下分记录（参考 F5BotV2 XMainView.cs Line 847-849）
+                // 🔥 步骤5：清空所有上下分记录
                 // ========================================
                 
-                if (_creditWithdrawsBindingList != null)
+                try
                 {
-                    try
+                    _db.DeleteAll<Models.V2CreditWithdraw>();
+                    _logService.Info("VxMain", "✅ 上下分记录已完全清空");
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清空上下分记录失败: {ex.Message}", ex);
+                    throw;
+                }
+                
+                // 清空UI上下分列表
+                _creditWithdrawsBindingList?.Clear();
+                
+                // ========================================
+                // 🔥 步骤6：清理生成的图片数据（C:\images\）
+                // ========================================
+                
+                try
+                {
+                    var imageDir = @"C:\images";
+                    if (Directory.Exists(imageDir))
                     {
-                        _creditWithdrawsBindingList.DeleteOldRecords(48);
-                        _logService.Info("VxMain", "✅ 48小时之前的上下分记录已清空");
+                        var imageFiles = Directory.GetFiles(imageDir, "img_*.jpg");
+                        int deletedCount = 0;
+                        
+                        foreach (var imageFile in imageFiles)
+                        {
+                            try
+                            {
+                                File.Delete(imageFile);
+                                deletedCount++;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("VxMain", $"删除图片失败: {imageFile}, 错误: {ex.Message}");
+                            }
+                        }
+                        
+                        _logService.Info("VxMain", $"✅ 已清理 {deletedCount} 个生成的图片文件");
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logService.Error("VxMain", $"清空旧上下分记录失败: {ex.Message}", ex);
-                        // 不抛出异常，继续执行
+                        _logService.Info("VxMain", "图片目录不存在，跳过清理");
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清理图片数据失败: {ex.Message}", ex);
+                    // 不抛出异常，继续执行
                 }
                 
                 // ========================================
-                // 🔥 步骤6：刷新UI
+                // 🔥 步骤7：清理28小时之前的日志数据（保留最近28小时）
+                // ========================================
+                
+                try
+                {
+                    var dataDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "BaiShengVx3Plus",
+                        "Data");
+                    var logDbPath = Path.Combine(dataDir, "logs.db");
+                    
+                    if (File.Exists(logDbPath))
+                    {
+                        // 🔥 使用单独的数据库连接清理日志
+                        using (var logDb = new SQLiteConnection(logDbPath))
+                        {
+                            // 计算28小时之前的时间（使用 DateTime.Ticks）
+                            var cutoffTime = DateTime.Now.AddHours(-28);
+                            var cutoffTicks = cutoffTime.Ticks;
+                            
+                            // 执行删除
+                            var deletedCount = logDb.Execute(
+                                "DELETE FROM LogEntry WHERE Timestamp < ?", 
+                                cutoffTicks);
+                            
+                            _logService.Info("VxMain", 
+                                $"✅ 已清理 {deletedCount} 条日志记录（28小时之前，截止时间: {cutoffTime:yyyy-MM-dd HH:mm:ss}）");
+                            
+                            // 执行 VACUUM 优化数据库文件大小
+                            logDb.Execute("VACUUM");
+                            _logService.Info("VxMain", "✅ 日志数据库已优化（VACUUM）");
+                        }
+                    }
+                    else
+                    {
+                        _logService.Warning("VxMain", "日志数据库不存在，跳过清理");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清理日志数据失败: {ex.Message}", ex);
+                    // 不抛出异常，继续执行
+                }
+                
+                // ========================================
+                // 🔥 步骤8：刷新UI
                 // ========================================
                 
                 UpdateUIThreadSafeAsync(() =>
@@ -2277,9 +2392,11 @@ namespace BaiShengVx3Plus
                 
                 this.ShowSuccessTip("数据清空成功！\n\n" +
                     "✓ 订单数据已清空\n" +
+                    "✓ 上下分记录已清空\n" +
                     "✓ 会员金额数据已重置\n" +
                     "✓ 统计数据已清空\n" +
-                    "✓ 48小时之前的上下分记录已清空\n" +
+                    "✓ 生成的图片数据已清空\n" +
+                    "✓ 28小时之前的日志数据已清空（保留28小时用于恢复）\n" +
                     "✓ 会员基础信息已保留\n" +
                     "✓ 数据库已备份");
             }
@@ -2753,9 +2870,21 @@ namespace BaiShengVx3Plus
 
         /// <summary>
         /// 刷新联系人列表（按钮点击）
+        /// 🔥 添加频率限制，防止频繁点击
         /// </summary>
         private async void btnRefreshContacts_Click(object sender, EventArgs e)
         {
+            // 🔥 频率限制：防止频繁点击
+            var now = DateTime.Now;
+            if ((now - _lastRefreshContactsTime).TotalSeconds < MinRefreshIntervalSeconds)
+            {
+                var remainingSeconds = MinRefreshIntervalSeconds - (int)(now - _lastRefreshContactsTime).TotalSeconds;
+                _logService.Warning("VxMain", $"刷新太频繁，请 {remainingSeconds} 秒后重试");
+                UIMessageBox.ShowWarning($"刷新太频繁，请 {remainingSeconds} 秒后重试");
+                return;
+            }
+            
+            _lastRefreshContactsTime = now;
             await RefreshContactsAsync();
         }
 

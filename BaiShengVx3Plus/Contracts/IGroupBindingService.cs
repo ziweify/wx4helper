@@ -97,6 +97,7 @@ namespace BaiShengVx3Plus.Contracts
         /// <param name="existingMembersBindingList">已有的会员 BindingList（可选）</param>
         /// <param name="existingOrdersBindingList">已有的订单 BindingList（可选）</param>
         /// <param name="existingCreditWithdrawsBindingList">已有的上下分 BindingList（可选）</param>
+        /// <param name="isSameGroup">是否是同一个群（刷新模式）</param>
         /// <returns>绑定结果</returns>
         Task<GroupBindingResult> BindGroupCompleteAsync(
             WxContact contact,
@@ -108,7 +109,8 @@ namespace BaiShengVx3Plus.Contracts
             IBinggoLotteryService lotteryService,
             Core.V2MemberBindingList? existingMembersBindingList = null,
             Core.V2OrderBindingList? existingOrdersBindingList = null,
-            Core.V2CreditWithdrawBindingList? existingCreditWithdrawsBindingList = null);
+            Core.V2CreditWithdrawBindingList? existingCreditWithdrawsBindingList = null,
+            bool isSameGroup = false);
     }
 }
 

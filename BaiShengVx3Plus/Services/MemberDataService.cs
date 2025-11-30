@@ -26,15 +26,21 @@ namespace BaiShengVx3Plus.Services
         
         /// <summary>
         /// 根据微信ID获取会员
+        /// 🔥 关键修复：使用锁保护，防止刷新/绑定期间的并发问题
         /// </summary>
         public V2Member? GetMemberByWxid(string wxid)
         {
-            if (_membersBindingList == null || string.IsNullOrEmpty(wxid))
+            // 🔥 使用 BindingListUpdateLock 保护读取操作
+            // 防止在 Clear() 和 Add() 之间读取到 null 或旧对象
+            lock (Core.ResourceLocks.BindingListUpdateLock)
             {
-                return null;
+                if (_membersBindingList == null || string.IsNullOrEmpty(wxid))
+                {
+                    return null;
+                }
+                
+                return _membersBindingList.FirstOrDefault(m => m.Wxid == wxid);
             }
-            
-            return _membersBindingList.FirstOrDefault(m => m.Wxid == wxid);
         }
         
         /// <summary>

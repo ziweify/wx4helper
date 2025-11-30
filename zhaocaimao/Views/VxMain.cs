@@ -2310,25 +2310,108 @@ namespace zhaocaimao
                 _logService.Info("VxMain", "✅ 统计数据已清空");
                 
                 // ========================================
-                // 🔥 步骤5：清空48小时之前的上下分记录（参考 F5BotV2 XMainView.cs Line 847-849）
+                // 🔥 步骤5：清空所有上下分记录
                 // ========================================
                 
-                if (_creditWithdrawsBindingList != null)
+                try
                 {
-                    try
+                    _db.DeleteAll<Models.V2CreditWithdraw>();
+                    _logService.Info("VxMain", "✅ 上下分记录已完全清空");
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清空上下分记录失败: {ex.Message}", ex);
+                    throw;
+                }
+                
+                // 清空UI上下分列表
+                _creditWithdrawsBindingList?.Clear();
+                
+                // ========================================
+                // 🔥 步骤6：清理生成的图片数据（C:\images\）
+                // ========================================
+                
+                try
+                {
+                    var imageDir = @"C:\images";
+                    if (Directory.Exists(imageDir))
                     {
-                        _creditWithdrawsBindingList.DeleteOldRecords(48);
-                        _logService.Info("VxMain", "✅ 48小时之前的上下分记录已清空");
+                        var imageFiles = Directory.GetFiles(imageDir, "img_*.jpg");
+                        int deletedCount = 0;
+                        
+                        foreach (var imageFile in imageFiles)
+                        {
+                            try
+                            {
+                                File.Delete(imageFile);
+                                deletedCount++;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("VxMain", $"删除图片失败: {imageFile}, 错误: {ex.Message}");
+                            }
+                        }
+                        
+                        _logService.Info("VxMain", $"✅ 已清理 {deletedCount} 个生成的图片文件");
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logService.Error("VxMain", $"清空旧上下分记录失败: {ex.Message}", ex);
-                        // 不抛出异常，继续执行
+                        _logService.Info("VxMain", "图片目录不存在，跳过清理");
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清理图片数据失败: {ex.Message}", ex);
+                    // 不抛出异常，继续执行
                 }
                 
                 // ========================================
-                // 🔥 步骤6：刷新UI
+                // 🔥 步骤7：清理28小时之前的日志数据（保留最近28小时）
+                // ========================================
+                
+                try
+                {
+                    var dataDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "zhaocaimao",
+                        "Data");
+                    var logDbPath = Path.Combine(dataDir, "logs.db");
+                    
+                    if (File.Exists(logDbPath))
+                    {
+                        // 🔥 使用单独的数据库连接清理日志
+                        using (var logDb = new SQLiteConnection(logDbPath))
+                        {
+                            // 计算28小时之前的时间（使用 DateTime.Ticks）
+                            var cutoffTime = DateTime.Now.AddHours(-28);
+                            var cutoffTicks = cutoffTime.Ticks;
+                            
+                            // 执行删除
+                            var deletedCount = logDb.Execute(
+                                "DELETE FROM LogEntry WHERE Timestamp < ?", 
+                                cutoffTicks);
+                            
+                            _logService.Info("VxMain", 
+                                $"✅ 已清理 {deletedCount} 条日志记录（28小时之前，截止时间: {cutoffTime:yyyy-MM-dd HH:mm:ss}）");
+                            
+                            // 执行 VACUUM 优化数据库文件大小
+                            logDb.Execute("VACUUM");
+                            _logService.Info("VxMain", "✅ 日志数据库已优化（VACUUM）");
+                        }
+                    }
+                    else
+                    {
+                        _logService.Warning("VxMain", "日志数据库不存在，跳过清理");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清理日志数据失败: {ex.Message}", ex);
+                    // 不抛出异常，继续执行
+                }
+                
+                // ========================================
+                // 🔥 步骤8：刷新UI
                 // ========================================
                 
                 UpdateUIThreadSafeAsync(() =>
@@ -2343,9 +2426,11 @@ namespace zhaocaimao
                 
                 this.ShowSuccessTip("数据清空成功！\n\n" +
                     "✓ 订单数据已清空\n" +
+                    "✓ 上下分记录已清空\n" +
                     "✓ 会员金额数据已重置\n" +
                     "✓ 统计数据已清空\n" +
-                    "✓ 48小时之前的上下分记录已清空\n" +
+                    "✓ 生成的图片数据已清空\n" +
+                    "✓ 28小时之前的日志数据已清空（保留28小时用于恢复）\n" +
                     "✓ 会员基础信息已保留\n" +
                     "✓ 数据库已备份");
             }

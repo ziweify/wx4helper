@@ -254,6 +254,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         return (false, Constants.ErrorCodes.FormatUserMessage(errorCode), null);
                     }
                     
+                    // 🔥 关键修复1.5：重新从 BindingList 获取 member（防止引用失效）
+                    // 场景：刷新/绑定群时 Clear() + Add() 会导致传入的 member 引用失效
+                    // 必须重新获取，确保使用的是当前 BindingList 中的对象
+                    var memberInList = _membersBindingList.FirstOrDefault(m => m.Wxid == member.Wxid);
+                    if (memberInList == null)
+                    {
+                        _logService.Error("BinggoOrderService", 
+                            $"❌ 严重错误：会员 {member.Nickname}({member.Wxid}) 不在 BindingList 中！" +
+                            $"可能正在重新绑定群，请稍后重试。");
+                        return (false, "系统正在更新数据，请稍后重试", null);
+                    }
+                    
+                    // 🔥 使用 BindingList 中的对象（而不是传入的 member）
+                    member = memberInList;
+                    
                     // 🔥 关键修复2：在保存订单前的最后时刻，再次检查实时状态（模仿 F5BotV2 第2393行）
                     // F5BotV2 的关键设计：在锁内、保存订单前，最后一次检查状态
                     // 这是防止状态变化的最后一道防线！
