@@ -653,49 +653,53 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 else
                 {
                     // 🔥 如果没有服务，直接处理（兼容旧逻辑）
-                    if (action == "上")
+                    // 🔥 重要修复：添加全局锁保护，确保与下注、结算等操作互斥
+                    lock (Core.ResourceLocks.MemberBalanceLock)
                     {
-                        member.Balance += money;
-                        member.CreditToday += money;
-                        creditWithdraw.Status = CreditWithdrawStatus.已同意;
-                        creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                        creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                        
-                        if (_creditWithdrawsBindingList != null)
+                        if (action == "上")
                         {
-                            // BindingList 会自动保存
+                            member.Balance += money;
+                            member.CreditToday += money;
+                            creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                            creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                            creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            
+                            if (_creditWithdrawsBindingList != null)
+                            {
+                                // BindingList 会自动保存
+                            }
+                            else if (_db != null)
+                            {
+                                _db.Update(creditWithdraw);
+                            }
+                            
+                            _logService.Info("AdminCommand", $"管理上分成功: {member.Nickname} +{money}, 余额={member.Balance}");
+                            return true;
                         }
-                        else if (_db != null)
+                        else if (action == "下")
                         {
-                            _db.Update(creditWithdraw);
+                            member.Balance -= money;
+                            member.WithdrawToday += money;
+                            creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                            creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                            creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            
+                            if (_creditWithdrawsBindingList != null)
+                            {
+                                // BindingList 会自动保存
+                            }
+                            else if (_db != null)
+                            {
+                                _db.Update(creditWithdraw);
+                            }
+                            
+                            _logService.Info("AdminCommand", $"管理下分成功: {member.Nickname} -{money}, 余额={member.Balance}");
+                            return true;
                         }
-                        
-                        _logService.Info("AdminCommand", $"管理上分成功: {member.Nickname} +{money}, 余额={member.Balance}");
-                        return true;
-                    }
-                    else if (action == "下")
-                    {
-                        member.Balance -= money;
-                        member.WithdrawToday += money;
-                        creditWithdraw.Status = CreditWithdrawStatus.已同意;
-                        creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                        creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                        
-                        if (_creditWithdrawsBindingList != null)
+                        else
                         {
-                            // BindingList 会自动保存
+                            throw new Exception("#无效动作!");
                         }
-                        else if (_db != null)
-                        {
-                            _db.Update(creditWithdraw);
-                        }
-                        
-                        _logService.Info("AdminCommand", $"管理下分成功: {member.Nickname} -{money}, 余额={member.Balance}");
-                        return true;
-                    }
-                    else
-                    {
-                        throw new Exception("#无效动作!");
                     }
                 }
             }

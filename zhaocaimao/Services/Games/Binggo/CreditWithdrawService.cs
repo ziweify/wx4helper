@@ -26,8 +26,12 @@ namespace zhaocaimao.Services.Games.Binggo
         
         // 🔥 应用级别的锁：保护会员余额、上下分记录的同步写入
         // 参考用户要求："所有会员表，订单表的操作，要变成同步操作。而且是应用级别的同步"
-        // 🔥 注意：这里使用与 BinggoOrderService 相同的锁对象，确保所有资金操作互斥
-        private static readonly object _memberBalanceLock = new object();
+        // 
+        // 🔥 重要变更：使用全局锁管理类（Core.ResourceLocks）
+        // 原因：不同类中的 static readonly object 是独立的对象，无法互相保护
+        // 解决：使用 Core.ResourceLocks.MemberBalanceLock 确保与下注、结算等操作互斥
+        // 
+        // 🔥 不再定义本地锁对象，直接使用 Core.ResourceLocks.MemberBalanceLock
 
         public CreditWithdrawService(
             SQLiteConnection db,
@@ -83,7 +87,7 @@ namespace zhaocaimao.Services.Games.Binggo
 
                 // 🔥 2. 使用应用级别的锁保护会员余额的同步更新（上下分）
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
-                lock (_memberBalanceLock)
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
                     balanceBefore = member.Balance;
                     

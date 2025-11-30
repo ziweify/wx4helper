@@ -35,11 +35,14 @@ namespace zhaocaimao.Services.Games.Binggo
         
         // 🔥 应用级别的锁：保护会员余额、订单、资金相关表的同步写入
         // 参考用户要求："所有会员表，订单表的操作，要变成同步操作。而且是应用级别的同步"
-        private static readonly object _memberBalanceLock = new object();
-        
-        // 🔥 限额检查锁：保护"查询累计金额→验证限额→保存订单"的原子操作
-        // 防止并发竞态导致限额超限（参考 F5BotV2 _OrderLimitDic 机制）
-        private static readonly object _orderLimitCheckLock = new object();
+        //
+        // 🔥 重要变更：使用全局锁管理类（Core.ResourceLocks）
+        // 原因：不同类中的 static readonly object 是独立的对象，无法互相保护
+        // 例如：BinggoOrderService._memberBalanceLock != CreditWithdrawService._memberBalanceLock
+        // 解决：所有服务使用 ResourceLocks.MemberBalanceLock 和 ResourceLocks.OrderLimitCheckLock
+        // 
+        // 🔥 不再定义本地锁对象，直接使用 Core.ResourceLocks.MemberBalanceLock
+        // 🔥 不再定义本地锁对象，直接使用 Core.ResourceLocks.OrderLimitCheckLock
         
         public BinggoOrderService(
             ILogService logService,
@@ -99,6 +102,35 @@ namespace zhaocaimao.Services.Games.Binggo
                 _logService.Info("OrderService", 
                     $"处理下注: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
                 
+                // 🔥 关键修复：在保存订单前，获取实时状态和期号（模仿 F5BotV2 第2393行设计）
+                // F5BotV2 在保存订单前会再次检查 _status，确保状态未变化
+                // 这是 F5BotV2 稳定性的关键！
+                int realTimeIssueId = _lotteryService.CurrentIssueId;
+                BinggoLotteryStatus realTimeStatus = _lotteryService.CurrentStatus;
+                
+                // 🔥 检查期号是否一致（防止期号在处理过程中变化）
+                if (realTimeIssueId != issueId)
+                {
+                    _logService.Warning("OrderService", 
+                        $"❌ 期号已变化，拒绝下注: {member.Nickname} - 传入期号: {issueId} - 当前期号: {realTimeIssueId}");
+                    return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                }
+                
+                // 🔥 再次检查状态（防止状态在处理过程中变化）- 参考 F5BotV2 第2393行
+                // F5BotV2: if(_status == BoterStatus.开盘中) { /* 保存订单 */ } else { /* 拒绝 */ }
+                // 🔥 重要：使用白名单模式（只允许明确的状态），而不是黑名单模式
+                // 这样即使将来新增状态，也会默认拒绝，更安全（防御性编程）
+                if (realTimeStatus != BinggoLotteryStatus.开盘中 && 
+                    realTimeStatus != BinggoLotteryStatus.即将封盘)
+                {
+                    _logService.Warning("OrderService", 
+                        $"❌ 状态已变化，拒绝下注: {member.Nickname} - 期号: {realTimeIssueId} - 状态: {realTimeStatus}");
+                    return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                }
+                
+                _logService.Info("OrderService", 
+                    $"✅ 状态和期号验证通过: 期号={realTimeIssueId}, 状态={realTimeStatus}");
+                
                 // 1. 解析下注内容
                 var betContent = BinggoHelper.ParseBetContent(messageContent, issueId);
                 
@@ -111,7 +143,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 // 2. 🔥 验证下注 + 创建订单（使用锁保护，防止并发竞态）
                 V2MemberOrder? order = null;
-                lock (_orderLimitCheckLock)
+                lock (Core.ResourceLocks.OrderLimitCheckLock)
                 {
                     // 2.1 查询当期所有投注项的累计金额（🔥 在锁内查询，确保是最新数据）
                     var accumulatedAmounts = new Dictionary<string, decimal>();
@@ -191,8 +223,32 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 2.4 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
                 // 参考 F5BotV2: V2Member.AddOrder 方法（第430-439行）
-                    lock (_memberBalanceLock)
+                    lock (Core.ResourceLocks.MemberBalanceLock)
                     {
+                        // 🔥 关键修复：在保存订单前的最后时刻，再次检查实时状态（模仿 F5BotV2 第2393行）
+                        // F5BotV2 的关键设计：在锁内、保存订单前，最后一次检查状态
+                        // 这是防止状态变化的最后一道防线！
+                        var finalStatus = _lotteryService.CurrentStatus;
+                        var finalIssueId = _lotteryService.CurrentIssueId;
+                        
+                        if (finalStatus != BinggoLotteryStatus.开盘中 && 
+                            finalStatus != BinggoLotteryStatus.即将封盘)
+                        {
+                            _logService.Warning("OrderService", 
+                                $"❌ [锁内检查] 状态已变化，拒绝下单: {member.Nickname} - 期号: {finalIssueId} - 状态: {finalStatus}");
+                            return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                        }
+                        
+                        if (finalIssueId != issueId)
+                        {
+                            _logService.Warning("OrderService", 
+                                $"❌ [锁内检查] 期号已变化，拒绝下单: {member.Nickname} - 原期号: {issueId} - 当前期号: {finalIssueId}");
+                            return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                        }
+                        
+                        _logService.Info("OrderService", 
+                            $"✅ [锁内检查] 最终状态和期号验证通过: 期号={finalIssueId}, 状态={finalStatus}");
+                        
                         // 2.4.1 扣除余额
                     // 🔥 重要：托单也要扣钱！（用户要求："托照样正常结算，什么都是走正常流程的，仅仅不投注而已"）
                     // 只有管理员不扣钱
@@ -306,7 +362,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 order.Notes = $"{notePrefix}{noteSuffix}";
                 
                 // 🔥 5. 更新订单到数据库（备注已更新）
-                lock (_memberBalanceLock)
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
                     UpdateOrder(order);
                 }
@@ -476,7 +532,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
                 // 参考 F5BotV2: V2Member.OpenLottery 方法（第446-457行）
-                lock (_memberBalanceLock)
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
                     // 6.1 显式更新订单到数据库（确保状态保存）
                     // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder

@@ -35,12 +35,14 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         
         // 🔥 应用级别的锁：保护会员余额、订单、资金相关表的同步写入
         // 参考用户要求："所有会员表，订单表的操作，要变成同步操作。而且是应用级别的同步"
-        private static readonly object _memberBalanceLock = new object();
-        
-        // 🔥 订单创建锁：保护"验证限额-保存订单"原子操作，防止并发竞态条件
-        // 场景：两用户同时投注同一项，都查到累计未超限，但保存后总额超限
-        // 解决：lock 保护整个"查询累计→验证→保存订单"流程
-        private static readonly object _orderLimitCheckLock = new object();
+        //
+        // 🔥 重要变更：使用全局锁管理类（Core.ResourceLocks）
+        // 原因：不同类中的 static readonly object 是独立的对象，无法互相保护
+        // 例如：BinggoOrderService._memberBalanceLock != CreditWithdrawService._memberBalanceLock
+        // 解决：所有服务使用 ResourceLocks.MemberBalanceLock 和 ResourceLocks.OrderLimitCheckLock
+        // 
+        // 🔥 不再定义本地锁对象，直接使用 Core.ResourceLocks.MemberBalanceLock
+        // 🔥 不再定义本地锁对象，直接使用 Core.ResourceLocks.OrderLimitCheckLock
         
         public BinggoOrderService(
             ILogService logService,
@@ -100,6 +102,35 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"处理下注: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
                 
+                // 🔥 关键修复：在保存订单前，获取实时状态和期号（模仿 F5BotV2 第2393行设计）
+                // F5BotV2 在保存订单前会再次检查 _status，确保状态未变化
+                // 这是 F5BotV2 稳定性的关键！
+                int realTimeIssueId = _lotteryService.CurrentIssueId;
+                BinggoLotteryStatus realTimeStatus = _lotteryService.CurrentStatus;
+                
+                // 🔥 检查期号是否一致（防止期号在处理过程中变化）
+                if (realTimeIssueId != issueId)
+                {
+                    _logService.Warning("BinggoOrderService", 
+                        $"❌ 期号已变化，拒绝下注: {member.Nickname} - 传入期号: {issueId} - 当前期号: {realTimeIssueId}");
+                    return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                }
+                
+                // 🔥 再次检查状态（防止状态在处理过程中变化）- 参考 F5BotV2 第2393行
+                // F5BotV2: if(_status == BoterStatus.开盘中) { /* 保存订单 */ } else { /* 拒绝 */ }
+                // 🔥 重要：使用白名单模式（只允许明确的状态），而不是黑名单模式
+                // 这样即使将来新增状态，也会默认拒绝，更安全（防御性编程）
+                if (realTimeStatus != BinggoLotteryStatus.开盘中 && 
+                    realTimeStatus != BinggoLotteryStatus.即将封盘)
+                {
+                    _logService.Warning("BinggoOrderService", 
+                        $"❌ 状态已变化，拒绝下注: {member.Nickname} - 期号: {realTimeIssueId} - 状态: {realTimeStatus}");
+                    return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                }
+                
+                _logService.Info("BinggoOrderService", 
+                    $"✅ 状态和期号验证通过: 期号={realTimeIssueId}, 状态={realTimeStatus}");
+                
                 // 1. 解析下注内容
                 var betContent = BinggoHelper.ParseBetContent(messageContent, issueId);
                 
@@ -115,7 +146,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 //   - 不加锁：都查到累计未超限 → 都通过验证 → 都保存成功 → 总额超限！
                 //   - 加锁后：线程A验证+保存 → 线程B验证时查到A的订单 → 超限被拒绝 ✅
                 V2MemberOrder? order = null;
-                lock (_orderLimitCheckLock)
+                lock (Core.ResourceLocks.OrderLimitCheckLock)
                 {
                     // 2.1 查询当期所有投注项的累计金额（🔥 在锁内查询，确保是最新数据）
                     var accumulatedAmounts = new Dictionary<string, decimal>();
@@ -197,44 +228,122 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 2.4 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
                 // 参考 F5BotV2: V2Member.AddOrder 方法（第430-439行）
-                lock (_memberBalanceLock)
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
-                    // 2.4.1 扣除余额
-                    // 🔥 重要：托单也要扣钱！（用户要求："托照样正常结算，什么都是走正常流程的，仅仅不投注而已"）
-                    // 只有管理员不扣钱
-                    if (member.State != MemberState.管理)
+                    // 🔥 关键修复1：先检查 BindingList 是否可用（在扣除余额之前）
+                    // 防止：余额扣除成功，但订单保存失败（因为 BindingList 为 null）
+                    if (_ordersBindingList == null)
                     {
-                        _logService.Info("BinggoOrderService", 
-                            $"🔒 [下单] {member.Nickname} - 扣除前余额: {member.Balance:F2}");
-                        
-                        member.Balance -= (float)betContent.TotalAmount;
-                        
-                        _logService.Info("BinggoOrderService", 
-                            $"🔒 [下单] {member.Nickname} - 扣除 {betContent.TotalAmount:F2}，扣除后余额: {member.Balance:F2}");
+                        string errorCode = Constants.ErrorCodes.Order.OrderListNotInitialized;
+                        _logService.Error("BinggoOrderService", 
+                            $"❌ [{errorCode}] 严重错误：订单列表未初始化！" +
+                            $"会员: {member.Nickname}({member.Wxid}), " +
+                            $"期号: {issueId}, " +
+                            $"金额: {betContent.TotalAmount:F2}");
+                        return (false, Constants.ErrorCodes.FormatUserMessage(errorCode), null);
                     }
                     
-                    // 2.4.2 增加待结算金额和统计（参考 F5BotV2 第 546 行）
-                    // 🔥 重要：托单也要增加统计！（会员个人统计）
-                    member.BetWait += (float)betContent.TotalAmount;
-                    member.BetToday += (float)betContent.TotalAmount;
-                    member.BetTotal += (float)betContent.TotalAmount;
-                    member.BetCur += (float)betContent.TotalAmount;  // 本期下注
+                    if (_membersBindingList == null)
+                    {
+                        string errorCode = Constants.ErrorCodes.Order.MemberListNotInitialized;
+                        _logService.Error("BinggoOrderService", 
+                            $"❌ [{errorCode}] 严重错误：会员列表未初始化！" +
+                            $"会员: {member.Nickname}({member.Wxid}), " +
+                            $"期号: {issueId}, " +
+                            $"金额: {betContent.TotalAmount:F2}");
+                        return (false, Constants.ErrorCodes.FormatUserMessage(errorCode), null);
+                    }
+                    
+                    // 🔥 关键修复2：在保存订单前的最后时刻，再次检查实时状态（模仿 F5BotV2 第2393行）
+                    // F5BotV2 的关键设计：在锁内、保存订单前，最后一次检查状态
+                    // 这是防止状态变化的最后一道防线！
+                    var finalStatus = _lotteryService.CurrentStatus;
+                    var finalIssueId = _lotteryService.CurrentIssueId;
+                    
+                    if (finalStatus != BinggoLotteryStatus.开盘中 && 
+                        finalStatus != BinggoLotteryStatus.即将封盘)
+                    {
+                        _logService.Warning("BinggoOrderService", 
+                            $"❌ [锁内检查] 状态已变化，拒绝下单: {member.Nickname} - 期号: {finalIssueId} - 状态: {finalStatus}");
+                        return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                    }
+                    
+                    if (finalIssueId != issueId)
+                    {
+                        _logService.Warning("BinggoOrderService", 
+                            $"❌ [锁内检查] 期号已变化，拒绝下单: {member.Nickname} - 原期号: {issueId} - 当前期号: {finalIssueId}");
+                        return (false, $"{member.Nickname}\r时间未到!不收货!", null);
+                    }
                     
                     _logService.Info("BinggoOrderService", 
-                        $"🔒 [下单] {member.Nickname} - 待结算: {member.BetWait:F2}, 今日下注: {member.BetToday:F2}");
+                        $"✅ [锁内检查] 最终状态和期号验证通过: 期号={finalIssueId}, 状态={finalStatus}");
                     
-                    // 2.4.3 保存订单（插入到列表顶部，保持"最新在上"）
-                    if (_ordersBindingList != null && _ordersBindingList.Count > 0)
-                    {
-                        _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
-                    }
-                    else
-                    {
-                        _ordersBindingList?.Add(order);  // 🔥 空列表时使用 Add
-                    }
+                    // 🔥 关键修复3：记录原始值（用于异常回滚）
+                    float balanceBefore = member.Balance;
+                    float betWaitBefore = member.BetWait;
+                    float betTodayBefore = member.BetToday;
+                    float betTotalBefore = member.BetTotal;
+                    float betCurBefore = member.BetCur;
                     
-                    _logService.Info("BinggoOrderService", 
-                        $"🔒 [下单] {member.Nickname} - 订单已保存，OrderId: {order.Id}");
+                    try
+                    {
+                        // 2.4.1 扣除余额
+                        // 🔥 重要：托单也要扣钱！（用户要求："托照样正常结算，什么都是走正常流程的，仅仅不投注而已"）
+                        // 只有管理员不扣钱
+                        if (member.State != MemberState.管理)
+                        {
+                            member.Balance -= (float)betContent.TotalAmount;
+                            
+                            _logService.Info("BinggoOrderService", 
+                                $"🔒 [下单] {member.Nickname} - 扣除 {betContent.TotalAmount:F2}，余额: {balanceBefore:F2} → {member.Balance:F2}");
+                        }
+                        
+                        // 2.4.2 增加待结算金额和统计（参考 F5BotV2 第 546 行）
+                        // 🔥 重要：托单也要增加统计！（会员个人统计）
+                        member.BetWait += (float)betContent.TotalAmount;
+                        member.BetToday += (float)betContent.TotalAmount;
+                        member.BetTotal += (float)betContent.TotalAmount;
+                        member.BetCur += (float)betContent.TotalAmount;  // 本期下注
+                        
+                        _logService.Info("BinggoOrderService", 
+                            $"🔒 [下单] {member.Nickname} - 待结算: {member.BetWait:F2}, 今日下注: {member.BetToday:F2}");
+                        
+                        // 2.4.3 保存订单（插入到列表顶部，保持"最新在上"）
+                        // 🔥 已在前面检查过 _ordersBindingList != null，所以这里不需要 ?. 了
+                        if (_ordersBindingList.Count > 0)
+                        {
+                            _ordersBindingList.Insert(0, order);  // 🔥 插入到顶部
+                        }
+                        else
+                        {
+                            _ordersBindingList.Add(order);  // 🔥 空列表时使用 Add
+                        }
+                        
+                        _logService.Info("BinggoOrderService", 
+                            $"✅ [下单] {member.Nickname} - 订单已保存: OrderId={order.Id}, 金额={betContent.TotalAmount:F2}");
+                    }
+                    catch (Exception ex)
+                    {
+                        // 🔥 关键修复4：异常时回滚所有修改
+                        member.Balance = balanceBefore;
+                        member.BetWait = betWaitBefore;
+                        member.BetToday = betTodayBefore;
+                        member.BetTotal = betTotalBefore;
+                        member.BetCur = betCurBefore;
+                        
+                        string errorCode = Constants.ErrorCodes.Order.OrderSaveFailed;
+                        _logService.Error("BinggoOrderService", 
+                            $"❌ [{errorCode}] 订单保存失败，已回滚余额和统计！\n" +
+                            $"  会员: {member.Nickname}({member.Wxid})\n" +
+                            $"  期号: {issueId}\n" +
+                            $"  金额: {betContent.TotalAmount:F2}\n" +
+                            $"  余额: {balanceBefore:F2} (已回滚)\n" +
+                            $"  异常: {ex.GetType().Name}\n" +
+                            $"  消息: {ex.Message}\n" +
+                            $"  堆栈: {ex.StackTrace}", ex);
+                        
+                        return (false, Constants.ErrorCodes.FormatUserMessage(errorCode), null);
+                    }
                 }
                 // 🔥 锁释放：会员余额、订单数据已同步写入
                 
@@ -278,9 +387,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             V2Member member,
             bool sendToWeChat = true)
         {
+            string type = sendToWeChat ? "线上补单" : "离线补单";
+            
             try
             {
-                string type = sendToWeChat ? "线上补单" : "离线补单";
                 _logService.Info("BinggoOrderService", 
                     $"{type}: {member.Nickname} ({member.Wxid}) - 订单ID: {order.Id} - 期号: {order.IssueId}");
                 
@@ -312,7 +422,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 order.Notes = $"{notePrefix}{noteSuffix}";
                 
                 // 🔥 5. 更新订单到数据库（备注已更新）
-                lock (_memberBalanceLock)
+                // 🔥 使用全局锁：虽然这里只更新订单，但保持一致性
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
                     UpdateOrder(order);
                 }
@@ -340,9 +451,17 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             }
             catch (Exception ex)
             {
+                string errorCode = Constants.ErrorCodes.Order.ManualOrderFailed;
                 _logService.Error("BinggoOrderService", 
-                    $"补单失败: {ex.Message}", ex);
-                return (false, $"补单失败: {ex.Message}", null);
+                    $"❌ [{errorCode}] 补单失败！\n" +
+                    $"  订单ID: {order.Id}\n" +
+                    $"  期号: {order.IssueId}\n" +
+                    $"  会员: {member.Nickname}({member.Wxid})\n" +
+                    $"  金额: {order.AmountTotal:F2}\n" +
+                    $"  类型: {type}\n" +
+                    $"  异常: {ex.GetType().Name}\n" +
+                    $"  消息: {ex.Message}", ex);
+                return (false, Constants.ErrorCodes.FormatUserMessage(errorCode), null);
             }
         }
         
@@ -482,7 +601,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"
                 // 参考 F5BotV2: V2Member.OpenLottery 方法（第446-457行）
-                lock (_memberBalanceLock)
+                // 🔥 使用全局锁：确保与下注、上下分等操作互斥
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
                     // 6.1 显式更新订单到数据库（确保状态保存）
                     // 虽然 PropertyChanged 会自动保存，但为了确保可靠性，这里显式调用 UpdateOrder

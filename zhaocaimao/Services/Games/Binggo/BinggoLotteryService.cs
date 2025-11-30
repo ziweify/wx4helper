@@ -1281,9 +1281,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 🔥 检查是否已封盘（在发送封盘消息"时间到!停止进仓!以此为准!"之前都可以取消）
                     // 允许在"开盘中"和"即将封盘"状态取消，只有在"封盘中"状态（已发送封盘消息）之后才不能取消
                     // 参考 F5BotV2 第2216行，但需要允许"即将封盘"状态也可以取消
-                    if (_currentStatus == BinggoLotteryStatus.封盘中 || 
-                        _currentStatus == BinggoLotteryStatus.开奖中 ||
-                        _currentStatus == BinggoLotteryStatus.等待中)
+                    // 🔥 重要：使用白名单模式（只允许明确的状态可以取消），防御性编程
+                    if (_currentStatus != BinggoLotteryStatus.开盘中 && 
+                        _currentStatus != BinggoLotteryStatus.即将封盘)
                     {
                         return (true, $"@{member.Nickname} 时间到!不能取消!", null);
                     }
@@ -1393,9 +1393,9 @@ namespace zhaocaimao.Services.Games.Binggo
                 
                 // 🔥 检查状态（只有"开盘中"和"即将封盘"可以下注）- 参考 F5BotV2
                 // "等待中"状态不允许投注（剩余时间超过5分钟）
-                if (_currentStatus == BinggoLotteryStatus.封盘中 || 
-                    _currentStatus == BinggoLotteryStatus.开奖中 ||
-                    _currentStatus == BinggoLotteryStatus.等待中)
+                // 🔥 重要：使用白名单模式（只允许明确的状态可以下注），防御性编程
+                if (_currentStatus != BinggoLotteryStatus.开盘中 && 
+                    _currentStatus != BinggoLotteryStatus.即将封盘)
                 {
                     _logService.Info("LotteryService", 
                         $"❌ 状态拒绝下注: {member.Nickname} - 期号: {_currentIssueId} - 状态: {_currentStatus}");
