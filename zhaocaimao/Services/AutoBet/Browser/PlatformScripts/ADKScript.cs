@@ -27,6 +27,11 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         private string _mysession = "";  // session
         private decimal _currentBalance = 0;
         
+        // 🔥 保存用户名和密码，用于页面刷新后自动重新填充
+        private string _savedUsername = "";
+        private string _savedPassword = "";
+        private bool _isLoginAttempting = false; // 标记是否正在尝试登录
+        
         // 赔率映射表（参考 F5BotV2，ADK使用茅台的赔率映射）
         private readonly Dictionary<string, Models.OddsInfo> _oddsMap = new Dictionary<string, Models.OddsInfo>();
         
@@ -106,78 +111,318 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             return item != null ? item.MoneySum.ToString() : "";
         }
         
+        /// <summary>
+        /// 检查是否已登录（通过URL和页面内容判断）
+        /// </summary>
+        private async Task<bool> CheckLoginStatusAsync()
+        {
+            try
+            {
+                if (_webView?.CoreWebView2 == null) return false;
+                
+                // 检查URL
+                var currentUrlScript = "window.location.href";
+                var currentUrlResult = await _webView.CoreWebView2.ExecuteScriptAsync(currentUrlScript);
+                if (currentUrlResult != null)
+                {
+                    var urlStr = currentUrlResult.Trim('"');
+                    
+                    // 如果URL包含 default.html 且不包含 login，说明已登录
+                    if (!urlStr.Contains("login") && (urlStr.Contains("default.html") || urlStr.Contains("index")))
+                    {
+                        // 设置 baseUrl
+                        if (string.IsNullOrEmpty(_baseUrl))
+                        {
+                            try
+                            {
+                                _baseUrl = new Uri(urlStr).GetLeftPart(UriPartial.Authority);
+                                Log($"✅ 检测到已登录，Base URL: {_baseUrl}");
+                            }
+                            catch { }
+                        }
+                        return true;
+                    }
+                }
+                
+                // 检查页面内容（查找登录表单，如果找不到说明可能已登录）
+                var checkScript = @"
+                    (function() {
+                        try {
+                            // 查找登录表单元素
+                            const loginForm = document.querySelector('form');
+                            const usernameInput = document.querySelector('input[type=""text""]');
+                            const passwordInput = document.querySelector('input[type=""password""]');
+                            
+                            // 如果找不到登录表单，或者URL不是登录页面，说明可能已登录
+                            const currentUrl = window.location.href;
+                            if (!currentUrl.includes('login') && (!loginForm || (!usernameInput && !passwordInput))) {
+                                return { isLoggedIn: true, url: currentUrl };
+                            }
+                            
+                            return { isLoggedIn: false, url: currentUrl };
+                        } catch (error) {
+                            return { isLoggedIn: false, error: error.message };
+                        }
+                    })();
+                ";
+                
+                var checkResult = await _webView.CoreWebView2.ExecuteScriptAsync(checkScript);
+                var checkJson = JObject.Parse(checkResult);
+                var isLoggedIn = checkJson["isLoggedIn"]?.Value<bool>() ?? false;
+                
+                if (isLoggedIn)
+                {
+                    var url = checkJson["url"]?.ToString()?.Trim('"') ?? "";
+                    if (!string.IsNullOrEmpty(url) && string.IsNullOrEmpty(_baseUrl))
+                    {
+                        try
+                        {
+                            _baseUrl = new Uri(url).GetLeftPart(UriPartial.Authority);
+                            Log($"✅ 检测到已登录，Base URL: {_baseUrl}");
+                        }
+                        catch { }
+                    }
+                }
+                
+                return isLoggedIn;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public async Task<bool> LoginAsync(string username, string password)
         {
             try
             {
                 Log("🔐 开始登录ADK...");
                 
-                // 参考 F5BotV2 ADKMember.cs 的登录逻辑（Line 88-234）
+                // 🔥 保存用户名和密码，用于页面刷新后自动重新填充
+                _savedUsername = username;
+                _savedPassword = password;
+                _isLoginAttempting = true;
+                
+                // 🔥 首先检查用户是否已经手动登录
+                var alreadyLoggedIn = await CheckLoginStatusAsync();
+                if (alreadyLoggedIn)
+                {
+                    _isLoggedIn = true;
+                    _isLoginAttempting = false;
+                    Log("✅ 检测到用户已手动登录，跳过自动登录流程");
+                    return true;
+                }
+                
+                // 等待页面加载完成（参考 F5BotV2 ADKMember.cs Line 88-234）
+                Log("⏳ 等待登录页面加载完成...");
+                await Task.Delay(1000); // 给页面1秒加载时间
+                
+                // 先检查页面上的input数量（F5BotV2检查是否为4个input）
+                var checkInputCountScript = @"document.querySelectorAll('input').length";
+                var inputCountResult = await _webView.CoreWebView2.ExecuteScriptAsync(checkInputCountScript);
+                Log($"📊 页面input元素数量: {inputCountResult}");
+                
+                // 🔥 检查登录表单的属性，看是否有target="_blank"等导致新页面打开的设置
+                var checkFormScript = @"
+                    (function() {
+                        const form = document.querySelector('form');
+                        if (form) {
+                            return {
+                                action: form.action || '',
+                                method: form.method || '',
+                                target: form.target || '',
+                                id: form.id || '',
+                                name: form.name || ''
+                            };
+                        }
+                        return { error: 'No form found' };
+                    })();
+                ";
+                try
+                {
+                    var formCheckResult = await _webView.CoreWebView2.ExecuteScriptAsync(checkFormScript);
+                    var formJson = JObject.Parse(formCheckResult);
+                    Log($"📋 登录表单属性:");
+                    Log($"   action: {formJson["action"]}");
+                    Log($"   method: {formJson["method"]}");
+                    Log($"   target: {formJson["target"]}");
+                    Log($"   id: {formJson["id"]}");
+                }
+                catch (Exception ex)
+                {
+                    Log($"⚠️  检查表单属性失败: {ex.Message}");
+                }
+                
+                // 修正登录表单选择器，参考 F5BotV2 使用简单直接的方式
                 var script = $@"
                     (function() {{
                         try {{
-                            // 查找登录表单（ADK登录表单选择器）
-                            const usernameInput = document.querySelector('#txtUsername') ||
-                                                  document.querySelector('input[name=""username""]') ||
-                                                  document.querySelector('input[type=""text""]');
-                            const passwordInput = document.querySelector('#txtPass') ||
-                                                  document.querySelector('input[name=""password""]') ||
-                                                  document.querySelector('input[type=""password""]');
+                            // 获取所有input的调试信息
+                            const allInputs = document.querySelectorAll('input');
+                            const inputDebugInfo = Array.from(allInputs).map((input, idx) => ({{
+                                index: idx,
+                                type: input.type || 'unknown',
+                                id: input.id || '',
+                                name: input.name || '',
+                                tagName: input.tagName
+                            }}));
+                            
+                            // 直接使用 F5BotV2 中的选择器
+                            const usernameInput = document.querySelector('#txtUsername');
+                            const passwordInput = document.querySelector('#txtPass');
                             
                             if (usernameInput && passwordInput) {{
+                                // 直接设置value，参考 F5BotV2 Line 116-117
                                 usernameInput.value = '{username}';
                                 passwordInput.value = '{password}';
                                 
                                 // 触发事件
                                 usernameInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                usernameInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
                                 passwordInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                passwordInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
                                 
-                                return {{ success: true, message: '表单已填充，请输入验证码并点击登录' }};
+                                // 🔥 强制修复表单属性，防止在新窗口打开
+                                const loginForm = document.querySelector('form');
+                                if (loginForm) {{
+                                    // 移除target属性，防止打开新页面
+                                    loginForm.removeAttribute('target');
+                                    loginForm.target = '';
+                                    
+                                    // 确保表单在当前页面提交
+                                    if (loginForm.action) {{
+                                        // 如果action是空的或者是javascript:，设置为当前页面
+                                        if (!loginForm.action || loginForm.action.startsWith('javascript:')) {{
+                                            loginForm.action = window.location.href;
+                                        }}
+                                    }}
+                                    
+                                    // 标记：用户名和密码已填充，准备登录
+                                    window._adkLoginAttempting = true;
+                                    window._adkFormFixed = true;
+                                    
+                                    console.log('表单已修复: target=' + loginForm.target + ', action=' + loginForm.action);
+                                }}
+                                
+                                return {{ 
+                                    success: true, 
+                                    message: '表单已填充并修复，请输入验证码（系统会自动提交）',
+                                    usernameId: usernameInput.id,
+                                    usernameName: usernameInput.name || '',
+                                    passwordId: passwordInput.id,
+                                    passwordName: passwordInput.name || '',
+                                    inputCount: allInputs.length,
+                                    inputDebugInfo: inputDebugInfo,
+                                    formFixed: !!loginForm
+                                }};
                             }} else {{
-                                return {{ success: false, message: '未找到登录表单' }};
+                                return {{ 
+                                    success: false, 
+                                    message: '未找到登录表单 (#txtUsername 或 #txtPass 不存在)', 
+                                    usernameFound: !!usernameInput, 
+                                    passwordFound: !!passwordInput,
+                                    inputCount: allInputs.length,
+                                    inputDebugInfo: inputDebugInfo
+                                }};
                             }}
                         }} catch (error) {{
-                            return {{ success: false, message: error.message }};
+                            return {{ success: false, message: '执行错误: ' + error.message, error: error.stack }};
                         }}
                     }})();
                 ";
                 
                 var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                Log($"📄 登录脚本返回结果: {result}");
+                
                 var json = JObject.Parse(result);
                 
                 var success = json["success"]?.Value<bool>() ?? false;
                 var message = json["message"]?.ToString() ?? "";
                 
+                // 输出调试信息
+                if (json["inputDebugInfo"] != null)
+                {
+                    Log($"🔍 页面input元素调试信息 (总数: {json["inputCount"]}个):");
+                    var debugInfo = json["inputDebugInfo"];
+                    foreach (var item in debugInfo)
+                    {
+                        Log($"  [{item["index"]}] type={item["type"]}, id={item["id"]}, name={item["name"]}");
+                    }
+                }
+                
                 Log(success ? $"✅ {message}" : $"❌ {message}");
                 
                 if (success)
                 {
-                    // 等待登录完成
-                    Log("⏳ 等待登录完成（请输入验证码并点击登录）...");
+                    if (json["usernameId"] != null)
+                        Log($"  用户名输入框: id={json["usernameId"]}, name={json["usernameName"]}");
+                    if (json["passwordId"] != null)
+                        Log($"  密码输入框: id={json["passwordId"]}, name={json["passwordName"]}");
+                }
+                else
+                {
+                    Log($"  usernameFound={json["usernameFound"]}, passwordFound={json["passwordFound"]}");
+                }
+                
+                if (success)
+                {
+                    // 等待登录完成（参考 F5BotV2 ADKMember.cs Line 107-173）
+                    Log("⏳ 等待登录完成（请输入验证码）...");
                     var waitCount = 0;
-                    while (!_isLoggedIn && waitCount < 300)
+                    var autoClicked = false;
+                    
+                    while (!_isLoggedIn && waitCount < 600) // 增加到60秒等待
                     {
                         await Task.Delay(100);
                         waitCount++;
                         
-                        // 检查是否已登录（通过URL判断，参考 F5BotV2 Line 150-165）
-                        var currentUrl = await _webView.CoreWebView2.ExecuteScriptAsync("window.location.href");
-                        if (currentUrl != null && !currentUrl.Contains("login") && currentUrl.Contains("default.html"))
+                        // 🔥 参考 F5BotV2 Line 118-124：检查验证码是否已填充，如果已填充则自动点击登录
+                        if (!autoClicked && waitCount % 10 == 0) // 每1秒检查一次
+                        {
+                            var checkVerifyCodeScript = @"
+                                (function() {
+                                    try {
+                                        const verifyCodeInput = document.querySelector('#VerifyCode') || 
+                                                              document.querySelector('input[name=""validate""]') ||
+                                                              document.querySelectorAll('input[type=""text""]')[1]; // 第二个text输入框通常是验证码
+                                        const loginButton = document.querySelector('#submit1') ||
+                                                          document.querySelector('input[type=""submit""]') ||
+                                                          document.querySelector('button[type=""submit""]');
+                                        
+                                        if (verifyCodeInput && verifyCodeInput.value && verifyCodeInput.value.length >= 4) {
+                                            if (loginButton) {
+                                                loginButton.click();
+                                                return { clicked: true, verifyCode: verifyCodeInput.value.length };
+                                            }
+                                        }
+                                        return { clicked: false, verifyCode: verifyCodeInput ? verifyCodeInput.value.length : 0 };
+                                    } catch (error) {
+                                        return { clicked: false, error: error.message };
+                                    }
+                                })();
+                            ";
+                            
+                            try
+                            {
+                                var checkResult = await _webView.CoreWebView2.ExecuteScriptAsync(checkVerifyCodeScript);
+                                var checkJson = JObject.Parse(checkResult);
+                                var clicked = checkJson["clicked"]?.Value<bool>() ?? false;
+                                
+                                if (clicked)
+                                {
+                                    autoClicked = true;
+                                    Log("✅ 检测到验证码已填充，自动点击登录按钮");
+                                    await Task.Delay(1000); // 等待登录请求
+                                }
+                            }
+                            catch { }
+                        }
+                        
+                        // 检查是否已登录（通过URL和页面内容判断）
+                        var isLoggedIn = await CheckLoginStatusAsync();
+                        if (isLoggedIn)
                         {
                             _isLoggedIn = true;
-                            
-                            // 设置 baseUrl
-                            if (string.IsNullOrEmpty(_baseUrl))
-                            {
-                                try
-                                {
-                                    var urlStr = currentUrl.Trim('"');
-                                    _baseUrl = new Uri(urlStr).GetLeftPart(UriPartial.Authority);
-                                    Log($"✅ Base URL 已设置: {_baseUrl}");
-                                }
-                                catch { }
-                            }
-                            
                             break;
                         }
                     }
@@ -189,7 +434,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     }
                     else
                     {
-                        Log("❌ 登录超时或失败");
+                        Log("❌ 登录超时或失败（请检查账号密码或验证码是否正确）");
                         return false;
                     }
                 }
@@ -203,13 +448,96 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             }
         }
         
+        /// <summary>
+        /// 自动重新填充登录表单（页面刷新后调用）
+        /// </summary>
+        public async Task AutoRefillLoginForm()
+        {
+            if (string.IsNullOrEmpty(_savedUsername) || string.IsNullOrEmpty(_savedPassword) || !_isLoginAttempting)
+            {
+                return;
+            }
+            
+            try
+            {
+                Log("🔄 自动重新填充登录表单...");
+                await Task.Delay(500); // 等待页面完全加载
+                
+                // 使用相同的填充脚本
+                var script = $@"
+                    (function() {{
+                        try {{
+                            const usernameInput = document.querySelector('#txtUsername');
+                            const passwordInput = document.querySelector('#txtPass');
+                            
+                            if (usernameInput && passwordInput) {{
+                                usernameInput.value = '{_savedUsername}';
+                                passwordInput.value = '{_savedPassword}';
+                                
+                                // 触发事件
+                                usernameInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                usernameInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                                passwordInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                passwordInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                                
+                                // 强制修复表单属性
+                                const loginForm = document.querySelector('form');
+                                if (loginForm) {{
+                                    loginForm.removeAttribute('target');
+                                    loginForm.target = '';
+                                }}
+                                
+                                return {{ success: true }};
+                            }}
+                            return {{ success: false, message: '未找到输入框' }};
+                        }} catch (error) {{
+                            return {{ success: false, message: error.message }};
+                        }}
+                    }})();
+                ";
+                
+                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                var json = JObject.Parse(result);
+                var success = json["success"]?.Value<bool>() ?? false;
+                
+                if (success)
+                {
+                    Log("✅ 登录表单已自动重新填充，请重新输入验证码");
+                }
+                else
+                {
+                    Log($"❌ 重新填充失败: {json["message"]}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ 自动重新填充异常: {ex.Message}");
+            }
+        }
+        
         public async Task<decimal> GetBalanceAsync()
         {
             try
             {
-                if (!_isLoggedIn || string.IsNullOrEmpty(_baseUrl))
+                // 🔥 如果_isLoggedIn为false，先检查是否已经登录
+                if (!_isLoggedIn)
                 {
-                    Log("❌ 未登录或未获取到base URL，无法获取余额");
+                    var isLoggedIn = await CheckLoginStatusAsync();
+                    if (isLoggedIn)
+                    {
+                        _isLoggedIn = true;
+                        Log("✅ 检测到已登录，更新登录状态");
+                    }
+                    else
+                    {
+                        Log("❌ 未登录，无法获取余额");
+                        return -1;
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(_baseUrl))
+                {
+                    Log("❌ 未获取到base URL，无法获取余额");
                     return -1;
                 }
                 
@@ -228,10 +556,26 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         {
             try
             {
-                if (!_isLoggedIn || string.IsNullOrEmpty(_baseUrl))
+                // 🔥 如果_isLoggedIn为false，先检查是否已经登录
+                if (!_isLoggedIn)
                 {
-                    Log("❌ 未登录或未获取到base URL，无法投注");
-                    return (false, "", "未登录");
+                    var isLoggedIn = await CheckLoginStatusAsync();
+                    if (isLoggedIn)
+                    {
+                        _isLoggedIn = true;
+                        Log("✅ 检测到已登录，更新登录状态");
+                    }
+                    else
+                    {
+                        Log("❌ 未登录，无法投注");
+                        return (false, "", "未登录");
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(_baseUrl))
+                {
+                    Log("❌ 未获取到base URL，无法投注");
+                    return (false, "", "未获取到base URL");
                 }
                 
                 if (orders == null || orders.Count == 0)
@@ -470,6 +814,19 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         Log($"✅ Base URL 已设置: {_baseUrl}");
                     }
                     catch { }
+                }
+                
+                // 🔥 检查登录状态（如果URL不是登录页面，说明可能已登录）
+                if (!string.IsNullOrEmpty(response.Url) && !response.Url.Contains("login"))
+                {
+                    if (response.Url.Contains("default.html") || response.Url.Contains("index"))
+                    {
+                        if (!_isLoggedIn)
+                        {
+                            _isLoggedIn = true;
+                            Log("✅ 检测到页面跳转，已登录状态已更新");
+                        }
+                    }
                 }
             }
             catch (Exception ex)

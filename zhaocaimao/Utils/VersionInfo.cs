@@ -11,7 +11,7 @@ namespace zhaocaimao.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "5.2.1";  
+        public const string Version = "5.2.2";  
 
         /// <summary>
         /// 版本名称
@@ -43,6 +43,11 @@ v3.1.0.1114 (2025-11-14)
 ✅ 新增：版本信息显示
 ";
     }
+
+    /*
+     * 5.2.2
+     *      修复ADK支持
+     */
 
     /*
      * 修复完成总结

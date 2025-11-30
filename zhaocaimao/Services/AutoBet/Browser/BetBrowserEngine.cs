@@ -101,8 +101,35 @@ namespace zhaocaimao.Services.AutoBet.Browser
             // 启用 DevTools
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
             
+            // 🔥 参考 F5BotV2 OpenPageSelf.cs：拦截新窗口请求，在当前窗口打开
+            // F5BotV2 Line 23-29: OnBeforePopup 拦截弹出窗口并在当前窗口加载
+            _webView.CoreWebView2.NewWindowRequested += (s, e) =>
+            {
+                OnLog?.Invoke($"🚫 拦截新窗口请求: {e.Uri}");
+                OnLog?.Invoke($"   在当前窗口打开: {e.Uri}");
+                
+                // 取消新窗口打开
+                e.Handled = true;
+                
+                // 在当前窗口加载目标URL（参考 F5BotV2 Line 27: chromiumWebBrowser.Load(targetUrl)）
+                _webView.CoreWebView2.Navigate(e.Uri);
+            };
+            
             // 导航到目标 URL
             _webView.CoreWebView2.Navigate(_platformUrl);
+            
+            // 🔥 绑定NavigationStarting事件，监控页面导航
+            _webView.CoreWebView2.NavigationStarting += (s, e) =>
+            {
+                OnLog?.Invoke($"🔄 检测到页面导航: {e.Uri}");
+                OnLog?.Invoke($"   导航类型: {(e.IsUserInitiated ? "用户触发" : "脚本触发")}, IsRedirected: {e.IsRedirected}");
+                
+                // 如果是登录页面导航（可能是登录失败后返回），记录日志
+                if (e.Uri.Contains("login"))
+                {
+                    OnLog?.Invoke($"⚠️  警告：正在导航回登录页面，可能是登录失败！");
+                }
+            };
             
             // 绑定导航事件
             _webView.CoreWebView2.NavigationCompleted += async (s, e) =>
@@ -111,13 +138,36 @@ namespace zhaocaimao.Services.AutoBet.Browser
                 {
                     OnLog?.Invoke($"✅ 页面加载完成: {_webView.CoreWebView2.Source}");
                     
-                    // 🔥 不在这里触发自动登录，因为 AutoBetService.StartBrowserInternal 会主动发送 Login 命令
-                    // 这里只记录页面加载完成，等待主程序发送登录命令
-                    OnLog?.Invoke("⏳ 等待主程序发送登录命令...");
+                    // 🔥 如果返回登录页面，调用平台脚本的自动重新填充方法
+                    var currentUrl = _webView.CoreWebView2.Source;
+                    if (currentUrl.Contains("login") && _platformScript != null)
+                    {
+                        OnLog?.Invoke("🔄 检测到登录页面，调用自动重新填充...");
+                        try
+                        {
+                            // 调用平台脚本的自动重新填充方法
+                            var refillMethod = _platformScript.GetType().GetMethod("AutoRefillLoginForm");
+                            if (refillMethod != null)
+                            {
+                                await Task.Delay(500); // 等待页面完全加载
+                                await (Task)refillMethod.Invoke(_platformScript, null);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            OnLog?.Invoke($"⚠️  自动重新填充失败: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        // 🔥 不在这里触发自动登录，因为 AutoBetService.StartBrowserInternal 会主动发送 Login 命令
+                        // 这里只记录页面加载完成，等待主程序发送登录命令
+                        OnLog?.Invoke("⏳ 等待主程序发送登录命令...");
+                    }
                 }
                 else
                 {
-                    OnLog?.Invoke($"❌ 页面加载失败");
+                    OnLog?.Invoke($"❌ 页面加载失败: HttpStatusCode={e.HttpStatusCode}");
                 }
             };
         }
