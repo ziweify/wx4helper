@@ -30,6 +30,9 @@ namespace BsBrowserClient.PlatformScripts
         private decimal _currentBalance = 0;
         private string _baseUrl = "";  // 缓存的base URL
         
+        // 🔥 动态API域名（从getmoneyinfo请求中自动提取和更新）
+        private string DoMainApi = "";  // 投注使用的API域名，如 https://api.fr.win2000.vip
+        
         // 赔率ID映射表：key="平一大", value="5370"
         private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
         
@@ -48,6 +51,18 @@ namespace BsBrowserClient.PlatformScripts
             // 配置HttpClient
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json, text/javascript, */*; q=0.01");
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36");
+            
+            // 🔥 初始化DoMainApi为配置的盘口地址（后续会从getmoneyinfo请求中动态更新）
+            try
+            {
+                if (_webView?.CoreWebView2 != null && !string.IsNullOrEmpty(_webView.CoreWebView2.Source))
+                {
+                    var uri = new Uri(_webView.CoreWebView2.Source);
+                    DoMainApi = $"{uri.Scheme}://{uri.Host}";
+                    _logCallback($"🌐 初始化API域名: {DoMainApi}");
+                }
+            }
+            catch { }
         }
         
         /// <summary>
@@ -355,15 +370,19 @@ namespace BsBrowserClient.PlatformScripts
                 
                 var fullPostData = postData.ToString();
                 
-                // 🔥 使用缓存的base URL（避免跨线程访问WebView2）
-                if (string.IsNullOrEmpty(_baseUrl))
+                // 🔥 优先使用DoMainApi（从getmoneyinfo动态获取），fallback到_baseUrl
+                var apiDomain = !string.IsNullOrEmpty(DoMainApi) ? DoMainApi : _baseUrl;
+                
+                if (string.IsNullOrEmpty(apiDomain))
                 {
-                    _logCallback("❌ 未获取到base URL，可能未登录");
-                    return (false, "", "#未获取到base URL，可能未登录");  // 🔥 #前缀表示客户端校验错误
+                    _logCallback("❌ 未获取到API域名，可能未登录");
+                    return (false, "", "#未获取到API域名，可能未登录");  // 🔥 #前缀表示客户端校验错误
                 }
                 
-                // 发送POST请求（参考F5BotV2 Line 408-420）
-                var url = $"{_baseUrl}/frcomgame/createmainorder";
+                // 发送POST请求（使用DoMainApi动态域名）
+                var url = $"{apiDomain}/frcomgame/createmainorder";
+                
+                _logCallback($"🌐 投注API域名: {apiDomain}");
                 
                 _logCallback($"📤 发送投注请求: {url}");
                 _logCallback($"📋 POST数据（完整）:");
@@ -414,6 +433,34 @@ namespace BsBrowserClient.PlatformScripts
         {
             try
             {
+                // 🔥 拦截 getmoneyinfo - 动态提取并更新API域名
+                if (response.Url.Contains("/getmoneyinfo"))
+                {
+                    try
+                    {
+                        var uri = new Uri(response.Url);
+                        var currentDomain = $"{uri.Scheme}://{uri.Host}";
+                        
+                        // 如果域名和DoMainApi不一致，更新DoMainApi
+                        if (currentDomain != DoMainApi)
+                        {
+                            var oldDomain = DoMainApi;
+                            DoMainApi = currentDomain;
+                            _logCallback($"🔄 API域名已更新: {oldDomain} → {DoMainApi}");
+                            _logCallback($"🌐 投注将使用新域名: {DoMainApi}/frcomgame/createmainorder");
+                        }
+                        else
+                        {
+                            // 域名一致，输出确认日志（便于观察）
+                            _logCallback($"✅ API域名确认: {DoMainApi}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logCallback($"⚠️ 解析getmoneyinfo域名失败: {ex.Message}");
+                    }
+                }
+                
                 // 1. 拦截 gettodaywinlost - 获取 sid, uuid, token
                 // 参考 F5BotV2 Line 96-102
                 if (response.Url.Contains("/gettodaywinlost"))

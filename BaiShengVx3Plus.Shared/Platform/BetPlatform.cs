@@ -27,7 +27,8 @@ namespace BaiShengVx3Plus.Shared.Platform
         通宝PC = 18,
         HY168 = 19,
         bingo168 = 20,
-        云顶 = 21  // 🔥 保留云顶（现有项目使用）
+        云顶 = 21,  // 🔥 保留云顶（现有项目使用）
+        Yyds666 = 22  // 🔥 新增平台：https://client.06n.yyds666.me
     }
     
     /// <summary>
@@ -203,6 +204,14 @@ namespace BaiShengVx3Plus.Shared.Platform
                     Platform = BetPlatform.云顶,
                     DefaultUrl = "https://yd28.vip",
                     LegacyNames = new[] { "YunDing", "YunDing28", "YD" }
+                }
+            },
+            {
+                BetPlatform.Yyds666, new PlatformInfo
+                {
+                    Platform = BetPlatform.Yyds666,
+                    DefaultUrl = "https://client.06n.yyds666.me/login?redirect=%2F",
+                    LegacyNames = new[] { "yyds666", "YYDS666", "Yyds" }
                 }
             }
         };
