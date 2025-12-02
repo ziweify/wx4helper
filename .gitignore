@@ -106,3 +106,5 @@ BaiShengVx3Plus/MyLog/logs.db
 /BinGoPlans/bin
 /BinGoPlans/obj
 /BaiShengVx3Plus/Problem/251201-封盘还能进单
+/BaiShengVx3Plus/bin——/Debug/net8.0-windows
+/BaiShengVx3Plus/bin——/Release/net8.0-windows
