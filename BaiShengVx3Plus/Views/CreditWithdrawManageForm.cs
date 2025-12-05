@@ -60,6 +60,18 @@ namespace BaiShengVx3Plus.Views
             // 🔥 直接绑定到 BindingSource（自动更新，无需手动刷新）
             dgvRequests.DataSource = _bindingSource;
             
+            // 🔥 添加 DataError 处理，使用非模态通知窗口显示错误
+            dgvRequests.DataError += (s, e) => 
+            {
+                string errorMsg = e.Exception?.Message ?? "未知错误";
+                _logService.Warning("上下分管理", $"DataGridView 数据错误: {errorMsg}");
+                
+                // 🔥 使用非模态通知窗口（单例，不阻塞主程序）
+                DataErrorNotifyForm.ShowError("上下分管理", errorMsg);
+                
+                e.ThrowException = false;
+            };
+            
             // 🔥 应用默认筛选（等待处理）
             ApplyFilter();
             
