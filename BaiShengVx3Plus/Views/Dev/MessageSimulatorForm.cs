@@ -570,7 +570,7 @@ namespace BaiShengVx3Plus.Views.Dev
 
         /// <summary>
         /// 🔥 显示系统发送的图片消息
-        /// 🔥 格式：实际图片路径 + ((额外信息))
+        /// 🔥 在 RichTextBox 中显示图片缩略图 + 路径信息
         /// </summary>
         public void ShowSystemImage(string imagePath, string? description = null)
         {
@@ -588,16 +588,88 @@ namespace BaiShengVx3Plus.Views.Dev
                     return;
                 }
 
-                // 🔥 格式：实际图片路径（与微信发送的一致）+ ((额外信息))
-                // 微信中发送图片时，实际发送的是图片路径
-                string displayMessage = $"{imagePath}\n((消息类型: 图片";
+                // 🔥 时间戳（左对齐，灰色小字）
+                rtbMessages.SelectionAlignment = HorizontalAlignment.Left;
+                rtbMessages.SelectionColor = Color.Gray;
+                rtbMessages.SelectionFont = new Font(rtbMessages.Font.FontFamily, 8);
+                rtbMessages.AppendText($"[{DateTime.Now:HH:mm:ss}] 系统消息\n");
+
+                // 🔥 加载图片并创建缩略图
+                using (var originalImage = Image.FromFile(imagePath))
+                {
+                    // 🔥 创建缩略图（最大宽度300px，保持比例）
+                    int maxWidth = 300;
+                    int maxHeight = 300;
+                    int thumbWidth = originalImage.Width;
+                    int thumbHeight = originalImage.Height;
+
+                    if (thumbWidth > maxWidth || thumbHeight > maxHeight)
+                    {
+                        double ratio = Math.Min((double)maxWidth / thumbWidth, (double)maxHeight / thumbHeight);
+                        thumbWidth = (int)(thumbWidth * ratio);
+                        thumbHeight = (int)(thumbHeight * ratio);
+                    }
+
+                    using (var thumbnail = new Bitmap(thumbWidth, thumbHeight))
+                    {
+                        using (var graphics = Graphics.FromImage(thumbnail))
+                        {
+                            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                            graphics.DrawImage(originalImage, 0, 0, thumbWidth, thumbHeight);
+                        }
+
+                        // 🔥 使用 Clipboard 将图片插入到 RichTextBox
+                        // 保存当前 Clipboard 内容，插入后恢复
+                        IDataObject? clipboardBackup = null;
+                        try
+                        {
+                            if (Clipboard.ContainsData(DataFormats.Bitmap))
+                            {
+                                clipboardBackup = Clipboard.GetDataObject();
+                            }
+
+                            Clipboard.SetImage(thumbnail);
+                            rtbMessages.Paste();
+
+                            // 🔥 恢复 Clipboard（如果之前有内容）
+                            if (clipboardBackup != null)
+                            {
+                                Clipboard.SetDataObject(clipboardBackup);
+                            }
+                            else
+                            {
+                                Clipboard.Clear();
+                            }
+                        }
+                        catch (Exception clipEx)
+                        {
+                            _logService.Warning("MessageSimulator", $"Clipboard 操作失败，尝试直接显示路径: {clipEx.Message}");
+                            // 🔥 如果 Clipboard 操作失败，回退到显示路径
+                            rtbMessages.SelectionColor = Color.FromArgb(155, 89, 182);
+                            rtbMessages.SelectionFont = new Font(rtbMessages.Font.FontFamily, 10);
+                            rtbMessages.AppendText($"  {imagePath}\n");
+                        }
+                    }
+                }
+
+                // 🔥 添加换行和图片信息
+                rtbMessages.AppendText("\n");
+
+                // 🔥 图片路径和描述信息（深绿色，更醒目）
+                rtbMessages.SelectionAlignment = HorizontalAlignment.Left;
+                rtbMessages.SelectionColor = Color.FromArgb(46, 125, 50); // 深绿色
+                rtbMessages.SelectionFont = new Font(rtbMessages.Font.FontFamily, 8, FontStyle.Bold | FontStyle.Italic);
+                
+                string infoText = $"((消息类型: 图片";
                 if (!string.IsNullOrEmpty(description))
                 {
-                    displayMessage += $", 描述: {description}";
+                    infoText += $", 描述: {description}";
                 }
-                displayMessage += $", 文件名: {Path.GetFileName(imagePath)}))";
-                
-                AppendSystemNotification(displayMessage, Color.FromArgb(155, 89, 182)); // 紫色图片通知
+                infoText += $", 文件名: {Path.GetFileName(imagePath)}))";
+                rtbMessages.AppendText($"  {infoText}\n\n");
+
+                rtbMessages.ScrollToCaret();
             }
             catch (Exception ex)
             {
@@ -758,10 +830,10 @@ namespace BaiShengVx3Plus.Views.Dev
                     
                     if (isExtraInfo)
                     {
-                        // 额外信息用灰色小字显示
+                        // 🔥 额外信息用绿色显示，更醒目
                         rtbMessages.SelectionAlignment = HorizontalAlignment.Left;
-                        rtbMessages.SelectionColor = Color.Gray;
-                        rtbMessages.SelectionFont = new Font(rtbMessages.Font.FontFamily, 8, FontStyle.Italic);
+                        rtbMessages.SelectionColor = Color.FromArgb(46, 125, 50); // 深绿色，更醒目
+                        rtbMessages.SelectionFont = new Font(rtbMessages.Font.FontFamily, 8, FontStyle.Bold | FontStyle.Italic);
                         rtbMessages.AppendText($"  {trimmedLine}\n");
                         extraInfoCount++;
                         _logService.Debug("MessageSimulator", $"识别为额外信息: {checkLine}");
