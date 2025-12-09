@@ -288,12 +288,33 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         if (_currentIssueId == 0)
                         {
                             // 🔥 首次初始化：计算上一期
+                            // ⚠️ 重要：如果程序在整点打开，当前期号已经是新期号了
+                            // 所以上一期应该是 localIssueId - 1
                             previousIssueId = BinggoTimeHelper.GetPreviousIssueId(localIssueId);
                             _logService.Info("BinggoLotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
+                            
+                            // 🔥 验证：上一期应该是当前期号 - 1
+                            if (previousIssueId != localIssueId - 1)
+                            {
+                                _logService.Warning("BinggoLotteryService", $"⚠️ 期号计算异常！当前期号={localIssueId}, 计算的上一期={previousIssueId}, 期望的上一期={localIssueId - 1}");
+                                // 强制修正为正确的上一期
+                                previousIssueId = localIssueId - 1;
+                                _logService.Info("BinggoLotteryService", $"🔧 已修正上一期期号为: {previousIssueId}");
+                            }
                         }
                         else
                         {
+                            // 🔥 期号变更：上一期就是之前的当前期号
                             _logService.Info("BinggoLotteryService", $"🔄 期号变更: {previousIssueId} → {localIssueId}");
+                            
+                            // 🔥 验证：上一期应该是当前期号 - 1
+                            if (previousIssueId != localIssueId - 1)
+                            {
+                                _logService.Warning("BinggoLotteryService", $"⚠️ 期号变更异常！当前期号={localIssueId}, 上一期={previousIssueId}, 期望的上一期={localIssueId - 1}");
+                                // 强制修正为正确的上一期
+                                previousIssueId = localIssueId - 1;
+                                _logService.Info("BinggoLotteryService", $"🔧 已修正上一期期号为: {previousIssueId}");
+                            }
                         }
                         
                         // 🔥 统一的期号切换流程（首次初始化和期号变更都走这里）
@@ -381,7 +402,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 🔥 异步加载上期开奖数据（作为备用方案）
                 // 当数据到达时，会触发 LotteryOpened 事件，UI 会再次更新
+                // ⚠️ 重要：如果上一期已经开奖，立即加载数据并更新 UI
                 await LoadPreviousLotteryDataAsync(oldIssueId);
+                
+                // 🔥 如果上一期已经开奖，立即触发开奖事件更新 UI
+                // 这样可以确保程序在整点打开时，能正确显示上一期的开奖数据
+                var lastDataCheck = await GetLotteryDataAsync(oldIssueId, forceRefresh: false);
+                if (lastDataCheck != null && lastDataCheck.IsOpened)
+                {
+                    _logService.Info("BinggoLotteryService", $"✅ 上一期({oldIssueId})已开奖，立即更新 UI");
+                    // 🔥 触发开奖事件，更新 UI 显示
+                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                    {
+                        LotteryData = lastDataCheck
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -1000,6 +1035,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 3. 发送中奖名单和留分名单到微信群（参考 F5BotV2 第 1415-1474 行）
                 // 🔥 重要：无论是否有订单，都要发送这两个名单（参考 F5BotV2 第 1462、1474 行）
                 string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                bool isDevMode = _configService.GetIsRunModeDev();
+                
                 if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
                 {
                     await SendSettlementMessagesAsync(data, groupWxId, issueidLite, ordersReportsList);
@@ -1011,6 +1048,49 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 else
                 {
                     _logService.Info("BinggoLotteryService", "未绑定群或微信未登录，跳过发送结算消息");
+                    
+                    // 🔥 开发模式：即使未绑定群或微信未登录，也通知消息模拟器显示结算消息
+                    if (isDevMode)
+                    {
+                        _logService.Info("BinggoLotteryService", "🔧 开发模式：通知消息模拟器显示结算消息（即使未绑定群）");
+                        // 🔥 构建结算消息（即使不发送到微信群，也通知消息模拟器）
+                        var winningMessage = new System.Text.StringBuilder();
+                        winningMessage.Append($"第{issueidLite}队\r ");
+                        winningMessage.Append($"{data.ToLotteryString()}\r ");
+                        winningMessage.Append($"----中~名单----\r ");
+                        
+                        if (ordersReportsList != null && ordersReportsList.Count > 0)
+                        {
+                            foreach (var report in ordersReportsList)
+                            {
+                                var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == report.wxid);
+                                if (member == null) continue;
+                                float currentBalance = member.Balance;
+                                float netProfit = report.profit - report.totalAmount;
+                                winningMessage.Append($"{report.nickname.UnEscape()}[{(int)currentBalance}] {(int)netProfit}\r ");
+                            }
+                        }
+                        
+                        var balanceMessage = new System.Text.StringBuilder();
+                        balanceMessage.Append($"第{issueidLite}队\r");
+                        balanceMessage.Append($"{data.ToLotteryString()}\r");
+                        balanceMessage.Append($"----留~名单----\r");
+                        
+                        if (_membersBindingList != null)
+                        {
+                            foreach (var member in _membersBindingList)
+                            {
+                                if ((int)member.Balance >= 1)
+                                {
+                                    string name = member.Nickname?.UnEscape() ?? "";
+                                    balanceMessage.Append($"{name} {(int)member.Balance}\r");
+                                }
+                            }
+                        }
+                        
+                        Views.Dev.MessageSimulatorForm.NotifySystemMessage("结算", winningMessage.ToString());
+                        Views.Dev.MessageSimulatorForm.NotifySystemMessage("结算", balanceMessage.ToString());
+                    }
                 }
 
                 
@@ -1166,7 +1246,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             try
             {
                 // 🔥 检查是否应该发送系统消息
-                if (!ShouldSendSystemMessage())
+                bool shouldSend = ShouldSendSystemMessage();
+                bool isDevMode = _configService.GetIsRunModeDev();
+                
+                // 🔥 如果收单关闭且不是开发模式，直接返回
+                if (!shouldSend && !isDevMode)
                 {
                     return;
                 }
@@ -1201,11 +1285,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                 }
                 
-                _logService.Info("BinggoLotteryService", $"📤 发送中奖名单到群: {groupWxId}");
-                var response1 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, winningMessage.ToString());
-                if (response1 != null)
+                // 🔥 只有在应该发送时才真正发送到微信群
+                if (shouldSend)
                 {
-                    _logService.Info("BinggoLotteryService", "✅ 中奖名单已发送");
+                    _logService.Info("BinggoLotteryService", $"📤 发送中奖名单到群: {groupWxId}");
+                    var response1 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, winningMessage.ToString());
+                    if (response1 != null)
+                    {
+                        _logService.Info("BinggoLotteryService", "✅ 中奖名单已发送");
+                    }
+                }
+                
+                // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示结算消息
+                if (isDevMode)
+                {
+                    Views.Dev.MessageSimulatorForm.NotifySystemMessage("结算", winningMessage.ToString());
                 }
                 
                 // 🔥 发送留分名单（参考 F5BotV2 第 1464-1474 行）
@@ -1234,11 +1328,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                 }
 
-                _logService.Info("BinggoLotteryService", $"📤 发送留分名单到群: {groupWxId}");
-                var response2 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, balanceMessage.ToString());
-                if (response2 != null)
+                // 🔥 只有在应该发送时才真正发送到微信群
+                if (shouldSend)
                 {
-                    _logService.Info("BinggoLotteryService", "✅ 留分名单已发送");
+                    _logService.Info("BinggoLotteryService", $"📤 发送留分名单到群: {groupWxId}");
+                    var response2 = await _socketClient!.SendAsync<object>("SendMessage", groupWxId, balanceMessage.ToString());
+                    if (response2 != null)
+                    {
+                        _logService.Info("BinggoLotteryService", "✅ 留分名单已发送");
+                    }
+                }
+                
+                // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示结算消息
+                if (isDevMode)
+                {
+                    Views.Dev.MessageSimulatorForm.NotifySystemMessage("结算", balanceMessage.ToString());
                 }
                 
                 // 🔥 重要：增加延迟，确保消息真正发送到微信群（参考 F5BotV2 的消息发送机制）
@@ -1708,6 +1812,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 关键：只有在上一期真正结算完成后，才发送本期的"线下开始"消息
                 // 🔥 如果上一期还没结算完成，直接 return，不发送"线下开始"消息
                 int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
+                bool isDevMode = _configService.GetIsRunModeDev();
+                
                 if (_lastSettledIssueId < previousIssueId)
                 {
                     _logService.Warning("BinggoLotteryService", 
@@ -1715,7 +1821,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _logService.Warning("BinggoLotteryService", 
                         $"⚠️ 等待上一期开奖并结算完成后，下次 tick 时再发送'线下开始'消息");
                     
-                    // 🔥 直接返回，不发送"线下开始"消息
+                    // 🔥 开发模式：即使上一期尚未结算完成，也通知消息模拟器显示开盘消息
+                    if (isDevMode)
+                    {
+                        int issueShort = issueId % 1000;
+                        string message = $"第{issueShort}队\r---------线下开始---------";
+                        _logService.Info("BinggoLotteryService", "🔧 开发模式：通知消息模拟器显示开盘消息（即使上一期尚未结算）");
+                        Views.Dev.MessageSimulatorForm.NotifySystemMessage("开盘", message);
+                    }
+                    
+                    // 🔥 直接返回，不发送"线下开始"消息到微信群
                     // 下次 tick 时会再次检查，如果上一期已结算完成，就会发送
                     return;
                 }
@@ -1730,11 +1845,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 if (!string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
                 {
                     // 🔥 检查是否应该发送系统消息
-                    if (ShouldSendSystemMessage())
+                    bool shouldSend = ShouldSendSystemMessage();
+                    
+                    // 🔥 如果收单关闭且不是开发模式，直接返回
+                    if (!shouldSend && !isDevMode)
                     {
-                        int issueShort = issueId % 1000;
-                        string message = $"第{issueShort}队\r---------线下开始---------";
-                        
+                        return;
+                    }
+                    
+                    int issueShort = issueId % 1000;
+                    string message = $"第{issueShort}队\r---------线下开始---------";
+                    
+                    // 🔥 只有在应该发送时才真正发送到微信群
+                    if (shouldSend)
+                    {
                         _logService.Info("BinggoLotteryService", $"📢 发送开盘提示: {groupWxId} - {message}");
                         
                         var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
@@ -1750,6 +1874,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         
                         // 🔥 发送历史记录图片（参考 F5BotV2 第1162行 On开盘发送历史记录图片）
                         await SendHistoryLotteryImageAsync(issueId, groupWxId);
+                    }
+                    
+                    // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示开盘消息
+                    if (isDevMode)
+                    {
+                        Views.Dev.MessageSimulatorForm.NotifySystemMessage("开盘", message);
                     }
                 }
             }
@@ -1774,7 +1904,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 检查是否应该发送系统消息
-                if (!ShouldSendSystemMessage())
+                bool shouldSend = ShouldSendSystemMessage();
+                bool isDevMode = _configService.GetIsRunModeDev();
+                
+                // 🔥 如果收单关闭且不是开发模式，直接返回
+                if (!shouldSend && !isDevMode)
                 {
                     return;
                 }
@@ -1860,18 +1994,39 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         }
                         
                         // 🔥 3. 发送图片到微信群（直接使用纯英文路径 C:\images\）
-                        _logService.Info("BinggoLotteryService", $"📤 发送历史记录图片到群: {groupWxId}，文件路径: {imagePath}");
-                        var sendResponse = await _socketClient.SendAsync<object>("SendImage", groupWxId, imagePath);
-                        
-                        if (sendResponse != null)
+                        // 🔥 只有在应该发送时才真正发送到微信群
+                        bool sendSuccess = false;
+                        if (shouldSend)
                         {
-                            _logService.Info("BinggoLotteryService", $"✅ 历史记录图片已发送: {imagePath}");
-                            return;  // 成功，退出重试循环
+                            _logService.Info("BinggoLotteryService", $"📤 发送历史记录图片到群: {groupWxId}，文件路径: {imagePath}");
+                            var sendResponse = await _socketClient.SendAsync<object>("SendImage", groupWxId, imagePath);
+                            
+                            if (sendResponse != null)
+                            {
+                                _logService.Info("BinggoLotteryService", $"✅ 历史记录图片已发送: {imagePath}");
+                                sendSuccess = true;
+                            }
+                            else
+                            {
+                                _logService.Warning("BinggoLotteryService", $"图片发送失败（返回null），重试 {retry + 1}/5");
+                                await Task.Delay(500);
+                            }
                         }
                         else
                         {
-                            _logService.Warning("BinggoLotteryService", $"图片发送失败（返回null），重试 {retry + 1}/5");
-                            await Task.Delay(500);
+                            // 🔥 即使不发送到微信群，也认为成功（因为开发模式下只需要通知消息模拟器）
+                            sendSuccess = true;
+                        }
+                        
+                        // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示图片
+                        if (isDevMode)
+                        {
+                            Views.Dev.MessageSimulatorForm.NotifySystemMessage("图片", $"历史记录图片: {Path.GetFileName(imagePath)}", imagePath);
+                        }
+                        
+                        if (sendSuccess)
+                        {
+                            return;  // 成功，退出重试循环
                         }
                     }
                     catch (Exception ex)
@@ -2148,7 +2303,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 检查是否应该发送系统消息
-                if (!ShouldSendSystemMessage())
+                bool shouldSend = ShouldSendSystemMessage();
+                bool isDevMode = _configService.GetIsRunModeDev();
+                
+                // 🔥 如果收单关闭且不是开发模式，直接返回
+                if (!shouldSend && !isDevMode)
                 {
                     return;
                 }
@@ -2157,12 +2316,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 int issueShort = issueId % 1000;
                 string message = $"{issueShort} 还剩{seconds}秒";
                 
-                _logService.Info("BinggoLotteryService", $"📢 发送封盘提醒: {groupWxId} - {message}");
-                
-                var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
-                if (response != null)
+                // 🔥 只有在应该发送时才真正发送到微信群
+                if (shouldSend)
                 {
-                    _logService.Info("BinggoLotteryService", $"✅ 封盘提醒已发送: {message}");
+                    _logService.Info("BinggoLotteryService", $"📢 发送封盘提醒: {groupWxId} - {message}");
+                    var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
+                    if (response != null)
+                    {
+                        _logService.Info("BinggoLotteryService", $"✅ 封盘提醒已发送: {message}");
+                    }
+                }
+                
+                // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示封盘提醒
+                if (isDevMode)
+                {
+                    Views.Dev.MessageSimulatorForm.NotifySystemMessage("封盘提醒", message);
                 }
             }
             catch (Exception ex)
@@ -2192,7 +2360,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 检查是否应该发送系统消息
-                if (!ShouldSendSystemMessage())
+                bool shouldSend = ShouldSendSystemMessage();
+                bool isDevMode = _configService.GetIsRunModeDev();
+                
+                // 🔥 如果收单关闭且不是开发模式，直接返回
+                if (!shouldSend && !isDevMode)
                 {
                     return;
                 }
@@ -2228,12 +2400,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 即使没有订单也要发送（参考 F5BotV2 第1237行）
                 sbTxt.Append("------线下无效------");
                 
-                _logService.Info("BinggoLotteryService", $"📤 发送封盘消息到群: {groupWxId}");
-                
-                var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, sbTxt.ToString());
-                if (response != null)
+                // 🔥 只有在应该发送时才真正发送到微信群
+                if (shouldSend)
                 {
-                    _logService.Info("BinggoLotteryService", $"✅ 封盘消息已发送: 期号 {issueId}, 订单数 {orders?.Count ?? 0}");
+                    _logService.Info("BinggoLotteryService", $"📤 发送封盘消息到群: {groupWxId}");
+                    var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, sbTxt.ToString());
+                    if (response != null)
+                    {
+                        _logService.Info("BinggoLotteryService", $"✅ 封盘消息已发送: 期号 {issueId}, 订单数 {orders?.Count ?? 0}");
+                    }
+                }
+                
+                // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示封盘消息
+                if (isDevMode)
+                {
+                    Views.Dev.MessageSimulatorForm.NotifySystemMessage("封盘", sbTxt.ToString());
                 }
             }
             catch (Exception ex)

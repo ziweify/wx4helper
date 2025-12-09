@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using BaiShengVx3Plus.Models;
 using BaiShengVx3Plus.Services.Messages.Handlers;
+using BaiShengVx3Plus.Contracts.Games;
+using Microsoft.Extensions.DependencyInjection;
 using Sunny.UI;
 
 namespace BaiShengVx3Plus
@@ -237,11 +239,15 @@ namespace BaiShengVx3Plus
                 
                 _logService.Info("VxMain", $"📱 打开消息模拟窗口: {member.Nickname} ({member.Wxid})");
                 
+                // 🔥 获取彩票服务（用于订阅系统消息）
+                var lotteryService = Program.ServiceProvider?.GetService<IBinggoLotteryService>();
+                
                 // 🔥 获取或创建消息模拟窗口（单例模式，同一会员只能开一个窗口）
                 var simulatorForm = BaiShengVx3Plus.Views.Dev.MessageSimulatorForm.GetOrCreate(
                     member,
                     SimulateMemberMessageAsync,  // ← 复用已有方法！
-                    _logService);
+                    _logService,
+                    lotteryService);  // 🔥 传入彩票服务，用于订阅系统消息
                 
                 // 🔥 显示为非模态窗口
                 simulatorForm.Show(this);
