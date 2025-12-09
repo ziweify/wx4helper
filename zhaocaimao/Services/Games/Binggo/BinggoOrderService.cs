@@ -221,7 +221,44 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 参考 F5BotV2: V2Member.AddOrder 方法（第430-439行）
                     lock (Core.ResourceLocks.MemberBalanceLock)
                     {
-                        // 🔥 关键修复：在保存订单前的最后时刻，使用线程安全的原子操作再次检查状态
+                        // 🔥 关键修复1：在保存订单前检查 BindingList 是否可用（在扣除余额之前）
+                        // 防止：余额扣除成功，但订单保存失败（因为 BindingList 为 null）
+                        if (_ordersBindingList == null)
+                        {
+                            _logService.Error("OrderService", 
+                                $"❌ 严重错误：订单列表未初始化！" +
+                                $"会员: {member.Nickname}({member.Wxid}), " +
+                                $"期号: {issueId}, " +
+                                $"金额: {betContent.TotalAmount:F2}");
+                            return (false, "系统错误，请稍后重试", null);
+                        }
+                        
+                        if (_membersBindingList == null)
+                        {
+                            _logService.Error("OrderService", 
+                                $"❌ 严重错误：会员列表未初始化！" +
+                                $"会员: {member.Nickname}({member.Wxid}), " +
+                                $"期号: {issueId}, " +
+                                $"金额: {betContent.TotalAmount:F2}");
+                            return (false, "系统错误，请稍后重试", null);
+                        }
+                        
+                        // 🔥 关键修复1.5：重新从 BindingList 获取 member（防止引用失效）
+                        // 场景：刷新/绑定群时 Clear() + Add() 会导致传入的 member 引用失效
+                        // 必须重新获取，确保使用的是当前 BindingList 中的对象
+                        var memberInList = _membersBindingList.FirstOrDefault(m => m.Wxid == member.Wxid);
+                        if (memberInList == null)
+                        {
+                            _logService.Error("OrderService", 
+                                $"❌ 严重错误：会员 {member.Nickname}({member.Wxid}) 不在 BindingList 中！" +
+                                $"可能正在重新绑定群，请稍后重试。");
+                            return (false, "系统正在更新数据，请稍后重试", null);
+                        }
+                        
+                        // 🔥 使用 BindingList 中的对象（而不是传入的 member）
+                        member = memberInList;
+                        
+                        // 🔥 关键修复2：在保存订单前的最后时刻，使用线程安全的原子操作再次检查状态
                         // 修复 Bug: 20251205-32.7.1-封盘还能进单（最后一道防线）
                         var (finalStatus, finalIssueId, finalCanBet) = _lotteryService.GetStatusSnapshot();
                         

@@ -33,6 +33,31 @@ namespace zhaocaimao.Views.Dev
         private static readonly Dictionary<string, MessageSimulatorForm> _openWindows = new();
 
         /// <summary>
+        /// 🔥 静态事件：开发模式下发送到群的消息通知（用于消息模拟器显示）
+        /// </summary>
+        public static event EventHandler<(string messageType, string message, string? imagePath)>? SystemMessageSent;
+
+        /// <summary>
+        /// 🔥 静态方法：通知所有消息模拟器窗口显示系统消息（开发模式专用）
+        /// </summary>
+        public static void NotifySystemMessage(string messageType, string message, string? imagePath = null)
+        {
+            // 🔥 调试日志：记录通知调用
+            var subscriberCount = SystemMessageSent?.GetInvocationList()?.Length ?? 0;
+            System.Diagnostics.Debug.WriteLine($"[NotifySystemMessage] messageType={messageType}, message长度={message?.Length ?? 0}, imagePath={imagePath ?? "null"}, 订阅者数量={subscriberCount}");
+            
+            try
+            {
+                SystemMessageSent?.Invoke(null, (messageType, message, imagePath));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NotifySystemMessage] 异常: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// 🔥 静态工厂方法：获取或创建窗口（单例）
         /// </summary>
         /// <param name="member">会员信息</param>

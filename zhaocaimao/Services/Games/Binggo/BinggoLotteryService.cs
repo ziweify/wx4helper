@@ -664,10 +664,19 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 封盘中（0 到 -配置的封盘秒数，等待开奖）
                 newStatus = BinggoLotteryStatus.封盘中;
                 
-                // 🔥 只在第一次进入封盘状态时发送封盘消息（参考 F5BotV2 第1205行 On封盘中）
+                // 🔥 重要修复：参考 F5BotV2 第1205-1263行，在锁内同步发送封盘消息
+                // 这样可以确保：
+                // 1. 如果订单处理先获取锁，封盘等待，订单回复先发送
+                // 2. 如果封盘先获取锁，订单等待，封盘消息先发送，订单被拒绝
+                // 
+                // 🔥 关键：不使用 Task.Run 异步发送，而是在锁内同步发送
+                // 这确保了消息发送顺序与状态更新顺序一致，解决竞态问题：
+                // "即将封盘时发送了订单，系统还没回复，就发送了封盘消息"
                 if (oldStatus != BinggoLotteryStatus.封盘中)
                 {
-                    _ = Task.Run(async () => await SendSealingMessageAsync(_currentIssueId));
+                    // 🔥 在锁内同步执行封盘消息发送（参考 F5BotV2 第1212-1260行）
+                    // 注意：这会阻塞锁直到消息发送完成，但这是必要的，确保消息顺序
+                    SendSealingMessageAsync(_currentIssueId).Wait();
                 }
             }
             else
@@ -1915,29 +1924,41 @@ namespace zhaocaimao.Services.Games.Binggo
         {
             try
             {
-                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
-                if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
-                {
-                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送封盘提醒");
-                    return;
-                }
-                
                 // 🔥 检查是否应该发送系统消息
-                if (!ShouldSendSystemMessage())
+                bool shouldSend = ShouldSendSystemMessage();
+                bool isDevMode = _configService.GetIsRunModeDev();
+
+                // 🔥 如果收单关闭且不是开发模式，直接返回
+                if (!shouldSend && !isDevMode)
                 {
                     return;
                 }
-                
+
                 // 🔥 格式完全按照 F5BotV2：{issueid%1000} 还剩30秒 或 {issueid%1000} 还剩15秒
                 int issueShort = issueId % 1000;
                 string message = $"{issueShort} 还剩{seconds}秒";
-                
-                _logService.Info("LotteryService", $"📢 发送封盘提醒: {groupWxId} - {message}");
-                
-                var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
-                if (response != null)
+
+                // 🔥 只有在绑定群且微信已登录时才发送到微信群
+                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                if (shouldSend && !string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
                 {
-                    _logService.Info("LotteryService", $"✅ 封盘提醒已发送: {message}");
+                    _logService.Info("LotteryService", $"📢 发送封盘提醒: {groupWxId} - {message}");
+                    var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, message);
+                    if (response != null)
+                    {
+                        _logService.Info("LotteryService", $"✅ 封盘提醒已发送: {message}");
+                    }
+                }
+                else if (shouldSend)
+                {
+                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送封盘提醒到微信群");
+                }
+
+                // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示封盘提醒
+                if (isDevMode)
+                {
+                    Views.Dev.MessageSimulatorForm.NotifySystemMessage("封盘提醒", message);
+                    _logService.Debug("LotteryService", $"🔧 开发模式：已通知消息模拟器显示封盘提醒 - {message}");
                 }
             }
             catch (Exception ex)
@@ -1958,57 +1979,69 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 播放封盘声音（参考 F5BotV2 第1247行）
                 // 声音是本地提示，不依赖群绑定状态，应该始终播放
                 _soundService?.PlaySealingSound();
-                
-                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
-                if (string.IsNullOrEmpty(groupWxId) || _socketClient == null || !_socketClient.IsConnected)
-                {
-                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送封盘消息（但声音已播放）");
-                    return;
-                }
-                
+
                 // 🔥 检查是否应该发送系统消息
-                if (!ShouldSendSystemMessage())
+                bool shouldSend = ShouldSendSystemMessage();
+                bool isDevMode = _configService.GetIsRunModeDev();
+
+                // 🔥 如果收单关闭且不是开发模式，直接返回
+                if (!shouldSend && !isDevMode)
                 {
                     return;
                 }
-                
+
                 _logService.Info("LotteryService", $"📢 发送封盘消息: 期号 {issueId}");
-                
+
                 // 🔥 格式完全按照 F5BotV2 第1226-1238行
                 var sbTxt = new StringBuilder();
                 int issueShort = issueId % 1000;
-                sbTxt.Append($"{issueShort} 时间到! 停止进仓! 以此为准!\r");
-                
+                sbTxt.Append($"{issueShort} 时间到! 停止进仓! 以此为准!\r ");
+
                 // 🔥 获取当期所有订单（参考 F5BotV2 第1228行）
                 var orders = _ordersBindingList?
                     .Where(p => p.IssueId == issueId && p.OrderStatus != OrderStatus.已取消)
                     .ToList();
-                
+
                 // 🔥 排序（参考 F5BotV2 第1230行：orders_redly.Sort(new V2MemberOrderComparerDefault())）
                 // 确保同名订单在一起，显示更清晰
                 if (orders != null && orders.Count > 0)
                 {
                     orders.Sort(new V2MemberOrderComparerDefault());
                 }
-                
+
                 if (orders != null && orders.Count > 0)
                 {
                     // 🔥 格式：{nickname}[{(int)BetFronMoney}]:{BetContentStandar}|计:{AmountTotal}\r
                     foreach (var ods in orders)
                     {
-                        sbTxt.Append($"{ods.Nickname ?? "未知"}[{(int)ods.BetFronMoney}]:{ods.BetContentStandar ?? ""}|计:{ods.AmountTotal}\r");
+                        sbTxt.Append($"{ods.Nickname ?? "未知"}[{(int)ods.BetFronMoney}]:{ods.BetContentStandar ?? ""}|计:{ods.AmountTotal}\r ");
                     }
                 }
-                
+
                 // 🔥 即使没有订单也要发送（参考 F5BotV2 第1237行）
                 sbTxt.Append("------线下无效------");
-                
-                _logService.Info("LotteryService", $"📤 发送封盘消息到群: {groupWxId}");
-                
-                var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, sbTxt.ToString());
-                if (response != null)
+
+                // 🔥 只有在绑定群且微信已登录时才发送到微信群
+                string? groupWxId = _groupBindingService?.CurrentBoundGroup?.Wxid;
+                if (shouldSend && !string.IsNullOrEmpty(groupWxId) && _socketClient != null && _socketClient.IsConnected)
                 {
-                    _logService.Info("LotteryService", $"✅ 封盘消息已发送: 期号 {issueId}, 订单数 {orders?.Count ?? 0}");
+                    _logService.Info("LotteryService", $"📤 发送封盘消息到群: {groupWxId}");
+                    var response = await _socketClient.SendAsync<object>("SendMessage", groupWxId, sbTxt.ToString());
+                    if (response != null)
+                    {
+                        _logService.Info("LotteryService", $"✅ 封盘消息已发送: 期号 {issueId}, 订单数 {orders?.Count ?? 0}");
+                    }
+                }
+                else if (shouldSend)
+                {
+                    _logService.Debug("LotteryService", "未绑定群或微信未登录，跳过发送封盘消息到微信群（但声音已播放）");
+                }
+
+                // 🔥 开发模式：无论是否发送到微信群，都通知消息模拟器显示封盘消息
+                if (isDevMode)
+                {
+                    Views.Dev.MessageSimulatorForm.NotifySystemMessage("封盘", sbTxt.ToString());
+                    _logService.Debug("LotteryService", $"🔧 开发模式：已通知消息模拟器显示封盘消息");
                 }
             }
             catch (Exception ex)
