@@ -777,7 +777,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _reminded30Seconds = true;
                     _logService.Info("BinggoLotteryService", $"⏰ 30秒提醒: 期号 {_currentIssueId}");
                     
-                    // 🔥 直接发送提醒消息到群（参考 F5BotV2 第1008行）- 异步执行
+                    // 🔥 提醒消息不需要在锁内同步发送（不影响订单处理顺序）
                     _ = Task.Run(async () => await SendSealingReminderAsync(_currentIssueId, 30));
                 }
                 
@@ -789,7 +789,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     _reminded15Seconds = true;
                     _logService.Info("BinggoLotteryService", $"⏰ 15秒提醒: 期号 {_currentIssueId}");
                     
-                    // 🔥 直接发送提醒消息到群（参考 F5BotV2 第1013行）- 异步执行
+                    // 🔥 提醒消息不需要在锁内同步发送（不影响订单处理顺序）
                     _ = Task.Run(async () => await SendSealingReminderAsync(_currentIssueId, 15));
                 }
             }
@@ -798,10 +798,19 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 封盘中（0 到 -配置的封盘秒数，等待开奖）
                 newStatus = BinggoLotteryStatus.封盘中;
                 
-                // 🔥 只在第一次进入封盘状态时发送封盘消息（参考 F5BotV2 第1205行 On封盘中）
+                // 🔥 重要修复：参考 F5BotV2 第1205-1263行，在锁内同步发送封盘消息
+                // 这样可以确保：
+                // 1. 如果订单处理先获取锁，封盘等待，订单回复先发送
+                // 2. 如果封盘先获取锁，订单等待，封盘消息先发送，订单被拒绝
+                // 
+                // 🔥 关键：不使用 Task.Run 异步发送，而是在锁内同步发送
+                // 这确保了消息发送顺序与状态更新顺序一致，解决用户报告的竞态问题：
+                // "即将封盘时发送了订单（123大50），系统还没回复，就发送了封盘消息"
                 if (oldStatus != BinggoLotteryStatus.封盘中)
                 {
-                    _ = Task.Run(async () => await SendSealingMessageAsync(_currentIssueId));
+                    // 🔥 在锁内同步执行封盘消息发送（参考 F5BotV2 第1212-1260行）
+                    // 注意：这会阻塞锁直到消息发送完成，但这是必要的，确保消息顺序
+                    SendSealingMessageAsync(_currentIssueId).Wait();
                 }
             }
             else
