@@ -102,11 +102,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoOrderService", 
                     $"处理下注: {member.Nickname} ({member.Wxid}) - 期号: {issueId}");
                 
-                // 🔥 关键修复：在保存订单前，获取实时状态和期号（模仿 F5BotV2 第2393行设计）
-                // F5BotV2 在保存订单前会再次检查 _status，确保状态未变化
-                // 这是 F5BotV2 稳定性的关键！
-                int realTimeIssueId = _lotteryService.CurrentIssueId;
-                BinggoLotteryStatus realTimeStatus = _lotteryService.CurrentStatus;
+                // 🔥 关键修复：使用线程安全的原子操作获取状态和期号（防止竞态条件）
+                // 修复 Bug: 20251205-32.7.1-封盘还能进单
+                // 原因：状态读取和状态更新之间存在竞态，导致封盘瞬间还能进单
+                var (realTimeStatus, realTimeIssueId, canBet) = _lotteryService.GetStatusSnapshot();
                 
                 // 🔥 检查期号是否一致（防止期号在处理过程中变化）
                 if (realTimeIssueId != issueId)
@@ -116,12 +115,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (false, $"{member.Nickname}\r时间未到!不收货!", null);
                 }
                 
-                // 🔥 再次检查状态（防止状态在处理过程中变化）- 参考 F5BotV2 第2393行
-                // F5BotV2: if(_status == BoterStatus.开盘中) { /* 保存订单 */ } else { /* 拒绝 */ }
-                // 🔥 重要：使用白名单模式（只允许明确的状态），而不是黑名单模式
-                // 这样即使将来新增状态，也会默认拒绝，更安全（防御性编程）
-                if (realTimeStatus != BinggoLotteryStatus.开盘中 && 
-                    realTimeStatus != BinggoLotteryStatus.即将封盘)
+                // 🔥 使用原子操作的结果检查是否允许下注
+                // 白名单模式：只有"开盘中"和"即将封盘"状态才允许下注
+                if (!canBet)
                 {
                     _logService.Warning("BinggoOrderService", 
                         $"❌ 状态已变化，拒绝下注: {member.Nickname} - 期号: {realTimeIssueId} - 状态: {realTimeStatus}");
@@ -269,14 +265,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 🔥 使用 BindingList 中的对象（而不是传入的 member）
                     member = memberInList;
                     
-                    // 🔥 关键修复2：在保存订单前的最后时刻，再次检查实时状态（模仿 F5BotV2 第2393行）
-                    // F5BotV2 的关键设计：在锁内、保存订单前，最后一次检查状态
-                    // 这是防止状态变化的最后一道防线！
-                    var finalStatus = _lotteryService.CurrentStatus;
-                    var finalIssueId = _lotteryService.CurrentIssueId;
+                    // 🔥 关键修复2：在保存订单前的最后时刻，使用线程安全的原子操作再次检查状态
+                    // 修复 Bug: 20251205-32.7.1-封盘还能进单（最后一道防线）
+                    var (finalStatus, finalIssueId, finalCanBet) = _lotteryService.GetStatusSnapshot();
                     
-                    if (finalStatus != BinggoLotteryStatus.开盘中 && 
-                        finalStatus != BinggoLotteryStatus.即将封盘)
+                    if (!finalCanBet)
                     {
                         _logService.Warning("BinggoOrderService", 
                             $"❌ [锁内检查] 状态已变化，拒绝下单: {member.Nickname} - 期号: {finalIssueId} - 状态: {finalStatus}");

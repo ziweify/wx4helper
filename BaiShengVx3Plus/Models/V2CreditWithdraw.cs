@@ -107,9 +107,15 @@ namespace BaiShengVx3Plus.Models
             {
                 if (SetField(ref _status, value))
                 {
-                    // 🔥 状态变化时，通知 ActionText 也变化（因为 ActionText 依赖于 Status）
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActionText)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
+                    // 🔥 修复 Bug: 20251206-永鑫1847分上两次分
+                    // 原因：同时触发多个 PropertyChanged 事件（Status、ActionText、StatusText）
+                    //       导致 BindingSource 在更新 UI 时状态不一致，抛出循环引用异常
+                    // 解决：移除额外的 PropertyChanged 触发
+                    //       DataGridView 会自动重新计算计算属性（ActionText、StatusText）
+                    //       不需要手动触发它们的 PropertyChanged 事件
+                    // 
+                    // 注意：如果未来需要在其他地方监听 ActionText/StatusText 的变化，
+                    //       可以考虑使用延迟触发（InvokeAsync）或事件合并机制
                 }
             }
         }

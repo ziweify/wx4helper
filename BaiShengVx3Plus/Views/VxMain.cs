@@ -3453,7 +3453,6 @@ namespace BaiShengVx3Plus
                     Program.ServiceProvider.GetService<Services.Sound.SoundService>());
                 
                 _creditWithdrawManageForm = new Views.CreditWithdrawManageForm(
-                    _db,
                     _logService,
                     _socketClient,
                     _creditWithdrawsBindingList,

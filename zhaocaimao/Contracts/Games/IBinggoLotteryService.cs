@@ -48,6 +48,13 @@ namespace zhaocaimao.Contracts.Games
         // ========================================
         
         /// <summary>
+        /// 🔥 线程安全地获取状态和期号（原子操作）
+        /// 用于订单创建时的状态检查，防止竞态条件导致"封盘还能进单"
+        /// </summary>
+        /// <returns>(当前状态, 当前期号, 是否允许下注)</returns>
+        (BinggoLotteryStatus status, int issueId, bool canBet) GetStatusSnapshot();
+        
+        /// <summary>
         /// 启动开奖服务
         /// </summary>
         Task StartAsync();

@@ -593,6 +593,9 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         /// <summary>
         /// 执行上下分操作（参考 F5BotV2 Line 2759-2762, 2814-2817）
         /// 🔥 创建上下分记录并调用服务处理
+        /// 🔥 修复 Bug: 20251206-永鑫1847分上两次分
+        /// 原因：管理员命令每次都创建新申请，不检查已有待处理申请
+        /// 解决：优先处理已有的待处理申请，避免重复上下分
         /// </summary>
         private async Task<bool> ExecuteCreditWithdraw(
             string groupWxid,
@@ -603,33 +606,67 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
         {
             try
             {
-                // 🔥 1. 创建上下分记录（参考 F5BotV2 Line 2759, 2814）
                 CreditWithdrawAction payAction = action == "上" ? CreditWithdrawAction.上分 : CreditWithdrawAction.下分;
-                long timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+                V2CreditWithdraw creditWithdraw;
                 
-                var creditWithdraw = new V2CreditWithdraw
-                {
-                    GroupWxId = groupWxid,
-                    Wxid = member.Wxid,
-                    Nickname = member.Nickname,
-                    Account = member.Account,
-                    Action = payAction,
-                    Amount = money,
-                    Status = CreditWithdrawStatus.等待处理,  // 🔥 初始状态为等待处理
-                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    Timestamp = timestamp,
-                    Notes = note
-                };
-                
-                // 🔥 2. 添加到 BindingList（会自动保存到数据库）
+                // 🔥 修复：优先查找并处理已有的待处理申请（相同会员、相同动作、相同金额）
                 if (_creditWithdrawsBindingList != null)
                 {
-                    _creditWithdrawsBindingList.Add(creditWithdraw);
+                    var existingRequest = _creditWithdrawsBindingList.FirstOrDefault(r =>
+                        r.Wxid == member.Wxid &&
+                        r.Action == payAction &&
+                        r.Amount == money &&
+                        r.Status == CreditWithdrawStatus.等待处理);
+                    
+                    if (existingRequest != null)
+                    {
+                        _logService.Info("AdminCommand", 
+                            $"⚡ 发现待处理申请，优先处理: {member.Nickname} {action}{money} (申请时间: {existingRequest.TimeString})");
+                        creditWithdraw = existingRequest;
+                    }
+                    else
+                    {
+                        // 没有已有申请，创建新申请
+                        long timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+                        creditWithdraw = new V2CreditWithdraw
+                        {
+                            GroupWxId = groupWxid,
+                            Wxid = member.Wxid,
+                            Nickname = member.Nickname,
+                            Account = member.Account,
+                            Action = payAction,
+                            Amount = money,
+                            Status = CreditWithdrawStatus.等待处理,
+                            TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Timestamp = timestamp,
+                            Notes = note
+                        };
+                        _creditWithdrawsBindingList.Add(creditWithdraw);
+                    }
                 }
                 else if (_db != null)
                 {
-                    // 如果没有 BindingList，直接插入数据库
+                    // 没有 BindingList，直接创建新申请
+                    long timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+                    creditWithdraw = new V2CreditWithdraw
+                    {
+                        GroupWxId = groupWxid,
+                        Wxid = member.Wxid,
+                        Nickname = member.Nickname,
+                        Account = member.Account,
+                        Action = payAction,
+                        Amount = money,
+                        Status = CreditWithdrawStatus.等待处理,
+                        TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = timestamp,
+                        Notes = note
+                    };
                     _db.Insert(creditWithdraw);
+                }
+                else
+                {
+                    _logService.Error("AdminCommand", "无法执行上下分：BindingList 和数据库都不可用");
+                    return false;
                 }
                 
                 // 🔥 3. 调用 CreditWithdrawService 处理（参考 F5BotV2 Line 2762, 2817）

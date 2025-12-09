@@ -152,11 +152,27 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         $"🔒 [{actionName}] {member.Nickname} - 操作后余额: {balanceAfter:F2}, 变动: {(balanceAfter - balanceBefore):F2}");
 
                     // 2.2 更新申请状态（仅非加载模式）
+                    // 🔥 修复 Bug: 20251206-永鑫1847分上两次分
+                    // 原因：Status 赋值触发 PropertyChanged 时可能抛出 BindingSource 异常
+                    //       导致 ProcessedBy 和 ProcessedTime 没有被设置
+                    // 解决：先设置所有属性，最后再设置 Status（因为 Status 触发 UI 更新）
                     if (!isLoading)
                     {
-                        request.Status = CreditWithdrawStatus.已同意;
+                        // 先设置处理人和处理时间（不触发UI更新）
                         request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
                         request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        // 最后设置状态（触发UI更新，即使失败，关键数据已设置）
+                        try
+                        {
+                            request.Status = CreditWithdrawStatus.已同意;
+                        }
+                        catch (InvalidOperationException ex) when (ex.Message.Contains("BindingSource"))
+                        {
+                            // 🔥 BindingSource 异常不应中断流程
+                            // 状态已经设置成功，只是 UI 更新失败
+                            _logService.Warning("CreditWithdrawService", 
+                                $"⚠️ [{actionName}] {member.Nickname} - UI更新异常（已忽略）: {ex.Message}");
+                        }
                     }
 
                     // 2.3 记录资金变动
@@ -396,6 +412,26 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             {
                 _logService.Error("CreditWithdrawService", "拒绝申请失败", ex);
                 return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 🔥 插入资金变动记录（日志表）
+        /// 用于记录所有资金变动，包括上下分、下注、结算等
+        /// 🔥 修复：将数据库操作从 UI 层移到服务层
+        /// </summary>
+        public void InsertBalanceChange(V2BalanceChange balanceChange)
+        {
+            try
+            {
+                _db.Insert(balanceChange);
+                _logService.Debug("CreditWithdrawService", 
+                    $"📝 资金变动记录已保存: {balanceChange.Nickname} - {balanceChange.ReasonText} - {balanceChange.ChangeAmount:F2}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("CreditWithdrawService", "插入资金变动记录失败", ex);
+                // 🔥 日志表插入失败不影响主流程，只记录错误
             }
         }
     }

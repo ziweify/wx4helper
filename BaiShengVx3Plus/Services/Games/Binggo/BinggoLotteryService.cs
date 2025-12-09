@@ -54,11 +54,11 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private BinggoStatisticsService? _statisticsService;  // 🔥 统计服务（用于更新统计）
         
         private System.Threading.Timer? _timer;
-        private int _currentIssueId;
-        private BinggoLotteryStatus _currentStatus = BinggoLotteryStatus.等待中;
+        private volatile int _currentIssueId;  // 🔥 volatile 确保多线程可见性
+        private volatile BinggoLotteryStatus _currentStatus = BinggoLotteryStatus.等待中;  // 🔥 volatile 确保多线程可见性
         private int _secondsToSeal;
-        private bool _isRunning;
-        private readonly object _lock = new object();
+        private volatile bool _isRunning;  // 🔥 volatile 确保多线程可见性
+        private readonly object _statusLock = new object();  // 🔥 状态更新锁（双重保护）
         
         // 🔥 时间提醒标志（防止重复触发，参考 F5BotV2）
         private bool _reminded30Seconds = false;
@@ -87,6 +87,21 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         public BinggoLotteryStatus CurrentStatus => _currentStatus;
         public int SecondsToSeal => _secondsToSeal;
         public bool IsRunning => _isRunning;
+        
+        /// <summary>
+        /// 🔥 线程安全地获取状态和期号（原子操作）
+        /// 用于订单创建时的状态检查，防止竞态条件
+        /// </summary>
+        public (BinggoLotteryStatus status, int issueId, bool canBet) GetStatusSnapshot()
+        {
+            lock (_statusLock)
+            {
+                var status = _currentStatus;
+                var issueId = _currentIssueId;
+                var canBet = status == BinggoLotteryStatus.开盘中 || status == BinggoLotteryStatus.即将封盘;
+                return (status, issueId, canBet);
+            }
+        }
         
         public BinggoLotteryService(
             ILogService logService,
@@ -263,7 +278,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 int secondsToOpen = BinggoTimeHelper.GetSecondsToOpen(localIssueId);
                 int secondsToSeal = secondsToOpen - _configService.GetSealSecondsAhead();
                 
-                lock (_lock)
+                lock (_statusLock)
                 {
                     // 🔥 检查期号变更（首次初始化也走统一流程）
                     if (localIssueId != _currentIssueId)
@@ -566,9 +581,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 状态更新（基于倒计时）
         /// 🔥 完全参考 F5BotV2 的实现逻辑
+        /// 🔥 修复：使用锁保护状态更新，防止竞态条件导致"封盘还能进单"
         /// </summary>
         private void UpdateStatus(int secondsToSeal)
         {
+            // 🔥 使用锁保护状态读写，确保原子性
+            lock (_statusLock)
+            {
             var oldStatus = _currentStatus;
             BinggoLotteryStatus newStatus;
             
@@ -672,6 +691,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     Message = GetStatusMessage(newStatus)
                 });
             }
+            } // 🔥 关闭 _statusLock 锁
         }
         
         private string GetStatusMessage(BinggoLotteryStatus status)

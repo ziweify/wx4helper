@@ -48,6 +48,14 @@ namespace BaiShengVx3Plus.Contracts.Games
         // ========================================
         
         /// <summary>
+        /// 🔥 获取状态快照（线程安全，原子性）
+        /// 修复 Bug: 20251205-32.7.1-封盘还能进单
+        /// 确保状态和期号的一致性读取
+        /// </summary>
+        /// <returns>(当前状态, 当前期号, 是否可下注)</returns>
+        (BinggoLotteryStatus status, int issueId, bool canBet) GetStatusSnapshot();
+        
+        /// <summary>
         /// 启动开奖服务
         /// </summary>
         Task StartAsync();

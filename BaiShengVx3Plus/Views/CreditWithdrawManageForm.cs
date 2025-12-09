@@ -16,7 +16,6 @@ namespace BaiShengVx3Plus.Views
     /// </summary>
     public partial class CreditWithdrawManageForm : UIForm
     {
-        private readonly SQLiteConnection _db;
         private readonly ILogService _logService;
         private readonly IWeixinSocketClient _socketClient;
         private readonly Core.V2CreditWithdrawBindingList _creditWithdrawsBindingList;  // 🔥 使用 BindingList（统一模式）
@@ -25,23 +24,22 @@ namespace BaiShengVx3Plus.Views
         private BindingSource _bindingSource;  // 🔥 使用 BindingSource 处理过滤和自动更新
         private int _hoverRowIndex = -1;  // 🔥 跟踪鼠标悬停的行索引
 
+        /// <summary>
+        /// 🔥 修复：移除 SQLiteConnection 参数
+        /// 原因：资金变动记录通过服务层插入，UI 层不应直接操作数据库
+        /// </summary>
         public CreditWithdrawManageForm(
-            SQLiteConnection db, 
             ILogService logService, 
             IWeixinSocketClient socketClient,
             Core.V2CreditWithdrawBindingList creditWithdrawsBindingList,
             Core.V2MemberBindingList membersBindingList,
             Services.Games.Binggo.CreditWithdrawService creditWithdrawService)
         {
-            _db = db;
             _logService = logService;
             _socketClient = socketClient;
             _creditWithdrawsBindingList = creditWithdrawsBindingList;  // 🔥 接收 BindingList
             _membersBindingList = membersBindingList;  // 🔥 接收会员列表
             _creditWithdrawService = creditWithdrawService;  // 🔥 接收上下分服务
-            
-            // 🔥 确保资金变动表存在（修复 "no such table: V2BalanceChange" 错误）
-            _db.CreateTable<V2BalanceChange>();
             
             InitializeComponent();
             
@@ -699,6 +697,8 @@ namespace BaiShengVx3Plus.Views
 
         /// <summary>
         /// 同意申请
+        /// 🔥 修复 Bug: 20251206-永鑫1847分上两次分
+        /// 原因：没有锁保护 + 没有状态检查，导致双击或并发时重复处理
         /// </summary>
         private void ApproveRequest(V2CreditWithdraw request)
         {
@@ -706,71 +706,98 @@ namespace BaiShengVx3Plus.Views
             {
                 string actionName = request.Action == CreditWithdrawAction.上分 ? "上分" : "下分";
                 
+                // 🔥 修复1：在弹框前检查状态（快速拦截已处理的申请）
+                if (request.Status != CreditWithdrawStatus.等待处理)
+                {
+                    _logService.Warning("上下分管理", 
+                        $"⚠️ 申请已被处理，拒绝重复操作: {request.Nickname} - {actionName} - 当前状态: {request.Status}");
+                    return;  // 静默返回，不弹框（提升用户体验）
+                }
+                
                 if (!UIMessageBox.ShowAsk($"确定同意【{request.Nickname}】的{actionName}申请吗？\n\n金额：{request.Amount:F2}"))
                 {
                     return;
                 }
                 
-                // 🔥 从 BindingList 查找会员（统一模式）
-                var member = _membersBindingList.FirstOrDefault(m => m.Wxid == request.Wxid);
-                
-                if (member == null)
+                // 🔥 修复2：使用锁保护，防止并发重复处理（与 CreditWithdrawService 保持一致）
+                lock (Core.ResourceLocks.MemberBalanceLock)
                 {
-                    UIMessageBox.ShowError("未找到该会员");
-                    return;
-                }
-                
-                float balanceBefore = member.Balance;
-                float balanceAfter;
-                
-                if (request.Action == CreditWithdrawAction.上分)
-                {
-                    // 🔥 上分处理
-                    balanceAfter = balanceBefore + request.Amount;
-                    member.Balance = balanceAfter;
-                    member.CreditToday += request.Amount;
-                    member.CreditTotal += request.Amount;
-                }
-                else
-                {
-                    // 🔥 下分处理（再次检查余额）
-                    if (member.Balance < request.Amount)
+                    // 🔥 修复3：在锁内再次检查状态（双重检查，防止弹框期间被其他操作处理）
+                    if (request.Status != CreditWithdrawStatus.等待处理)
                     {
-                        // 🔥 参考 F5BotV2 第467行：存储不足的回复
-                        string errorMsg = $"@{member.Nickname} 存储不足!";
-                        _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
-                        
-                        UIMessageBox.ShowError($"会员余额不足！\n当前余额：{member.Balance:F2}\n申请金额：{request.Amount:F2}");
+                        _logService.Warning("上下分管理", 
+                            $"⚠️ [锁内检查] 申请已被处理，拒绝重复操作: {request.Nickname} - {actionName} - 当前状态: {request.Status}");
+                        UIMessageBox.ShowWarning("该申请已被处理，请勿重复操作！");
                         return;
                     }
                     
-                    balanceAfter = balanceBefore - request.Amount;
-                    member.Balance = balanceAfter;
-                    member.WithdrawToday += request.Amount;
-                    member.WithdrawTotal += request.Amount;
-                }
+                    // 🔥 从 BindingList 查找会员（统一模式）
+                    var member = _membersBindingList.FirstOrDefault(m => m.Wxid == request.Wxid);
+                    
+                    if (member == null)
+                    {
+                        UIMessageBox.ShowError("未找到该会员");
+                        return;
+                    }
+                    
+                    float balanceBefore = member.Balance;
+                    float balanceAfter;
+                    
+                    if (request.Action == CreditWithdrawAction.上分)
+                    {
+                        // 🔥 上分处理
+                        balanceAfter = balanceBefore + request.Amount;
+                        member.Balance = balanceAfter;
+                        member.CreditToday += request.Amount;
+                        member.CreditTotal += request.Amount;
+                        
+                        _logService.Info("上下分管理", 
+                            $"🔒 [上分] {member.Nickname} - 余额: {balanceBefore:F2} → {balanceAfter:F2} (+{request.Amount:F2})");
+                    }
+                    else
+                    {
+                        // 🔥 下分处理（再次检查余额）
+                        if (member.Balance < request.Amount)
+                        {
+                            // 🔥 参考 F5BotV2 第467行：存储不足的回复
+                            string errorMsg = $"@{member.Nickname} 存储不足!";
+                            _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                            
+                            UIMessageBox.ShowError($"会员余额不足！\n当前余额：{member.Balance:F2}\n申请金额：{request.Amount:F2}");
+                            return;
+                        }
+                        
+                        balanceAfter = balanceBefore - request.Amount;
+                        member.Balance = balanceAfter;
+                        member.WithdrawToday += request.Amount;
+                        member.WithdrawTotal += request.Amount;
+                        
+                        _logService.Info("上下分管理", 
+                            $"🔒 [下分] {member.Nickname} - 余额: {balanceBefore:F2} → {balanceAfter:F2} (-{request.Amount:F2})");
+                    }
+                    
+                    // 🔥 更新申请状态（在锁内更新，确保原子性）
+                    request.Status = CreditWithdrawStatus.已同意;
+                    request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                    request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                } // 🔥 释放锁
                 
-                // 🔥 更新申请状态（会自动触发 PropertyChanged，通知 ActionText 和 StatusText 更新）
-                request.Status = CreditWithdrawStatus.已同意;
-                request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                // 🔥 以下操作可以在锁外执行（不影响数据一致性）
                 
-                // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
-                int index = _bindingSource.IndexOf(request);
-                if (index >= 0)
-                {
-                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
-                }
+                // 从 BindingList 重新获取会员信息（锁已释放）
+                var memberForNotify = _membersBindingList.FirstOrDefault(m => m.Wxid == request.Wxid);
+                if (memberForNotify == null) return;
                 
                 // 🔥 记录到资金变动表
+                float changeAmount = request.Action == CreditWithdrawAction.上分 ? request.Amount : -request.Amount;
                 var balanceChange = new V2BalanceChange
                 {
-                    GroupWxId = member.GroupWxId,
-                    Wxid = member.Wxid,
-                    Nickname = member.Nickname,
-                    BalanceBefore = balanceBefore,
-                    BalanceAfter = balanceAfter,
-                    ChangeAmount = request.Action == CreditWithdrawAction.上分 ? request.Amount : -request.Amount,
+                    GroupWxId = memberForNotify.GroupWxId,
+                    Wxid = memberForNotify.Wxid,
+                    Nickname = memberForNotify.Nickname,
+                    BalanceBefore = memberForNotify.Balance - changeAmount,  // 反推变动前余额
+                    BalanceAfter = memberForNotify.Balance,
+                    ChangeAmount = changeAmount,
                     Reason = request.Action == CreditWithdrawAction.上分 ? ChangeReason.上分 : ChangeReason.下分,
                     IssueId = 0,
                     TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -778,24 +805,23 @@ namespace BaiShengVx3Plus.Views
                     Notes = $"管理员同意{actionName}申请"
                 };
                 
-                // 🔥 保存到数据库（🔥 会员和申请的 PropertyChanged 会自动保存，只需手动插入资金变动）
-                _db.Insert(balanceChange);
+                // 🔥 通过服务层插入资金变动记录（日志表，不需要修改即保存）
+                _creditWithdrawService.InsertBalanceChange(balanceChange);
                 
                 // 🔥 更新会员的上下分统计（自动触发 PropertyChanged）
                 _creditWithdrawsBindingList.UpdateMemberStatistics(_membersBindingList);
                 
                 // 🔥 发送微信通知（参考 F5BotV2 第433行和第478行）
-                string notifyMessage = $"@{member.Nickname}\r[{member.Id}]{actionName}{(int)request.Amount}完成|余:{(int)member.Balance}";
+                string notifyMessage = $"@{memberForNotify.Nickname}\r[{memberForNotify.Id}]{actionName}{(int)request.Amount}完成|余:{(int)memberForNotify.Balance}";
                 
-                _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, notifyMessage);
+                _ = _socketClient.SendAsync<object>("SendMessage", memberForNotify.GroupWxId, notifyMessage);
                 
                 // 🔥 日志记录
                 _logService.Info("上下分管理", 
-                    $"同意{actionName}申请\n" +
-                    $"会员：{member.Nickname}\n" +
+                    $"✅ 同意{actionName}申请\n" +
+                    $"会员：{memberForNotify.Nickname}\n" +
                     $"金额：{request.Amount:F2}\n" +
-                    $"变动前：{balanceBefore:F2}\n" +
-                    $"变动后：{balanceAfter:F2}\n" +
+                    $"当前余额：{memberForNotify.Balance:F2}\n" +
                     $"处理人：{request.ProcessedBy}");
                 
                 // 🔥 更新统计（BindingList 变化会自动更新 DataGridView，无需手动刷新）
