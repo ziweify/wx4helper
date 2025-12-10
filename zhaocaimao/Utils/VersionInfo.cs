@@ -11,7 +11,7 @@ namespace zhaocaimao.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "5.2.2";  
+        public const string Version = "5.3.2";  
 
         /// <summary>
         /// 版本名称
@@ -45,6 +45,10 @@ v3.1.0.1114 (2025-11-14)
     }
 
     /*
+     * 5.3.2
+     *    修正封盘后还能下注的问题
+     *    修正状态管理问题
+     *    
      * 5.2.2
      *      修复ADK支持
      */

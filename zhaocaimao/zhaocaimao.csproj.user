@@ -29,6 +29,9 @@
     <Compile Update="Views\CreditWithdrawManageForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\DataErrorNotifyForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\Dev\MessageSimulatorForm.cs">
       <SubType>Form</SubType>
     </Compile>
