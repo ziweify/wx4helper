@@ -1782,20 +1782,17 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         sbTxt.Append($"{ods.BetContentOriginal}|+{ods.AmountTotal} 已取消\r");
                         
                         _logService.Info("BinggoLotteryService", 
-                            $"✅ 取消订单: {member.Nickname} - 期号:{_currentIssueId} - 订单ID:{ods.Id}");
+                            $"✅ 取消订单成功: {member.Nickname} - 订单ID:{ods.Id} - 金额:{ods.AmountTotal}");
                     }
                     
-                    if (member.State != MemberState.管理)
-                    {
-                        _logService.Info("BinggoLotteryService", 
-                            $"💰 退款: {member.Nickname} - 总退款 {totalMoney:F2}，退款后余额: {member.Balance:F2}");
-                    }
+                    // 🔥 最终回复格式 - 参考 F5BotV2 第2264行：@{m.nickname} {BetContentOriginal}|+{AmountTotal} 已取消\r+{totalMoney}|留:{(int)Balance}
+                    sbTxt.Append($"+{totalMoney}|留:{(int)member.Balance}");
+                    string replyTxt = sbTxt.ToString();
                     
                     _logService.Info("BinggoLotteryService", 
-                        $"📊 统计更新: {member.Nickname} - 减掉投注总计 - 今日下注 {member.BetToday:F2}");
+                        $"✅ 全部取消完成: {member.Nickname} - 取消订单数:{orders.Count} - 总退款:{totalMoney} - 余额:{member.Balance}");
                     
-                    // 🔥 回复格式 - 参考 F5BotV2 第2264行：@{m.nickname} {BetContentOriginal}|+{AmountTotal} 已取消\r...
-                    return (true, sbTxt.ToString(), null);
+                    return (true, replyTxt, null);
                 }
                 
                 // 🔥 4. 处理投注消息

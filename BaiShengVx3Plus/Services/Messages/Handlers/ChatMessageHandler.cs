@@ -67,7 +67,16 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return;
                 }
                 
-                // 2. 🔥 检查收单开关（必须先检查！）
+                // 2. 🔥 过滤系统自己发送的消息（参考 F5BotV2 第1954-1956行）
+                // 判断来源：如果是系统给的消息，那么两个ID相同
+                string currentUserWxid = _userInfoService.GetCurrentWxid();
+                if (!string.IsNullOrEmpty(currentUserWxid) && message.Sender == currentUserWxid)
+                {
+                    _logService.Debug("ChatMessageHandler", "系统自己发送的消息，忽略处理");
+                    return;
+                }
+                
+                // 3. 🔥 检查收单开关（必须先检查！）
                 _logService.Debug("ChatMessageHandler", $"🔍 检查收单开关: IsOrdersTaskingEnabled = {BinggoMessageHandler.IsOrdersTaskingEnabled}");
                 if (!BinggoMessageHandler.IsOrdersTaskingEnabled)
                 {
@@ -75,16 +84,13 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     return;
                 }
                 
-                // 3. 获取发送者会员信息（从 dgvMembers 中查找）
+                // 4. 获取发送者会员信息（从 dgvMembers 中查找）
                 var member = GetMemberByWxid(message.Sender);
                 if (member == null)
                 {
                     _logService.Debug("ChatMessageHandler", $"未找到会员: {message.Sender}，跳过炳狗处理");
                     return;
                 }
-                
-                // 🔥 获取当前用户 wxid（用于管理员判断）
-                string currentUserWxid = _userInfoService.GetCurrentWxid();
                 
                 // 4. 调用炳狗消息处理器（传递群ID和当前用户ID）
                 var (handled, replyMessage) = await _binggoMessageHandler.HandleMessageAsync(
