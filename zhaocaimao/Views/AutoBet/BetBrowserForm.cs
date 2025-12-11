@@ -86,6 +86,16 @@ namespace zhaocaimao.Views.AutoBet
             _onLog = onLog;
             
             InitializeComponent();
+            
+            // 🔥 设置窗口标题（必须在 InitializeComponent 之后）
+            this.Text = $"自动投注 - {configName}";
+            
+            // 🔥 设置初始URL（必须在 InitializeComponent 之后）
+            if (txtUrl != null)
+            {
+                txtUrl.Text = platformUrl;
+            }
+            
             InitializeLogSystem();
             
             // 🔥 浏览器初始化在 Load 事件中异步执行
@@ -99,203 +109,6 @@ namespace zhaocaimao.Views.AutoBet
         private async void BetBrowserForm_Load(object? sender, EventArgs e)
         {
             await InitializeBrowserAsync();
-        }
-        
-        private void InitializeComponent()
-        {
-            // 窗口设置
-            this.Text = $"自动投注 - {_configName}";
-            this.Size = new Size(1264, 860);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.ShowTitle = true;
-            this.ShowRadius = true;
-            this.Style = UIStyle.Blue;
-            this.BackColor = Color.FromArgb(245, 248, 255);
-            
-            // ========== StatusStrip ==========
-            statusStrip1 = new StatusStrip();
-            lblStatus = new ToolStripStatusLabel { Text = "● 未连接" };
-            lblBalance = new ToolStripStatusLabel { Text = "余额: ¥0.00" };
-            lblOddsInfo = new ToolStripStatusLabel { Text = "📊 查看赔率", IsLink = true };
-            lblOddsInfo.Click += LblOddsInfo_Click;
-            
-            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblOddsInfo });
-            statusStrip1.Location = new Point(0, 838);
-            statusStrip1.Size = new Size(1264, 22);
-            
-            // ========== 顶部工具栏 ==========
-            pnlTop = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 45
-            };
-            
-            lblUrl = new Label
-            {
-                Text = "URL:",
-                Location = new Point(12, 15),
-                AutoSize = true
-            };
-            
-            txtUrl = new TextBox
-            {
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Location = new Point(60, 12),
-                Width = 981
-            };
-            
-            btnNavigate = new Button
-            {
-                Text = "Go",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(1123, 10),
-                Size = new Size(60, 25)
-            };
-            btnNavigate.Click += BtnNavigate_Click;
-            
-            btnRefresh = new Button
-            {
-                Text = "刷新",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(1189, 10),
-                Size = new Size(60, 25)
-            };
-            btnRefresh.Click += BtnRefresh_Click;
-            
-            btnTestCookie = new Button
-            {
-                Text = "C",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(1047, 10),
-                Size = new Size(32, 25),
-                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold)
-            };
-            btnTestCookie.Click += BtnTestCookie_Click;
-            
-            btnTestBet = new Button
-            {
-                Text = "投",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(1085, 10),
-                Size = new Size(32, 25),
-                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold)
-            };
-            btnTestBet.Click += BtnTestBet_Click;
-            
-            pnlTop.Controls.AddRange(new Control[] { lblUrl, txtUrl, btnNavigate, btnRefresh, btnTestCookie, btnTestBet });
-            
-            // ========== SplitContainer ==========
-            splitContainer = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 551,  // 默认日志在底部，可以拖拽调整
-                Location = new Point(0, 45)
-            };
-            
-            // ========== 浏览器面板 ==========
-            pnlBrowser = new Panel
-            {
-                Dock = DockStyle.Fill
-            };
-            splitContainer.Panel1.Controls.Add(pnlBrowser);
-            
-            // ========== 日志面板 ==========
-            pnlLog = new Panel
-            {
-                Dock = DockStyle.Fill
-            };
-            
-            txtLog = new RichTextBox
-            {
-                BackColor = Color.Black,
-                Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 9F),
-                ForeColor = Color.Lime,
-                ReadOnly = true,
-                WordWrap = false
-            };
-            
-            pnlLogButtons = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 30
-            };
-            
-            lblLogStatus = new Label
-            {
-                Text = "📊 日志: 0行 | 缓冲: 0 | 自动滚动: 开",
-                Location = new Point(5, 7),
-                AutoSize = true,
-                ForeColor = Color.Gray
-            };
-            
-            chkLogSocket = new CheckBox
-            {
-                Text = "🔌 Socket",
-                Location = new Point(250, 6),
-                AutoSize = true,
-                Checked = true
-            };
-            
-            chkLogBet = new CheckBox
-            {
-                Text = "🎲 投注",
-                Location = new Point(350, 6),
-                AutoSize = true,
-                Checked = true
-            };
-            
-            chkLogHttp = new CheckBox
-            {
-                Text = "🌐 HTTP",
-                Location = new Point(435, 6),
-                AutoSize = true,
-                Checked = false
-            };
-            
-            chkLogSystem = new CheckBox
-            {
-                Text = "⚙️ 系统",
-                Location = new Point(535, 6),
-                AutoSize = true,
-                Checked = true
-            };
-            
-            btnSaveLog = new Button
-            {
-                Text = "保存日志",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(1106, 3),
-                Size = new Size(75, 24)
-            };
-            btnSaveLog.Click += BtnSaveLog_Click;
-            
-            btnClearLog = new Button
-            {
-                Text = "清空日志",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(1187, 3),
-                Size = new Size(75, 24)
-            };
-            btnClearLog.Click += BtnClearLog_Click;
-            
-            pnlLogButtons.Controls.AddRange(new Control[] 
-            { 
-                lblLogStatus, chkLogSocket, chkLogBet, chkLogHttp, chkLogSystem, btnSaveLog, btnClearLog 
-            });
-            
-            pnlLog.Controls.Add(txtLog);
-            pnlLog.Controls.Add(pnlLogButtons);
-            splitContainer.Panel2.Controls.Add(pnlLog);
-            
-            // ========== 添加到窗口 ==========
-            this.Controls.Add(splitContainer);
-            this.Controls.Add(pnlTop);
-            this.Controls.Add(statusStrip1);
-            
-            // 设置初始URL
-            txtUrl.Text = _platformUrl;
         }
         
         private async Task InitializeBrowserAsync()
