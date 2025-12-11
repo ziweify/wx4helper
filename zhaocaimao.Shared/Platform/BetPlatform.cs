@@ -27,7 +27,8 @@ namespace zhaocaimao.Shared.Platform
         通宝PC = 18,
         HY168 = 19,
         bingo168 = 20,
-        云顶 = 21  // 🔥 保留云顶（现有项目使用）
+        云顶 = 21,  // 🔥 保留云顶（现有项目使用）
+        yyds = 22   // 🔥 YYDS 平台
     }
     
     /// <summary>
@@ -203,6 +204,14 @@ namespace zhaocaimao.Shared.Platform
                     Platform = BetPlatform.云顶,
                     DefaultUrl = "https://yd28.vip",
                     LegacyNames = new[] { "YunDing", "YunDing28", "YD" }
+                }
+            },
+            {
+                BetPlatform.yyds, new PlatformInfo
+                {
+                    Platform = BetPlatform.yyds,
+                    DefaultUrl = "https://client.06n.yyds666.me/",  // 🔥 YYDS 平台
+                    LegacyNames = new[] { "YYDS", "Yyds" }
                 }
             }
         };

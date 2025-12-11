@@ -37,6 +37,23 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             {
                 Log("🔐 开始智能登录流程...");
                 
+                // 🔥 等待 WebView2 初始化
+                var initWaitCount = 0;
+                while (_webView.CoreWebView2 == null && initWaitCount < 30)
+                {
+                    Log($"⏳ 等待 WebView2 初始化... ({initWaitCount + 1}/30)");
+                    await Task.Delay(1000);
+                    initWaitCount++;
+                }
+                
+                if (_webView.CoreWebView2 == null)
+                {
+                    Log("❌ WebView2 初始化超时");
+                    return false;
+                }
+                
+                Log("✅ WebView2 已初始化，开始登录流程");
+                
                 var maxAttempts = 60; // 最多等待60秒
                 var attempt = 0;
                 
@@ -45,7 +62,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     await Task.Delay(1000);
                     attempt++;
                     
-                    // 获取当前URL
+                    // 获取当前URL（现在可以安全访问 CoreWebView2）
                     var currentUrl = await _webView.CoreWebView2.ExecuteScriptAsync("window.location.href");
                     var url = currentUrl?.Replace("\"", "") ?? "";
                     

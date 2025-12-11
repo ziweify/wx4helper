@@ -671,7 +671,50 @@ namespace zhaocaimao.Views.AutoBet
             try
             {
                 OnLogMessage("🍪 【测试】开始获取Cookie...");
-                // TODO: 实现Cookie测试功能
+                
+                if (_browserControl?.WebView?.CoreWebView2 == null)
+                {
+                    OnLogMessage("❌ WebView2未初始化");
+                    return;
+                }
+                
+                // 通过命令接口获取Cookie
+                var result = await _browserControl.ExecuteCommandAsync("获取Cookie");
+                
+                if (result.Success && result.Data != null)
+                {
+                    OnLogMessage($"✅ 获取到Cookie信息");
+                    
+                    // 尝试从 Data 中提取 cookies 信息
+                    if (result.Data is Newtonsoft.Json.Linq.JObject jobj && jobj["cookies"] is Newtonsoft.Json.Linq.JObject cookiesObj)
+                    {
+                        OnLogMessage($"   Cookie数量: {cookiesObj.Count}");
+                        foreach (var cookie in cookiesObj)
+                        {
+                            var value = cookie.Value?.ToString() ?? "";
+                            OnLogMessage($"   - {cookie.Key}={value.Substring(0, Math.Min(20, value.Length))}...");
+                        }
+                    }
+                    else
+                    {
+                        OnLogMessage($"   数据: {result.Data}");
+                    }
+                }
+                else
+                {
+                    OnLogMessage($"❌ 获取Cookie失败: {result.ErrorMessage}");
+                }
+                
+                // 方法2：直接通过WebView2 API获取
+                OnLogMessage("📋 方法2：直接通过 WebView2 API");
+                var cookies = await _browserControl.WebView.CoreWebView2.CookieManager.GetCookiesAsync(_browserControl.WebView.CoreWebView2.Source);
+                OnLogMessage($"   获取到{cookies.Count}个Cookie:");
+                
+                foreach (var cookie in cookies)
+                {
+                    OnLogMessage($"   - {cookie.Name}={cookie.Value.Substring(0, Math.Min(20, cookie.Value.Length))}...");
+                }
+                
                 OnLogMessage("🍪 【测试】Cookie获取完成");
             }
             catch (Exception ex)
@@ -685,12 +728,80 @@ namespace zhaocaimao.Views.AutoBet
             try
             {
                 OnLogMessage("🎲 【测试】开始投注测试...");
-                // TODO: 实现投注测试功能
+                OnLogMessage("   固定投注内容:P1大10元");
+                
+                if (_browserControl == null || !_browserControl.IsInitialized)
+                {
+                    OnLogMessage("❌ 浏览器控件未初始化");
+                    return;
+                }
+                
+                // 先获取余额，确认已登录
+                OnLogMessage("📊 检查登录状态和余额...");
+                var balanceResult = await _browserControl.ExecuteCommandAsync("获取余额");
+                
+                if (!balanceResult.Success)
+                {
+                    OnLogMessage("❌ 未登录或获取余额失败，无法投注");
+                    return;
+                }
+                
+                // 从 Data 中提取余额
+                decimal balance = -1;
+                if (balanceResult.Data is Newtonsoft.Json.Linq.JObject jobj && jobj["balance"] != null)
+                {
+                    balance = jobj["balance"]?.ToObject<decimal>() ?? -1;
+                }
+                
+                if (balance < 0)
+                {
+                    OnLogMessage("❌ 无法解析余额数据，无法投注");
+                    return;
+                }
+                
+                OnLogMessage($"✅ 当前余额: ¥{balance}");
+                
+                // 测试投注"P1大10元"
+                var testOrders = new zhaocaimao.Shared.Models.BetStandardOrderList
+                {
+                    new zhaocaimao.Shared.Models.BetStandardOrder(
+                        0, 
+                        zhaocaimao.Shared.Models.CarNumEnum.P1, 
+                        zhaocaimao.Shared.Models.BetPlayEnum.大, 
+                        10)
+                };
+                
+                OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");
+                var startTime = DateTime.Now;
+                
+                var betResult = await _browserControl.ExecuteCommandAsync("投注", testOrders);
+                
+                var endTime = DateTime.Now;
+                var duration = (int)(endTime - startTime).TotalMilliseconds;
+                
+                if (betResult.Success)
+                {
+                    OnLogMessage($"✅ 【测试】投注成功！");
+                    OnLogMessage($"   订单号:{betResult.OrderId ?? "N/A"}");
+                    OnLogMessage($"   耗时:{duration}ms");
+                }
+                else
+                {
+                    OnLogMessage($"❌ 【测试】投注失败");
+                    OnLogMessage($"   耗时:{duration}ms");
+                    OnLogMessage($"   错误:{betResult.ErrorMessage}");
+                    OnLogMessage($"💡 提示:错误\"单笔下注范围0~0\"通常表示:");
+                    OnLogMessage($"   1. 当前没有开盘（未到投注时间）");
+                    OnLogMessage($"   2. 这个玩法被禁用或限制");
+                    OnLogMessage($"   3. 需要等待下一期开盘后再投注");
+                }
+                
                 OnLogMessage("🎲 【测试】投注测试完成");
             }
             catch (Exception ex)
             {
                 OnLogMessage($"❌ 投注测试失败:{ex.Message}");
+                OnLogMessage($"   堆栈:{ex.StackTrace}");
             }
         }
         

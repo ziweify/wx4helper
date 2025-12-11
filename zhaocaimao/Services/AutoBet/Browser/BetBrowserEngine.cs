@@ -98,8 +98,34 @@ namespace zhaocaimao.Services.AutoBet.Browser
             // 等待 WebView2 初始化完成
             await _webView.EnsureCoreWebView2Async(environment);
             
-            // 启用 DevTools
-            _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+            // 🔥 配置 WebView2 设置，确保所有功能正常
+            var settings = _webView.CoreWebView2.Settings;
+            
+            // 启用 DevTools（调试用）
+            settings.AreDevToolsEnabled = true;
+            
+            // 🔥 确保 JavaScript 已启用（默认已启用，但显式设置以防万一）
+            settings.IsScriptEnabled = true;
+            
+            // 🔥 确保允许执行 Web 消息（用于 JavaScript 与 C# 通信）
+            settings.IsWebMessageEnabled = true;
+            
+            // 🔥 确保允许状态栏（某些网站可能需要）
+            settings.IsStatusBarEnabled = true;
+            
+            // 🔥 确保允许缩放（提升用户体验）
+            settings.IsZoomControlEnabled = true;
+            
+            // 🔥 确保允许内置错误页面（调试友好）
+            settings.IsBuiltInErrorPageEnabled = true;
+            
+            // 🔥 启用通用自动填充（可能影响表单）
+            settings.IsGeneralAutofillEnabled = true;
+            
+            // 🔥 启用密码自动填充保存提示（可能影响表单）
+            settings.IsPasswordAutosaveEnabled = true;
+            
+            OnLog?.Invoke("✅ WebView2 设置已配置（JavaScript、表单、自动填充均已启用）");
             
             // 🔥 参考 F5BotV2 OpenPageSelf.cs：拦截新窗口请求，在当前窗口打开
             // F5BotV2 Line 23-29: OnBeforePopup 拦截弹出窗口并在当前窗口加载
@@ -202,8 +228,25 @@ namespace zhaocaimao.Services.AutoBet.Browser
                 BetPlatform.HY168 => CreateHy168Script(logCallback),
                 BetPlatform.bingo168 => CreateHy168Script(logCallback), // 🔥 bingo168 使用HY168脚本
                 BetPlatform.云顶 => CreateYunDing28Script(logCallback),
+                BetPlatform.yyds => CreateYydsScript(logCallback), // 🔥 YYDS 平台
                 _ => CreateNoneSiteScript(logCallback) // 默认使用"不使用盘口"
             };
+        }
+        
+        /// <summary>
+        /// 创建YYDS脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateYydsScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.YydsScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建YYDS脚本失败: {ex.Message}");
+                return null;
+            }
         }
         
         /// <summary>
