@@ -31,7 +31,9 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         private string _token = "";
         private string _sessionId = "";
         private decimal _currentBalance = 0;
-        private string _baseUrl = "https://client.06n.yyds666.me";
+        private string _baseUrl = "https://client.06n.yyds666.me";  // 登录域名
+        private string _apiBaseUrl = "";  // API投注域名（从/info接口获取）
+        private string _betPlate = "";  // 平台类型（A/B/C/D）
         
         // 赔率ID映射表
         private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
@@ -1015,31 +1017,93 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 }
                 
                 // 拦截余额查询响应
-                if (response.Url.Contains("/balance") || response.Url.Contains("/userinfo"))
+                // 🔥 YYDS平台：拦截 /info 接口（无参数），提取 availableCredit 和 betPlate
+                // ⚠️ 注意：/game/game/pc_user/info?gameId=1&playTypeId=1 这样带参数的不是余额接口
+                if (response.Url.EndsWith("/info") && !response.Url.Contains("?"))
                 {
+                    // #region agent log
+                    System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "YydsScript.cs:1025", message = "拦截到/info接口", data = new { url = response.Url, hasQueryString = response.Url.Contains("?") }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                    // #endregion
+                    
                     try
                     {
                         var json = JObject.Parse(response.Context);
+                        var code = json["code"]?.Value<int>() ?? 0;
                         
-                        var balance = json["balance"]?.ToString() ?? 
-                                     json["data"]?["balance"]?.ToString() ?? 
-                                     json["amount"]?.ToString() ?? "";
+                        // #region agent log
+                        System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1032", message = "解析/info响应", data = new { code = code, hasData = json["data"] != null, hasUser = json["data"]?["user"] != null, availableCredit = json["data"]?["user"]?["availableCredit"]?.ToString(), betPlate = json["data"]?["user"]?["betPlate"]?.ToString() }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                        // #endregion
                         
-                        if (!string.IsNullOrEmpty(balance) && decimal.TryParse(balance, out var balanceValue))
+                        if (code == 200)
                         {
-                            _currentBalance = balanceValue;
-                            _logCallback($"💰 余额更新: {_currentBalance}");
+                            // 提取余额: data.user.availableCredit
+                            var availableCredit = json["data"]?["user"]?["availableCredit"]?.ToString() ?? "";
+                            
+                            // #region agent log
+                            System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1040", message = "提取availableCredit", data = new { availableCredit = availableCredit, isEmpty = string.IsNullOrEmpty(availableCredit) }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                            // #endregion
+                            
+                            if (!string.IsNullOrEmpty(availableCredit) && decimal.TryParse(availableCredit, out var balanceValue))
+                            {
+                                _currentBalance = balanceValue;
+                                _logCallback($"💰 余额更新: {_currentBalance}");
+                                
+                                // #region agent log
+                                System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1047", message = "余额解析成功", data = new { balanceValue = balanceValue, _currentBalance = _currentBalance }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                                // #endregion
+                            }
+                            
+                            // 提取平台类型: data.user.betPlate
+                            var betPlate = json["data"]?["user"]?["betPlate"]?.ToString() ?? "";
+                            if (!string.IsNullOrEmpty(betPlate))
+                            {
+                                _betPlate = betPlate;
+                                _logCallback($"📊 平台类型: {_betPlate}");
+                                
+                                // #region agent log
+                                System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "C", location = "YydsScript.cs:1058", message = "平台类型提取成功", data = new { betPlate = betPlate, _betPlate = _betPlate }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                                // #endregion
+                            }
+                            
+                            // 🔥 更新API投注域名（从/info接口的域名提取，不是登录域名）
+                            if (string.IsNullOrEmpty(_apiBaseUrl) && !string.IsNullOrEmpty(response.Url))
+                            {
+                                try
+                                {
+                                    var uri = new Uri(response.Url);
+                                    _apiBaseUrl = uri.GetLeftPart(UriPartial.Authority);
+                                    _logCallback($"✅ API投注域名已设置: {_apiBaseUrl}");
+                                    
+                                    // #region agent log
+                                    System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "D", location = "YydsScript.cs:1072", message = "API域名设置成功", data = new { responseUrl = response.Url, _apiBaseUrl = _apiBaseUrl }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                                    // #endregion
+                                }
+                                catch { }
+                            }
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logCallback($"⚠️ 解析/info响应失败: {ex.Message}");
+                        
+                        // #region agent log
+                        System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1082", message = "解析/info异常", data = new { error = ex.Message, responseContext = response.Context?.Substring(0, Math.Min(200, response.Context?.Length ?? 0)) }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                        // #endregion
+                    }
+                }
+                else if (response.Url.Contains("/info"))
+                {
+                    // #region agent log
+                    System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "E", location = "YydsScript.cs:1089", message = "跳过带参数的/info接口", data = new { url = response.Url, hasQueryString = response.Url.Contains("?") }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                    // #endregion
                 }
                 
                 // 拦截投注响应
-                if (response.Url.Contains("/bet") || response.Url.Contains("/place"))
-                {
-                    _logCallback($"📥 拦截投注响应: {response.Url}");
-                    _logCallback($"   响应: {response.Context}");
-                }
+                //if (response.Url.Contains("/bet") || response.Url.Contains("/place"))
+                //{
+                //    _logCallback($"📥 拦截投注响应: {response.Url}");
+                //    _logCallback($"   响应: {response.Context}");
+                //}
                 
                 // 拦截赔率响应
                 if (response.Url.Contains("/odds") || response.Url.Contains("/rates"))
@@ -1079,6 +1143,17 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             
             return oddsList;
         }
+
+        /*
+         * 投注
+            {"totalAmount":20,
+              "gameId":1,
+              "periodNo":114069971,
+              "addBodyList":[{"betTypeId":5,"dictValue":"DA","dictLabel":"大","amount":10},
+                             {"betTypeId":5,"dictValue":"XIAO","dictLabel":"小","amount":10}
+                             ]
+             }
+         */
     }
 }
 

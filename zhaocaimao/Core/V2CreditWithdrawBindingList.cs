@@ -37,6 +37,7 @@ namespace zhaocaimao.Core
         /// <summary>
         /// 重写 InsertItem：添加时自动保存到数据库
         /// 🔥 线程安全：数据库操作立即执行，UI 更新在 UI 线程执行
+        /// 🔧 修复循环引用：避免重复订阅，正确处理线程切换
         /// </summary>
         protected override void InsertItem(int index, V2CreditWithdraw item)
         {
@@ -51,9 +52,6 @@ namespace zhaocaimao.Core
                 item.Id = _db.ExecuteScalar<long>("SELECT last_insert_rowid()");
             }
 
-            // 🔥 订阅属性变化，自动保存
-            SubscribePropertyChanged(item);
-
             // ========================================
             // 🔥 步骤2: UI 更新（在 UI 线程执行）
             // ========================================
@@ -61,15 +59,20 @@ namespace zhaocaimao.Core
             if (_syncContext != null && SynchronizationContext.Current != _syncContext)
             {
                 // 如果不在 UI 线程，切换到 UI 线程
-                _syncContext.Post(_ =>
+                // 🔧 修复：使用 Send 而不是 Post，确保操作同步完成，避免竞态条件
+                _syncContext.Send(_ =>
                 {
-                    base.InsertItem(0, item);  // 🔥 插入到顶部（最新在上）
+                    // 🔧 修复：只在 UI 线程订阅一次，避免重复订阅
                     SubscribePropertyChanged(item);
+                    // 🔧 修复：插入到顶部（index 0），保持一致性
+                    base.InsertItem(0, item);
                 }, null);
             }
             else
             {
                 // 如果已在 UI 线程，直接插入
+                // 🔧 修复：在 UI 线程订阅（只订阅一次）
+                SubscribePropertyChanged(item);
                 base.InsertItem(0, item);  // 🔥 插入到顶部（最新在上）
             }
         }

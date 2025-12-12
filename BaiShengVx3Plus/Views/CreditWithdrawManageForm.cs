@@ -328,12 +328,26 @@ namespace BaiShengVx3Plus.Views
 
         /// <summary>
         /// 🔥 自定义单元格绘制：设置列颜色（保留旧版样式）
+        /// 🔧 修复：添加防御性检查，避免 BindingSource 异常
         /// </summary>
         private void DgvRequests_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
         {
+            // 🔧 防御性检查：避免 BindingSource 为空或无效
+            if (_bindingSource == null || _bindingSource.DataSource == null) return;
             if (e.RowIndex < 0 || e.RowIndex >= _bindingSource.Count) return;
             
-            var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+            V2CreditWithdraw? request = null;
+            try
+            {
+                request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+            }
+            catch (Exception ex)
+            {
+                // 捕获索引访问异常（可能在数据更新时发生）
+                _logService?.Warning("上下分管理", $"获取行数据失败: {ex.Message}");
+                return;
+            }
+            
             if (request == null) return;
             
             var column = dgvRequests.Columns[e.ColumnIndex];
@@ -653,9 +667,13 @@ namespace BaiShengVx3Plus.Views
         /// <summary>
         /// 单元格点击事件（处理按钮点击）
         /// 🔥 只有点击按钮列时才处理，其他列（备注、申请时间、金额等）直接返回，不弹框
+        /// 🔧 修复：添加防御性检查，避免 BindingSource 异常
         /// </summary>
         private void DgvRequests_CellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
+            // 🔧 防御性检查：避免 BindingSource 为空或无效
+            if (_bindingSource == null || _bindingSource.DataSource == null)
+                return;
             if (e.RowIndex < 0 || e.RowIndex >= _bindingSource.Count)
                 return;
             
@@ -668,7 +686,17 @@ namespace BaiShengVx3Plus.Views
                 return;
             }
             
-            var request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+            V2CreditWithdraw? request = null;
+            try
+            {
+                request = _bindingSource[e.RowIndex] as V2CreditWithdraw;
+            }
+            catch (Exception ex)
+            {
+                _logService?.Warning("上下分管理", $"获取行数据失败: {ex.Message}");
+                return;
+            }
+            
             if (request == null) return;
             
             // 🔥 只有"等待处理"状态才能操作（已处理的不弹框，直接返回）
@@ -860,10 +888,18 @@ namespace BaiShengVx3Plus.Views
                 }
                 
                 // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
-                int index = _bindingSource.IndexOf(request);
-                if (index >= 0)
+                try
                 {
-                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
+                    int index = _bindingSource.IndexOf(request);
+                    if (index >= 0)
+                    {
+                        _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
+                    }
+                }
+                catch (Exception resetEx)
+                {
+                    _logService.Warning("上下分管理", $"刷新行数据失败: {resetEx.Message}");
+                    // 即使刷新失败也不影响主流程，因为数据已经更新到数据库
                 }
                 
                 // 🔥 更新统计（BindingList 变化会自动更新 DataGridView，无需手动刷新）
@@ -899,10 +935,18 @@ namespace BaiShengVx3Plus.Views
                 request.Notes = "管理员拒绝";
                 
                 // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
-                int index = _bindingSource.IndexOf(request);
-                if (index >= 0)
+                try
                 {
-                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
+                    int index = _bindingSource.IndexOf(request);
+                    if (index >= 0)
+                    {
+                        _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
+                    }
+                }
+                catch (Exception resetEx)
+                {
+                    _logService.Warning("上下分管理", $"刷新行数据失败: {resetEx.Message}");
+                    // 即使刷新失败也不影响主流程，因为数据已经更新到数据库
                 }
                 
                 // 🔥 发送微信通知
@@ -933,33 +977,100 @@ namespace BaiShengVx3Plus.Views
         /// <summary>
         /// 应用筛选（使用 BindingSource.Filter，标准做法）
         /// 🔥 当 BindingList 变化时，DataGridView 会自动更新，无需手动刷新
+        /// 🔧 修复：添加线程安全保护，防止 BindingSource 循环引用错误
         /// </summary>
         private void ApplyFilter()
         {
-            int statusIndex = cmbStatus.SelectedIndex;
-            
-            if (statusIndex > 0)
+            try
             {
-                CreditWithdrawStatus targetStatus = statusIndex switch
+                // 🔧 防御性检查：确保 BindingSource 和 DataSource 有效
+                if (_bindingSource == null || _bindingSource.DataSource == null)
                 {
-                    1 => CreditWithdrawStatus.等待处理,
-                    2 => CreditWithdrawStatus.已同意,
-                    3 => CreditWithdrawStatus.已拒绝,
-                    4 => CreditWithdrawStatus.忽略,
-                    _ => CreditWithdrawStatus.等待处理
-                };
+                    _logService?.Warning("上下分管理", "BindingSource 或 DataSource 为空，跳过筛选");
+                    return;
+                }
                 
-                // 🔥 使用 BindingSource.Filter 进行筛选（标准做法）
-                // 注意：对于枚举类型，需要转换为整数进行比较
-                _bindingSource.Filter = $"Convert(Status, 'System.Int32') = {(int)targetStatus}";
+                int statusIndex = cmbStatus.SelectedIndex;
+                
+                if (statusIndex > 0)
+                {
+                    CreditWithdrawStatus targetStatus = statusIndex switch
+                    {
+                        1 => CreditWithdrawStatus.等待处理,
+                        2 => CreditWithdrawStatus.已同意,
+                        3 => CreditWithdrawStatus.已拒绝,
+                        4 => CreditWithdrawStatus.忽略,
+                        _ => CreditWithdrawStatus.等待处理
+                    };
+                    
+                    // 🔧 线程安全：使用 Invoke 确保在 UI 线程执行
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() =>
+                        {
+                            _bindingSource.Filter = $"Convert(Status, 'System.Int32') = {(int)targetStatus}";
+                        }));
+                    }
+                    else
+                    {
+                        // 🔥 使用 BindingSource.Filter 进行筛选（标准做法）
+                        // 注意：对于枚举类型，需要转换为整数进行比较
+                        _bindingSource.Filter = $"Convert(Status, 'System.Int32') = {(int)targetStatus}";
+                    }
+                }
+                else
+                {
+                    // 显示全部
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() =>
+                        {
+                            _bindingSource.Filter = null;
+                        }));
+                    }
+                    else
+                    {
+                        _bindingSource.Filter = null;
+                    }
+                }
+                
+                UpdateStats();
             }
-            else
+            catch (Exception ex)
             {
-                // 显示全部
-                _bindingSource.Filter = null;
+                // 🔧 捕获并记录异常，避免程序崩溃
+                _logService?.Error("上下分管理", "应用筛选失败", ex);
+                
+                // 如果出现循环引用错误，尝试重置 BindingSource
+                if (ex.Message.Contains("循环引用") || ex.Message.Contains("BindingSource"))
+                {
+                    try
+                    {
+                        _logService?.Warning("上下分管理", "检测到 BindingSource 异常，尝试重置...");
+                        
+                        // 重置 BindingSource（清除 Filter）
+                        if (InvokeRequired)
+                        {
+                            Invoke(new Action(() =>
+                            {
+                                _bindingSource.Filter = null;
+                                _bindingSource.ResetBindings(false);
+                            }));
+                        }
+                        else
+                        {
+                            _bindingSource.Filter = null;
+                            _bindingSource.ResetBindings(false);
+                        }
+                        
+                        _logService?.Info("上下分管理", "BindingSource 已重置");
+                    }
+                    catch (Exception resetEx)
+                    {
+                        _logService?.Error("上下分管理", "重置 BindingSource 失败", resetEx);
+                    }
+                }
             }
-            
-            UpdateStats();
         }
 
         /// <summary>
