@@ -549,31 +549,6 @@ namespace zhaocaimao.Views.AutoBet
                     return;
                 }
                 
-                // 先获取余额，确认已登录
-                OnLogMessage("📊 检查登录状态和余额...");
-                var balanceResult = await _browserControl.ExecuteCommandAsync("获取余额");
-                
-                if (!balanceResult.Success)
-                {
-                    OnLogMessage("❌ 未登录或获取余额失败，无法投注");
-                    return;
-                }
-                
-                // 从 Data 中提取余额
-                decimal balance = -1;
-                if (balanceResult.Data is Newtonsoft.Json.Linq.JObject jobj && jobj["balance"] != null)
-                {
-                    balance = jobj["balance"]?.ToObject<decimal>() ?? -1;
-                }
-                
-                if (balance < 0)
-                {
-                    OnLogMessage("❌ 无法解析余额数据，无法投注");
-                    return;
-                }
-                
-                OnLogMessage($"✅ 当前余额: ¥{balance}");
-                
                 // 测试投注"P1大10元"
                 var testOrders = new zhaocaimao.Shared.Models.BetStandardOrderList
                 {
@@ -584,7 +559,7 @@ namespace zhaocaimao.Views.AutoBet
                         10)
                 };
                 
-                OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");
+                OnLogMessage($"📤 直接调用投注接口...");
                 var startTime = DateTime.Now;
                 
                 var betResult = await _browserControl.ExecuteCommandAsync("投注", testOrders);

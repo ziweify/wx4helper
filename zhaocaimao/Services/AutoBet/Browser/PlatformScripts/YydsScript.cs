@@ -1,16 +1,20 @@
-using zhaocaimao.Shared.Models;
-using zhaocaimao.Services.AutoBet.Browser.Models;
-using zhaocaimao.Services.AutoBet.Browser.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Sunny.UI.Win32;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Dynamic;
+using System.Linq;
 using System.Net.Http;
+using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Linq;
+using zhaocaimao.Services.AutoBet.Browser.Models;
+using zhaocaimao.Services.AutoBet.Browser.Services;
+using zhaocaimao.Shared.Models;
 using BrowserOddsInfo = zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo;
 using BrowserResponseEventArgs = zhaocaimao.Services.AutoBet.Browser.Services.ResponseEventArgs;
 
@@ -26,7 +30,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         private readonly WebView2 _webView;
         private readonly Action<string> _logCallback;
         private readonly HttpClient _httpClient = new HttpClient();
-        
+        private List<BrowserOddsInfo> _OddsInfo = new List<BrowserOddsInfo>();
+
         // 关键参数（从拦截中获取或cookie中提取）
         private string _token = "";
         private string _sessionId = "";
@@ -36,10 +41,10 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         private string _betPlate = "";  // 平台类型（A/B/C/D）
         
         // 赔率ID映射表
-        private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
+        //private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
         
         // 赔率值映射表
-        private readonly Dictionary<string, float> _oddsValues = new Dictionary<string, float>();
+        //private readonly Dictionary<string, float> _oddsValues = new Dictionary<string, float>();
         
         public YydsScript(WebView2 webView, Action<string> logCallback)
         {
@@ -946,25 +951,83 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 {
                     return (false, "", "#未登录，无法下注");
                 }
-                
+
                 // 2. 检查余额
-                var balance = await GetBalanceAsync();
-                var totalAmount = orders.GetTotalAmount();
-                
-                if (balance >= 0 && balance < totalAmount)
-                {
-                    return (false, "", $"#余额不足（余额: {balance}，需要: {totalAmount}）");
-                }
-                
+                //var balance = await GetBalanceAsync();
+                //var totalAmount = orders.GetTotalAmount();
+
+                //if (balance >= 0 && balance < totalAmount)
+                //{
+                //    return (false, "", $"#余额不足（余额: {balance}，需要: {totalAmount}）");
+                //}
+
                 // 3. 调用投注API（需要根据实际平台实现）
                 // 这里提供一个模板，需要通过浏览器开发者工具分析实际API
-                
-                _logCallback("⚠️ YYDS 平台投注API尚未实现");
-                _logCallback("   请联系开发者完成以下工作:");
-                _logCallback("   1. 分析平台投注请求（URL、参数、Headers）");
-                _logCallback("   2. 实现投注API调用");
-                _logCallback("   3. 解析投注响应");
-                
+
+                //_logCallback("⚠️ YYDS 平台投注API尚未实现");
+                //_logCallback("   请联系开发者完成以下工作:");
+                //_logCallback("   1. 分析平台投注请求（URL、参数、Headers）");
+                //_logCallback("   2. 实现投注API调用");
+                //_logCallback("   3. 解析投注响应");
+
+                //合成数据包
+                /*
+                 *          * 投注
+            {"totalAmount":20,
+              "gameId":1,
+              "periodNo":114069971,
+              "addBodyList":[{"betTypeId":5,"dictValue":"DA","dictLabel":"大","amount":10},
+                             {"betTypeId":5,"dictValue":"XIAO","dictLabel":"小","amount":10}
+                             ]
+             }
+
+            //未解析的
+                {"totalAmount":20,"gameId":1,"periodNo":114070279,"addBodyList":[{"betTypeId":5,"dictValue":"DA","dictLabel":"大","amount":10},{"betTypeId":5,"dictValue":"XIAO","dictLabel":"小","amount":10}]}
+         */
+                var issueId = orders.Count > 0 ? orders[0].IssueId : 0;
+
+                List<object> postitems = new List<object>();
+                foreach(var order in orders)
+                {
+                    var oddsInfo = _OddsInfo.FirstOrDefault(o => o.Play == order.Play && o.Car == order.Car);
+                    string[] param = oddsInfo.CarName.Split('|');
+                    // 根据订单信息构建投注项
+                    var betItem = new
+                    {
+                        betTypeId = oddsInfo.OddsId,  // 需要根据实际映射调整
+                        dictValue = param[1],  // 需要根据实际映射调整
+                        dictLabel = param[0],  // 需要根据实际映射调整
+                        amount = order.MoneySum
+                    };
+
+                    postitems.Add(betItem);
+                }
+
+                dynamic postData = new ExpandoObject(); 
+                postData.totalAmount = orders.GetTotalAmount();
+                postData.gameId = 1; 
+                postData.periodNo = issueId;
+                postData.addBodyList = postitems;
+
+                string postdata = JsonConvert.SerializeObject(postData);
+
+                // 🔥 使用ByteArrayContent直接发送字节，避免HttpClient的任何自动处理
+                var bytes = Encoding.UTF8.GetBytes(postdata);
+                var content = new ByteArrayContent(bytes);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+
+                //https://admin-api.06n.yyds666.me/system/betOrder/pc_user/order_add
+                string url_post = $"{_apiBaseUrl}/system/betOrder/pc_user/order_add";
+                var response = await _httpClient.PostAsync(url_post, content);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                _logCallback($"📥 投注响应（完整）:");
+                _logCallback($"   {responseText}");
+
+                // 4. 解析响应（需要根据实际API实现）
+                var responseJson = JObject.Parse(responseText);
+
+
                 return (false, "", "#投注功能尚未实现，请先分析平台API");
             }
             catch (Exception ex)
@@ -972,6 +1035,255 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 _logCallback($"❌ 投注失败: {ex.Message}");
                 return (false, "", $"投注异常: {ex.Message}");
             }
+        }
+        
+        /// <summary>
+        /// 解析赔率配置信息
+        /// </summary>
+        private void ParseOddsInfo(JObject json)
+        {
+            try
+            {
+                var betTypes = json["data"]?["game"]?["playType"]?["betTypes"] as JArray;
+                if (betTypes == null || betTypes.Count == 0)
+                {
+                    _logCallback("⚠️ 未找到 betTypes 数据");
+                    return;
+                }
+                
+                // 🔥 不再清空列表，改为检查并更新已存在的赔率项
+                _logCallback($"📊 开始解析 {betTypes.Count} 个投注类型（当前已有 {_OddsInfo.Count} 个赔率）");
+                
+                foreach (var betType in betTypes)
+                {
+                    try
+                    {
+                        var betTypeId = betType["betTypeId"]?.Value<int>() ?? 0;
+                        var betTypeCname = betType["betTypeCname"]?.ToString() ?? "";
+                        var betTypeGroup = betType["betTypeGroup"];
+                        var betTypeGroupName = betTypeGroup?["betTypeGroupName"]?.ToString() ?? "";
+                        
+                        if (string.IsNullOrEmpty(betTypeCname) || string.IsNullOrEmpty(betTypeGroupName))
+                        {
+                            continue;
+                        }
+                        
+                        // 🔥 根据 betTypeGroupName 映射 Car（位置）
+                        CarNumEnum car = MapBetTypeGroupToCar(betTypeGroupName);
+                        if (car == CarNumEnum.未知)
+                        {
+                            _logCallback($"⚠️ 未知的投注组: {betTypeGroupName}");
+                            continue;
+                        }
+                        
+                        // 🔥 根据 betTypeCname 构建赔率信息
+                        var oddsInfoList = BuildOddsInfoFromBetType(betTypeCname, car, betTypeId);
+                        
+                        foreach (var oddsInfo in oddsInfoList)
+                        {
+                            // 🔥 检查是否已存在相同的赔率项（根据 Car + Play 判断唯一性）
+                            var existingOdds = _OddsInfo.FirstOrDefault(o => 
+                                o.Car == oddsInfo.Car && 
+                                o.Play == oddsInfo.Play);
+                            
+                            if (existingOdds != null)
+                            {
+                                // 更新现有赔率（包括 OddsId 和 Odds）
+                                existingOdds.OddsId = oddsInfo.OddsId;
+                                existingOdds.Odds = oddsInfo.Odds;
+                                existingOdds.CarName = oddsInfo.CarName;  // 同时更新 CarName（投注用）
+                                _logCallback($"🔄 更新赔率: {oddsInfo.CarName} (ID:{oddsInfo.OddsId})");
+                            }
+                            else
+                            {
+                                // 添加新赔率
+                                _OddsInfo.Add(oddsInfo);
+                                _logCallback($"✅ 添加赔率: {oddsInfo.CarName} (ID:{oddsInfo.OddsId})");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logCallback($"❌ 解析单个 betType 失败: {ex.Message}");
+                    }
+                }
+                
+                _logCallback($"🎯 赔率解析完成，共 {_OddsInfo.Count} 个赔率项");
+            }
+            catch (Exception ex)
+            {
+                _logCallback($"❌ 解析赔率配置失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 映射投注组名称到 Car 枚举
+        /// </summary>
+        private CarNumEnum MapBetTypeGroupToCar(string betTypeGroupName)
+        {
+            return betTypeGroupName switch
+            {
+                "平码一" => CarNumEnum.P1,
+                "平码二" => CarNumEnum.P2,
+                "平码三" => CarNumEnum.P3,
+                "平码四" => CarNumEnum.P4,
+                "特码" => CarNumEnum.P5,
+                "合值" => CarNumEnum.P5,  // 合值归类到 P5
+                "龙虎" => CarNumEnum.P5,  // 龙虎归类到 P5
+                _ => CarNumEnum.未知
+            };
+        }
+        
+        /// <summary>
+        /// 根据投注类型构建赔率信息列表
+        /// </summary>
+        private List<BrowserOddsInfo> BuildOddsInfoFromBetType(string betTypeCname, CarNumEnum car, int betTypeId)
+        {
+            var result = new List<BrowserOddsInfo>();
+            
+            switch (betTypeCname)
+            {
+                case "大小":
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.大,
+                        CarName = "大|DA",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f  // 默认值
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.小,
+                        CarName = "小|XIAO",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                case "单双":
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.单,
+                        CarName = "单|DAN",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.双,
+                        CarName = "双|SHUANG",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                case "尾大尾小":
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.尾大,
+                        CarName = "尾大|WEI-DA",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.尾小,
+                        CarName = "尾小|WEI-XIAO",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                case "合单合双":
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.合单,
+                        CarName = "合单|HE-DAN",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.合双,
+                        CarName = "合双|HE-SHUANG",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                case "合值大合值小":
+                    // 合值大合值小：使用大小枚举（因为枚举中没有单独的合值大小）
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.大,  // 暂时映射到大
+                        CarName = "合值大|HE-ZHI-DA",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.小,  // 暂时映射到小
+                        CarName = "合值小|HE-ZHI-XIAO",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                case "合值单合值双":
+                    // 合值单合值双：使用合单合双枚举
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.合单,
+                        CarName = "合值单|HE-ZHI-DAN",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.合双,
+                        CarName = "合值双|HE-ZHI-SHUANG",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                case "龙虎":
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.龙,
+                        CarName = "龙|LONG",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    result.Add(new BrowserOddsInfo
+                    {
+                        Car = car,
+                        Play = BetPlayEnum.虎,
+                        CarName = "虎|HU",
+                        OddsId = betTypeId.ToString(),
+                        Odds = 1.97f
+                    });
+                    break;
+                    
+                default:
+                    _logCallback($"⚠️ 未处理的投注类型: {betTypeCname}");
+                    break;
+            }
+            
+            return result;
         }
         
         /// <summary>
@@ -1091,6 +1403,31 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         // #endregion
                     }
                 }
+                //https://admin-api.06n.yyds666.me/game/game/pc_user/info?gameId=1&playTypeId=1
+                // 🔥 拦截赔率配置接口（info?gameId=1&playTypeId=1）
+                else if (response.Url.Contains("/info?gameId=") && response.Url.Contains("playTypeId="))
+                {
+                    _logCallback($"📊 拦截赔率配置接口: {response.Url}");
+                    
+                    try
+                    {
+                        var json = JObject.Parse(response.Context);
+                        var code = json["code"]?.Value<int>() ?? 0;
+                        
+                        if (code == 200)
+                        {
+                            ParseOddsInfo(json);
+                        }
+                        else
+                        {
+                            _logCallback($"⚠️ 赔率配置接口返回错误: code={code}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logCallback($"❌ 解析赔率配置失败: {ex.Message}");
+                    }
+                }
                 else if (response.Url.Contains("/info"))
                 {
                     // #region agent log
@@ -1129,19 +1466,22 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         /// </summary>
         public List<BrowserOddsInfo> GetOddsList()
         {
-            var oddsList = new List<BrowserOddsInfo>();
-            
-            // 根据 _oddsValues 生成赔率列表
-            foreach (var kvp in _oddsValues)
-            {
-                oddsList.Add(new BrowserOddsInfo
-                {
-                    CarName = kvp.Key,   // 例如: "平一大"
-                    Odds = kvp.Value     // 例如: 1.97
-                });
-            }
-            
-            return oddsList;
+            //_OddsInfo.Add(new BrowserOddsInfo() {  Car = CarNumEnum.P1, Play = BetPlayEnum.大, CarName="大|DA", OddsId = betTypeId , Odds = 1.7f(默认的)})
+            return _OddsInfo;
+
+            //var oddsList = new List<BrowserOddsInfo>();
+
+            //// 根据 _oddsValues 生成赔率列表
+            //foreach (var kvp in _oddsValues)
+            //{
+            //    oddsList.Add(new BrowserOddsInfo
+            //    {
+            //        CarName = kvp.Key,   // 例如: "平一大"
+            //        Odds = kvp.Value     // 例如: 1.97
+            //    });
+            //}
+
+            //return oddsList;
         }
 
         /*
