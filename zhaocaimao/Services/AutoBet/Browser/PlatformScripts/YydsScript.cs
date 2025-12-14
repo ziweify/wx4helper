@@ -51,9 +51,18 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             _webView = webView;
             _logCallback = logCallback;
             
-            // 配置HttpClient
+            // 🔥 配置 HttpClient 全局默认请求头（所有请求都会携带）
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json, text/javascript, */*; q=0.01");
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36");
+            
+            // 💡 可选：添加更多全局请求头
+            // _httpClient.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+            // _httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+            
+            // 📝 注意：
+            // 1. Authorization 请求头在登录成功后动态添加（HandleResponse 中）
+            // 2. Content-Type 由 StringContent/ByteArrayContent 自动设置
+            // 3. 单个请求特定的请求头使用 HttpRequestMessage.Headers.Add()
         }
         
         /// <summary>
@@ -1011,24 +1020,62 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
 
                 string postdata = JsonConvert.SerializeObject(postData);
 
-                // 🔥 使用ByteArrayContent直接发送字节，避免HttpClient的任何自动处理
-                var bytes = Encoding.UTF8.GetBytes(postdata);
-                var content = new ByteArrayContent(bytes);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+                _logCallback($"📤 投注请求数据:");
+                _logCallback($"   URL: {_apiBaseUrl}/system/betOrder/pc_user/order_add");
+                _logCallback($"   Body: {postdata}");
+                _logCallback($"   Token: {(!string.IsNullOrEmpty(_token) ? _token.Substring(0, Math.Min(20, _token.Length)) + "..." : "未设置")}");
 
-                //https://admin-api.06n.yyds666.me/system/betOrder/pc_user/order_add
+                // 🔥 使用 HttpRequestMessage 完全控制请求
                 string url_post = $"{_apiBaseUrl}/system/betOrder/pc_user/order_add";
-                var response = await _httpClient.PostAsync(url_post, content);
+                var request = new HttpRequestMessage(HttpMethod.Post, url_post);
+                
+                // 🔥 添加请求体
+                request.Content = new StringContent(postdata, Encoding.UTF8, "application/json");
+                
+                // 🔥 添加自定义请求头
+                if (!string.IsNullOrEmpty(_token))
+                {
+                    request.Headers.Add("Authorization", _token);
+                }
+                
+                // 🔥 可以添加更多请求头
+                request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                request.Headers.Add("Accept", "application/json, text/plain, */*");
+                // request.Headers.Add("Origin", _baseUrl);
+                // request.Headers.Add("Referer", $"{_baseUrl}/");
+                // request.Headers.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+                // request.Headers.Add("Accept-Encoding", "gzip, deflate, br");
+                
+                _logCallback($"📋 请求头:");
+                _logCallback($"   Authorization: {(!string.IsNullOrEmpty(_token) ? _token.Substring(0, 20) + "..." : "未设置")}");
+                _logCallback($"   Content-Type: application/json");
+                _logCallback($"   X-Requested-With: XMLHttpRequest");
+                _logCallback($"   Accept: application/json, text/plain, */*");
+                
+                // 🔥 发送请求
+                var response = await _httpClient.SendAsync(request);
                 var responseText = await response.Content.ReadAsStringAsync();
 
-                _logCallback($"📥 投注响应（完整）:");
-                _logCallback($"   {responseText}");
+                _logCallback($"📥 投注响应:");
+                _logCallback($"   状态码: {(int)response.StatusCode} {response.StatusCode}");
+                _logCallback($"   响应内容: {responseText}");
 
-                // 4. 解析响应（需要根据实际API实现）
+                // 4. 解析响应
                 var responseJson = JObject.Parse(responseText);
+                var code = responseJson["code"]?.Value<int>() ?? 0;
+                var msg = responseJson["msg"]?.ToString() ?? "";
 
-
-                return (false, "", "#投注功能尚未实现，请先分析平台API");
+                if (code == 200)
+                {
+                    _logCallback($"✅ 投注成功: {msg}");
+                    // TODO: 提取订单号等信息
+                    return (true, "", msg);
+                }
+                else
+                {
+                    _logCallback($"❌ 投注失败: code={code}, msg={msg}");
+                    return (false, "", $"{msg} (code:{code})");
+                }
             }
             catch (Exception ex)
             {
@@ -1294,6 +1341,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             try
             {
                 // 拦截登录响应
+                // 🔥 YYDS平台登录接口: https://admin-api.06n.yyds666.me/login
                 if (response.Url.Contains("/login") || response.Url.Contains("/api/auth"))
                 {
                     _logCallback($"📥 拦截登录响应: {response.Url}");
@@ -1301,30 +1349,42 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     try
                     {
                         var json = JObject.Parse(response.Context);
+                        var code = json["code"]?.Value<int>() ?? 0;
                         
-                        // 尝试提取Token
-                        _token = json["token"]?.ToString() ?? 
-                                json["access_token"]?.ToString() ?? 
-                                json["data"]?["token"]?.ToString() ?? "";
+                        _logCallback($"   响应代码: {code}");
                         
-                        if (!string.IsNullOrEmpty(_token))
+                        if (code == 200)
                         {
-                            _logCallback($"✅ 提取到 Token: {_token.Substring(0, Math.Min(10, _token.Length))}...");
+                            // 🔥 YYDS平台格式: { "code": 200, "data": { "token": "..." } }
+                            _token = json["data"]?["token"]?.ToString() ?? "";
+                            
+                            if (!string.IsNullOrEmpty(_token))
+                            {
+                                // 🔥 将 Token 添加到 HttpClient 的请求头中
+                                if (_httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                                {
+                                    _httpClient.DefaultRequestHeaders.Remove("Authorization");
+                                }
+                                _httpClient.DefaultRequestHeaders.Add("Authorization", _token);
+                                
+                                _logCallback($"✅ 提取到 Token: {_token.Substring(0, Math.Min(20, _token.Length))}...");
+                                _logCallback($"✅ Token已添加到请求头");
+                            }
+                            else
+                            {
+                                _logCallback($"⚠️ 未找到 Token，响应结构: {json.ToString(Formatting.None).Substring(0, Math.Min(200, json.ToString(Formatting.None).Length))}");
+                            }
                         }
-                        
-                        // 提取余额
-                        var balance = json["balance"]?.ToString() ?? 
-                                     json["data"]?["balance"]?.ToString() ?? "";
-                        
-                        if (!string.IsNullOrEmpty(balance) && decimal.TryParse(balance, out var balanceValue))
+                        else
                         {
-                            _currentBalance = balanceValue;
-                            _logCallback($"✅ 余额: {_currentBalance}");
+                            var msg = json["msg"]?.ToString() ?? "未知错误";
+                            _logCallback($"❌ 登录失败: code={code}, msg={msg}");
                         }
                     }
                     catch (Exception ex)
                     {
                         _logCallback($"⚠️ 解析登录响应失败: {ex.Message}");
+                        _logCallback($"   响应内容: {response.Context?.Substring(0, Math.Min(200, response.Context?.Length ?? 0))}");
                     }
                 }
                 
