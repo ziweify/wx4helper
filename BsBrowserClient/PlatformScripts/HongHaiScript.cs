@@ -431,7 +431,7 @@ namespace BsBrowserClient.PlatformScripts
         }
         
         public Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
-            int state = 0, int pageNum = 1, int pageCount = 20, string? beginDate = null, string? endDate = null)
+            int state = 0, int pageNum = 1, int pageCount = 20, string? beginDate = null, string? endDate = null, int timeout = 10)
         {
             Log("⚠️ 红海 平台暂不支持获取订单列表");
             return Task.FromResult<(bool, List<JObject>?, int, int, string)>((false, null, 0, 0, "平台暂不支持"));

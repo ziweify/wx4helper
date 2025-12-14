@@ -44,12 +44,14 @@ namespace BsBrowserClient.PlatformScripts
         /// <param name="pageCount">每页数量</param>
         /// <param name="beginDate">开始日期（yyyyMMdd格式，如：20251214）</param>
         /// <param name="endDate">结束日期（yyyyMMdd格式，如：20251214）</param>
+        /// <param name="timeout">超时时间（秒），默认10秒</param>
         /// <returns>(是否成功, 订单列表, 最大记录数, 最大页数, 错误消息)</returns>
         Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
             int state = 0,
             int pageNum = 1,
             int pageCount = 20,
             string? beginDate = null,
-            string? endDate = null);
+            string? endDate = null,
+            int timeout = 10);
     }
 }

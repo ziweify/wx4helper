@@ -390,43 +390,141 @@ namespace BsBrowserClient.PlatformScripts
                 _logCallback($"📤 发送投注请求: {url}");
                 _logCallback($"📋 POST数据（完整）:");
                 _logCallback($"   {fullPostData}");
+
+                // 🎯 计算封盘时间（开奖时间 - 20秒）
+                var openTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+                var sealTime = openTime.AddSeconds(-20);  // 封盘时间
+                _logCallback($"⏰ 期号{issueId} 开奖时间: {openTime:HH:mm:ss}, 封盘时间: {sealTime:HH:mm:ss}");
                 
-                // 🎯 使用 ModernHttpHelper
-                var result = await _httpHelper.PostAsync(new HttpRequestItem
-                {
-                    Url = url,
-                    PostData = fullPostData,
-                    ContentType = "application/x-www-form-urlencoded",
-                    Timeout = 10
-                });
+                // 🔥 重试机制：直到成功或超过封盘时间
+                int retryCount = 0;
+                const int maxRetries = 100;  // 最大重试次数（防止死循环）
                 
-                if (!result.Success)
+                while (retryCount < maxRetries)
                 {
-                    _logCallback($"❌ 投注请求失败: {result.ErrorMessage}");
-                    return (false, "", result.ErrorMessage ?? "请求失败");
+                    var now = DateTime.Now;
+                    
+                    // 🔥 检查是否超过封盘时间
+                    if (now > sealTime)
+                    {
+                        _logCallback($"⏰ 已超过封盘时间({sealTime:HH:mm:ss})，停止投注");
+                        return (false, "", $"#已超过封盘时间，无法投注");
+                    }
+                    
+                    retryCount++;
+                    var remainingSeconds = (int)(sealTime - now).TotalSeconds;
+                    _logCallback($"🔄 第{retryCount}次投注尝试 (距封盘还有{remainingSeconds}秒)");
+                    
+                    // 🎯 发送投注请求（2秒超时）
+                    var result = await _httpHelper.PostAsync(new HttpRequestItem
+                    {
+                        Url = url,
+                        PostData = fullPostData,
+                        ContentType = "application/x-www-form-urlencoded",
+                        Timeout = 2
+                    });
+                    
+                    // ✅ 情况1：请求成功返回
+                    if (result.Success)
+                    {
+                        var responseText = result.Html;
+                        _logCallback($"📥 投注响应: {responseText.Substring(0, Math.Min(100, responseText.Length))}...");
+                        
+                        try
+                        {
+                            var json = JObject.Parse(responseText);
+                            var succeed = json["status"]?.Value<bool>() ?? false;
+                            
+                            if (succeed)
+                            {
+                                var orderId = json["BettingNumber"]?.ToString() ?? $"TB{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+                                _logCallback($"✅ 投注成功: {orderId} (第{retryCount}次尝试)");
+                                return (true, orderId, responseText);
+                            }
+                            else
+                            {
+                                var msg = json["msg"]?.ToString() ?? "未知错误";
+                                var errcode = json["errcode"]?.ToString() ?? "";
+                                _logCallback($"❌ 投注失败: {msg} (errcode={errcode})");
+                                
+                                // 如果是明确的业务错误（如余额不足、已封盘等），不再重试
+                                if (msg.Contains("余额不足") || msg.Contains("封盘") || msg.Contains("已结束"))
+                                {
+                                    return (false, "", responseText);
+                                }
+                                
+                                // 其他错误继续重试
+                                _logCallback($"⏳ 等待1秒后重试...");
+                                await Task.Delay(1000);
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logCallback($"⚠️ 解析响应失败: {ex.Message}，继续重试");
+                            await Task.Delay(1000);
+                            continue;
+                        }
+                    }
+                    
+                    // ⏰ 情况2：请求超时（2秒无响应）
+                    _logCallback($"⏰ 投注请求超时，开始验证订单...");
+                    
+                    // 🔍 查询未结算订单，检查是否已投注成功
+                    try
+                    {
+                        _logCallback($"🔍 查询未结算订单 (金额:{totalAmount}元)...");
+                        var (success, orderList, _, _, errorMsg) = await GetLotMainOrderInfosAsync(
+                            state: 0,           // 未结算
+                            pageNum: 1,
+                            pageCount: 20,
+                            timeout: 3          // 查询订单超时3秒
+                        );
+                        
+                        if (success && orderList != null && orderList.Count > 0)
+                        {
+                            _logCallback($"📋 查询到 {orderList.Count} 条未结算订单，开始匹配...");
+                            
+                            // 🔍 遍历订单，查找匹配的金额
+                            foreach (var order in orderList)
+                            {
+                                var orderAmount = order["amount"]?.Value<int>() ?? 0;  // 订单总金额（整数）
+                                var orderExpect = order["expect"]?.ToString() ?? "";    // 订单期号
+                                var orderUserData = order["userdata"]?.ToString() ?? ""; // 订单内容
+                                
+                                // 🎯 匹配条件：金额相同 && 期号相同
+                                if (orderAmount == (int)totalAmount && orderExpect == issueId.ToString())
+                                {
+                                    var orderId = order["orderid"]?.ToString() ?? $"TB{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+                                    _logCallback($"✅ 找到匹配订单！金额:{orderAmount}元, 期号:{orderExpect}, 订单号:{orderId}");
+                                    _logCallback($"   订单内容: {orderUserData.Trim()}");
+                                    _logCallback($"🎉 投注已成功（通过订单验证确认，第{retryCount}次尝试）");
+                                    
+                                    // 返回成功（订单已存在）
+                                    return (true, orderId, $"{{\"status\":true,\"BettingNumber\":\"{orderId}\",\"verified\":true}}");
+                                }
+                            }
+                            
+                            _logCallback($"⚠️ 未找到匹配的订单 (期号:{issueId}, 金额:{totalAmount}元)");
+                        }
+                        else
+                        {
+                            _logCallback($"⚠️ 查询订单失败或无订单: {errorMsg}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logCallback($"⚠️ 查询订单异常: {ex.Message}");
+                    }
+                    
+                    // 没有找到匹配订单，继续重试投注
+                    _logCallback($"⏳ 未找到订单，等待1秒后继续投注...");
+                    await Task.Delay(1000);
                 }
                 
-                var responseText = result.Html;
-                _logCallback($"📥 投注响应（完整）:");
-                _logCallback($"   {responseText}");
-                
-                // 🔥 解析响应（参考F5BotV2 Line 430-441）
-                var json = JObject.Parse(responseText);
-                var succeed = json["status"]?.Value<bool>() ?? false;
-                
-                if (succeed)
-                {
-                    var orderId = json["BettingNumber"]?.ToString() ?? $"TB{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
-                    _logCallback($"✅ 投注成功: {orderId}");
-                    return (true, orderId, responseText);  // 🔥 返回完整响应
-                }
-                else
-                {
-                    var msg = json["msg"]?.ToString() ?? "未知错误";
-                    var errcode = json["errcode"]?.ToString() ?? "";
-                    _logCallback($"❌ 投注失败: {msg} (errcode={errcode})");
-                    return (false, "", responseText);  // 🔥 返回完整响应（包含错误信息）
-                }
+                // 超过最大重试次数
+                _logCallback($"❌ 已达到最大重试次数({maxRetries})，投注失败");
+                return (false, "", $"#投注失败：超过最大重试次数");
             }
             catch (Exception ex)
             {
@@ -444,13 +542,15 @@ namespace BsBrowserClient.PlatformScripts
         /// <param name="pageCount">每页数量</param>
         /// <param name="beginDate">开始日期（yyyyMMdd格式，如：20251214）</param>
         /// <param name="endDate">结束日期（yyyyMMdd格式，如：20251214）</param>
+        /// <param name="timeout">超时时间（秒），默认10秒</param>
         /// <returns>(是否成功, 订单列表, 最大记录数, 最大页数, 错误消息)</returns>
         public async Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
             int state = 0, 
             int pageNum = 1, 
             int pageCount = 20,
             string? beginDate = null,
-            string? endDate = null)
+            string? endDate = null,
+            int timeout = 2)
         {
             try
             {
@@ -483,15 +583,15 @@ namespace BsBrowserClient.PlatformScripts
                 // 🔥 构建 POST 参数
                 string postData = $"uuid={_uuid}&sid={_sid}&state={state}&pagenum={pageNum}&pagecount={pageCount}&begindate={beginDate}&enddate={endDate}&roomeng=twbingo";
                 
-                _logCallback($"📤 获取订单列表: state={state}, page={pageNum}/{pageCount}, date={beginDate}~{endDate}");
+                _logCallback($"📤 获取订单列表: state={state}, page={pageNum}/{pageCount}, date={beginDate}~{endDate}, timeout={timeout}秒");
                 
-                // 🎯 使用 ModernHttpHelper
+                // 🎯 使用 ModernHttpHelper（使用传入的超时参数）
                 var result = await _httpHelper.PostAsync(new HttpRequestItem
                 {
                     Url = url,
                     PostData = postData,
                     ContentType = "application/x-www-form-urlencoded",
-                    Timeout = 10
+                    Timeout = timeout  // 🔥 使用传入的超时参数
                 });
                 
                 if (!result.Success)
@@ -512,15 +612,15 @@ namespace BsBrowserClient.PlatformScripts
                     var errcode = json["errcode"]?.Value<int>() ?? -1;
                     var msg = json["msg"]?.ToString() ?? "未知错误";
                     _logCallback($"❌ 获取订单失败: {msg} (errcode={errcode})");
-                    return (false, null, 0, 0, msg);
+                    return (status, null, 0, 0, msg);
                 }
                 
                 // 🔥 提取订单数据
                 var msgObj = json["msg"] as JObject;
                 if (msgObj == null)
                 {
-                    _logCallback("❌ 获取订单失败: msg 对象为空");
-                    return (false, null, 0, 0, "响应格式错误");
+                    _logCallback("✅ 获取订单成功: 但是msg为空, 无订单数据");
+                    return (status, null, 0, 0, "无订单数据");
                 }
                 
                 var maxRecordNum = msgObj["maxrecordnum"]?.Value<int>() ?? 0;
@@ -530,7 +630,7 @@ namespace BsBrowserClient.PlatformScripts
                 if (dataArray == null || dataArray.Count == 0)
                 {
                     _logCallback($"✅ 获取订单成功: 0条记录 (maxRecord={maxRecordNum}, maxPage={maxPageNum})");
-                    return (true, new List<JObject>(), maxRecordNum, maxPageNum, "");
+                    return (status, new List<JObject>(), maxRecordNum, maxPageNum, "");
                 }
                 
                 // 🔥 转换为 List<JObject>
@@ -544,26 +644,23 @@ namespace BsBrowserClient.PlatformScripts
                 }
                 
                 _logCallback($"✅ 获取订单成功: {orderList.Count}条记录 (maxRecord={maxRecordNum}, maxPage={maxPageNum})");
-                
+
                 // 🔥 打印前3条订单信息（用于调试）
-                for (int i = 0; i < Math.Min(3, orderList.Count); i++)
+                //for (int i = 0; i < Math.Min(3, orderList.Count); i++)
+                for (int i = 0; i < orderList.Count; i++)
                 {
                     var order = orderList[i];
                     var orderId = order["orderid"]?.ToString() ?? "";
-                    var expect = order["expect"]?.ToString() ?? "";
-                    var amount = order["amount"]?.Value<decimal>() ?? 0;
+                    var expect = order["expect"]?.ToString() ?? ""; //期号
+                    var amount = order["amount"]?.Value<int>() ?? 0; //金额 decimal 应该是 int没有小数点的
                     var userData = order["userdata"]?.ToString() ?? "";
                     var orderState = order["state"]?.Value<int>() ?? -1;
                     
                     _logCallback($"   [{i + 1}] {orderId} | 期号:{expect} | 金额:{amount}元 | 内容:{userData.Trim()} | 状态:{orderState}");
                 }
                 
-                if (orderList.Count > 3)
-                {
-                    _logCallback($"   ... 还有 {orderList.Count - 3} 条订单");
-                }
                 
-                return (true, orderList, maxRecordNum, maxPageNum, "");
+                return (status, orderList, maxRecordNum, maxPageNum, "");
             }
             catch (Exception ex)
             {

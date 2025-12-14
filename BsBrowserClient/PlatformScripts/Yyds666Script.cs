@@ -501,7 +501,8 @@ namespace BsBrowserClient.PlatformScripts
             int pageNum = 1,
             int pageCount = 20,
             string? beginDate = null,
-            string? endDate = null)
+            string? endDate = null,
+            int timeout = 10)
         {
             // 🔥 Yyds666 平台暂不支持获取订单列表
             Log("⚠️ Yyds666 平台暂不支持获取订单列表");

@@ -54,6 +54,7 @@
             lblLogStatus = new Label();
             btnSaveLog = new Button();
             btnClearLog = new Button();
+            btnGetLotMainOrderInfos = new Button();
             statusStrip1.SuspendLayout();
             pnlTop.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
@@ -93,15 +94,16 @@
             // 
             // lblOddsInfo
             // 
-            lblOddsInfo.Name = "lblOddsInfo";
-            lblOddsInfo.Size = new Size(80, 17);
-            lblOddsInfo.Text = "📊 查看赔率";
             lblOddsInfo.IsLink = true;
+            lblOddsInfo.Name = "lblOddsInfo";
+            lblOddsInfo.Size = new Size(76, 17);
+            lblOddsInfo.Text = "📊 查看赔率";
             lblOddsInfo.Click += LblOddsInfo_Click;
             // 
             // pnlTop
             // 
             pnlTop.Controls.Add(btnTestBet);
+            pnlTop.Controls.Add(btnGetLotMainOrderInfos);
             pnlTop.Controls.Add(btnTestCookie);
             pnlTop.Controls.Add(btnRefresh);
             pnlTop.Controls.Add(btnNavigate);
@@ -117,7 +119,7 @@
             // 
             btnTestBet.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnTestBet.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-            btnTestBet.Location = new Point(1085, 10);
+            btnTestBet.Location = new Point(1229, 10);
             btnTestBet.Name = "btnTestBet";
             btnTestBet.Size = new Size(32, 25);
             btnTestBet.TabIndex = 5;
@@ -129,7 +131,7 @@
             // 
             btnTestCookie.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnTestCookie.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-            btnTestCookie.Location = new Point(1047, 10);
+            btnTestCookie.Location = new Point(1194, 11);
             btnTestCookie.Name = "btnTestCookie";
             btnTestCookie.Size = new Size(32, 25);
             btnTestCookie.TabIndex = 4;
@@ -140,9 +142,9 @@
             // btnRefresh
             // 
             btnRefresh.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnRefresh.Location = new Point(1189, 10);
+            btnRefresh.Location = new Point(1084, 12);
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Size = new Size(60, 25);
+            btnRefresh.Size = new Size(40, 25);
             btnRefresh.TabIndex = 3;
             btnRefresh.Text = "刷新";
             btnRefresh.UseVisualStyleBackColor = true;
@@ -151,9 +153,9 @@
             // btnNavigate
             // 
             btnNavigate.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnNavigate.Location = new Point(1123, 10);
+            btnNavigate.Location = new Point(1047, 12);
             btnNavigate.Name = "btnNavigate";
-            btnNavigate.Size = new Size(60, 25);
+            btnNavigate.Size = new Size(34, 25);
             btnNavigate.TabIndex = 2;
             btnNavigate.Text = "Go";
             btnNavigate.UseVisualStyleBackColor = true;
@@ -248,7 +250,7 @@
             chkLogSocket.CheckState = CheckState.Checked;
             chkLogSocket.Location = new Point(250, 6);
             chkLogSocket.Name = "chkLogSocket";
-            chkLogSocket.Size = new Size(85, 21);
+            chkLogSocket.Size = new Size(86, 21);
             chkLogSocket.TabIndex = 3;
             chkLogSocket.Text = "🔌 Socket";
             chkLogSocket.UseVisualStyleBackColor = true;
@@ -260,7 +262,7 @@
             chkLogBet.CheckState = CheckState.Checked;
             chkLogBet.Location = new Point(350, 6);
             chkLogBet.Name = "chkLogBet";
-            chkLogBet.Size = new Size(70, 21);
+            chkLogBet.Size = new Size(71, 21);
             chkLogBet.TabIndex = 4;
             chkLogBet.Text = "🎲 投注";
             chkLogBet.UseVisualStyleBackColor = true;
@@ -319,6 +321,18 @@
             btnClearLog.UseVisualStyleBackColor = true;
             btnClearLog.Click += btnClearLog_Click;
             // 
+            // btnGetLotMainOrderInfos
+            // 
+            btnGetLotMainOrderInfos.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnGetLotMainOrderInfos.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+            btnGetLotMainOrderInfos.Location = new Point(1158, 11);
+            btnGetLotMainOrderInfos.Name = "btnGetLotMainOrderInfos";
+            btnGetLotMainOrderInfos.Size = new Size(32, 25);
+            btnGetLotMainOrderInfos.TabIndex = 4;
+            btnGetLotMainOrderInfos.Text = "未";
+            btnGetLotMainOrderInfos.UseVisualStyleBackColor = true;
+            btnGetLotMainOrderInfos.Click += btnGetLotMainOrderInfos_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
@@ -374,5 +388,6 @@
         private System.Windows.Forms.Button btnSaveLog;
         private System.Windows.Forms.Button btnClearLog;
         private System.Windows.Forms.Label lblLogStatus;
+        private Button btnGetLotMainOrderInfos;
     }
 }

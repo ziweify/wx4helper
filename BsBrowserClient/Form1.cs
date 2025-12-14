@@ -25,55 +25,55 @@ public partial class Form1 : Form
     private readonly int _port;
     private readonly string _platform;
     private readonly string _platformUrl;
-    
+
     private SocketServer? _socketServer;
     private IPlatformScript? _platformScript;
     private WebView2? _webView;
     private WebView2ResourceHandler? _resourceHandler;
-    
+
     public Form1() : this("0", "未命名配置", 9527, "YunDing28", "")
     {
     }
-    
+
     public Form1(string configId, string configName, int port, string platform, string platformUrl)
     {
         InitializeComponent();
-        
+
         _configId = configId;
         _configName = configName;  // 🔥 保存配置名
         _port = port;
         _platform = platform;
         _platformUrl = string.IsNullOrEmpty(platformUrl) ? GetDefaultUrl(platform) : platformUrl;
-        
+
         // 🔥 设置窗口标题（显示配置名，用于观察）
         this.Text = $"BsBrowser-{configName}";
-        
+
         // 更新状态栏
         lblPort.Text = $"配置: {configName} (ID:{configId}) | 平台: {platform}";
         txtUrl.Text = _platformUrl;
     }
-    
+
     private async void Form1_Load(object sender, EventArgs e)
     {
         try
         {
             // 初始化日志系统（优先初始化，以便记录后续日志）
             InitializeLogSystem();
-            
+
             OnLogMessage("🚀 正在初始化 BrowserClient...");
-            
+
             // 初始化 WebView2
             await InitializeWebView2Async();
             OnLogMessage("✅ WebView2 初始化完成");
-            
+
             // 初始化平台脚本
             InitializePlatformScript();
             OnLogMessage($"✅ 平台脚本初始化完成: {_platform}");
-            
+
             // 初始化 Socket 服务器
             InitializeSocketServer();
             OnLogMessage($"✅ Socket服务器启动: 端口{_port}", LogType.Socket);
-            
+
             lblStatus.Text = "✅ 初始化成功";
             OnLogMessage("🎉 BrowserClient 初始化成功");
         }
@@ -81,11 +81,11 @@ public partial class Form1 : Form
         {
             lblStatus.Text = $"❌ 初始化失败: {ex.Message}";
             OnLogMessage($"❌ 初始化失败: {ex.Message}");
-            MessageBox.Show($"初始化失败: {ex.Message}", "错误", 
+            MessageBox.Show($"初始化失败: {ex.Message}", "错误",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-    
+
     /// <summary>
     /// 初始化 WebView2 浏览器
     /// </summary>
@@ -98,9 +98,9 @@ public partial class Form1 : Form
             {
                 Dock = DockStyle.Fill
             };
-            
+
             pnlBrowser.Controls.Add(_webView);
-            
+
             // 🔥 为每个实例创建独立的用户数据文件夹，避免资源冲突
             // 使用 AppData\Local 目录，无需管理员权限
             var userDataFolder = Path.Combine(
@@ -108,30 +108,30 @@ public partial class Form1 : Form
                 "BsBrowserClient",
                 "WebView2Data",
                 $"Config_{_configId}");
-            
+
             // 确保目录存在
             Directory.CreateDirectory(userDataFolder);
-            
+
             // 使用自定义用户数据文件夹初始化 WebView2
             var environment = await CoreWebView2Environment.CreateAsync(
                 browserExecutableFolder: null,
                 userDataFolder: userDataFolder,
                 options: null);
-            
+
             // 等待 WebView2 初始化完成
             await _webView.EnsureCoreWebView2Async(environment);
-            
+
             // 初始化资源拦截器
             _resourceHandler = new WebView2ResourceHandler(OnResponseReceived);
             await _resourceHandler.InitializeAsync(_webView.CoreWebView2);
-            
+
             // 启用 DevTools
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
-            
+
             // 导航到目标 URL
             _webView.CoreWebView2.Navigate(_platformUrl);
             txtUrl.Text = _platformUrl;
-            
+
             // 绑定导航事件
             _webView.CoreWebView2.NavigationCompleted += async (s, e) =>
             {
@@ -140,10 +140,10 @@ public partial class Form1 : Form
                 {
                     lblStatus.Text = "✅ 页面加载完成";
                     OnLogMessage($"✅ 页面加载完成: {_webView.CoreWebView2.Source}");
-                    
+
                     // 触发自动登录
                     await TryAutoLoginAsync();
-                    
+
                     // 🔥 获取Cookie并回传到VxMain
                     await GetAndSendCookieToVxMain();
                 }
@@ -159,7 +159,7 @@ public partial class Form1 : Form
             throw new Exception($"WebView2 初始化失败: {ex.Message}", ex);
         }
     }
-    
+
     /// <summary>
     /// 初始化平台脚本
     /// </summary>
@@ -167,10 +167,10 @@ public partial class Form1 : Form
     {
         // 使用共享库统一转换
         var platform = BetPlatformHelper.Parse(_platform);
-        
+
         // 创建一个兼容的日志回调（平台脚本的日志都视为投注类型）
         Action<string> betLogCallback = (msg) => OnLogMessage(msg, LogType.Bet);
-        
+
         _platformScript = platform switch
         {
             BetPlatform.云顶 => new YunDing28Script(_webView!, betLogCallback),
@@ -196,13 +196,13 @@ public partial class Form1 : Form
             _ => new YunDing28Script(_webView!, betLogCallback) // 默认使用云顶脚本
         };
     }
-    
+
     private bool _isAutoLoginTriggered = false;
-    
+
     // 🔥 从 VxMain 的 Login 命令中保存的账号密码（避免重复通过 HTTP API 获取）
     private string? _username;
     private string? _password;
-    
+
     /// <summary>
     /// 尝试自动登录（页面加载完成后触发）
     /// 参考 F5BotV2 的 LoginAsync 和 FrameLoadEnd 实现
@@ -211,17 +211,17 @@ public partial class Form1 : Form
     {
         if (_isAutoLoginTriggered || _platformScript == null)
             return;
-        
+
         try
         {
             // 防止重复触发
             _isAutoLoginTriggered = true;
-            
+
             OnLogMessage("🔍 检测页面状态，准备自动登录...");
-            
+
             // 🔥 等待页面完全加载（包括 JavaScript 执行完成）
             await Task.Delay(2000);  // 增加到2秒
-            
+
             // 🔥 额外等待 DOMContentLoaded
             try
             {
@@ -240,12 +240,12 @@ public partial class Form1 : Form
             {
                 OnLogMessage("⚠️ DOM检测失败，继续尝试登录");
             }
-            
+
             // 🔥 使用从 Login 命令中保存的账号密码（避免冗余的 HTTP API 调用）
             // VxMain 会在启动时主动发送 Login 命令，包含账号密码
             var username = _username;
             var password = _password;
-            
+
             // 如果没有账号密码，说明 VxMain 还没发送 Login 命令
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
@@ -253,19 +253,19 @@ public partial class Form1 : Form
                 OnLogMessage("ℹ️ 当前页面没有Cookie");
                 return;
             }
-            
+
             OnLogMessage($"✅ 使用已保存的登录凭据:");
             OnLogMessage($"   用户名: {username}");
             OnLogMessage($"   密码: ******");
-            
+
             // 调用平台脚本的登录方法
             OnLogMessage($"🔐 开始自动登录: {username}");
             var success = await _platformScript.LoginAsync(username, password);
-            
+
             if (success)
             {
                 OnLogMessage("✅ 自动登录成功！");
-                
+
                 // 通知VxMain登录成功（通过Socket）
                 var message = new
                 {
@@ -274,7 +274,7 @@ public partial class Form1 : Form
                     username = username,
                     timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 };
-                
+
                 await _socketServer.SendToVxMain(message);
             }
             else
@@ -287,7 +287,7 @@ public partial class Form1 : Form
             OnLogMessage($"❌ 自动登录异常: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 获取Cookie并发送到VxMain
     /// </summary>
@@ -300,23 +300,23 @@ public partial class Form1 : Form
                 OnLogMessage("⚠️ WebView2未初始化，无法获取Cookie");
                 return;
             }
-            
+
             // 获取当前页面的所有Cookie
             var cookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
-            
+
             if (cookies == null || cookies.Count == 0)
             {
                 OnLogMessage("ℹ️ 当前页面没有Cookie");
                 return;
             }
-            
+
             // 将Cookie格式化为字符串
             var cookieDict = new Dictionary<string, string>();
             foreach (var cookie in cookies)
             {
                 cookieDict[cookie.Name] = cookie.Value;
             }
-            
+
             // 通知VxMain（通过Socket）
             var message = new
             {
@@ -326,9 +326,9 @@ public partial class Form1 : Form
                 cookies = cookieDict,
                 timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
             };
-            
+
             await _socketServer.SendToVxMain(message);
-            
+
             OnLogMessage($"📤 Cookie已回传到VxMain:共{cookies.Count}个Cookie");
         }
         catch (Exception ex)
@@ -336,7 +336,7 @@ public partial class Form1 : Form
             OnLogMessage($"❌ 获取Cookie异常: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 初始化 Socket 服务器
     /// </summary>
@@ -347,27 +347,27 @@ public partial class Form1 : Form
         {
             configIdInt = 0;
         }
-        
+
         // 创建一个兼容的日志回调（Socket服务器的日志视为Socket类型）
         Action<string> socketLogCallback = (msg) => OnLogMessage(msg, LogType.Socket);
-        
+
         // 🔥 包装异步方法为同步调用（使用 .Wait()）
         void CommandReceivedWrapper(CommandRequest cmd)
         {
             // 同步等待异步方法完成，确保响应在返回前发送
             OnCommandReceivedAsync(cmd).Wait();
         }
-        
+
         _socketServer = new SocketServer(configIdInt, _configName, CommandReceivedWrapper, socketLogCallback);  // 🔥 传入配置名
-        
+
         // 订阅连接状态变化事件
         _socketServer.StatusChanged += OnSocketStatusChanged;
-        
+
         _socketServer.Start();
-        
+
         lblPort.Text = $"配置: {_configId} | 平台: {_platform}";
     }
-    
+
     /// <summary>
     /// Socket 连接状态变化回调
     /// </summary>
@@ -383,7 +383,7 @@ public partial class Form1 : Form
             UpdateConnectionStatus(status);
         }
     }
-    
+
     /// <summary>
     /// 更新连接状态显示
     /// </summary>
@@ -397,13 +397,13 @@ public partial class Form1 : Form
             Services.ConnectionStatus.重连中 => ("● 重连中...", System.Drawing.Color.Orange),
             _ => ("● 未知状态", System.Drawing.Color.Gray)
         };
-        
+
         lblStatus.Text = text;
         lblStatus.ForeColor = color;
-        
+
         OnLogMessage($"🔄 连接状态: {text}", LogType.Socket);
     }
-    
+
     /// <summary>
     /// 响应接收回调 - 处理拦截到的数据
     /// </summary>
@@ -414,23 +414,23 @@ public partial class Form1 : Form
             // 只处理感兴趣的 URL
             if (string.IsNullOrEmpty(args.Url))
                 return;
-            
+
             // 记录日志（HTTP拦截）
             OnLogMessage($"拦截:{args.Url}", LogType.Http);
-            
+
             if (!string.IsNullOrEmpty(args.PostData))
             {
                 OnLogMessage($"[POST] {args.PostData.Substring(0, Math.Min(100, args.PostData.Length))}...");
             }
-            
+
             if (!string.IsNullOrEmpty(args.Context))
             {
                 OnLogMessage($"[Response] Status={args.StatusCode}, Length={args.Context.Length}");
-                
+
                 // 可以在这里解析响应，提取投注结果等
                 // 例如：如果是投注结果，可以通过 Socket 发送给主程序
             }
-            
+
             // 让平台脚本处理响应
             _platformScript?.HandleResponse(args);
         }
@@ -439,7 +439,7 @@ public partial class Form1 : Form
             OnLogMessage($"❌ 响应处理失败: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Socket 命令接收回调
     /// </summary>
@@ -448,13 +448,13 @@ public partial class Form1 : Form
         try
         {
             OnLogMessage($"收到命令:{command.Command}", LogType.Socket);
-            
+
             var response = new CommandResponse
             {
                 ConfigId = _configId,
                 Success = false
             };
-            
+
             switch (command.Command)
             {
                 case "显示窗口":
@@ -477,7 +477,7 @@ public partial class Form1 : Form
                     response.Success = true;
                     response.Message = "窗口已显示";
                     break;
-                    
+
                 case "隐藏窗口":
                     // 隐藏窗口
                     if (InvokeRequired)
@@ -491,44 +491,44 @@ public partial class Form1 : Form
                     response.Success = true;
                     response.Message = "窗口已隐藏";
                     break;
-                    
+
                 case "心跳检测":
                     // 心跳检测
                     response.Success = true;
                     response.Message = "Pong";
-                    response.Data = new 
-                    { 
+                    response.Data = new
+                    {
                         configId = _configId,
                         platform = _platform,
                         processId = Environment.ProcessId
                     };
                     break;
-                    
+
                 case "封盘通知":
                     // 封盘通知 - 拉取订单并投注
                     var notifyData = command.Data as JObject;
                     var issueId = notifyData?["issueId"]?.ToString() ?? "";
                     var secondsRemaining = notifyData?["secondsRemaining"]?.ToObject<int>() ?? 0;
-                    
+
                     OnLogMessage($"⏰ 封盘通知:期号{issueId} 剩余{secondsRemaining}秒");
-                    
+
                     // 通过 HTTP 拉取订单并投注
                     var betResult = await FetchOrdersAndBetAsync(issueId);
                     response.Success = betResult.success;
                     response.Message = betResult.message;
                     break;
-                    
+
                 case "登录":
                 case "Login":  // 🔥 兼容英文命令名
                     var loginData = command.Data as JObject;
                     var username = loginData?["username"]?.ToString() ?? "";
                     var password = loginData?["password"]?.ToString() ?? "";
-                    
+
                     // 🔥 保存账号密码到成员变量（供自动登录使用，避免重复通过 HTTP API 获取）
                     _username = username;
                     _password = password;
                     OnLogMessage($"💾 已保存登录凭据: 用户名={username}");
-                    
+
                     // 🔥 WebView2 操作必须在 UI 线程执行
                     if (InvokeRequired)
                     {
@@ -558,7 +558,7 @@ public partial class Form1 : Form
                     }
                     response.Message = response.Success ? "登录成功" : "登录失败";
                     break;
-                    
+
                 case "获取余额":
                     // 🔥 WebView2 操作必须在 UI 线程执行
                     decimal balance = -1;
@@ -591,7 +591,7 @@ public partial class Form1 : Form
                     response.Data = new { balance };
                     response.Message = response.Success ? $"余额: {balance}" : "获取余额失败";
                     break;
-                    
+
                 case "获取Cookie":
                     // 获取Cookie命令
                     // 🔥 WebView2 操作必须在 UI 线程执行
@@ -602,7 +602,7 @@ public partial class Form1 : Form
                             response.Message = "WebView2未初始化";
                             break;
                         }
-                        
+
                         if (InvokeRequired)
                         {
                             var cookieResult = await Task.Run(async () =>
@@ -614,14 +614,14 @@ public partial class Form1 : Form
                                     {
                                         var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
                                         var cookieDict = new Dictionary<string, string>();
-                                        
+
                                         foreach (var cookie in allCookies)
                                         {
                                             cookieDict[cookie.Name] = cookie.Value;
                                         }
-                                        
-                                        var data = new 
-                                        { 
+
+                                        var data = new
+                                        {
                                             url = _webView.CoreWebView2.Source,
                                             cookies = cookieDict,
                                             count = allCookies.Count
@@ -644,22 +644,22 @@ public partial class Form1 : Form
                         {
                             var allCookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
                             var cookieDict = new Dictionary<string, string>();
-                            
+
                             foreach (var cookie in allCookies)
                             {
                                 cookieDict[cookie.Name] = cookie.Value;
                             }
-                            
+
                             response.Success = true;
-                            response.Data = new 
-                            { 
+                            response.Data = new
+                            {
                                 url = _webView.CoreWebView2.Source,
                                 cookies = cookieDict,
                                 count = allCookies.Count
                             };
                             response.Message = $"获取成功,共{allCookies.Count}个Cookie";
                         }
-                        
+
                         if (response.Success)
                         {
                             var count = (response.Data as dynamic)?.count ?? 0;
@@ -674,7 +674,7 @@ public partial class Form1 : Form
                         OnLogMessage($"❌ 获取Cookie失败:{cookieEx.Message}");
                     }
                     break;
-                    
+
                 case "获取盘口额度":
                     // 获取盘口额度命令
                     // 🔥 WebView2 操作必须在 UI 线程执行
@@ -706,11 +706,11 @@ public partial class Form1 : Form
                         {
                             quotaBalance = await _platformScript!.GetBalanceAsync();
                         }
-                        
+
                         response.Success = quotaBalance >= 0;
                         response.Data = new { balance = quotaBalance, quota = quotaBalance };
                         response.Message = response.Success ? $"盘口额度: {quotaBalance}元" : "获取额度失败";
-                        
+
                         if (response.Success)
                         {
                             OnLogMessage($"📊 盘口额度:{quotaBalance}元");
@@ -724,11 +724,11 @@ public partial class Form1 : Form
                         OnLogMessage($"❌ 获取额度失败:{quotaEx.Message}");
                     }
                     break;
-                    
+
                 case "投注":
                     // 新的投注流程：接收标准化订单列表，执行投注，返回详细结果
                     BaiShengVx3Plus.Shared.Models.BetStandardOrderList? betOrders = null;
-                    
+
                     // 🔥 BetStandardOrderList 序列化后可能是数组（JArray）或对象（JObject）
                     if (command.Data is Newtonsoft.Json.Linq.JArray jArray)
                     {
@@ -740,7 +740,7 @@ public partial class Form1 : Form
                         // 如果是对象，尝试反序列化
                         betOrders = betData.ToObject<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
                     }
-                    
+
                     if (betOrders == null || betOrders.Count == 0)
                     {
                         response.Message = "投注内容为空";
@@ -749,25 +749,25 @@ public partial class Form1 : Form
                         OnLogMessage($"   数据类型: {command.Data?.GetType().Name ?? "null"}", LogType.Bet);
                         break;
                     }
-                    
+
                     var betIssueId = betOrders[0].IssueId;
                     var totalAmount = betOrders.GetTotalAmount();
-                    
+
                     OnLogMessage($"📝 收到投注命令:期号{betIssueId} 共{betOrders.Count}项 {totalAmount}元", LogType.Bet);
-                    
+
                     // 记录POST前时间
                     var postStartTime = DateTime.Now;
-                    
+
                     try
                     {
                         OnLogMessage($"📦 准备投注:期号={betIssueId} 共{betOrders.Count}项 {totalAmount}元", LogType.Bet);
-                        
+
                         // 🔥 使用标准化订单列表，平台脚本将其转换为平台特定的格式
                         // 🔥 WebView2 操作必须在 UI 线程执行
                         bool success;
                         string orderId;
                         string platformResponse;
-                        
+
                         if (InvokeRequired)
                         {
                             var result = await Task.Run(async () =>
@@ -799,11 +799,11 @@ public partial class Form1 : Form
                             orderId = result.orderId;
                             platformResponse = result.platformResponse;
                         }
-                        
+
                         // 记录POST后时间
                         var postEndTime = DateTime.Now;
                         var durationMs = (int)(postEndTime - postStartTime).TotalMilliseconds;
-                        
+
                         // 🔥 解析 platformResponse（避免双重序列化导致转义）
                         object? platformResponseObj = null;
                         try
@@ -824,7 +824,7 @@ public partial class Form1 : Form
                             // 解析失败，保持原字符串
                             platformResponseObj = platformResponse;
                         }
-                        
+
                         response.Success = success;
                         response.Message = success ? "投注成功" : "投注失败";
                         response.Data = new
@@ -835,7 +835,7 @@ public partial class Form1 : Form
                             orderNo = orderId,
                             platformResponse = platformResponseObj  // 🔥 直接放入对象，而不是字符串
                         };
-                        
+
                         OnLogMessage($"✅ 投注完成:成功={success} 耗时={durationMs}ms 订单号={orderId}", LogType.Bet);
                         OnLogMessage($"📊 平台响应:{platformResponse}");
                     }
@@ -843,7 +843,7 @@ public partial class Form1 : Form
                     {
                         var postEndTime = DateTime.Now;
                         var durationMs = (int)(postEndTime - postStartTime).TotalMilliseconds;
-                        
+
                         response.Success = false;
                         response.Message = "投注异常";
                         response.ErrorMessage = betEx.Message;
@@ -853,35 +853,35 @@ public partial class Form1 : Form
                             postEndTime = postEndTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                             durationMs = durationMs
                         };
-                        
+
                         OnLogMessage($"❌ 投注异常:{betEx.Message}");
                     }
                     break;
-                    
+
                 default:
                     response.Message = $"未知命令: {command.Command}";
                     OnLogMessage($"⚠️ 未知命令: {command.Command}");
                     break;
             }
-            
+
             // 发送响应
             _socketServer?.SendResponse(response);
         }
         catch (Exception ex)
         {
             OnLogMessage($"❌ 命令处理失败: {ex.Message}");
-            
+
             var errorResponse = new CommandResponse
             {
                 ConfigId = _configId,
                 Success = false,
                 Message = ex.Message
             };
-            
+
             _socketServer?.SendResponse(errorResponse);
         }
     }
-    
+
     /// <summary>
     /// 日志回调
     /// </summary>
@@ -892,7 +892,7 @@ public partial class Form1 : Form
     private const int MAX_LOG_LINES = 1000;  // 最大保留1000行日志
     private bool _isUserScrolling = false;   // 用户是否在查看历史
     private System.Windows.Forms.Timer? _logTimer;  // 日志批量更新定时器
-    
+
     /// <summary>
     /// 初始化日志系统
     /// </summary>
@@ -903,12 +903,12 @@ public partial class Form1 : Form
         _logTimer.Interval = 100;  // 100ms
         _logTimer.Tick += LogTimer_Tick;
         _logTimer.Start();
-        
+
         // 监听滚动条事件
         txtLog.VScroll += TxtLog_VScroll;
         txtLog.MouseWheel += TxtLog_MouseWheel;
     }
-    
+
     /// <summary>
     /// 日志定时器 - 批量更新UI
     /// </summary>
@@ -919,14 +919,14 @@ public partial class Form1 : Form
         {
             bufferCount = _logBuffer.Count;
         }
-        
+
         if (bufferCount == 0)
         {
             // 更新日志状态（显示当前状态）
             UpdateLogStatus();
             return;
         }
-        
+
         // 批量处理日志
         var logs = new List<string>();
         lock (_logBuffer)
@@ -936,12 +936,12 @@ public partial class Form1 : Form
                 logs.Add(_logBuffer.Dequeue());
             }
         }
-        
+
         if (logs.Count == 0) return;
-        
+
         // 检查是否需要自动滚动
         bool shouldAutoScroll = !_isUserScrolling && IsScrollAtBottom();
-        
+
         // 批量添加日志
         txtLog.SuspendLayout();
         try
@@ -950,7 +950,7 @@ public partial class Form1 : Form
             {
                 txtLog.AppendText(log);
             }
-            
+
             // 限制日志行数（保持性能）
             int lineCount = txtLog.Lines.Length;
             if (lineCount > MAX_LOG_LINES)
@@ -964,7 +964,7 @@ public partial class Form1 : Form
                 }
                 txtLog.Text = txtLog.Text.Substring(removePos);
             }
-            
+
             // 自动滚动到底部
             if (shouldAutoScroll)
             {
@@ -976,11 +976,11 @@ public partial class Form1 : Form
         {
             txtLog.ResumeLayout();
         }
-        
+
         // 更新日志状态
         UpdateLogStatus();
     }
-    
+
     /// <summary>
     /// 更新日志状态显示
     /// </summary>
@@ -991,31 +991,31 @@ public partial class Form1 : Form
         {
             bufferCount = _logBuffer.Count;
         }
-        
+
         int lineCount = txtLog.Lines.Length;
         string autoScrollStatus = _isUserScrolling ? "关" : "开";
-        
+
         lblLogStatus.Text = $"📊 日志: {lineCount}行 | 缓冲: {bufferCount} | 自动滚动: {autoScrollStatus}";
     }
-    
+
     /// <summary>
     /// 检查滚动条是否在底部
     /// </summary>
     private bool IsScrollAtBottom()
     {
         if (txtLog.Lines.Length == 0) return true;
-        
+
         // 获取可见行数
         int visibleLines = txtLog.Height / txtLog.Font.Height;
         int totalLines = txtLog.Lines.Length;
-        
+
         // 获取第一个可见字符的行号
         int firstVisibleLine = txtLog.GetLineFromCharIndex(txtLog.GetCharIndexFromPosition(new Point(0, 0)));
-        
+
         // 如果底部可见，则认为在底部
         return (firstVisibleLine + visibleLines >= totalLines - 2);
     }
-    
+
     /// <summary>
     /// 滚动条滚动事件
     /// </summary>
@@ -1024,7 +1024,7 @@ public partial class Form1 : Form
         // 用户手动滚动，标记为正在查看历史
         _isUserScrolling = !IsScrollAtBottom();
     }
-    
+
     /// <summary>
     /// 鼠标滚轮事件
     /// </summary>
@@ -1033,7 +1033,7 @@ public partial class Form1 : Form
         // 用户使用滚轮，标记为正在查看历史
         _isUserScrolling = !IsScrollAtBottom();
     }
-    
+
     /// <summary>
     /// 日志回调（高性能版本）
     /// </summary>
@@ -1047,7 +1047,7 @@ public partial class Form1 : Form
         Http,     // HTTP拦截
         System    // 系统消息
     }
-    
+
     /// <summary>
     /// 写入日志（带类型过滤）
     /// </summary>
@@ -1062,9 +1062,9 @@ public partial class Form1 : Form
             LogType.System => chkLogSystem?.Checked ?? true,
             _ => true
         };
-        
+
         if (!shouldLog) return;
-        
+
         // 输出到状态栏
         if (InvokeRequired)
         {
@@ -1074,7 +1074,7 @@ public partial class Form1 : Form
         {
             lblStatus.Text = message;
         }
-        
+
         // 添加到日志缓冲区（异步处理，不阻塞）
         var time = DateTime.Now.ToString("HH:mm:ss.fff");
         var typeIcon = type switch
@@ -1086,22 +1086,22 @@ public partial class Form1 : Form
             _ => "📝"
         };
         var logLine = $"[{time}] {typeIcon} {message}\r\n";
-        
+
         lock (_logBuffer)
         {
             _logBuffer.Enqueue(logLine);
-            
+
             // 如果缓冲区过大，丢弃旧日志（防止内存溢出）
             while (_logBuffer.Count > MAX_LOG_LINES * 2)
             {
                 _logBuffer.Dequeue();
             }
         }
-        
+
         // 输出到控制台（用于调试）
         Console.WriteLine($"[{time}] [{type}] {message}");
     }
-    
+
     /// <summary>
     /// 获取默认 URL
     /// </summary>
@@ -1110,9 +1110,9 @@ public partial class Form1 : Form
         // 使用共享库统一获取URL
         return BetPlatformHelper.GetDefaultUrl(platform);
     }
-    
+
     #region UI 事件处理
-    
+
     private void btnNavigate_Click(object sender, EventArgs e)
     {
         if (_webView?.CoreWebView2 != null && !string.IsNullOrWhiteSpace(txtUrl.Text))
@@ -1120,12 +1120,12 @@ public partial class Form1 : Form
             _webView.CoreWebView2.Navigate(txtUrl.Text);
         }
     }
-    
+
     private void btnRefresh_Click(object sender, EventArgs e)
     {
         _webView?.CoreWebView2?.Reload();
     }
-    
+
     private void Form1_FormClosing(object sender, FormClosingEventArgs e)
     {
         // 拦截用户点击关闭按钮的事件
@@ -1142,7 +1142,7 @@ public partial class Form1 : Form
                 MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button2  // 默认选择"否"(最小化)
             );
-            
+
             switch (result)
             {
                 case DialogResult.Yes:
@@ -1152,14 +1152,14 @@ public partial class Form1 : Form
                     _webView?.Dispose();
                     // 不取消关闭事件，允许窗口关闭
                     break;
-                    
+
                 case DialogResult.No:
                     // 用户选择最小化：取消关闭，隐藏窗口
                     e.Cancel = true;
                     this.WindowState = FormWindowState.Minimized;
                     OnLogMessage($"窗口已最小化（进程仍在运行）");
                     break;
-                    
+
                 case DialogResult.Cancel:
                 default:
                     // 用户选择取消：取消关闭，保持窗口显示
@@ -1175,7 +1175,7 @@ public partial class Form1 : Form
             _webView?.Dispose();
         }
     }
-    
+
     /// <summary>
     /// 拉取订单并投注
     /// </summary>
@@ -1184,30 +1184,30 @@ public partial class Form1 : Form
         try
         {
             OnLogMessage($"📥 开始拉取订单:期号{issueId}");
-            
+
             // 1. 通过 HTTP 拉取订单列表
             var httpClient = new HttpClient();
             var response = await httpClient.GetAsync($"http://127.0.0.1:8888/api/order?issueId={issueId}");
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 OnLogMessage($"❌ 拉取订单失败:HTTP {response.StatusCode}");
                 return (false, $"HTTP请求失败:{response.StatusCode}");
             }
-            
+
             var json = await response.Content.ReadAsStringAsync();
             OnLogMessage($"📦 收到响应:{json.Substring(0, Math.Min(200, json.Length))}...");
-            
+
             var data = JsonConvert.DeserializeObject<JObject>(json);
             var success = data?["success"]?.ToObject<bool>() ?? false;
             var count = data?["count"]?.ToObject<int>() ?? 0;
-            
+
             if (!success || count == 0)
             {
                 OnLogMessage($"📭 没有待投注订单:期号{issueId}");
                 return (true, "没有待投注订单");
             }
-            
+
             // 2. 解析订单列表
             var orders = data?["data"]?.ToObject<List<JObject>>();
             if (orders == null || orders.Count == 0)
@@ -1215,9 +1215,9 @@ public partial class Form1 : Form
                 OnLogMessage($"❌ 订单数据解析失败");
                 return (false, "订单数据解析失败");
             }
-            
+
             OnLogMessage($"✅ 获取到 {orders.Count} 个待投注订单");
-            
+
             // 3. 调用平台脚本投注
             // TODO: 需要实现订单合并逻辑，参考 F5BotV2
             foreach (var order in orders)
@@ -1226,10 +1226,10 @@ public partial class Form1 : Form
                 var betContent = order["BetContentStandar"]?.ToString() ?? "";
                 var amount = order["Amount"]?.ToObject<float>() ?? 0;
                 var memberName = order["MemberName"]?.ToString() ?? "";
-                
+
                 OnLogMessage($"📝 订单:{memberName} {orderType} {betContent} {amount}元");
             }
-            
+
             OnLogMessage($"⚠️ 投注功能待实现，需要参考 F5BotV2 实现订单合并和组装");
             return (true, $"收到{orders.Count}个订单，投注功能待实现");
         }
@@ -1239,11 +1239,11 @@ public partial class Form1 : Form
             return (false, $"拉取订单异常:{ex.Message}");
         }
     }
-    
+
     #endregion
-    
+
     #region 测试按钮
-    
+
     /// <summary>
     /// 测试Cookie按钮 - 获取并显示当前Cookie
     /// </summary>
@@ -1252,23 +1252,23 @@ public partial class Form1 : Form
         try
         {
             OnLogMessage("🍪 【测试】开始获取Cookie...");
-            
+
             if (_webView?.CoreWebView2 == null)
             {
                 OnLogMessage("❌ WebView2未初始化");
                 return;
             }
-            
+
             // 方法1：通过WebView2 API获取Cookie
             OnLogMessage("📋 方法1：WebView2 API");
             var cookies = await _webView.CoreWebView2.CookieManager.GetCookiesAsync(_webView.CoreWebView2.Source);
             OnLogMessage($"   获取到{cookies.Count}个Cookie:");
-            
+
             foreach (var cookie in cookies)
             {
                 OnLogMessage($"   - {cookie.Name}={cookie.Value.Substring(0, Math.Min(20, cookie.Value.Length))}...");
             }
-            
+
             // 方法2：通过JavaScript获取document.cookie
             OnLogMessage("📋 方法2：JavaScript document.cookie");
             var script = @"
@@ -1276,11 +1276,11 @@ public partial class Form1 : Form
                     return document.cookie;
                 })();
             ";
-            
+
             var jsCookie = await _webView.CoreWebView2.ExecuteScriptAsync(script);
             jsCookie = jsCookie.Trim('"').Replace("\\", "");
             OnLogMessage($"   document.cookie={jsCookie.Substring(0, Math.Min(100, jsCookie.Length))}...");
-            
+
             // 方法3：通过拦截获取的Cookie（显示当前已拦截的参数）
             OnLogMessage("📋 方法3：拦截到的关键参数");
             if (_platformScript != null)
@@ -1293,15 +1293,15 @@ public partial class Form1 : Form
                     var sidField = typeInfo.GetField("_sid", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var uuidField = typeInfo.GetField("_uuid", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var tokenField = typeInfo.GetField("_token", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    
+
                     var sid = sidField?.GetValue(tongBaoScript)?.ToString() ?? "";
                     var uuid = uuidField?.GetValue(tongBaoScript)?.ToString() ?? "";
                     var token = tokenField?.GetValue(tongBaoScript)?.ToString() ?? "";
-                    
+
                     OnLogMessage($"   sid={sid.Substring(0, Math.Min(20, sid.Length))}... ({sid.Length}字符)");
                     OnLogMessage($"   uuid={uuid}");
                     OnLogMessage($"   token={token.Substring(0, Math.Min(20, token.Length))}... ({token.Length}字符)");
-                    
+
                     if (string.IsNullOrEmpty(sid) || string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(token))
                     {
                         OnLogMessage("⚠️ 警告：关键参数未拦截到！请刷新页面或执行操作触发拦截。");
@@ -1312,7 +1312,7 @@ public partial class Form1 : Form
                     }
                 }
             }
-            
+
             OnLogMessage("🍪 【测试】Cookie获取完成");
         }
         catch (Exception ex)
@@ -1320,7 +1320,7 @@ public partial class Form1 : Form
             OnLogMessage($"❌ 获取Cookie失败:{ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 测试投注按钮 - 固定投注"1大10"
     /// </summary>
@@ -1330,13 +1330,13 @@ public partial class Form1 : Form
         {
             OnLogMessage("🎲 【测试】开始投注测试...");
             OnLogMessage("   固定投注内容:1大10");
-            
+
             if (_platformScript == null)
             {
                 OnLogMessage("❌ 平台脚本未初始化");
                 return;
             }
-            
+
             // 先获取余额，确认已登录
             OnLogMessage("📊 检查登录状态和余额...");
             var balance = await _platformScript.GetBalanceAsync();
@@ -1346,21 +1346,21 @@ public partial class Form1 : Form
                 return;
             }
             OnLogMessage($"✅ 当前余额: ¥{balance}");
-            
+
             // 测试投注"1大10"
             var testOrders = new BaiShengVx3Plus.Shared.Models.BetStandardOrderList
             {
                 new BaiShengVx3Plus.Shared.Models.BetStandardOrder(0, BaiShengVx3Plus.Shared.Models.CarNumEnum.P1, BaiShengVx3Plus.Shared.Models.BetPlayEnum.大, 10)
             };
-            
+
             OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");
             var startTime = DateTime.Now;
-            
+
             var (success, orderId, platformResponse) = await _platformScript.PlaceBetAsync(testOrders);
-            
+
             var endTime = DateTime.Now;
             var duration = (int)(endTime - startTime).TotalMilliseconds;
-            
+
             if (success)
             {
                 OnLogMessage($"✅ 【测试】投注成功！");
@@ -1376,7 +1376,7 @@ public partial class Form1 : Form
                 OnLogMessage($"   2. 这个玩法被禁用或限制");
                 OnLogMessage($"   3. 需要等待下一期开盘后再投注");
             }
-            
+
             OnLogMessage("🎲 【测试】投注测试完成");
         }
         catch (Exception ex)
@@ -1385,7 +1385,7 @@ public partial class Form1 : Form
             OnLogMessage($"   堆栈:{ex.StackTrace}");
         }
     }
-    
+
     /// <summary>
     /// 清空日志按钮
     /// </summary>
@@ -1398,22 +1398,22 @@ public partial class Form1 : Form
             {
                 _logBuffer.Clear();
             }
-            
+
             // 清空日志文本框
             txtLog.Clear();
-            
+
             // 更新状态
             UpdateLogStatus();
-            
+
             OnLogMessage("🗑️ 日志已清空");
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"清空日志失败: {ex.Message}", "错误", 
+            MessageBox.Show($"清空日志失败: {ex.Message}", "错误",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-    
+
     /// <summary>
     /// 保存日志按钮
     /// </summary>
@@ -1429,25 +1429,25 @@ public partial class Form1 : Form
                 Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
                 Title = "保存日志"
             };
-            
+
             if (saveDialog.ShowDialog() == DialogResult.OK)
             {
                 // 保存日志
                 System.IO.File.WriteAllText(saveDialog.FileName, txtLog.Text, System.Text.Encoding.UTF8);
-                
+
                 OnLogMessage($"💾 日志已保存: {saveDialog.FileName}");
-                MessageBox.Show($"日志已成功保存到:\n{saveDialog.FileName}", "保存成功", 
+                MessageBox.Show($"日志已成功保存到:\n{saveDialog.FileName}", "保存成功",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         catch (Exception ex)
         {
             OnLogMessage($"❌ 保存日志失败: {ex.Message}");
-            MessageBox.Show($"保存日志失败: {ex.Message}", "错误", 
+            MessageBox.Show($"保存日志失败: {ex.Message}", "错误",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-    
+
     /// <summary>
     /// 点击赔率信息链接
     /// </summary>
@@ -1460,17 +1460,17 @@ public partial class Form1 : Form
                 MessageBox.Show("平台脚本未初始化", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            
+
             // 获取赔率列表
             var oddsList = _platformScript.GetOddsList();
-            
+
             if (oddsList.Count == 0)
             {
-                MessageBox.Show("赔率数据尚未加载，请先登录并等待赔率更新", "提示", 
+                MessageBox.Show("赔率数据尚未加载，请先登录并等待赔率更新", "提示",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
+
             // 创建并显示赔率窗口
             var oddsForm = new OddsDisplayForm();
             oddsForm.SetOddsData(oddsList);
@@ -1479,11 +1479,98 @@ public partial class Form1 : Form
         catch (Exception ex)
         {
             OnLogMessage($"❌ 打开赔率窗口失败: {ex.Message}");
-            MessageBox.Show($"打开赔率窗口失败: {ex.Message}", "错误", 
+            MessageBox.Show($"打开赔率窗口失败: {ex.Message}", "错误",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-    
+
     #endregion
+
+    /// <summary>
+    /// 获取未结算订单列表
+    /// </summary>
+    private async void btnGetLotMainOrderInfos_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            OnLogMessage("📋 【测试】开始获取未结算订单列表...");
+
+            if (_platformScript == null)
+            {
+                OnLogMessage("❌ 平台脚本未初始化");
+                return;
+            }
+
+            // 🔥 调用平台脚本的获取订单方法（默认获取今天的未结算订单）
+            OnLogMessage("📤 调用 GetLotMainOrderInfosAsync (state=0, pageNum=1, pageCount=20, timeout=15秒)");
+            var startTime = DateTime.Now;
+
+            var (success, orders, maxRecordNum, maxPageNum, errorMsg) = 
+                await _platformScript.GetLotMainOrderInfosAsync(
+                    state: 0,           // 未结算
+                    pageNum: 1,         // 第1页
+                    pageCount: 20,      // 每页20条
+                    timeout: 15         // 🔥 超时时间15秒（可根据需要调整）
+                    // beginDate 和 endDate 默认为今天
+                );
+
+            var elapsed = DateTime.Now - startTime;
+            OnLogMessage($"⏱️ 请求耗时: {elapsed.TotalSeconds:F2}秒");
+
+            if (success)
+            {
+                OnLogMessage($"✅ 获取订单成功:");
+                OnLogMessage($"   📊 本页: {orders?.Count ?? 0}条");
+                OnLogMessage($"   📊 总计: {maxRecordNum}条记录，共{maxPageNum}页");
+                
+                if (orders != null && orders.Count > 0)
+                {
+                    OnLogMessage($"\n📄 订单列表（前 {Math.Min(10, orders.Count)} 条）:");
+                    
+                    for (int i = 0; i < Math.Min(10, orders.Count); i++)
+                    {
+                        var order = orders[i];
+                        
+                        // 提取订单信息
+                        var orderId = order["orderid"]?.ToString() ?? "N/A";
+                        var expect = order["expect"]?.ToString() ?? "N/A";
+                        var amount = order["amount"]?.Value<decimal>() ?? 0;
+                        var userData = order["userdata"]?.ToString()?.Trim() ?? "";
+                        var createTime = order["createtime"]?.ToString() ?? "";
+                        var orderState = order["state"]?.Value<int>() ?? -1;
+                        var subCount = order["subcount"]?.Value<int>() ?? 0;
+                        
+                        OnLogMessage($"   [{i + 1}] 订单ID: {orderId}");
+                        OnLogMessage($"       期号: {expect} | 金额: {amount}元 | 子单数: {subCount}");
+                        OnLogMessage($"       内容: {userData}");
+                        OnLogMessage($"       时间: {createTime} | 状态: {(orderState == 0 ? "未结算" : "已结算")}");
+                        
+                        if (i < orders.Count - 1)
+                        {
+                            OnLogMessage("");  // 空行分隔
+                        }
+                    }
+                    
+                    if (orders.Count > 10)
+                    {
+                        OnLogMessage($"\n   ... 还有 {orders.Count - 10} 条订单未显示");
+                    }
+                }
+                else
+                {
+                    OnLogMessage("   ℹ️ 暂无未结算订单");
+                }
+            }
+            else
+            {
+                OnLogMessage($"❌ 获取订单失败: {errorMsg}");
+            }
+        }
+        catch (Exception ex)
+        {
+            OnLogMessage($"❌ 获取订单异常: {ex.Message}");
+            OnLogMessage($"   堆栈: {ex.StackTrace}");
+        }
+    }
 }
 
