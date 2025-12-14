@@ -1,3 +1,4 @@
+using BaiShengVx3Plus.Shared.Helpers;
 using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
@@ -21,6 +22,7 @@ namespace BsBrowserClient.PlatformScripts
         private readonly WebView2 _webView;
         private readonly Action<string> _logCallback;
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly ModernHttpHelper _httpHelper;
         private bool _isLoggedIn = false;
         private string _baseUrl = "";  // 缓存的base URL
         private string _qihaoid = "";  // 期号ID
@@ -34,6 +36,7 @@ namespace BsBrowserClient.PlatformScripts
         {
             _webView = webView;
             _logCallback = logCallback;
+            _httpHelper = new ModernHttpHelper(_httpClient);  // 🔥 初始化 ModernHttpHelper
             
             // 配置HttpClient
             _httpClient.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");

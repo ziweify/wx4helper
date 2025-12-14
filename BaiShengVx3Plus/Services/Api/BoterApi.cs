@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using BaiShengVx3Plus.Models.Api;
 using BaiShengVx3Plus.Models.Games.Binggo;
+using BaiShengVx3Plus.Shared.Helpers;
 using System.Net.Http;
 
 namespace BaiShengVx3Plus.Services.Api
@@ -29,6 +30,7 @@ namespace BaiShengVx3Plus.Services.Api
         
         private readonly string _urlRoot = "http://8.134.71.102:789";
         private readonly HttpClient _httpClient;
+        private readonly ModernHttpHelper _httpHelper;
         
         public BsApiResponse<BsApiUser>? LoginApiResponse { get; private set; }
         public string User { get; private set; } = string.Empty;
@@ -42,6 +44,7 @@ namespace BaiShengVx3Plus.Services.Api
         private BoterApi()
         {
             _httpClient = new HttpClient();
+            _httpHelper = new ModernHttpHelper(_httpClient);  // 🔥 复用 HttpClient 连接池
         }
         
         /// <summary>
@@ -75,9 +78,24 @@ namespace BaiShengVx3Plus.Services.Api
             {
                 Console.WriteLine($"📡 登录请求: {funcUrl}");
                 
-                var response = await _httpClient.GetAsync(funcUrl);
-                var json = await response.Content.ReadAsStringAsync();
+                // 🎯 使用 ModernHttpHelper
+                var result = await _httpHelper.GetAsync(new HttpRequestItem
+                {
+                    Url = funcUrl,
+                    Timeout = 10
+                });
                 
+                if (!result.Success)
+                {
+                    Console.WriteLine($"❌ 登录请求失败: {result.ErrorMessage}");
+                    return new BsApiResponse<BsApiUser>
+                    {
+                        Code = -1,
+                        Msg = result.ErrorMessage ?? "请求失败"
+                    };
+                }
+                
+                var json = result.Html;
                 Console.WriteLine($"📡 登录响应: {json}");
                 
                 LoginApiResponse = JsonConvert.DeserializeObject<BsApiResponse<BsApiUser>>(json);
@@ -171,9 +189,24 @@ namespace BaiShengVx3Plus.Services.Api
             
             try
             {
-                var httpResponse = await _httpClient.GetAsync(funcUrl);
-                var json = await httpResponse.Content.ReadAsStringAsync();
+                // 🎯 使用 ModernHttpHelper
+                var result = await _httpHelper.GetAsync(new HttpRequestItem
+                {
+                    Url = funcUrl,
+                    Timeout = 15
+                });
                 
+                if (!result.Success)
+                {
+                    Console.WriteLine($"❌ API 请求失败: {result.ErrorMessage}");
+                    return new BsApiResponse<List<BinggoLotteryData>>
+                    {
+                        Code = -1,
+                        Msg = result.ErrorMessage ?? "请求失败"
+                    };
+                }
+                
+                var json = result.Html;
                 Console.WriteLine($"📡 API 响应: {json.Substring(0, Math.Min(200, json.Length))}...");
                 
                 // 🔥 解析数据（参考 F5BotV2）
@@ -261,9 +294,24 @@ namespace BaiShengVx3Plus.Services.Api
             
             try
             {
-                var httpResponse = await _httpClient.GetAsync(funcUrl);
-                var json = await httpResponse.Content.ReadAsStringAsync();
+                // 🎯 使用 ModernHttpHelper
+                var result = await _httpHelper.GetAsync(new HttpRequestItem
+                {
+                    Url = funcUrl,
+                    Timeout = 10
+                });
                 
+                if (!result.Success)
+                {
+                    Console.WriteLine($"❌ GetBgData({issueId}) 请求失败: {result.ErrorMessage}");
+                    return new BsApiResponse<BinggoLotteryData>
+                    {
+                        Code = -1,
+                        Msg = result.ErrorMessage ?? "请求失败"
+                    };
+                }
+                
+                var json = result.Html;
                 Console.WriteLine($"📡 GetBgData({issueId}) API 响应: {json}");  // 🔥 添加日志
                 
                 var apiResponse = JsonConvert.DeserializeObject<BsApiResponse<object>>(json);

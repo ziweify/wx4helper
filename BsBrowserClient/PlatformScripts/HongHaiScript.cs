@@ -1,3 +1,4 @@
+using BaiShengVx3Plus.Shared.Helpers;
 using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
@@ -23,6 +24,7 @@ namespace BsBrowserClient.PlatformScripts
         private readonly WebView2 _webView;
         private readonly Action<string> _logCallback;
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly ModernHttpHelper _httpHelper;
         private bool _isLoggedIn = false;
         private string _sid = "";
         private int _uuid = 0;
@@ -37,6 +39,7 @@ namespace BsBrowserClient.PlatformScripts
         {
             _webView = webView;
             _logCallback = logCallback;
+            _httpHelper = new ModernHttpHelper(_httpClient);  // 🔥 初始化 ModernHttpHelper
             
             // 配置HttpClient
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json, text/javascript, */*; q=0.01");

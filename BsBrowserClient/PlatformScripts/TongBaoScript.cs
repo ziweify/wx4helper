@@ -1,3 +1,4 @@
+using BaiShengVx3Plus.Shared.Helpers;
 using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
@@ -21,6 +22,7 @@ namespace BsBrowserClient.PlatformScripts
         private readonly WebView2 _webView;
         private readonly Action<string> _logCallback;
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly ModernHttpHelper _httpHelper;
         
         // 关键参数（从拦截中获取）
         private string _sid = "";
@@ -47,6 +49,7 @@ namespace BsBrowserClient.PlatformScripts
         {
             _webView = webView;
             _logCallback = logCallback;
+            _httpHelper = new ModernHttpHelper(_httpClient);  // 🔥 初始化 ModernHttpHelper
             
             // 配置HttpClient
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json, text/javascript, */*; q=0.01");
@@ -388,14 +391,22 @@ namespace BsBrowserClient.PlatformScripts
                 _logCallback($"📋 POST数据（完整）:");
                 _logCallback($"   {fullPostData}");
                 
-                // 🔥 使用ByteArrayContent直接发送字节，避免HttpClient的任何自动处理
-                var bytes = Encoding.UTF8.GetBytes(fullPostData);
-                var content = new ByteArrayContent(bytes);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+                // 🎯 使用 ModernHttpHelper
+                var result = await _httpHelper.PostAsync(new HttpRequestItem
+                {
+                    Url = url,
+                    PostData = fullPostData,
+                    ContentType = "application/x-www-form-urlencoded",
+                    Timeout = 10
+                });
                 
-                var response = await _httpClient.PostAsync(url, content);
-                var responseText = await response.Content.ReadAsStringAsync();
+                if (!result.Success)
+                {
+                    _logCallback($"❌ 投注请求失败: {result.ErrorMessage}");
+                    return (false, "", result.ErrorMessage ?? "请求失败");
+                }
                 
+                var responseText = result.Html;
                 _logCallback($"📥 投注响应（完整）:");
                 _logCallback($"   {responseText}");
                 
