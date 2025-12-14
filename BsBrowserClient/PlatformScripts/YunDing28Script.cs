@@ -373,6 +373,13 @@ namespace BsBrowserClient.PlatformScripts
             Log("⚠️ 云顶28平台赔率功能待实现");
             return new List<OddsInfo>();
         }
+        
+        public Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
+            int state = 0, int pageNum = 1, int pageCount = 20, string? beginDate = null, string? endDate = null)
+        {
+            Log("⚠️ 云顶28 平台暂不支持获取订单列表");
+            return Task.FromResult<(bool, List<JObject>?, int, int, string)>((false, null, 0, 0, "平台暂不支持"));
+        }
     }
 }
 

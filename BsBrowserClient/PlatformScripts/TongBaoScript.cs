@@ -437,6 +437,143 @@ namespace BsBrowserClient.PlatformScripts
         }
         
         /// <summary>
+        /// 获取未结算的订单信息
+        /// </summary>
+        /// <param name="state">订单状态：0=未结算, 1=已结算</param>
+        /// <param name="pageNum">页码（从1开始）</param>
+        /// <param name="pageCount">每页数量</param>
+        /// <param name="beginDate">开始日期（yyyyMMdd格式，如：20251214）</param>
+        /// <param name="endDate">结束日期（yyyyMMdd格式，如：20251214）</param>
+        /// <returns>(是否成功, 订单列表, 最大记录数, 最大页数, 错误消息)</returns>
+        public async Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
+            int state = 0, 
+            int pageNum = 1, 
+            int pageCount = 20,
+            string? beginDate = null,
+            string? endDate = null)
+        {
+            try
+            {
+                // 🔥 检查必要参数
+                if (string.IsNullOrEmpty(_uuid) || string.IsNullOrEmpty(_sid))
+                {
+                    _logCallback("❌ 获取订单失败: 缺少 uuid 或 sid");
+                    return (false, null, 0, 0, "缺少必要参数");
+                }
+                
+                if (string.IsNullOrEmpty(DoMainApi))
+                {
+                    _logCallback("❌ 获取订单失败: API 域名未初始化");
+                    return (false, null, 0, 0, "API域名未初始化");
+                }
+                
+                // 🔥 使用当前日期（如果未指定）
+                if (string.IsNullOrEmpty(beginDate))
+                {
+                    beginDate = DateTime.Now.ToString("yyyyMMdd");
+                }
+                if (string.IsNullOrEmpty(endDate))
+                {
+                    endDate = DateTime.Now.ToString("yyyyMMdd");
+                }
+                
+                // 🔥 构建请求 URL
+                string url = $"{DoMainApi}/frclienthall/getlotmainorderinfos";
+                
+                // 🔥 构建 POST 参数
+                string postData = $"uuid={_uuid}&sid={_sid}&state={state}&pagenum={pageNum}&pagecount={pageCount}&begindate={beginDate}&enddate={endDate}&roomeng=twbingo";
+                
+                _logCallback($"📤 获取订单列表: state={state}, page={pageNum}/{pageCount}, date={beginDate}~{endDate}");
+                
+                // 🎯 使用 ModernHttpHelper
+                var result = await _httpHelper.PostAsync(new HttpRequestItem
+                {
+                    Url = url,
+                    PostData = postData,
+                    ContentType = "application/x-www-form-urlencoded",
+                    Timeout = 10
+                });
+                
+                if (!result.Success)
+                {
+                    _logCallback($"❌ 获取订单请求失败: {result.ErrorMessage}");
+                    return (false, null, 0, 0, result.ErrorMessage ?? "请求失败");
+                }
+                
+                var responseText = result.Html;
+                _logCallback($"📥 订单响应: {responseText.Substring(0, Math.Min(200, responseText.Length))}...");
+                
+                // 🔥 解析响应
+                var json = JObject.Parse(responseText);
+                var status = json["status"]?.Value<bool>() ?? false;
+                
+                if (!status)
+                {
+                    var errcode = json["errcode"]?.Value<int>() ?? -1;
+                    var msg = json["msg"]?.ToString() ?? "未知错误";
+                    _logCallback($"❌ 获取订单失败: {msg} (errcode={errcode})");
+                    return (false, null, 0, 0, msg);
+                }
+                
+                // 🔥 提取订单数据
+                var msgObj = json["msg"] as JObject;
+                if (msgObj == null)
+                {
+                    _logCallback("❌ 获取订单失败: msg 对象为空");
+                    return (false, null, 0, 0, "响应格式错误");
+                }
+                
+                var maxRecordNum = msgObj["maxrecordnum"]?.Value<int>() ?? 0;
+                var maxPageNum = msgObj["maxpagenum"]?.Value<int>() ?? 0;
+                var dataArray = msgObj["data"] as JArray;
+                
+                if (dataArray == null || dataArray.Count == 0)
+                {
+                    _logCallback($"✅ 获取订单成功: 0条记录 (maxRecord={maxRecordNum}, maxPage={maxPageNum})");
+                    return (true, new List<JObject>(), maxRecordNum, maxPageNum, "");
+                }
+                
+                // 🔥 转换为 List<JObject>
+                var orderList = new List<JObject>();
+                foreach (var item in dataArray)
+                {
+                    if (item is JObject orderObj)
+                    {
+                        orderList.Add(orderObj);
+                    }
+                }
+                
+                _logCallback($"✅ 获取订单成功: {orderList.Count}条记录 (maxRecord={maxRecordNum}, maxPage={maxPageNum})");
+                
+                // 🔥 打印前3条订单信息（用于调试）
+                for (int i = 0; i < Math.Min(3, orderList.Count); i++)
+                {
+                    var order = orderList[i];
+                    var orderId = order["orderid"]?.ToString() ?? "";
+                    var expect = order["expect"]?.ToString() ?? "";
+                    var amount = order["amount"]?.Value<decimal>() ?? 0;
+                    var userData = order["userdata"]?.ToString() ?? "";
+                    var orderState = order["state"]?.Value<int>() ?? -1;
+                    
+                    _logCallback($"   [{i + 1}] {orderId} | 期号:{expect} | 金额:{amount}元 | 内容:{userData.Trim()} | 状态:{orderState}");
+                }
+                
+                if (orderList.Count > 3)
+                {
+                    _logCallback($"   ... 还有 {orderList.Count - 3} 条订单");
+                }
+                
+                return (true, orderList, maxRecordNum, maxPageNum, "");
+            }
+            catch (Exception ex)
+            {
+                _logCallback($"❌ 获取订单异常: {ex.Message}");
+                _logCallback($"   堆栈: {ex.StackTrace}");
+                return (false, null, 0, 0, $"异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 处理拦截到的响应
         /// 参考 F5BotV2 的 ChromeBroser_ResponseComplete 方法
         /// </summary>

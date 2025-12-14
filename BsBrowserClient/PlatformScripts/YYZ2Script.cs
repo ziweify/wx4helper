@@ -225,6 +225,12 @@ namespace BsBrowserClient.PlatformScripts
             // 元宇宙2不需要赔率映射
             return new List<OddsInfo>();
         }
+        
+        public Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
+            int state = 0, int pageNum = 1, int pageCount = 20, string? beginDate = null, string? endDate = null)
+        {
+            return Task.FromResult<(bool, List<JObject>?, int, int, string)>((false, null, 0, 0, "平台暂不支持"));
+        }
     }
 }
 

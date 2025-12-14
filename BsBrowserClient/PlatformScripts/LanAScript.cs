@@ -2,6 +2,7 @@ using BaiShengVx3Plus.Shared.Helpers;
 using BaiShengVx3Plus.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -307,6 +308,19 @@ namespace BsBrowserClient.PlatformScripts
         {
             // 蓝A不需要赔率映射
             return new List<OddsInfo>();
+        }
+        
+        /// <summary>
+        /// 获取未结算的订单信息（蓝A 平台暂不支持）
+        /// </summary>
+        public Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
+            int state = 0,
+            int pageNum = 1,
+            int pageCount = 20,
+            string? beginDate = null,
+            string? endDate = null)
+        {
+            return Task.FromResult<(bool, List<JObject>?, int, int, string)>((false, null, 0, 0, "平台暂不支持"));
         }
     }
 }
