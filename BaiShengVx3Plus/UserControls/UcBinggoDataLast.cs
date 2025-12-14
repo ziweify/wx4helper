@@ -92,9 +92,9 @@ namespace BaiShengVx3Plus.UserControls
                 _lotteryService.LotteryOpened += OnLotteryOpened;
                 
                 // 🔥 立即本地计算并显示上期期号和时间（不等待 API）
-                int currentIssueId = BinggoTimeHelper.GetCurrentIssueId();
-                int lastIssueId = BinggoTimeHelper.GetPreviousIssueId(currentIssueId);
-                DateTime lastOpenTime = BinggoTimeHelper.GetIssueOpenTime(lastIssueId);
+                int currentIssueId = BinggoHelper.GetCurrentIssueId();
+                int lastIssueId = BinggoHelper.GetPreviousIssueId(currentIssueId);
+                DateTime lastOpenTime = BinggoHelper.GetIssueOpenTime(lastIssueId);
                 
                 Console.WriteLine($"🔥 SetLotteryService: 本地计算上期 - 当前期号={currentIssueId}, 上期期号={lastIssueId}, 开奖时间={lastOpenTime:HH:mm:ss}");
                 

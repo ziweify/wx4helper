@@ -273,12 +273,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // ========================================
                 // 🔥 步骤1: 使用本地计算获取当前期号（始终可用）
                 // ========================================
-                int localIssueId = BinggoTimeHelper.GetCurrentIssueId();
+                int localIssueId = BinggoHelper.GetCurrentIssueId();
                 
                 // 🔥 关键区分：
                 // 1. secondsToOpen = 距离开奖的真实倒计时（用于显示）
                 // 2. secondsToSeal = 距离封盘的倒计时（用于状态判断）
-                int secondsToOpen = BinggoTimeHelper.GetSecondsToOpen(localIssueId);
+                int secondsToOpen = BinggoHelper.GetSecondsToOpen(localIssueId);
                 int secondsToSeal = secondsToOpen - _configService.GetSealSecondsAhead();
                 
                 lock (_statusLock)
@@ -293,7 +293,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             // 🔥 首次初始化：计算上一期
                             // ⚠️ 重要：如果程序在整点打开，当前期号已经是新期号了
                             // 所以上一期应该是 localIssueId - 1
-                            previousIssueId = BinggoTimeHelper.GetPreviousIssueId(localIssueId);
+                            previousIssueId = BinggoHelper.GetPreviousIssueId(localIssueId);
                             _logService.Info("BinggoLotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
                             
                             // 🔥 验证：上一期应该是当前期号 - 1
@@ -363,12 +363,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 var dataLast = new BinggoLotteryData
                 {
                     IssueId = oldIssueId,
-                    OpenTime = BinggoTimeHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
+                    OpenTime = BinggoHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
                 };
                 
                 _logService.Info("BinggoLotteryService", $"📢 期号变更事件: 当期={newIssueId}, 上期={oldIssueId}");
-                _logService.Info("BinggoLotteryService", $"   当期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
-                _logService.Info("BinggoLotteryService", $"   上期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
+                _logService.Info("BinggoLotteryService", $"   当期开奖时间: {BinggoHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
+                _logService.Info("BinggoLotteryService", $"   上期开奖时间: {BinggoHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
                 
                 // 🔥 触发期号变更事件（同时传递当期和上期数据）
                 IssueChanged?.Invoke(this, new BinggoIssueChangedEventArgs
@@ -710,7 +710,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 // 🔥 关键修复：在状态变为"开盘中"之前，只检查上一期是否已开奖（不管是否结算完成）
                 // 参考用户要求：我们只管上一期是否开奖，不管是否结算。结算可以补单。
-                int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(_currentIssueId);
+                int previousIssueId = Helpers.BinggoHelper.GetPreviousIssueId(_currentIssueId);
                 if (_lastOpenedIssueId < previousIssueId)
                 {
                     // 🔥 上一期未开奖，保持"等待中"状态，不允许投注
@@ -757,7 +757,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 只在第一次进入"等待中"状态时记录日志（避免重复日志）
                 if (oldStatus != BinggoLotteryStatus.等待中)
                 {
-                    int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(_currentIssueId);
+                    int previousIssueId = Helpers.BinggoHelper.GetPreviousIssueId(_currentIssueId);
                     _logService.Info("BinggoLotteryService", 
                         $"⏳ 进入等待中状态: 期号 {_currentIssueId}, 剩余时间 {secondsToSeal}秒（超过5分钟，不允许投注）");
                     _logService.Debug("BinggoLotteryService", 
@@ -1019,8 +1019,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             try
             {
                 // 计算上期期号
-                int currentIssueId = BinggoTimeHelper.GetCurrentIssueId();
-                int lastIssueId = BinggoTimeHelper.GetPreviousIssueId(currentIssueId);
+                int currentIssueId = BinggoHelper.GetCurrentIssueId();
+                int lastIssueId = BinggoHelper.GetPreviousIssueId(currentIssueId);
                 
                 // 🔥 在返回的数据中查找上期数据
                 var lastData = dataList.FirstOrDefault(d => d.IssueId == lastIssueId);
@@ -1890,7 +1890,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 参考 F5BotV2：开奖后状态变为"等待中"，然后在状态循环中变为"开盘中"时发送
                 // 🔥 关键：只有在上一期真正结算完成后，才发送本期的"线下开始"消息
                 // 🔥 如果上一期还没结算完成，直接 return，不发送"线下开始"消息
-                int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
+                int previousIssueId = Helpers.BinggoHelper.GetPreviousIssueId(issueId);
                 bool isDevMode = _configService.GetIsRunModeDev();
                 
                 if (_lastSettledIssueId < previousIssueId)
@@ -2174,13 +2174,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     }
                     
                     // 🔥 获取当前期号，计算最近32期的期号范围
-                    int currentIssueId = BinggoTimeHelper.GetCurrentIssueId();
+                    int currentIssueId = BinggoHelper.GetCurrentIssueId();
                     var issueIdList = new List<int>();
                     int issueId = currentIssueId;
                     for (int i = 0; i < 32; i++)
                     {
                         issueIdList.Add(issueId);
-                        issueId = BinggoTimeHelper.GetPreviousIssueId(issueId);
+                        issueId = BinggoHelper.GetPreviousIssueId(issueId);
                     }
                     issueIdList.Reverse(); // 反转，从最早到最新
                     
@@ -2211,7 +2211,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                                 DrawText(g, issueShort.ToString(), 2, currentY, font, System.Drawing.Color.Black);
                                 
                                 // 🔥 绘制开奖时间（无论是否开奖都显示，可以计算出来）
-                                DateTime openTime = BinggoTimeHelper.GetIssueOpenTime(loopIssueId);
+                                DateTime openTime = BinggoHelper.GetIssueOpenTime(loopIssueId);
                                 string time = openTime.ToString("HH:mm");
                                 DrawText(g, time, 60, currentY, font, System.Drawing.Color.Black);
                                 

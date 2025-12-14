@@ -18,8 +18,8 @@
 
 | 功能 | F5BotV2 实现 | BaiShengVx3Plus 实现 | 状态 |
 |------|-------------|---------------------|------|
-| **期号计算** | `BinGouHelper.getNextIssueId()` | `BinggoTimeHelper.GetCurrentIssueId()` | ✅ |
-| **倒计时计算** | `issueTime - dtNow` | `BinggoTimeHelper.GetSecondsToSeal()` | ✅ |
+| **期号计算** | `BinGouHelper.getNextIssueId()` | `BinggoHelper.GetCurrentIssueId()` | ✅ |
+| **倒计时计算** | `issueTime - dtNow` | `BinggoHelper.GetSecondsToSeal()` | ✅ |
 | **期号变更检测** | `issueid != _IssueidCur` | `localIssueId != _currentIssueId` | ✅ |
 | **30秒提醒** | `sec < 30 && !b30` | `secondsToSeal < 30 && !_reminded30Seconds` | ✅ |
 | **15秒提醒** | `sec < 15 && !b15` | `secondsToSeal < 15 && !_reminded15Seconds` | ✅ |
@@ -64,7 +64,7 @@ public static int getNextIssueId(DateTime time)
 }
 ```
 
-#### BaiShengVx3Plus (BinggoTimeHelper.cs)
+#### BaiShengVx3Plus (BinggoHelper.cs)
 ```csharp
 public static int GetCurrentIssueId(DateTime? time = null)
 {
@@ -189,8 +189,8 @@ private async Task OnTimerTickAsync()
     try
     {
         // 🔥 步骤1: 本地计算期号（始终可用）
-        int localIssueId = BinggoTimeHelper.GetCurrentIssueId();
-        int secondsToSeal = BinggoTimeHelper.GetSecondsToSeal(localIssueId, 
+        int localIssueId = BinggoHelper.GetCurrentIssueId();
+        int secondsToSeal = BinggoHelper.GetSecondsToSeal(localIssueId, 
             _settings.SealSecondsAhead);
         
         lock (_lock)
@@ -210,7 +210,7 @@ private async Task OnTimerTickAsync()
                     // 首次初始化
                     _currentIssueId = localIssueId;
                     _ = LoadPreviousLotteryDataAsync(
-                        BinggoTimeHelper.GetPreviousIssueId(localIssueId));
+                        BinggoHelper.GetPreviousIssueId(localIssueId));
                 }
             }
             
@@ -364,9 +364,9 @@ private void UpdateStatus(int secondsToSeal)
 
 | 数据 | F5BotV2 | BaiShengVx3Plus | 依赖 |
 |------|---------|----------------|------|
-| 当前期号 | `BinGouHelper.getNextIssueId()` | `BinggoTimeHelper.GetCurrentIssueId()` | **本地计算** |
-| 开奖时间 | `BinGouHelper.getOpenDatetime()` | `BinggoTimeHelper.GetIssueOpenTime()` | **本地计算** |
-| 倒计时 | `issueTime - DateTime.Now` | `BinggoTimeHelper.GetSecondsToSeal()` | **本地计算** |
+| 当前期号 | `BinGouHelper.getNextIssueId()` | `BinggoHelper.GetCurrentIssueId()` | **本地计算** |
+| 开奖时间 | `BinGouHelper.getOpenDatetime()` | `BinggoHelper.GetIssueOpenTime()` | **本地计算** |
+| 倒计时 | `issueTime - DateTime.Now` | `BinggoHelper.GetSecondsToSeal()` | **本地计算** |
 | 开奖数据 | `_boterApi.getBgdata()` | `_apiClient.GetBinggoDataAsync()` | **API（可选）** |
 
 ### 2. 事件触发
@@ -452,15 +452,15 @@ private void UpdateStatus(int secondsToSeal)
 
 ```csharp
 // 测试期号计算
-var issueId = BinggoTimeHelper.GetCurrentIssueId();
+var issueId = BinggoHelper.GetCurrentIssueId();
 Console.WriteLine($"当前期号: {issueId}");
 
 // 测试倒计时计算
-var seconds = BinggoTimeHelper.GetSecondsToSeal(issueId);
+var seconds = BinggoHelper.GetSecondsToSeal(issueId);
 Console.WriteLine($"距离封盘: {seconds} 秒");
 
 // 测试开奖时间
-var openTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+var openTime = BinggoHelper.GetIssueOpenTime(issueId);
 Console.WriteLine($"开奖时间: {openTime}");
 ```
 

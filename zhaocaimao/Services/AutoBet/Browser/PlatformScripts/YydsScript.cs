@@ -12,6 +12,7 @@ using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using BaiShengVx3Plus.Shared.Helpers;  // 🔥 使用共享库中的 ModernHttpHelper
 using zhaocaimao.Services.AutoBet.Browser.Models;
 using zhaocaimao.Services.AutoBet.Browser.Services;
 using zhaocaimao.Shared.Models;
@@ -30,6 +31,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         private readonly WebView2 _webView;
         private readonly Action<string> _logCallback;
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly ModernHttpHelper _httpHelper;
         private List<BrowserOddsInfo> _OddsInfo = new List<BrowserOddsInfo>();
 
         // 关键参数（从拦截中获取或cookie中提取）
@@ -39,6 +41,10 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         private string _baseUrl = "https://client.06n.yyds666.me";  // 登录域名
         private string _apiBaseUrl = "";  // API投注域名（从/info接口获取）
         private string _betPlate = "";  // 平台类型（A/B/C/D）
+        
+        // 赔率更新控制
+        private bool _oddsLoaded = false;  // 赔率是否已加载
+        private bool _autoUpdateOdds = true;  // 是否允许自动更新赔率
         
         // 赔率ID映射表
         //private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
@@ -63,6 +69,9 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             // 1. Authorization 请求头在登录成功后动态添加（HandleResponse 中）
             // 2. Content-Type 由 StringContent/ByteArrayContent 自动设置
             // 3. 单个请求特定的请求头使用 HttpRequestMessage.Headers.Add()
+            
+            // 🎯 初始化 ModernHttpHelper（复用 HttpClient 连接池）
+            _httpHelper = new ModernHttpHelper(_httpClient);
         }
         
         /// <summary>
@@ -808,7 +817,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         _logCallback($"✅ 登录成功！原因: {reason}");
                         
                         // 提取Cookie中的Token/SessionId
-                        await ExtractAuthInfoFromCookies();
+                        //await ExtractAuthInfoFromCookies();
                         
                         return true;
                     }
@@ -827,48 +836,59 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         /// <summary>
         /// 从Cookie中提取认证信息
         /// </summary>
-        private async Task ExtractAuthInfoFromCookies()
-        {
-            try
-            {
-                var extractScript = @"
-                    (function() {
-                        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-                            const [key, value] = cookie.trim().split('=');
-                            acc[key] = value;
-                            return acc;
-                        }, {});
-                        return cookies;
-                    })();
-                ";
+        //private async Task ExtractAuthInfoFromCookies()
+        //{
+        //    try
+        //    {
+        //        var extractScript = @"
+        //            (function() {
+        //                const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        //                    const [key, value] = cookie.trim().split('=');
+        //                    acc[key] = value;
+        //                    return acc;
+        //                }, {});
+        //                return cookies;
+        //            })();
+        //        ";
                 
-                var result = await _webView.CoreWebView2.ExecuteScriptAsync(extractScript);
-                var cookies = JObject.Parse(result);
+        //        var result = await _webView.CoreWebView2.ExecuteScriptAsync(extractScript);
+        //        var cookies = JObject.Parse(result);
                 
-                // 尝试提取常见的认证Cookie
-                _token = cookies["token"]?.ToString() ?? 
-                        cookies["auth_token"]?.ToString() ?? 
-                        cookies["access_token"]?.ToString() ?? "";
+        //        // 🔥 修复：只有在 Cookie 中找到 Token 时才更新，避免覆盖已有的 Token
+        //        var cookieToken = cookies["token"]?.ToString() ?? 
+        //                         cookies["auth_token"]?.ToString() ?? 
+        //                         cookies["access_token"]?.ToString() ?? "";
                 
-                _sessionId = cookies["session"]?.ToString() ?? 
-                            cookies["PHPSESSID"]?.ToString() ?? 
-                            cookies["sessionid"]?.ToString() ?? "";
+        //        if (!string.IsNullOrEmpty(cookieToken))
+        //        {
+        //            _token = cookieToken;
+        //            _logCallback($"✅ 从Cookie提取到 Token: {_token.Substring(0, Math.Min(10, _token.Length))}...");
+        //        }
+        //        else
+        //        {
+        //            _logCallback($"ℹ️ Cookie中没有Token，保留现有Token (长度: {_token?.Length ?? 0})");
+        //        }
                 
-                if (!string.IsNullOrEmpty(_token))
-                {
-                    _logCallback($"✅ 提取到 Token: {_token.Substring(0, Math.Min(10, _token.Length))}...");
-                }
+        //        // 提取 SessionId
+        //        var cookieSessionId = cookies["session"]?.ToString() ?? 
+        //                             cookies["PHPSESSID"]?.ToString() ?? 
+        //                             cookies["sessionid"]?.ToString() ?? "";
                 
-                if (!string.IsNullOrEmpty(_sessionId))
-                {
-                    _logCallback($"✅ 提取到 SessionId: {_sessionId.Substring(0, Math.Min(10, _sessionId.Length))}...");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logCallback($"⚠️ 提取Cookie失败: {ex.Message}");
-            }
-        }
+        //        if (!string.IsNullOrEmpty(cookieSessionId))
+        //        {
+        //            _sessionId = cookieSessionId;
+        //            _logCallback($"✅ 从Cookie提取到 SessionId: {_sessionId.Substring(0, Math.Min(10, _sessionId.Length))}...");
+        //        }
+        //        else
+        //        {
+        //            _logCallback($"ℹ️ Cookie中没有SessionId");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logCallback($"⚠️ 提取Cookie失败: {ex.Message}");
+        //    }
+        //}
         
         /// <summary>
         /// 获取余额
@@ -952,12 +972,24 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 
                 _logCallback($"📤 准备投注: {orders.Count} 项");
                 
+                // 🔥 调试日志：显示实例和Token状态
+                _logCallback($"🔍 [DEBUG] YydsScript实例: {this.GetHashCode()}");
+                _logCallback($"🔍 [DEBUG] Token状态: {(_token != null ? $"长度={_token.Length}" : "null")}");
+                _logCallback($"🔍 [DEBUG] Token是否为空: {string.IsNullOrEmpty(_token)}");
+                _logCallback($"🔍 [DEBUG] SessionId是否为空: {string.IsNullOrEmpty(_sessionId)}");
+                
+                if (!string.IsNullOrEmpty(_token))
+                {
+                    _logCallback($"🔍 [DEBUG] Token前20位: {_token.Substring(0, Math.Min(20, _token.Length))}...");
+                }
+                
                 // TODO: 需要分析YYDS平台的投注API
                 // 以下是通用的投注逻辑模板，需要根据实际API调整
                 
                 // 1. 检查是否已登录
                 if (string.IsNullOrEmpty(_token) && string.IsNullOrEmpty(_sessionId))
                 {
+                    _logCallback($"❌ 登录检查失败: Token和SessionId都为空");
                     return (false, "", "#未登录，无法下注");
                 }
 
@@ -1024,44 +1056,60 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 _logCallback($"   URL: {_apiBaseUrl}/system/betOrder/pc_user/order_add");
                 _logCallback($"   Body: {postdata}");
                 _logCallback($"   Token: {(!string.IsNullOrEmpty(_token) ? _token.Substring(0, Math.Min(20, _token.Length)) + "..." : "未设置")}");
+                _logCallback($"   Authorization头: Bearer {(!string.IsNullOrEmpty(_token) ? _token.Substring(0, Math.Min(20, _token.Length)) + "..." : "未设置")}");
 
-                // 🔥 使用 HttpRequestMessage 完全控制请求
-                string url_post = $"{_apiBaseUrl}/system/betOrder/pc_user/order_add";
-                var request = new HttpRequestMessage(HttpMethod.Post, url_post);
-                
-                // 🔥 添加请求体
-                request.Content = new StringContent(postdata, Encoding.UTF8, "application/json");
-                
-                // 🔥 添加自定义请求头
-                if (!string.IsNullOrEmpty(_token))
+                // 🎯 使用 ModernHttpHelper 发送请求（完全匹配抓包数据）
+                var result = await _httpHelper.PostAsync(new HttpRequestItem
                 {
-                    request.Headers.Add("Authorization", _token);
-                }
-                
-                // 🔥 可以添加更多请求头
-                request.Headers.Add("X-Requested-With", "XMLHttpRequest");
-                request.Headers.Add("Accept", "application/json, text/plain, */*");
-                // request.Headers.Add("Origin", _baseUrl);
-                // request.Headers.Add("Referer", $"{_baseUrl}/");
-                // request.Headers.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
-                // request.Headers.Add("Accept-Encoding", "gzip, deflate, br");
-                
-                _logCallback($"📋 请求头:");
-                _logCallback($"   Authorization: {(!string.IsNullOrEmpty(_token) ? _token.Substring(0, 20) + "..." : "未设置")}");
-                _logCallback($"   Content-Type: application/json");
-                _logCallback($"   X-Requested-With: XMLHttpRequest");
-                _logCallback($"   Accept: application/json, text/plain, */*");
-                
-                // 🔥 发送请求
-                var response = await _httpClient.SendAsync(request);
-                var responseText = await response.Content.ReadAsStringAsync();
+                    Url = $"{_apiBaseUrl}/system/betOrder/pc_user/order_add",
+                    PostData = postdata,
+                    ContentType = "application/json",
+                    Timeout = 10,  // 🔥 设置超时时间（秒），超过10秒自动返回
+                    Headers = new[]
+                    {
+                        // 🔥 关键：Authorization 必须加 "Bearer " 前缀
+                        $"Authorization: Bearer {_token}",
+                        
+                        // 🔥 关键：referer 头（认证时可能检查来源）
+                        $"referer: {_baseUrl}",    //https://client.06n.yyds666.me/",
+                        
+                        // 🔥 关键：sec-fetch-* 系列头（CORS 安全相关）
+                        "sec-fetch-dest: empty",
+                        "sec-fetch-mode: cors",
+                        "sec-fetch-site: same-site",
+                        
+                        // sec-ch-ua 系列
+                        "sec-ch-ua: \"Microsoft Edge WebView2\";v=\"143\", \"Microsoft Edge\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+                        "sec-ch-ua-mobile: ?0",
+                        "sec-ch-ua-platform: \"Windows\"",
+                        
+                        // 其他必要头
+                        "accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+                        "priority: u=1, i",
+                        $"origin: {_baseUrl}",//https://client.06n.yyds666.me",
+                        "datasource: master"
+                    }
+                });
 
                 _logCallback($"📥 投注响应:");
-                _logCallback($"   状态码: {(int)response.StatusCode} {response.StatusCode}");
-                _logCallback($"   响应内容: {responseText}");
+                _logCallback($"   状态码: {result.StatusCode} {result.StatusDescription}");
+                _logCallback($"   响应内容: {result.Html}");
 
                 // 4. 解析响应
-                var responseJson = JObject.Parse(responseText);
+                if (!result.Success)
+                {
+                    // 🔥 检查是否是超时错误
+                    if (result.ErrorMessage?.Contains("超时") == true || result.ErrorMessage?.Contains("取消") == true)
+                    {
+                        _logCallback($"⏱️ 投注请求超时: {result.ErrorMessage}");
+                        return (false, "", $"#投注超时: {result.ErrorMessage}");
+                    }
+                    
+                    _logCallback($"❌ 请求失败: {result.ErrorMessage}");
+                    return (false, "", result.ErrorMessage ?? "请求失败");
+                }
+
+                var responseJson = JObject.Parse(result.Html);
                 var code = responseJson["code"]?.Value<int>() ?? 0;
                 var msg = responseJson["msg"]?.ToString() ?? "";
 
@@ -1099,7 +1147,11 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 }
                 
                 // 🔥 不再清空列表，改为检查并更新已存在的赔率项
-                _logCallback($"📊 开始解析 {betTypes.Count} 个投注类型（当前已有 {_OddsInfo.Count} 个赔率）");
+                // _logCallback($"📊 开始解析 {betTypes.Count} 个投注类型（当前已有 {_OddsInfo.Count} 个赔率）");
+                
+                int addedCount = 0;
+                int updatedCount = 0;
+                int skippedCount = 0;
                 
                 foreach (var betType in betTypes)
                 {
@@ -1112,6 +1164,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         
                         if (string.IsNullOrEmpty(betTypeCname) || string.IsNullOrEmpty(betTypeGroupName))
                         {
+                            skippedCount++;
                             continue;
                         }
                         
@@ -1119,7 +1172,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         CarNumEnum car = MapBetTypeGroupToCar(betTypeGroupName);
                         if (car == CarNumEnum.未知)
                         {
-                            _logCallback($"⚠️ 未知的投注组: {betTypeGroupName}");
+                            // _logCallback($"⚠️ 未知的投注组: {betTypeGroupName}");
+                            skippedCount++;
                             continue;
                         }
                         
@@ -1139,13 +1193,15 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                                 existingOdds.OddsId = oddsInfo.OddsId;
                                 existingOdds.Odds = oddsInfo.Odds;
                                 existingOdds.CarName = oddsInfo.CarName;  // 同时更新 CarName（投注用）
-                                _logCallback($"🔄 更新赔率: {oddsInfo.CarName} (ID:{oddsInfo.OddsId})");
+                                // _logCallback($"🔄 更新赔率: {oddsInfo.CarName} (ID:{oddsInfo.OddsId})");
+                                updatedCount++;
                             }
                             else
                             {
                                 // 添加新赔率
                                 _OddsInfo.Add(oddsInfo);
-                                _logCallback($"✅ 添加赔率: {oddsInfo.CarName} (ID:{oddsInfo.OddsId})");
+                                // _logCallback($"✅ 添加赔率: {oddsInfo.CarName} (ID:{oddsInfo.OddsId})");
+                                addedCount++;
                             }
                         }
                     }
@@ -1155,7 +1211,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     }
                 }
                 
-                _logCallback($"🎯 赔率解析完成，共 {_OddsInfo.Count} 个赔率项");
+                // 🔥 只输出汇总日志，避免频繁刷新UI
+                _logCallback($"🎯 赔率解析完成: 新增 {addedCount} 项, 更新 {updatedCount} 项, 跳过 {skippedCount} 项, 共 {_OddsInfo.Count} 个赔率");
             }
             catch (Exception ex)
             {
@@ -1340,23 +1397,98 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         {
             try
             {
+                // 🔥 调试：记录所有拦截到的响应（仅登录相关）
+                if (response.Url.Contains("/login") || response.Url.Contains("/auth"))
+                {
+                    _logCallback($"🔍 [DEBUG] 拦截到响应:");
+                    _logCallback($"   - URL: {response.Url}");
+                    _logCallback($"   - Method: {response.Method}");
+                    _logCallback($"   - Status: {response.StatusCode}");
+                    _logCallback($"   - 实例哈希: {this.GetHashCode()}");
+                }
+                
                 // 拦截登录响应
                 // 🔥 YYDS平台登录接口: https://admin-api.06n.yyds666.me/login
+                // 🔥 修改：使用更宽松的匹配条件，匹配所有包含 /login 的 POST 请求
                 if (response.Url.Contains("/login") || response.Url.Contains("/api/auth"))
                 {
-                    _logCallback($"📥 拦截登录响应: {response.Url}");
+                    _logCallback($"🔍 [LOGIN-CHECK] URL匹配成功: {response.Url}");
+                    _logCallback($"🔍 [LOGIN-CHECK] Method: {response.Method}");
+                    _logCallback($"🔍 [LOGIN-CHECK] StatusCode: {response.StatusCode}");
+                    _logCallback($"🔍 [LOGIN-CHECK] ContentType: {response.ContentType}");
+                    
+                    // 🔥 判断请求方法，跳过 OPTIONS 预检请求
+                    if (response.Method == "OPTIONS")
+                    {
+                        _logCallback($"⏭️ [LOGIN-CHECK] 跳过 OPTIONS 预检请求");
+                        return;
+                    }
+                    
+                    // 🔥 只处理 POST 请求的响应
+                    if (response.Method != "POST")
+                    {
+                        _logCallback($"⚠️ [LOGIN-CHECK] 非 POST 请求 (Method={response.Method})，跳过处理");
+                        return;
+                    }
+                    
+                    // 🔥 只处理 JSON 响应，避免处理图片、CSS 等资源
+                    if (!string.IsNullOrEmpty(response.ContentType) && 
+                        !response.ContentType.Contains("application/json") && 
+                        !response.ContentType.Contains("text/plain"))
+                    {
+                        _logCallback($"⚠️ [LOGIN-CHECK] 非 JSON 响应 (ContentType={response.ContentType})，跳过处理");
+                        return;
+                    }
+                    
+                    _logCallback($"📥 拦截登录响应: {response.Url} [{response.Method}]");
+                    
+                    _logCallback($"✅ [LOGIN-CHECK] 是 POST 请求，开始解析响应");
                     
                     try
                     {
+                        _logCallback($"🔍 [LOGIN-CHECK] 响应内容长度: {response.Context?.Length ?? 0}");
+                        _logCallback($"🔍 [LOGIN-CHECK] 响应内容前100字符: {response.Context?.Substring(0, Math.Min(100, response.Context?.Length ?? 0))}");
+                        
                         var json = JObject.Parse(response.Context);
                         var code = json["code"]?.Value<int>() ?? 0;
                         
-                        _logCallback($"   响应代码: {code}");
+                        _logCallback($"🔍 [LOGIN-CHECK] 响应代码: {code}");
                         
                         if (code == 200)
                         {
+                            _logCallback($"✅ [LOGIN-CHECK] 登录成功，开始提取 Token");
+                            
                             // 🔥 YYDS平台格式: { "code": 200, "data": { "token": "..." } }
-                            _token = json["data"]?["token"]?.ToString() ?? "";
+                            var dataObj = json["data"];
+                            _logCallback($"🔍 [LOGIN-CHECK] data 对象: {(dataObj != null ? "存在" : "null")}");
+                            
+                            if (dataObj != null)
+                            {
+                                var tokenObj = dataObj["token"];
+                                _logCallback($"🔍 [LOGIN-CHECK] token 对象: {(tokenObj != null ? "存在" : "null")}");
+                                
+                                var newToken = tokenObj?.ToString() ?? "";
+                                
+                                // 🔥 关键修复：只有新 Token 不为空时才更新，避免意外清空
+                                if (!string.IsNullOrEmpty(newToken))
+                                {
+                                    _token = newToken;
+                                    _logCallback($"🔍 [LOGIN-CHECK] Token赋值后: Length={_token.Length}");
+                                }
+                                else
+                                {
+                                    _logCallback($"⚠️ [LOGIN-CHECK] 新 Token 为空，保留现有 Token (当前长度: {_token?.Length ?? 0})");
+                                }
+                            }
+                            else
+                            {
+                                // 🔥 关键修复：不清空 Token，只记录警告
+                                _logCallback($"⚠️ [LOGIN-CHECK] data 对象为 null，保留现有 Token (当前长度: {_token?.Length ?? 0})");
+                            }
+                            
+                            // 🔥 调试日志：显示实例哈希码，确认是同一个实例
+                            _logCallback($"🔍 [DEBUG] YydsScript实例: {this.GetHashCode()}");
+                            _logCallback($"🔍 [DEBUG] _token字段地址: {System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_token)}");
                             
                             if (!string.IsNullOrEmpty(_token))
                             {
@@ -1368,22 +1500,25 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                                 _httpClient.DefaultRequestHeaders.Add("Authorization", _token);
                                 
                                 _logCallback($"✅ 提取到 Token: {_token.Substring(0, Math.Min(20, _token.Length))}...");
-                                _logCallback($"✅ Token已添加到请求头");
+                                _logCallback($"✅ Token已添加到请求头 (完整Token长度: {_token.Length})");
+                                _logCallback($"✅ [LOGIN-CHECK] Token 提取和设置完成！");
                             }
                             else
                             {
-                                _logCallback($"⚠️ 未找到 Token，响应结构: {json.ToString(Formatting.None).Substring(0, Math.Min(200, json.ToString(Formatting.None).Length))}");
+                                _logCallback($"❌ [LOGIN-CHECK] Token 为空！");
+                                _logCallback($"⚠️ 响应结构: {json.ToString(Formatting.None).Substring(0, Math.Min(300, json.ToString(Formatting.None).Length))}");
                             }
                         }
                         else
                         {
                             var msg = json["msg"]?.ToString() ?? "未知错误";
-                            _logCallback($"❌ 登录失败: code={code}, msg={msg}");
+                            _logCallback($"❌ [LOGIN-CHECK] 登录失败: code={code}, msg={msg}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logCallback($"⚠️ 解析登录响应失败: {ex.Message}");
+                        _logCallback($"❌ [LOGIN-CHECK] 解析登录响应异常: {ex.Message}");
+                        _logCallback($"   StackTrace: {ex.StackTrace?.Substring(0, Math.Min(200, ex.StackTrace?.Length ?? 0))}");
                         _logCallback($"   响应内容: {response.Context?.Substring(0, Math.Min(200, response.Context?.Length ?? 0))}");
                     }
                 }
@@ -1467,6 +1602,13 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 // 🔥 拦截赔率配置接口（info?gameId=1&playTypeId=1）
                 else if (response.Url.Contains("/info?gameId=") && response.Url.Contains("playTypeId="))
                 {
+                    // 🔥 检查是否允许自动更新赔率
+                    if (!_autoUpdateOdds && _oddsLoaded)
+                    {
+                        // 已加载赔率且禁用自动更新，跳过
+                        return;
+                    }
+                    
                     _logCallback($"📊 拦截赔率配置接口: {response.Url}");
                     
                     try
@@ -1477,6 +1619,15 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         if (code == 200)
                         {
                             ParseOddsInfo(json);
+                            
+                            // 🔥 首次加载成功后，禁用自动更新
+                            if (!_oddsLoaded)
+                            {
+                                _oddsLoaded = true;
+                                _autoUpdateOdds = false;  // 禁用自动更新
+                                _logCallback($"✅ 赔率首次加载完成，已禁用自动更新（共 {_OddsInfo.Count} 个赔率项）");
+                                _logCallback($"💡 如需刷新赔率，请手动点击更新按钮");
+                            }
                         }
                         else
                         {
@@ -1542,6 +1693,86 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
             //}
 
             //return oddsList;
+        }
+
+        /// <summary>
+        /// 手动刷新赔率 - 重新启用自动更新并清空缓存
+        /// </summary>
+        public void RefreshOdds()
+        {
+            _logCallback("🔄 手动刷新赔率...");
+            
+            // 重置标志位，允许重新加载赔率
+            _autoUpdateOdds = true;
+            _oddsLoaded = false;
+            
+            // 清空现有赔率
+            var oldCount = _OddsInfo.Count;
+            _OddsInfo.Clear();
+            
+            _logCallback($"✅ 已清空 {oldCount} 个赔率项，等待平台返回新赔率数据");
+            _logCallback($"💡 提示：切换到不同的玩法页面会触发赔率加载");
+        }
+        
+        /// <summary>
+        /// 获取赔率加载状态
+        /// </summary>
+        public (bool loaded, int count) GetOddsStatus()
+        {
+            return (_oddsLoaded, _OddsInfo.Count);
+        }
+        
+        /// <summary>
+        /// 调试：获取认证状态
+        /// </summary>
+        public void DebugAuthStatus()
+        {
+            _logCallback($"🔍 [认证状态调试]");
+            _logCallback($"   - YydsScript实例哈希: {this.GetHashCode()}");
+            _logCallback($"   - Token: {(string.IsNullOrEmpty(_token) ? "空" : $"已设置(长度:{_token.Length})")}");
+            _logCallback($"   - SessionId: {(string.IsNullOrEmpty(_sessionId) ? "空" : "已设置")}");
+            _logCallback($"   - 余额: {_currentBalance}");
+            _logCallback($"   - API域名: {(string.IsNullOrEmpty(_apiBaseUrl) ? "未设置" : _apiBaseUrl)}");
+            _logCallback($"   - 平台类型: {(string.IsNullOrEmpty(_betPlate) ? "未设置" : _betPlate)}");
+            
+            if (!string.IsNullOrEmpty(_token))
+            {
+                _logCallback($"   - Token预览: {_token.Substring(0, Math.Min(30, _token.Length))}...");
+            }
+        }
+        
+        /// <summary>
+        /// 手动设置 Token（用于恢复认证状态）
+        /// </summary>
+        public void SetToken(string token, string? apiBaseUrl = null)
+        {
+            _token = token;
+            
+            if (!string.IsNullOrEmpty(token))
+            {
+                // 添加到请求头
+                if (_httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                {
+                    _httpClient.DefaultRequestHeaders.Remove("Authorization");
+                }
+                _httpClient.DefaultRequestHeaders.Add("Authorization", token);
+                
+                _logCallback($"✅ Token已手动设置 (长度: {token.Length})");
+            }
+            
+            if (!string.IsNullOrEmpty(apiBaseUrl))
+            {
+                _apiBaseUrl = apiBaseUrl;
+                _logCallback($"✅ API域名已设置: {apiBaseUrl}");
+            }
+        }
+        
+        /// <summary>
+        /// 获取当前 Token（用于保存认证状态）
+        /// </summary>
+        public string? GetToken()
+        {
+            return _token;
         }
 
         /*

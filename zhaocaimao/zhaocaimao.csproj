@@ -46,6 +46,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\zhaocaimao.Shared\zhaocaimao.Shared.csproj" />
+    <ProjectReference Include="..\BaiShengVx3Plus.Shared\BaiShengVx3Plus.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

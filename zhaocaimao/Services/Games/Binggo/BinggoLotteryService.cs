@@ -271,12 +271,12 @@ namespace zhaocaimao.Services.Games.Binggo
                 // ========================================
                 // 🔥 步骤1: 使用本地计算获取当前期号（始终可用）
                 // ========================================
-                int localIssueId = BinggoTimeHelper.GetCurrentIssueId();
+                int localIssueId = BinggoHelper.GetCurrentIssueId();
                 
                 // 🔥 关键区分：
                 // 1. secondsToOpen = 距离开奖的真实倒计时（用于显示）
                 // 2. secondsToSeal = 距离封盘的倒计时（用于状态判断）
-                int secondsToOpen = BinggoTimeHelper.GetSecondsToOpen(localIssueId);
+                int secondsToOpen = BinggoHelper.GetSecondsToOpen(localIssueId);
                 int secondsToSeal = secondsToOpen - _configService.GetSealSecondsAhead();
                 
                 lock (_lock)
@@ -289,7 +289,7 @@ namespace zhaocaimao.Services.Games.Binggo
                         if (_currentIssueId == 0)
                         {
                             // 🔥 首次初始化：计算上一期
-                            previousIssueId = BinggoTimeHelper.GetPreviousIssueId(localIssueId);
+                            previousIssueId = BinggoHelper.GetPreviousIssueId(localIssueId);
                             _logService.Info("LotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
                         }
                         else
@@ -340,12 +340,12 @@ namespace zhaocaimao.Services.Games.Binggo
                 var dataLast = new BinggoLotteryData
                 {
                     IssueId = oldIssueId,
-                    OpenTime = BinggoTimeHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
+                    OpenTime = BinggoHelper.GetIssueOpenTime(oldIssueId).ToString("yyyy-MM-dd HH:mm:ss")
                 };
                 
                 _logService.Info("LotteryService", $"📢 期号变更事件: 当期={newIssueId}, 上期={oldIssueId}");
-                _logService.Info("LotteryService", $"   当期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
-                _logService.Info("LotteryService", $"   上期开奖时间: {BinggoTimeHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
+                _logService.Info("LotteryService", $"   当期开奖时间: {BinggoHelper.GetIssueOpenTime(newIssueId):HH:mm:ss}");
+                _logService.Info("LotteryService", $"   上期开奖时间: {BinggoHelper.GetIssueOpenTime(oldIssueId):HH:mm:ss}");
                 
                 // 🔥 触发期号变更事件（同时传递当期和上期数据）
                 IssueChanged?.Invoke(this, new BinggoIssueChangedEventArgs
@@ -885,8 +885,8 @@ namespace zhaocaimao.Services.Games.Binggo
             try
             {
                 // 计算上期期号
-                int currentIssueId = BinggoTimeHelper.GetCurrentIssueId();
-                int lastIssueId = BinggoTimeHelper.GetPreviousIssueId(currentIssueId);
+                int currentIssueId = BinggoHelper.GetCurrentIssueId();
+                int lastIssueId = BinggoHelper.GetPreviousIssueId(currentIssueId);
                 
                 // 🔥 在返回的数据中查找上期数据
                 var lastData = dataList.FirstOrDefault(d => d.IssueId == lastIssueId);
@@ -1585,7 +1585,7 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 参考 F5BotV2：开奖后状态变为"等待中"，然后在状态循环中变为"开盘中"时发送
                 // 🔥 关键：只有在上一期真正结算完成后，才发送本期的"线下开始"消息
                 // 🔥 如果上一期还没结算完成，直接 return，不发送"线下开始"消息
-                int previousIssueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
+                int previousIssueId = Helpers.BinggoHelper.GetPreviousIssueId(issueId);
                 if (_lastSettledIssueId < previousIssueId)
                 {
                     _logService.Warning("LotteryService", 
@@ -1803,13 +1803,13 @@ namespace zhaocaimao.Services.Games.Binggo
                             float rectY = 71;  // 🔥 起始Y坐标（参考 F5BotV2 第1641行）
                             
                             // 🔥 获取当前期号，计算最近32期的期号范围
-                            int currentIssueId = Helpers.BinggoTimeHelper.GetCurrentIssueId();
+                            int currentIssueId = Helpers.BinggoHelper.GetCurrentIssueId();
                             var issueIdList = new List<int>();
                             int issueId = currentIssueId;
                             for (int i = 0; i < 32; i++)
                             {
                                 issueIdList.Add(issueId);
-                                issueId = Helpers.BinggoTimeHelper.GetPreviousIssueId(issueId);
+                                issueId = Helpers.BinggoHelper.GetPreviousIssueId(issueId);
                             }
                             issueIdList.Reverse(); // 反转，从最早到最新
                             
@@ -1829,7 +1829,7 @@ namespace zhaocaimao.Services.Games.Binggo
                                 DrawText(g, issueShort.ToString(), 2, currentY, font, System.Drawing.Color.Black);
                                 
                                 // 🔥 绘制开奖时间（无论是否开奖都显示，可以计算出来）
-                                DateTime openTime = Helpers.BinggoTimeHelper.GetIssueOpenTime(currentIssueIdForRow);
+                                DateTime openTime = Helpers.BinggoHelper.GetIssueOpenTime(currentIssueIdForRow);
                                 string time = openTime.ToString("HH:mm");
                                 DrawText(g, time, 60, currentY, font, System.Drawing.Color.Black);
                                 

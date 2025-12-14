@@ -144,7 +144,7 @@ namespace BaiShengVx3Plus.UserControls
                 // 🔥 更新开奖时间（F5BotV2 风格：简洁显示）
                 if (issueId > 0)
                 {
-                    var openTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+                    var openTime = BinggoHelper.GetIssueOpenTime(issueId);
                     lblOpenTime.Text = openTime.ToString("HH:mm:ss");
                 }
                 else
@@ -216,7 +216,7 @@ namespace BaiShengVx3Plus.UserControls
                     lblCurrentIssue.Text = e.NewIssueId.ToString();
                     
                     // 计算并显示开奖时间
-                    var openTime = BinggoTimeHelper.GetIssueOpenTime(e.NewIssueId);
+                    var openTime = BinggoHelper.GetIssueOpenTime(e.NewIssueId);
                     lblOpenTime.Text = openTime.ToString("HH:mm:ss");
                     
                     Console.WriteLine($"✅ UcBinggoDataCur 已更新: 期号={e.NewIssueId}, 时间={openTime:HH:mm:ss}");

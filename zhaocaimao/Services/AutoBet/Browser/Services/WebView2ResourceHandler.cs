@@ -15,7 +15,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
     public class WebView2ResourceHandler
     {
         private readonly Action<ResponseEventArgs>? _responseCallback;
-        private readonly ConcurrentDictionary<string, string> _postDataCache = new();
+        private readonly ConcurrentDictionary<string, (string method, string postData)> _requestCache = new();
 
         public WebView2ResourceHandler(Action<ResponseEventArgs>? responseCallback)
         {
@@ -39,7 +39,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
         }
 
         /// <summary>
-        /// 请求发送事件 - 获取 POST data
+        /// 请求发送事件 - 获取 Method 和 POST data
         /// </summary>
         private void OnRequestWillBeSent(object? sender, CoreWebView2DevToolsProtocolEventReceivedEventArgs args)
         {
@@ -48,13 +48,13 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
                 var json = JObject.Parse(args.ParameterObjectAsJson);
                 var request = json["request"];
                 var url = request?["url"]?.ToString();
-                var method = request?["method"]?.ToString();
-                var postData = request?["postData"]?.ToString();
+                var method = request?["method"]?.ToString() ?? "GET";
+                var postData = request?["postData"]?.ToString() ?? "";
 
-                if (method == "POST" && !string.IsNullOrEmpty(postData) && !string.IsNullOrEmpty(url))
+                if (!string.IsNullOrEmpty(url))
                 {
-                    // 缓存 POST data，在响应时使用
-                    _postDataCache[url] = postData;
+                    // 缓存 Method 和 POST data，在响应时使用
+                    _requestCache[url] = (method, postData);
                 }
             }
             catch (Exception ex)
@@ -73,11 +73,14 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
                 var request = args.Request;
                 var response = args.Response;
                 
-                // 获取 POST data（如果有）
-                string? postData = null;
-                if (_postDataCache.TryRemove(request.Uri, out var cachedPostData))
+                // 获取 Method 和 POST data（如果有）
+                string method = request.Method;  // 从 request 直接获取
+                string postData = "";
+                
+                if (_requestCache.TryRemove(request.Uri, out var cachedRequest))
                 {
-                    postData = cachedPostData;
+                    method = cachedRequest.method;  // 使用缓存的 method（更准确）
+                    postData = cachedRequest.postData;
                 }
 
                 // 获取响应内容
@@ -105,7 +108,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
                     Url = request.Uri,
                     ReferrerUrl = "", // WebView2 不直接提供，需要从 DevTools Protocol 获取
                     Context = content,
-                    PostData = postData ?? "",
+                    PostData = postData,
+                    Method = method,  // 🔥 添加 HTTP 方法
                     StatusCode = response.StatusCode,
                     ContentType = response.Headers.Contains("Content-Type") 
                         ? response.Headers.GetHeader("Content-Type") 
@@ -118,6 +122,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
                 {
                     SenderName = nameof(WebView2ResourceHandler),
                     Url = args.Request.Uri,
+                    Method = args.Request.Method,  // 🔥 异常时也包含 Method
                     ErrorMessage = $"OnWebResourceResponseReceived Error: {ex.Message}"
                 });
             }
@@ -134,6 +139,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.Services
         public string ReferrerUrl { get; set; } = "";
         public string Context { get; set; } = "";
         public string PostData { get; set; } = "";
+        public string Method { get; set; } = "";  // HTTP 方法: GET, POST, OPTIONS, etc.
         public int StatusCode { get; set; }
         public string ContentType { get; set; } = "";
         public string? ErrorMessage { get; set; }

@@ -9,6 +9,7 @@ using Sunny.UI;
 using zhaocaimao.UserControls;
 using zhaocaimao.Models.AutoBet;
 using zhaocaimao.Services.AutoBet.Browser;
+using zhaocaimao.Helpers;
 
 namespace zhaocaimao.Views.AutoBet
 {
@@ -541,7 +542,6 @@ namespace zhaocaimao.Views.AutoBet
             try
             {
                 OnLogMessage("🎲 【测试】开始投注测试...");
-                OnLogMessage("   固定投注内容:P1大10元");
                 
                 if (_browserControl == null || !_browserControl.IsInitialized)
                 {
@@ -549,11 +549,16 @@ namespace zhaocaimao.Views.AutoBet
                     return;
                 }
                 
+                // 🔥 获取当前期号
+                int currentIssueId = zhaocaimao.Helpers.BinggoHelper.GetCurrentIssueId();
+                OnLogMessage($"📊 当前期号: {currentIssueId}");
+                OnLogMessage($"   固定投注内容: P1大10元");
+                
                 // 测试投注"P1大10元"
                 var testOrders = new zhaocaimao.Shared.Models.BetStandardOrderList
                 {
                     new zhaocaimao.Shared.Models.BetStandardOrder(
-                        0, 
+                        currentIssueId,  // 🔥 使用当前期号
                         zhaocaimao.Shared.Models.CarNumEnum.P1, 
                         zhaocaimao.Shared.Models.BetPlayEnum.大, 
                         10)
