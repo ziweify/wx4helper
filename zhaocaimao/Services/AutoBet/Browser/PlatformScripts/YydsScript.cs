@@ -1,4 +1,4 @@
-using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Sunny.UI.Win32;
@@ -12,10 +12,10 @@ using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using BaiShengVx3Plus.Shared.Helpers;  // 🔥 使用共享库中的 ModernHttpHelper
+using Unit.Shared.Helpers;  // 🔥 使用共享库中的 ModernHttpHelper
 using zhaocaimao.Services.AutoBet.Browser.Models;
 using zhaocaimao.Services.AutoBet.Browser.Services;
-using zhaocaimao.Shared.Models;
+using Unit.Shared.Models;
 using BrowserOddsInfo = zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo;
 using BrowserResponseEventArgs = zhaocaimao.Services.AutoBet.Browser.Services.ResponseEventArgs;
 

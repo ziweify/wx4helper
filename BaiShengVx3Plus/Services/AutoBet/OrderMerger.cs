@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models;
-using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
+using Unit.Shared.Models;  // 🔥 使用共享的模型
 
 namespace BaiShengVx3Plus.Services.AutoBet
 {
@@ -74,7 +74,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
                 
                 // 🔥 解析 BetContentStandar（已经是标准格式，如 "1大20"）
                 // 使用完全照搬 F5BotV2 的解析逻辑
-                var items = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(order.BetContentStandar, order.IssueId);
+                var items = Unit.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(order.BetContentStandar, order.IssueId);
                 foreach (var item in items)
                 {
                     allItems.Add(item);

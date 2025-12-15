@@ -1,4 +1,5 @@
-using zhaocaimao.Shared.Models;
+﻿using Unit.Shared.Models;
+using Unit.Shared.Helpers;  // 🔥 引入共享库（ModernHttpHelper, BinggoTimeHelper）
 using zhaocaimao.Services.AutoBet.Browser.Models;
 using zhaocaimao.Services.AutoBet.Browser.Services;
 using Microsoft.Web.WebView2.WinForms;
@@ -13,7 +14,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BrowserOddsInfo = zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo;
 using BrowserResponseEventArgs = zhaocaimao.Services.AutoBet.Browser.Services.ResponseEventArgs;
-using BaiShengVx3Plus.Shared.Helpers;  // 🔥 引入共享库（ModernHttpHelper, BinggoTimeHelper）
 
 namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
 {
@@ -257,7 +257,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         /// 下注 - 使用HTTP POST
         /// 参考 F5BotV2 的 Bet 方法
         /// </summary>
-        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(zhaocaimao.Shared.Models.BetStandardOrderList orders)
+        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(Unit.Shared.Models.BetStandardOrderList orders)
         {
             try
             {

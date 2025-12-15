@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Windows.Forms;
 using zhaocaimao.Contracts;
 using zhaocaimao.Models.AutoBet;
 using zhaocaimao.Services.AutoBet;
-using zhaocaimao.Shared.Platform;
+using Unit.Shared.Platform;
 using Sunny.UI;
 
 namespace zhaocaimao.Views.AutoBet
@@ -1034,7 +1034,7 @@ namespace zhaocaimao.Views.AutoBet
                         
                         // 2. 解析投注内容
                         var originalContent = cmdParam; // "1234大10"
-                        var standardContent = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
+                        var standardContent = Unit.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
                         var totalAmount = CalculateTotalAmount(standardContent);
                         
                         _logService.Info("CommandPanel", $"投注解析:原始={originalContent} 标准={standardContent} 金额={totalAmount}");

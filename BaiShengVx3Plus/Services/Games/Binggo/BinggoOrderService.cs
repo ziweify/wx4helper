@@ -1,4 +1,4 @@
-using BaiShengVx3Plus.Contracts;
+﻿using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Core;
 using BaiShengVx3Plus.Helpers;
@@ -759,7 +759,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         continue;
                     
                     // 解析投注内容（格式:"1大10,2小20,3单30"）
-                    var betContent = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContent(order.BetContent, issueId);
+                    var betContent = Unit.Shared.Parsers.BetContentParser.ParseBetContent(order.BetContent, issueId);
                     
                     if (betContent == null || betContent.Count == 0)
                         continue;

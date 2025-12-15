@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Contracts.Games;
 using BaiShengVx3Plus.Models.AutoBet;  // 🔥 BetConfig, BetResult
-using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
-using BaiShengVx3Plus.Shared.Platform;  // 🔥 使用平台URL管理器
+using Unit.Shared.Models;  // 🔥 使用共享的模型
+using Unit.Shared.Platform;  // 🔥 使用平台URL管理器
 using SQLite;
 
 namespace BaiShengVx3Plus.Services.AutoBet
@@ -911,7 +911,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
             {
                 // 🔥 将字符串格式的 betContentStandard 解析为 BetStandardOrderList
                 // 格式："1大10,2大10,3大10,4大10"
-                var betOrders = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
+                var betOrders = Unit.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
                 
                 if (betOrders == null || betOrders.Count == 0)
                 {
@@ -1311,7 +1311,7 @@ namespace BaiShengVx3Plus.Services.AutoBet
         /// <summary>
         /// 投注
         /// </summary>
-        public async Task<BetResult> PlaceBet(int configId, BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
+        public async Task<BetResult> PlaceBet(int configId, Unit.Shared.Models.BetStandardOrderList orders)
         {
             var config = GetConfig(configId);
             if (config == null)

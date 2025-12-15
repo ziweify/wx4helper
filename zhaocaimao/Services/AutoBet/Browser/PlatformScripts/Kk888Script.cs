@@ -1,4 +1,4 @@
-﻿using zhaocaimao.Shared.Models;
+﻿using Unit.Shared.Models;
 using zhaocaimao.Services.AutoBet.Browser.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;

@@ -1,5 +1,5 @@
-using BaiShengVx3Plus.Shared.Helpers;
-using BaiShengVx3Plus.Shared.Models;
+﻿using Unit.Shared.Helpers;
+using Unit.Shared.Models;
 using BsBrowserClient.Services;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
@@ -266,7 +266,7 @@ namespace BsBrowserClient.PlatformScripts
         /// 下注 - 使用HTTP POST
         /// 参考 F5BotV2 的 Bet 方法
         /// </summary>
-        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BaiShengVx3Plus.Shared.Models.BetStandardOrderList orders)
+        public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(Unit.Shared.Models.BetStandardOrderList orders)
         {
             try
             {

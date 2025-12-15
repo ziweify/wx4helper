@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using zhaocaimao.Models.AutoBet;
-using zhaocaimao.Shared.Models;
+using Unit.Shared.Models;
 
 namespace zhaocaimao.Services.AutoBet.Browser
 {

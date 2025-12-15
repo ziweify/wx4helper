@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using zhaocaimao.Shared.Models;
+using Unit.Shared.Models;
 using BrowserOddsInfo = zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo;
 using BrowserResponseEventArgs = zhaocaimao.Services.AutoBet.Browser.Services.ResponseEventArgs;
 

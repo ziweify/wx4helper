@@ -1,11 +1,11 @@
-using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using zhaocaimao.Services.AutoBet.Browser.Models;
 using zhaocaimao.Services.AutoBet.Browser.Services;
-using zhaocaimao.Shared.Models;
+using Unit.Shared.Models;
 using BrowserOddsInfo = zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo;
 using BrowserResponseEventArgs = zhaocaimao.Services.AutoBet.Browser.Services.ResponseEventArgs;
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
@@ -13,8 +13,8 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using BaiShengVx3Plus.Shared.Platform;
-using BaiShengVx3Plus.Shared.Models;  // 🔥 使用共享的模型
+using Unit.Shared.Platform;
+using Unit.Shared.Models;  // 🔥 使用共享的模型
 
 namespace BsBrowserClient;
 
@@ -727,18 +727,18 @@ public partial class Form1 : Form
 
                 case "投注":
                     // 新的投注流程：接收标准化订单列表，执行投注，返回详细结果
-                    BaiShengVx3Plus.Shared.Models.BetStandardOrderList? betOrders = null;
+                    Unit.Shared.Models.BetStandardOrderList? betOrders = null;
 
                     // 🔥 BetStandardOrderList 序列化后可能是数组（JArray）或对象（JObject）
                     if (command.Data is Newtonsoft.Json.Linq.JArray jArray)
                     {
                         // 如果是数组，直接反序列化
-                        betOrders = jArray.ToObject<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
+                        betOrders = jArray.ToObject<Unit.Shared.Models.BetStandardOrderList>();
                     }
                     else if (command.Data is JObject betData)
                     {
                         // 如果是对象，尝试反序列化
-                        betOrders = betData.ToObject<BaiShengVx3Plus.Shared.Models.BetStandardOrderList>();
+                        betOrders = betData.ToObject<Unit.Shared.Models.BetStandardOrderList>();
                     }
 
                     if (betOrders == null || betOrders.Count == 0)
@@ -1348,9 +1348,9 @@ public partial class Form1 : Form
             OnLogMessage($"✅ 当前余额: ¥{balance}");
 
             // 测试投注"1大10"
-            var testOrders = new BaiShengVx3Plus.Shared.Models.BetStandardOrderList
+            var testOrders = new Unit.Shared.Models.BetStandardOrderList
             {
-                new BaiShengVx3Plus.Shared.Models.BetStandardOrder(0, BaiShengVx3Plus.Shared.Models.CarNumEnum.P1, BaiShengVx3Plus.Shared.Models.BetPlayEnum.大, 10)
+                new Unit.Shared.Models.BetStandardOrder(0, Unit.Shared.Models.CarNumEnum.P1, Unit.Shared.Models.BetPlayEnum.大, 10)
             };
 
             OnLogMessage($"📤 调用PlaceBetAsync:P1大10元");

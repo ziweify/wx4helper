@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -392,7 +392,7 @@ namespace zhaocaimao.Services.AutoBet
                 {
                     ConfigName = "默认配置",
                     Platform = "通宝",
-                    PlatformUrl = zhaocaimao.Shared.Platform.PlatformUrlManager.GetDefaultUrl("通宝"),
+                    PlatformUrl = Unit.Shared.Platform.PlatformUrlManager.GetDefaultUrl("通宝"),
                     IsDefault = true,
                     IsEnabled = false  // 🔥 默认不启用，由用户手动开启
                 };
@@ -435,7 +435,7 @@ namespace zhaocaimao.Services.AutoBet
                     // 🔥 只在URL为空时才设置默认URL，避免覆盖用户手动修改的值
                     if (string.IsNullOrWhiteSpace(defaultConfig.PlatformUrl))
                     {
-                        defaultConfig.PlatformUrl = zhaocaimao.Shared.Platform.PlatformUrlManager.GetDefaultUrl("云顶");
+                        defaultConfig.PlatformUrl = Unit.Shared.Platform.PlatformUrlManager.GetDefaultUrl("云顶");
                     }
                     needUpdate = true;
                     _log.Warning("AutoBet", $"检测到旧的平台名称YunDing28，已更新为'云顶'（URL={(string.IsNullOrWhiteSpace(defaultConfig.PlatformUrl) ? "已设置为默认值" : "保留用户设置")}）");
@@ -458,7 +458,7 @@ namespace zhaocaimao.Services.AutoBet
         /// </summary>
         private string GetCorrectPlatformUrl(string platform)
         {
-            return zhaocaimao.Shared.Platform.PlatformUrlManager.GetDefaultUrl(platform);
+            return Unit.Shared.Platform.PlatformUrlManager.GetDefaultUrl(platform);
         }
         
         /// <summary>
@@ -682,7 +682,7 @@ namespace zhaocaimao.Services.AutoBet
             {
                 // 🔥 将字符串格式的 betContentStandard 解析为 BetStandardOrderList
                 // 格式："1大10,2大10,3大10,4大10"
-                var betOrders = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
+                var betOrders = Unit.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(betContentStandard, int.Parse(issueId));
                 
                 if (betOrders == null || betOrders.Count == 0)
                 {

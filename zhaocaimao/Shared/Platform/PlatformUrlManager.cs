@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace zhaocaimao.Shared.Platform
+namespace Unit.Shared.Platform
 {
     /// <summary>
     /// 平台URL管理器（统一管理所有平台的默认URL）

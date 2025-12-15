@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -6,8 +6,8 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 using zhaocaimao.Models.AutoBet;
-using SharedModels = zhaocaimao.Shared.Models;
-using zhaocaimao.Shared.Platform;
+using SharedModels = Unit.Shared.Models;
+using Unit.Shared.Platform;
 using zhaocaimao.Services.AutoBet.Browser.PlatformScripts;
 using zhaocaimao.Services.AutoBet.Browser.Services;
 
@@ -690,10 +690,10 @@ namespace zhaocaimao.Services.AutoBet.Browser
                             try
                             {
                                 // 先尝试解析为标准格式
-                                var standardContent = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToString(betContentString);
+                                var standardContent = Unit.Shared.Parsers.BetContentParser.ParseBetContentToString(betContentString);
                                 // 获取当前期号（如果没有，使用0）
                                 var currentIssueId = 0; // TODO: 从上下文获取期号
-                                betOrders = zhaocaimao.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(standardContent, currentIssueId);
+                                betOrders = Unit.Shared.Parsers.BetContentParser.ParseBetContentToOrderList(standardContent, currentIssueId);
                             }
                             catch (Exception parseEx)
                             {

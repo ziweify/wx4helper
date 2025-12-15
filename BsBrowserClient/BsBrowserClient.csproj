@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BaiShengVx3Plus.Shared\BaiShengVx3Plus.Shared.csproj" />
+    <ProjectReference Include="..\Unit.Shared\Unit.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -555,12 +555,12 @@ namespace zhaocaimao.Views.AutoBet
                 OnLogMessage($"   固定投注内容: P1大10元");
                 
                 // 测试投注"P1大10元"
-                var testOrders = new zhaocaimao.Shared.Models.BetStandardOrderList
+                var testOrders = new Unit.Shared.Models.BetStandardOrderList
                 {
-                    new zhaocaimao.Shared.Models.BetStandardOrder(
+                    new Unit.Shared.Models.BetStandardOrder(
                         currentIssueId,  // 🔥 使用当前期号
-                        zhaocaimao.Shared.Models.CarNumEnum.P1, 
-                        zhaocaimao.Shared.Models.BetPlayEnum.大, 
+                        Unit.Shared.Models.CarNumEnum.P1, 
+                        Unit.Shared.Models.BetPlayEnum.大, 
                         10)
                 };
                 

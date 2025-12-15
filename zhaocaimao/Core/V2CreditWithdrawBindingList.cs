@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using zhaocaimao.Models;
-using zhaocaimao.Shared.Helpers;
+using Unit.Shared.Helpers;
 using SQLite;
 
 namespace zhaocaimao.Core

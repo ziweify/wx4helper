@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Windows.Forms;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models.AutoBet;
 using BaiShengVx3Plus.Services.AutoBet;
-using BaiShengVx3Plus.Shared.Platform;
+using Unit.Shared.Platform;
 using Sunny.UI;
 
 namespace BaiShengVx3Plus.Views.AutoBet
@@ -1048,7 +1048,7 @@ namespace BaiShengVx3Plus.Views.AutoBet
                         
                         // 2. 解析投注内容
                         var originalContent = cmdParam; // "1234大10"
-                        var standardContent = BaiShengVx3Plus.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
+                        var standardContent = Unit.Shared.Parsers.BetContentParser.ParseBetContentToString(originalContent); // "1大10,2大10,3大10,4大10"
                         var totalAmount = CalculateTotalAmount(standardContent);
                         
                         _logService.Info("CommandPanel", $"投注解析:原始={originalContent} 标准={standardContent} 金额={totalAmount}");
