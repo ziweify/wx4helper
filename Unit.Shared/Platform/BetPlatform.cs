@@ -28,8 +28,7 @@ namespace Unit.Shared.Platform
         HY168 = 19,
         bingo168 = 20,
         云顶 = 21,  // 🔥 保留云顶（现有项目使用）
-        yyds = 22,  // 🔥 YYDS 平台：https://client.06n.yyds666.me
-        Yyds666 = 22  // 🔥 别名，指向 yyds
+        yyds = 22   // 🔥 YYDS 平台：https://client.06n.yyds666.me
     }
     
     /// <summary>
