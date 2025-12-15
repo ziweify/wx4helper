@@ -112,3 +112,5 @@ BaiShengVx3Plus/MyLog/logs.db
 /BaiShengVx3Plus/BugReport
 /.cursor
 /zhaocaimao.Shared/bin/Release/net8.0
+/Unit.Shared/bin/Debug/net8.0
+/Unit.Shared/obj
