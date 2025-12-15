@@ -71,13 +71,14 @@ namespace BaiShengVx3Plus.Views
             uiLabel3 = new Sunny.UI.UILabel();
             tabPageOther = new TabPage();
             grpSoundTest = new Sunny.UI.UIGroupBox();
-            btnTestSealing = new Sunny.UI.UIButton();
-            btnTestLottery = new Sunny.UI.UIButton();
-            btnTestCreditUp = new Sunny.UI.UIButton();
             btnTestCreditDown = new Sunny.UI.UIButton();
+            btnTestCreditUp = new Sunny.UI.UIButton();
+            btnTestLottery = new Sunny.UI.UIButton();
+            btnTestSealing = new Sunny.UI.UIButton();
             lblSoundTestResult = new Sunny.UI.UILabel();
             btnSave = new Sunny.UI.UIButton();
             btnCancel = new Sunny.UI.UIButton();
+            uiButton1 = new Sunny.UI.UIButton();
             uiTabControl1.SuspendLayout();
             tabPageSystem.SuspendLayout();
             grp开发模式选项.SuspendLayout();
@@ -128,6 +129,7 @@ namespace BaiShengVx3Plus.Views
             // grp开发模式选项
             // 
             grp开发模式选项.Controls.Add(btnRunDevSendCommand);
+            grp开发模式选项.Controls.Add(uiButton1);
             grp开发模式选项.Controls.Add(uiLabel8);
             grp开发模式选项.Controls.Add(uiLabel7);
             grp开发模式选项.Controls.Add(tbxRunDevSendMessage);
@@ -257,7 +259,7 @@ namespace BaiShengVx3Plus.Views
             tabPageConnection.Controls.Add(uiGroupBox1);
             tabPageConnection.Location = new Point(0, 40);
             tabPageConnection.Name = "tabPageConnection";
-            tabPageConnection.Size = new Size(200, 60);
+            tabPageConnection.Size = new Size(800, 470);
             tabPageConnection.TabIndex = 0;
             tabPageConnection.Text = "连接设置";
             // 
@@ -680,31 +682,17 @@ namespace BaiShengVx3Plus.Views
             grpSoundTest.Text = "声音测试";
             grpSoundTest.TextAlignment = ContentAlignment.MiddleLeft;
             // 
-            // btnTestSealing
+            // btnTestCreditDown
             // 
-            btnTestSealing.Cursor = Cursors.Hand;
-            btnTestSealing.Font = new Font("微软雅黑", 12F);
-            btnTestSealing.Location = new Point(30, 50);
-            btnTestSealing.MinimumSize = new Size(1, 1);
-            btnTestSealing.Name = "btnTestSealing";
-            btnTestSealing.Size = new Size(150, 40);
-            btnTestSealing.TabIndex = 0;
-            btnTestSealing.Text = "🔔 测试封盘声音";
-            btnTestSealing.TipsFont = new Font("宋体", 9F);
-            btnTestSealing.Click += BtnTestSealing_Click;
-            // 
-            // btnTestLottery
-            // 
-            btnTestLottery.Cursor = Cursors.Hand;
-            btnTestLottery.Font = new Font("微软雅黑", 12F);
-            btnTestLottery.Location = new Point(200, 50);
-            btnTestLottery.MinimumSize = new Size(1, 1);
-            btnTestLottery.Name = "btnTestLottery";
-            btnTestLottery.Size = new Size(150, 40);
-            btnTestLottery.TabIndex = 1;
-            btnTestLottery.Text = "🎲 测试开奖声音";
-            btnTestLottery.TipsFont = new Font("宋体", 9F);
-            btnTestLottery.Click += BtnTestLottery_Click;
+            btnTestCreditDown.Cursor = Cursors.Hand;
+            btnTestCreditDown.Font = new Font("微软雅黑", 12F);
+            btnTestCreditDown.Location = new Point(540, 50);
+            btnTestCreditDown.MinimumSize = new Size(1, 1);
+            btnTestCreditDown.Name = "btnTestCreditDown";
+            btnTestCreditDown.Size = new Size(150, 40);
+            btnTestCreditDown.TabIndex = 3;
+            btnTestCreditDown.Text = "💸 测试下分声音";
+            btnTestCreditDown.Click += BtnTestCreditDown_Click;
             // 
             // btnTestCreditUp
             // 
@@ -716,21 +704,31 @@ namespace BaiShengVx3Plus.Views
             btnTestCreditUp.Size = new Size(150, 40);
             btnTestCreditUp.TabIndex = 2;
             btnTestCreditUp.Text = "💰 测试上分声音";
-            btnTestCreditUp.TipsFont = new Font("宋体", 9F);
             btnTestCreditUp.Click += BtnTestCreditUp_Click;
             // 
-            // btnTestCreditDown
+            // btnTestLottery
             // 
-            btnTestCreditDown.Cursor = Cursors.Hand;
-            btnTestCreditDown.Font = new Font("微软雅黑", 12F);
-            btnTestCreditDown.Location = new Point(540, 50);
-            btnTestCreditDown.MinimumSize = new Size(1, 1);
-            btnTestCreditDown.Name = "btnTestCreditDown";
-            btnTestCreditDown.Size = new Size(150, 40);
-            btnTestCreditDown.TabIndex = 3;
-            btnTestCreditDown.Text = "💸 测试下分声音";
-            btnTestCreditDown.TipsFont = new Font("宋体", 9F);
-            btnTestCreditDown.Click += BtnTestCreditDown_Click;
+            btnTestLottery.Cursor = Cursors.Hand;
+            btnTestLottery.Font = new Font("微软雅黑", 12F);
+            btnTestLottery.Location = new Point(200, 50);
+            btnTestLottery.MinimumSize = new Size(1, 1);
+            btnTestLottery.Name = "btnTestLottery";
+            btnTestLottery.Size = new Size(150, 40);
+            btnTestLottery.TabIndex = 1;
+            btnTestLottery.Text = "🎲 测试开奖声音";
+            btnTestLottery.Click += BtnTestLottery_Click;
+            // 
+            // btnTestSealing
+            // 
+            btnTestSealing.Cursor = Cursors.Hand;
+            btnTestSealing.Font = new Font("微软雅黑", 12F);
+            btnTestSealing.Location = new Point(30, 50);
+            btnTestSealing.MinimumSize = new Size(1, 1);
+            btnTestSealing.Name = "btnTestSealing";
+            btnTestSealing.Size = new Size(150, 40);
+            btnTestSealing.TabIndex = 0;
+            btnTestSealing.Text = "🔔 测试封盘声音";
+            btnTestSealing.Click += BtnTestSealing_Click;
             // 
             // lblSoundTestResult
             // 
@@ -741,7 +739,6 @@ namespace BaiShengVx3Plus.Views
             lblSoundTestResult.Size = new Size(700, 70);
             lblSoundTestResult.TabIndex = 4;
             lblSoundTestResult.Text = "点击按钮测试声音播放...";
-            lblSoundTestResult.TextAlign = ContentAlignment.TopLeft;
             // 
             // btnSave
             // 
@@ -768,6 +765,19 @@ namespace BaiShengVx3Plus.Views
             btnCancel.Text = "关闭";
             btnCancel.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
             btnCancel.Click += btnCancel_Click;
+            // 
+            // uiButton1
+            // 
+            uiButton1.Cursor = Cursors.Hand;
+            uiButton1.Font = new Font("微软雅黑", 12F);
+            uiButton1.Location = new Point(15, 180);
+            uiButton1.MinimumSize = new Size(1, 1);
+            uiButton1.Name = "uiButton1";
+            uiButton1.Size = new Size(100, 35);
+            uiButton1.TabIndex = 1;
+            uiButton1.Text = "启动:代理配置";
+            uiButton1.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            uiButton1.Click += btnSave_Click;
             // 
             // SettingsForm
             // 
@@ -847,6 +857,7 @@ namespace BaiShengVx3Plus.Views
         private Sunny.UI.UIButton btnTestCreditUp;
         private Sunny.UI.UIButton btnTestCreditDown;
         private Sunny.UI.UILabel lblSoundTestResult;
+        private Sunny.UI.UIButton uiButton1;
     }
 }
 
