@@ -198,9 +198,13 @@ namespace BaiShengVx3Plus.Views.AutoBet
             try
             {
                 var platformNames = BetPlatformHelper.GetAllPlatformNames();
+                
+                // 🔥 BaiShengVx3Plus 不支持 yyds 平台（该平台仅在 zhaocaimao 中使用）
+                var supportedPlatforms = platformNames.Where(p => p != "yyds").ToArray();
+                
                 cbxPlatform.Items.Clear();
-                cbxPlatform.Items.AddRange(platformNames);
-                _logService.Info("ConfigManager", $"✅ 平台下拉框已初始化，共 {platformNames.Length} 个平台");
+                cbxPlatform.Items.AddRange(supportedPlatforms);
+                _logService.Info("ConfigManager", $"✅ 平台下拉框已初始化，共 {supportedPlatforms.Length} 个支持的平台");
             }
             catch (Exception ex)
             {

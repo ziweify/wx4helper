@@ -191,7 +191,6 @@ public partial class Form1 : Form
             BetPlatform.bingo168 => new Hy168bingoScript(_webView!, betLogCallback),
             BetPlatform.蓝A => new LanAScript(_webView!, betLogCallback),
             BetPlatform.元宇宙2 => new YYZ2Script(_webView!, betLogCallback),
-            BetPlatform.Yyds666 => new Yyds666Script(_webView!, betLogCallback),  // 🔥 新增平台
             BetPlatform.不使用盘口 => new NoneSiteScript(_webView!, betLogCallback),
             _ => new YunDing28Script(_webView!, betLogCallback) // 默认使用云顶脚本
         };

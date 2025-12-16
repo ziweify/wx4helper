@@ -892,10 +892,10 @@ namespace zhaocaimao.Views
                 // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
                 try
                 {
-                    int index = _bindingSource.IndexOf(request);
-                    if (index >= 0)
-                    {
-                        _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
+                int index = _bindingSource.IndexOf(request);
+                if (index >= 0)
+                {
+                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
                     }
                 }
                 catch (Exception resetEx)
@@ -939,10 +939,10 @@ namespace zhaocaimao.Views
                 // 🔥 强制刷新 BindingSource 中的该项（确保 UI 立即更新）
                 try
                 {
-                    int index = _bindingSource.IndexOf(request);
-                    if (index >= 0)
-                    {
-                        _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
+                int index = _bindingSource.IndexOf(request);
+                if (index >= 0)
+                {
+                    _bindingSource.ResetItem(index);  // 🔥 强制刷新该行的所有单元格
                     }
                 }
                 catch (Exception resetEx)
@@ -992,19 +992,19 @@ namespace zhaocaimao.Views
                     return;
                 }
                 
-                int statusIndex = cmbStatus.SelectedIndex;
-                
-                if (statusIndex > 0)
+            int statusIndex = cmbStatus.SelectedIndex;
+            
+            if (statusIndex > 0)
+            {
+                CreditWithdrawStatus targetStatus = statusIndex switch
                 {
-                    CreditWithdrawStatus targetStatus = statusIndex switch
-                    {
-                        1 => CreditWithdrawStatus.等待处理,
-                        2 => CreditWithdrawStatus.已同意,
-                        3 => CreditWithdrawStatus.已拒绝,
-                        4 => CreditWithdrawStatus.忽略,
-                        _ => CreditWithdrawStatus.等待处理
-                    };
-                    
+                    1 => CreditWithdrawStatus.等待处理,
+                    2 => CreditWithdrawStatus.已同意,
+                    3 => CreditWithdrawStatus.已拒绝,
+                    4 => CreditWithdrawStatus.忽略,
+                    _ => CreditWithdrawStatus.等待处理
+                };
+                
                     // 🔧 线程安全：使用 Invoke 确保在 UI 线程执行
                     if (InvokeRequired)
                     {
@@ -1015,28 +1015,28 @@ namespace zhaocaimao.Views
                     }
                     else
                     {
-                        // 🔥 使用 BindingSource.Filter 进行筛选（标准做法）
-                        // 注意：对于枚举类型，需要转换为整数进行比较
-                        _bindingSource.Filter = $"Convert(Status, 'System.Int32') = {(int)targetStatus}";
+                // 🔥 使用 BindingSource.Filter 进行筛选（标准做法）
+                // 注意：对于枚举类型，需要转换为整数进行比较
+                _bindingSource.Filter = $"Convert(Status, 'System.Int32') = {(int)targetStatus}";
                     }
-                }
-                else
-                {
-                    // 显示全部
+            }
+            else
+            {
+                // 显示全部
                     if (InvokeRequired)
                     {
                         Invoke(new Action(() =>
                         {
-                            _bindingSource.Filter = null;
+                _bindingSource.Filter = null;
                         }));
                     }
                     else
                     {
                         _bindingSource.Filter = null;
                     }
-                }
-                
-                UpdateStats();
+            }
+            
+            UpdateStats();
             }
             catch (Exception ex)
             {

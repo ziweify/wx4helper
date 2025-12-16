@@ -3822,12 +3822,16 @@ namespace BaiShengVx3Plus
                 var platformNames = BetPlatformHelper.GetAllPlatformNames();
                 _logService.Info("VxMain", $"🔍 [诊断] 获取到 {platformNames.Length} 个平台名称");
                 
+                // 🔥 BaiShengVx3Plus 不支持 yyds 平台（该平台仅在 zhaocaimao 中使用）
+                var supportedPlatforms = platformNames.Where(p => p != "yyds").ToArray();
+                _logService.Info("VxMain", $"🔍 [诊断] 过滤后剩余 {supportedPlatforms.Length} 个支持的平台");
+                
                 cbxPlatform.Items.Clear();
                 _logService.Info("VxMain", $"🔍 [诊断] Items.Clear() 后 Count = {cbxPlatform.Items.Count}");
                 
-                cbxPlatform.Items.AddRange(platformNames);
+                cbxPlatform.Items.AddRange(supportedPlatforms);
                 _logService.Info("VxMain", $"🔍 [诊断] Items.AddRange() 后 Count = {cbxPlatform.Items.Count}");
-                _logService.Info("VxMain", $"🔍 [诊断] 平台列表: {string.Join(", ", platformNames)}");
+                _logService.Info("VxMain", $"🔍 [诊断] 平台列表: {string.Join(", ", supportedPlatforms)}");
                 _logService.Info("VxMain", $"🔍 [诊断] SelectedIndex = {cbxPlatform.SelectedIndex}, Text = \"{cbxPlatform.Text}\"");
                 _logService.Info("VxMain", "✅ 平台下拉框已初始化");
                 _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
