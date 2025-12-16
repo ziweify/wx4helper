@@ -2129,7 +2129,8 @@ namespace BaiShengVx3Plus
                     "2. 清空所有订单数据\n" +
                     "3. 重置会员金额数据\n" +
                     "4. 清空统计数据\n" +
-                    "5. 清空48小时之前的上下分记录\n\n" +
+                    "5. 清空48小时之前的上下分记录\n" +
+                    "6. 清空24小时之前的BsBrowserClient日志\n\n" +
                     "会员基础信息（微信ID、昵称等）将保留"))
                 {
                     return;
@@ -2377,7 +2378,87 @@ namespace BaiShengVx3Plus
                 }
                 
                 // ========================================
-                // 🔥 步骤8：刷新UI
+                // 🔥 步骤8：清理BsBrowserClient日志文件（保留24小时）
+                // ========================================
+                
+                try
+                {
+                    var logDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "BaiShengVx3Plus",
+                        "log");
+                    
+                    if (Directory.Exists(logDir))
+                    {
+                        // 计算24小时之前的时间
+                        var cutoffTime = DateTime.Now.AddHours(-24);
+                        
+                        // 查找所有 BsBrowserClient 日志文件
+                        var logFiles = Directory.GetFiles(logDir, "BsBrowserClient_*.log");
+                        int deletedCount = 0;
+                        long totalSize = 0;
+                        
+                        foreach (var logFile in logFiles)
+                        {
+                            try
+                            {
+                                var fileName = Path.GetFileNameWithoutExtension(logFile);
+                                
+                                // 解析文件名：BsBrowserClient_yyyyMMdd_HHmmss
+                                // 提取日期时间部分
+                                var parts = fileName.Split('_');
+                                if (parts.Length >= 3)
+                                {
+                                    var dateStr = parts[1];  // yyyyMMdd
+                                    var timeStr = parts[2];  // HHmmss
+                                    
+                                    // 尝试解析时间戳
+                                    if (DateTime.TryParseExact(
+                                        $"{dateStr}_{timeStr}",
+                                        "yyyyMMdd_HHmmss",
+                                        System.Globalization.CultureInfo.InvariantCulture,
+                                        System.Globalization.DateTimeStyles.None,
+                                        out DateTime fileTime))
+                                    {
+                                        // 如果文件时间早于截止时间，删除
+                                        if (fileTime < cutoffTime)
+                                        {
+                                            var fileInfo = new FileInfo(logFile);
+                                            totalSize += fileInfo.Length;
+                                            File.Delete(logFile);
+                                            deletedCount++;
+                                            
+                                            _logService.Info("VxMain", 
+                                                $"  删除日志: {Path.GetFileName(logFile)} " +
+                                                $"({fileInfo.Length / 1024.0:F2} KB, " +
+                                                $"创建时间: {fileTime:yyyy-MM-dd HH:mm:ss})");
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("VxMain", $"删除日志文件失败: {logFile}, 错误: {ex.Message}");
+                            }
+                        }
+                        
+                        _logService.Info("VxMain", 
+                            $"✅ 已清理 {deletedCount} 个BsBrowserClient日志文件 " +
+                            $"（24小时之前，释放 {totalSize / 1024.0 / 1024.0:F2} MB空间）");
+                    }
+                    else
+                    {
+                        _logService.Info("VxMain", "BsBrowserClient日志目录不存在，跳过清理");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("VxMain", $"清理BsBrowserClient日志失败: {ex.Message}", ex);
+                    // 不抛出异常，继续执行
+                }
+                
+                // ========================================
+                // 🔥 步骤9：刷新UI
                 // ========================================
                 
                 UpdateUIThreadSafeAsync(() =>
@@ -2397,6 +2478,7 @@ namespace BaiShengVx3Plus
                     "✓ 统计数据已清空\n" +
                     "✓ 生成的图片数据已清空\n" +
                     "✓ 28小时之前的日志数据已清空（保留28小时用于恢复）\n" +
+                    "✓ 24小时之前的BsBrowserClient日志已清空\n" +
                     "✓ 会员基础信息已保留\n" +
                     "✓ 数据库已备份");
             }

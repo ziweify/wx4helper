@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CommandRequest = BsBrowserClient.Models.CommandRequest;  // 🔥 使用别名避免类型冲突
@@ -47,6 +50,21 @@ public partial class Form1 : Form
 
         // 🔥 设置窗口标题（显示配置名，用于观察）
         this.Text = $"BsBrowser-{configName}";
+        
+        // 🔥 初始化日志文件夹路径
+        _logFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BaiShengVx3Plus",
+            "log"
+        );
+        Directory.CreateDirectory(_logFolder);
+        
+        // 🔥 初始化日志文件名（日期+时间，区分每次启动）
+        var now = DateTime.Now;
+        _currentLogFile = Path.Combine(
+            _logFolder,
+            $"BsBrowserClient_{now:yyyyMMdd_HHmmss}.log"
+        );
 
         // 更新状态栏
         lblPort.Text = $"配置: {configName} (ID:{configId}) | 平台: {platform}";
@@ -891,6 +909,15 @@ public partial class Form1 : Form
     private const int MAX_LOG_LINES = 1000;  // 最大保留1000行日志
     private bool _isUserScrolling = false;   // 用户是否在查看历史
     private System.Windows.Forms.Timer? _logTimer;  // 日志批量更新定时器
+    
+    // 🔥 磁盘日志写入（新增）
+    private readonly ConcurrentQueue<string> _diskWriteQueue = new ConcurrentQueue<string>();
+    private readonly SemaphoreSlim _diskWriteSemaphore = new SemaphoreSlim(0);
+    private CancellationTokenSource? _diskWriteCts;
+    private Task? _diskWriteTask;
+    private readonly string _logFolder;
+    private readonly string _currentLogFile;  // 🔥 改为 readonly，启动时确定文件名
+    private System.Threading.Timer? _diskFlushTimer;
 
     /// <summary>
     /// 初始化日志系统
@@ -906,6 +933,12 @@ public partial class Form1 : Form
         // 监听滚动条事件
         txtLog.VScroll += TxtLog_VScroll;
         txtLog.MouseWheel += TxtLog_MouseWheel;
+        
+        // 🔥 启动磁盘写入系统
+        InitializeDiskWriter();
+        
+        // 🔥 清理旧日志（启动时清理一次）
+        Task.Run(() => CleanOldLogs());
     }
 
     /// <summary>
@@ -937,6 +970,12 @@ public partial class Form1 : Form
         }
 
         if (logs.Count == 0) return;
+
+        // 🔥 关键修复：将取出的日志也加入磁盘写入队列（避免日志丢失）
+        foreach (var log in logs)
+        {
+            EnqueueDiskWrite(log);
+        }
 
         // 检查是否需要自动滚动
         bool shouldAutoScroll = !_isUserScrolling && IsScrollAtBottom();
@@ -1090,7 +1129,8 @@ public partial class Form1 : Form
         {
             _logBuffer.Enqueue(logLine);
 
-            // 如果缓冲区过大，丢弃旧日志（防止内存溢出）
+            // 🔥 如果缓冲区过大，移除旧日志（防止内存溢出）
+            // LogTimer_Tick 会将所有日志自动写入磁盘，这里只是额外的保护
             while (_logBuffer.Count > MAX_LOG_LINES * 2)
             {
                 _logBuffer.Dequeue();
@@ -1100,6 +1140,228 @@ public partial class Form1 : Form
         // 输出到控制台（用于调试）
         Console.WriteLine($"[{time}] [{type}] {message}");
     }
+
+    #region 磁盘日志写入系统
+
+    /// <summary>
+    /// 初始化磁盘写入系统
+    /// </summary>
+    private void InitializeDiskWriter()
+    {
+        try
+        {
+            // 启动异步写入线程
+            _diskWriteCts = new CancellationTokenSource();
+            _diskWriteTask = Task.Run(() => DiskWriteWorker(), _diskWriteCts.Token);
+            
+            // 启动定时刷新（每 5 秒批量写入一次，防止缓冲区不满导致日志不写入）
+            _diskFlushTimer = new System.Threading.Timer(
+                callback: _ => FlushDiskWriteQueue(),
+                state: null,
+                dueTime: TimeSpan.FromSeconds(5),
+                period: TimeSpan.FromSeconds(5)
+            );
+            
+            OnLogMessage($"💾 日志持久化已启动: {Path.GetFileName(_currentLogFile)}", LogType.System);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"初始化磁盘写入失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 将日志加入磁盘写入队列
+    /// </summary>
+    private void EnqueueDiskWrite(string logLine)
+    {
+        _diskWriteQueue.Enqueue(logLine);
+        _diskWriteSemaphore.Release();  // 通知后台线程
+    }
+
+    /// <summary>
+    /// 磁盘写入工作线程
+    /// </summary>
+    private async Task DiskWriteWorker()
+    {
+        var batchBuffer = new List<string>(100);
+        
+        while (!_diskWriteCts?.Token.IsCancellationRequested ?? false)
+        {
+            try
+            {
+                // 等待新日志或超时（最多等待 1 秒）
+                await _diskWriteSemaphore.WaitAsync(1000, _diskWriteCts.Token);
+                
+                // 批量收集日志（最多 100 条）
+                batchBuffer.Clear();
+                while (batchBuffer.Count < 100 && _diskWriteQueue.TryDequeue(out var log))
+                {
+                    batchBuffer.Add(log);
+                }
+                
+                if (batchBuffer.Count == 0) continue;
+                
+                // 批量写入磁盘（异步 I/O）
+                await WriteBatchToDiskAsync(batchBuffer);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"磁盘写入失败: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 批量写入日志到磁盘
+    /// </summary>
+    private async Task WriteBatchToDiskAsync(List<string> logs)
+    {
+        try
+        {
+            var logFile = GetLogFilePath();
+            
+            // 使用 StreamWriter 批量写入（高性能）
+            using var writer = new StreamWriter(logFile, append: true, Encoding.UTF8, bufferSize: 65536);
+            foreach (var log in logs)
+            {
+                await writer.WriteAsync(log);
+            }
+            await writer.FlushAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"写入日志文件失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取日志文件路径（启动时确定，不变）
+    /// </summary>
+    private string GetLogFilePath()
+    {
+        return _currentLogFile;
+    }
+
+    /// <summary>
+    /// 强制刷新磁盘写入队列（定时触发点 2）
+    /// </summary>
+    private void FlushDiskWriteQueue()
+    {
+        // 如果队列有数据，通知写入线程
+        if (_diskWriteQueue.Count > 0)
+        {
+            _diskWriteSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// 刷新所有日志到磁盘（程序退出时调用）
+    /// </summary>
+    private void FlushAllLogs()
+    {
+        try
+        {
+            var logFile = GetLogFilePath();
+            var totalLogs = 0;
+            
+            // 1. 将内存缓冲区的日志也写入磁盘
+            var bufferLogs = new List<string>();
+            lock (_logBuffer)
+            {
+                while (_logBuffer.Count > 0)
+                {
+                    bufferLogs.Add(_logBuffer.Dequeue());
+                }
+            }
+            
+            Console.WriteLine($"📋 从 _logBuffer 取出 {bufferLogs.Count} 条日志");
+            
+            // 2. 从磁盘写入队列取出所有日志
+            var queueLogs = new List<string>();
+            while (_diskWriteQueue.TryDequeue(out var log))
+            {
+                queueLogs.Add(log);
+            }
+            
+            Console.WriteLine($"📋 从 _diskWriteQueue 取出 {queueLogs.Count} 条日志");
+            
+            // 3. 合并所有日志并同步写入
+            var allLogs = new List<string>();
+            allLogs.AddRange(queueLogs);  // 先写入队列中的日志
+            allLogs.AddRange(bufferLogs);  // 再写入缓冲区的日志
+            
+            if (allLogs.Count > 0)
+            {
+                using var writer = new StreamWriter(logFile, append: true, Encoding.UTF8, bufferSize: 65536);
+                foreach (var log in allLogs)
+                {
+                    writer.Write(log);
+                }
+                writer.Flush();
+                totalLogs = allLogs.Count;
+            }
+            
+            Console.WriteLine($"💾 已刷新 {totalLogs} 条日志到磁盘: {Path.GetFileName(logFile)}");
+            
+            // 4. 输出文件完整路径（方便用户查找）
+            Console.WriteLine($"📁 日志文件路径: {logFile}");
+            Console.WriteLine($"📏 日志文件大小: {new FileInfo(logFile).Length / 1024.0:F2} KB");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ 刷新日志失败: {ex.Message}");
+            Console.WriteLine($"   堆栈: {ex.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// 清理 7 天前的旧日志文件
+    /// </summary>
+    private void CleanOldLogs()
+    {
+        try
+        {
+            var cutoffDate = DateTime.Now.AddDays(-7);
+            var logFiles = Directory.GetFiles(_logFolder, "BsBrowserClient_*.log");
+            
+            int cleanedCount = 0;
+            long cleanedSize = 0;
+            
+            foreach (var file in logFiles)
+            {
+                var fileInfo = new FileInfo(file);
+                
+                // 跳过当前日志文件
+                if (file == _currentLogFile)
+                    continue;
+                
+                // 根据文件的最后修改时间判断是否需要清理
+                if (fileInfo.LastWriteTime < cutoffDate)
+                {
+                    cleanedSize += fileInfo.Length;
+                    File.Delete(file);
+                    cleanedCount++;
+                    Console.WriteLine($"已删除旧日志: {fileInfo.Name} ({fileInfo.Length / 1024.0:F2} KB)");
+                }
+            }
+            
+            if (cleanedCount > 0)
+            {
+                Console.WriteLine($"✅ 已清理 {cleanedCount} 个旧日志文件，释放 {cleanedSize / 1024.0 / 1024.0:F2} MB 空间");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"清理旧日志失败: {ex.Message}");
+        }
+    }
+
+    #endregion
 
     /// <summary>
     /// 获取默认 URL
@@ -1147,6 +1409,28 @@ public partial class Form1 : Form
                 case DialogResult.Yes:
                     // 用户选择关闭：允许关闭，清理资源
                     OnLogMessage($"用户选择关闭浏览器，进程即将退出");
+                    Console.WriteLine($"════════════════════════════════════════");
+                    Console.WriteLine($"开始关闭流程，准备刷新日志...");
+                    
+                    // 🔥 停止磁盘写入系统（用户建议的触发点 3）
+                    _diskFlushTimer?.Dispose();
+                    _diskWriteCts?.Cancel();
+                    
+                    // 🔥 刷新所有日志到磁盘（包括内存缓冲区和磁盘队列的所有日志）
+                    FlushAllLogs();
+                    
+                    // 🔥 等待异步写入线程退出（最多 2 秒）
+                    try
+                    {
+                        _diskWriteTask?.Wait(TimeSpan.FromSeconds(2));
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ 等待异步线程退出失败: {ex.Message}");
+                    }
+                    
+                    Console.WriteLine($"════════════════════════════════════════");
+                    
                     _socketServer?.Stop();
                     _webView?.Dispose();
                     // 不取消关闭事件，允许窗口关闭

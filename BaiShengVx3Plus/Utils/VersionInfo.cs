@@ -11,7 +11,7 @@ namespace BaiShengVx3Plus.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "32.9.5";  // "31.8.7"
+        public const string Version = "32.9.6";  // "31.8.7"
 
         /// <summary>
         /// 版本名称
@@ -45,6 +45,9 @@ v3.1.0.1114 (2025-11-14)
     }
 
     /*
+     * 32.9.6
+     *   增加浏览器端的日志输出功能
+     *   
      * 32.8.3
      *   修复一系列BUG, 封盘还能下注等问题
      *   
