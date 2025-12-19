@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="DevExpress.Xpo" Version="23.2.6" />
     <PackageReference Include="SunnyUI" Version="3.6.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
@@ -54,6 +55,10 @@
     <None Include="sound\*.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Notes\通宝网络版飞单新流程.md" />
   </ItemGroup>
 
   <!-- 添加 BsBrowserClient 项目引用 -->
