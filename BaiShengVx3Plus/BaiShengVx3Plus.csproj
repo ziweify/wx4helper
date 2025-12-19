@@ -16,6 +16,10 @@
     <Compile Remove="0-资料\**" />
     <EmbeddedResource Remove="0-资料\**" />
     <None Remove="0-资料\**" />
+    <!-- 🔥 排除 Notes 文件夹，作为笔记使用，不参与编译 -->
+    <Compile Remove="Notes\**" />
+    <EmbeddedResource Remove="Notes\**" />
+    <None Include="Notes\**" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="libs\1165z-ivqi2-001.ico" />
@@ -55,10 +59,6 @@
     <None Include="sound\*.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="Notes\通宝网络版飞单新流程.md" />
   </ItemGroup>
 
   <!-- 添加 BsBrowserClient 项目引用 -->
