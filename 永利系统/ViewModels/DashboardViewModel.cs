@@ -15,7 +15,6 @@ namespace 永利系统.ViewModels
 
         public DashboardViewModel()
         {
-            Title = "数据概览";
             LoadDashboardData();
         }
 
@@ -24,19 +23,19 @@ namespace 永利系统.ViewModels
         public int TotalRecords
         {
             get => _totalRecords;
-            set => SetProperty(ref _totalRecords, value);
+            set => SetProperty(ref _totalRecords, value, nameof(TotalRecords));
         }
 
         public int TodayRecords
         {
             get => _todayRecords;
-            set => SetProperty(ref _todayRecords, value);
+            set => SetProperty(ref _todayRecords, value, nameof(TodayRecords));
         }
 
         public decimal TotalAmount
         {
             get => _totalAmount;
-            set => SetProperty(ref _totalAmount, value);
+            set => SetProperty(ref _totalAmount, value, nameof(TotalAmount));
         }
 
         #endregion
@@ -51,11 +50,8 @@ namespace 永利系统.ViewModels
             TotalAmount = 356789.50m;
         }
 
-        public override void OnLoaded()
-        {
-            base.OnLoaded();
-            LoadDashboardData();
-        }
+        // OnLoaded 方法在 DevExpress.Mvvm.ViewModelBase 中不存在
+        // 数据加载已在构造函数中完成
 
         #endregion
     }

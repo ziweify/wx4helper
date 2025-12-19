@@ -30,7 +30,7 @@ namespace 永利系统.Views.Pages
 
         private void DataManagementPage_Load(object sender, EventArgs e)
         {
-            _viewModel.OnLoaded();
+            // 数据加载已在 ViewModel 构造函数中完成
         }
 
         private void gridView1_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)

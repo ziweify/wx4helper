@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using DevExpress.XtraBars;
@@ -153,7 +154,7 @@ namespace 永利系统.Views
 
         private void Main_Load(object sender, EventArgs e)
         {
-            _viewModel.OnLoaded();
+            _viewModel.Initialize();
         }
 
         private void Main_FormClosing(object sender, FormClosingEventArgs e)

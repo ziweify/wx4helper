@@ -17,7 +17,6 @@ namespace 永利系统.ViewModels
 
         public DataManagementViewModel()
         {
-            Title = "数据管理";
             _dataItems = new ObservableCollection<DataItem>();
             InitializeCommands();
             LoadData();
@@ -28,13 +27,13 @@ namespace 永利系统.ViewModels
         public ObservableCollection<DataItem> DataItems
         {
             get => _dataItems;
-            set => SetProperty(ref _dataItems, value);
+            set => SetProperty(ref _dataItems, value, nameof(DataItems));
         }
 
         public DataItem? SelectedItem
         {
             get => _selectedItem;
-            set => SetProperty(ref _selectedItem, value);
+            set => SetProperty(ref _selectedItem, value, nameof(SelectedItem));
         }
 
         public string SearchText
@@ -42,7 +41,7 @@ namespace 永利系统.ViewModels
             get => _searchText;
             set
             {
-                if (SetProperty(ref _searchText, value))
+                if (SetProperty(ref _searchText, value, nameof(SearchText)))
                 {
                     SearchData();
                 }
@@ -150,11 +149,8 @@ namespace 永利系统.ViewModels
             }
         }
 
-        public override void OnLoaded()
-        {
-            base.OnLoaded();
-            LoadData();
-        }
+        // OnLoaded 方法在 DevExpress.Mvvm.ViewModelBase 中不存在
+        // 数据加载已在构造函数中完成
 
         #endregion
     }

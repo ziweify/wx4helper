@@ -14,9 +14,10 @@ namespace 永利系统.ViewModels
         private string _currentUser = "管理员";
         private string _selectedPageKey = "Dashboard";
 
+        private bool _isBusy;
+
         public MainViewModel()
         {
-            Title = "永利系统 - 数据管理平台";
             InitializeCommands();
         }
 
@@ -28,7 +29,7 @@ namespace 永利系统.ViewModels
         public string StatusMessage
         {
             get => _statusMessage;
-            set => SetProperty(ref _statusMessage, value);
+            set => SetProperty(ref _statusMessage, value, nameof(StatusMessage));
         }
 
         /// <summary>
@@ -37,7 +38,7 @@ namespace 永利系统.ViewModels
         public string CurrentUser
         {
             get => _currentUser;
-            set => SetProperty(ref _currentUser, value);
+            set => SetProperty(ref _currentUser, value, nameof(CurrentUser));
         }
 
         /// <summary>
@@ -46,7 +47,13 @@ namespace 永利系统.ViewModels
         public string SelectedPageKey
         {
             get => _selectedPageKey;
-            set => SetProperty(ref _selectedPageKey, value);
+            set => SetProperty(ref _selectedPageKey, value, nameof(SelectedPageKey));
+        }
+
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set => SetProperty(ref _isBusy, value, nameof(IsBusy));
         }
 
         #endregion
@@ -127,9 +134,10 @@ namespace 永利系统.ViewModels
             System.Windows.Forms.Application.Exit();
         }
 
-        public override void OnLoaded()
+        // OnLoaded 方法在 DevExpress.Mvvm.ViewModelBase 中不存在
+        // 初始化已在构造函数中完成
+        public void Initialize()
         {
-            base.OnLoaded();
             StatusMessage = $"欢迎使用永利系统，{CurrentUser}";
         }
 

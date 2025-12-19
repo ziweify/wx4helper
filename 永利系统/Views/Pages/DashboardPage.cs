@@ -25,7 +25,7 @@ namespace 永利系统.Views.Pages
 
         private void DashboardPage_Load(object sender, EventArgs e)
         {
-            _viewModel.OnLoaded();
+            // 数据加载已在 ViewModel 构造函数中完成
         }
     }
 }
