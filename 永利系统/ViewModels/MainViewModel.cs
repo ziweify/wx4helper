@@ -1,7 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
-using 永利系统.Core;
+using DevExpress.Mvvm;
 
 namespace 永利系统.ViewModels
 {
@@ -63,13 +63,13 @@ namespace 永利系统.ViewModels
 
         private void InitializeCommands()
         {
-            NavigateToDashboardCommand = new RelayCommand(_ => NavigateToPage("Dashboard"));
-            NavigateToDataManagementCommand = new RelayCommand(_ => NavigateToPage("DataManagement"));
-            NavigateToReportsCommand = new RelayCommand(_ => NavigateToPage("Reports"));
-            NavigateToSettingsCommand = new RelayCommand(_ => NavigateToPage("Settings"));
-            RefreshCommand = new RelayCommand(_ => RefreshData());
-            SaveCommand = new RelayCommand(_ => SaveData(), _ => !IsBusy);
-            ExitCommand = new RelayCommand(_ => ExitApplication());
+            NavigateToDashboardCommand = new DelegateCommand(() => NavigateToPage("Dashboard"));
+            NavigateToDataManagementCommand = new DelegateCommand(() => NavigateToPage("DataManagement"));
+            NavigateToReportsCommand = new DelegateCommand(() => NavigateToPage("Reports"));
+            NavigateToSettingsCommand = new DelegateCommand(() => NavigateToPage("Settings"));
+            RefreshCommand = new DelegateCommand(() => RefreshData());
+            SaveCommand = new DelegateCommand(() => SaveData(), () => !IsBusy);
+            ExitCommand = new DelegateCommand(() => ExitApplication());
         }
 
         #endregion

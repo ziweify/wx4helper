@@ -1,7 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
-using 永利系统.Core;
+using DevExpress.Mvvm;
 using 永利系统.Models;
 
 namespace 永利系统.ViewModels
@@ -60,10 +60,10 @@ namespace 永利系统.ViewModels
 
         private void InitializeCommands()
         {
-            AddCommand = new RelayCommand(_ => AddItem());
-            EditCommand = new RelayCommand(_ => EditItem(), _ => SelectedItem != null);
-            DeleteCommand = new RelayCommand(_ => DeleteItem(), _ => SelectedItem != null);
-            SearchCommand = new RelayCommand(_ => SearchData());
+            AddCommand = new DelegateCommand(() => AddItem());
+            EditCommand = new DelegateCommand(() => EditItem(), () => SelectedItem != null);
+            DeleteCommand = new DelegateCommand(() => DeleteItem(), () => SelectedItem != null);
+            SearchCommand = new DelegateCommand(() => SearchData());
         }
 
         #endregion

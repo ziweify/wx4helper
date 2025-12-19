@@ -4,7 +4,6 @@ using System.Windows.Forms;
 using DevExpress.XtraBars;
 using DevExpress.XtraBars.Ribbon;
 using 永利系统.ViewModels;
-using 永利系统.Core;
 using 永利系统.Views.Pages;
 
 namespace 永利系统.Views
@@ -12,7 +11,8 @@ namespace 永利系统.Views
     public partial class Main : RibbonForm
     {
         private readonly MainViewModel _viewModel;
-        private NavigationService? _navigationService;
+        private readonly Dictionary<string, UserControl> _pages = new();
+        private UserControl? _currentPage;
 
         public Main()
         {
@@ -25,20 +25,69 @@ namespace 永利系统.Views
 
         private void InitializeNavigation()
         {
-            // 初始化导航服务
-            _navigationService = new NavigationService(contentPanel);
+            // 注册页面（使用简单的 Dictionary 管理）
+            _pages["Dashboard"] = new DashboardPage();
+            _pages["DataManagement"] = new DataManagementPage();
+            _pages["Reports"] = new DashboardPage(); // 可以替换为实际的报表页面
+            _pages["Settings"] = new DashboardPage(); // 可以替换为实际的设置页面
 
-            // 注册页面
-            _navigationService.RegisterPage("Dashboard", new DashboardPage());
-            _navigationService.RegisterPage("DataManagement", new DataManagementPage());
-            _navigationService.RegisterPage("Reports", new DashboardPage()); // 可以替换为实际的报表页面
-            _navigationService.RegisterPage("Settings", new DashboardPage()); // 可以替换为实际的设置页面
+            // 设置所有页面为 Fill
+            foreach (var page in _pages.Values)
+            {
+                page.Dock = DockStyle.Fill;
+            }
 
             // 导航到默认页面
-            _navigationService.NavigateTo("Dashboard");
+            NavigateToPage("Dashboard");
+        }
 
-            // 订阅导航变更事件
-            _navigationService.NavigationChanged += OnNavigationChanged;
+        private void NavigateToPage(string pageKey)
+        {
+            if (!_pages.TryGetValue(pageKey, out var page))
+                return;
+
+            if (_currentPage == page)
+                return;
+
+            // 移除当前页面
+            if (_currentPage != null)
+            {
+                contentPanel.Controls.Remove(_currentPage);
+            }
+
+            // 添加新页面
+            contentPanel.Controls.Clear();
+            contentPanel.Controls.Add(page);
+            _currentPage = page;
+
+            // 更新按钮状态
+            UpdateNavigationButtons(pageKey);
+        }
+
+        private void UpdateNavigationButtons(string pageKey)
+        {
+            // 重置所有按钮
+            barButtonItemDashboard.Down = false;
+            barButtonItemDataManagement.Down = false;
+            barButtonItemReports.Down = false;
+            barButtonItemSettings.Down = false;
+
+            // 设置当前按钮
+            switch (pageKey)
+            {
+                case "Dashboard":
+                    barButtonItemDashboard.Down = true;
+                    break;
+                case "DataManagement":
+                    barButtonItemDataManagement.Down = true;
+                    break;
+                case "Reports":
+                    barButtonItemReports.Down = true;
+                    break;
+                case "Settings":
+                    barButtonItemSettings.Down = true;
+                    break;
+            }
         }
 
         private void BindViewModel()
@@ -63,56 +112,26 @@ namespace 永利系统.Views
             DevExpress.LookAndFeel.UserLookAndFeel.Default.SkinName = "Office 2019 Colorful";
         }
 
-        private void OnNavigationChanged(object? sender, string pageKey)
-        {
-            // 更新 Ribbon 按钮选中状态
-            ResetRibbonButtonsState();
-            
-            switch (pageKey)
-            {
-                case "Dashboard":
-                    barButtonItemDashboard.Down = true;
-                    break;
-                case "DataManagement":
-                    barButtonItemDataManagement.Down = true;
-                    break;
-                case "Reports":
-                    barButtonItemReports.Down = true;
-                    break;
-                case "Settings":
-                    barButtonItemSettings.Down = true;
-                    break;
-            }
-        }
-
-        private void ResetRibbonButtonsState()
-        {
-            barButtonItemDashboard.Down = false;
-            barButtonItemDataManagement.Down = false;
-            barButtonItemReports.Down = false;
-            barButtonItemSettings.Down = false;
-        }
-
         #region Ribbon Button Click Events
 
         private void barButtonItemDashboard_ItemClick(object sender, ItemClickEventArgs e)
         {
-            _navigationService?.NavigateTo("Dashboard");
+            NavigateToPage("Dashboard");
         }
 
         private void barButtonItemDataManagement_ItemClick(object sender, ItemClickEventArgs e)
         {
-            _navigationService?.NavigateTo("DataManagement");
+            NavigateToPage("DataManagement");
         }
 
         private void barButtonItemReports_ItemClick(object sender, ItemClickEventArgs e)
         {
-            _navigationService?.NavigateTo("Reports");
+            NavigateToPage("Reports");
         }
 
         private void barButtonItemSettings_ItemClick(object sender, ItemClickEventArgs e)
         {
-            _navigationService?.NavigateTo("Settings");
+            NavigateToPage("Settings");
         }
 
         private void barButtonItemRefresh_ItemClick(object sender, ItemClickEventArgs e)

@@ -18,6 +18,9 @@
     <Reference Include="DevExpress.Drawing.v23.2">
       <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Drawing.v23.2.dll</HintPath>
     </Reference>
+    <Reference Include="DevExpress.Mvvm.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Mvvm.v23.2.dll</HintPath>
+    </Reference>
     <Reference Include="DevExpress.Printing.v23.2.Core">
       <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Printing.v23.2.Core.dll</HintPath>
     </Reference>

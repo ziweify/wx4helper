@@ -1,6 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using 永利系统.Core;
+using DevExpress.Mvvm;
 
 namespace 永利系统.ViewModels
 {
