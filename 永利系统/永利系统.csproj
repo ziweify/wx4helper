@@ -1,0 +1,94 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="DevExpress.Data.Desktop.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Data.Desktop.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Data.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Data.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Drawing.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Drawing.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Printing.v23.2.Core">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Printing.v23.2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Utils.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Utils.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraBars.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraBars.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraEditors.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraGrid.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraGrid.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraLayout.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraLayout.v23.2.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ⚠️ DevExpress 引用需要手动添加 -->
+  <!-- 请在 Visual Studio 中执行以下操作：
+       1. 右键点击项目 -> 添加 -> 引用
+       2. 浏览到 DevExpress 安装目录（通常在 C:\Program Files (x86)\DevExpress XX.X\Components\Bin\Framework\）
+       3. 添加以下 DLL：
+          - DevExpress.Data.vXX.X.dll
+          - DevExpress.Utils.vXX.X.dll
+          - DevExpress.XtraBars.vXX.X.dll
+          - DevExpress.XtraEditors.vXX.X.dll
+          - DevExpress.XtraGrid.vXX.X.dll
+          - DevExpress.XtraLayout.vXX.X.dll
+       
+       或者直接在设计器中使用 DevExpress 控件，Visual Studio 会自动添加引用
+  -->
+  
+  <ItemGroup>
+    <None Update="Dashboards\dashboard1.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\Sales.xlsx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 确保所有页面都被编译 -->
+    <Compile Update="Views\Main.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Main.Designer.cs">
+      <DependentUpon>Main.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Views\Pages\DashboardPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\DashboardPage.Designer.cs">
+      <DependentUpon>DashboardPage.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Views\Pages\DataManagementPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\DataManagementPage.Designer.cs">
+      <DependentUpon>DataManagementPage.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 嵌入资源文件 -->
+    <EmbeddedResource Update="Views\Main.resx">
+      <DependentUpon>Main.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

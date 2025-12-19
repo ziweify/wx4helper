@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BsBrowserClient", "BsBrowse
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinGoPlans", "BinGoPlans\BinGoPlans.csproj", "{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "永利系统", "永利系统\永利系统.csproj", "{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -125,6 +127,18 @@ Global
 		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x64.Build.0 = Release|Any CPU
 		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x86.ActiveCfg = Release|Any CPU
 		{C8AA7C5D-3140-4CEC-AF04-4964F48976EF}.Release|x86.Build.0 = Release|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Debug|x64.Build.0 = Debug|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Debug|x86.Build.0 = Debug|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Release|x64.ActiveCfg = Release|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Release|x64.Build.0 = Release|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Release|x86.ActiveCfg = Release|Any CPU
+		{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
