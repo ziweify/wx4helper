@@ -27,13 +27,27 @@ namespace 永利系统.ViewModels
         public ObservableCollection<DataItem> DataItems
         {
             get => _dataItems;
-            set => SetProperty(ref _dataItems, value, nameof(DataItems));
+            set
+            {
+                if (_dataItems != value)
+                {
+                    _dataItems = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public DataItem? SelectedItem
         {
             get => _selectedItem;
-            set => SetProperty(ref _selectedItem, value, nameof(SelectedItem));
+            set
+            {
+                if (_selectedItem != value)
+                {
+                    _selectedItem = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public string SearchText
@@ -41,8 +55,10 @@ namespace 永利系统.ViewModels
             get => _searchText;
             set
             {
-                if (SetProperty(ref _searchText, value, nameof(SearchText)))
+                if (_searchText != value)
                 {
+                    _searchText = value;
+                    RaisePropertyChanged();
                     SearchData();
                 }
             }

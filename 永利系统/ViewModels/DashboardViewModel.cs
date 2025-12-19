@@ -22,20 +22,44 @@ namespace 永利系统.ViewModels
 
         public int TotalRecords
         {
+            //get => _totalRecords;
+            //set => SetProperty(ref _totalRecords, value, nameof(TotalRecords));
+
             get => _totalRecords;
-            set => SetProperty(ref _totalRecords, value, nameof(TotalRecords));
+            set
+            {
+                if (_totalRecords != value)
+                {
+                    _totalRecords = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public int TodayRecords
         {
             get => _todayRecords;
-            set => SetProperty(ref _todayRecords, value, nameof(TodayRecords));
+            set
+            {
+                if (_todayRecords != value)
+                {
+                    _todayRecords = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public decimal TotalAmount
         {
             get => _totalAmount;
-            set => SetProperty(ref _totalAmount, value, nameof(TotalAmount));
+            set
+            {
+                if (_totalAmount != value)
+                {
+                    _totalAmount = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         #endregion

@@ -29,7 +29,14 @@ namespace 永利系统.ViewModels
         public string StatusMessage
         {
             get => _statusMessage;
-            set => SetProperty(ref _statusMessage, value, nameof(StatusMessage));
+            set
+            {
+                if (_statusMessage != value)
+                {
+                    _statusMessage = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         /// <summary>
@@ -38,7 +45,14 @@ namespace 永利系统.ViewModels
         public string CurrentUser
         {
             get => _currentUser;
-            set => SetProperty(ref _currentUser, value, nameof(CurrentUser));
+            set
+            {
+                if (_currentUser != value)
+                {
+                    _currentUser = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         /// <summary>
@@ -47,13 +61,27 @@ namespace 永利系统.ViewModels
         public string SelectedPageKey
         {
             get => _selectedPageKey;
-            set => SetProperty(ref _selectedPageKey, value, nameof(SelectedPageKey));
+            set
+            {
+                if (_selectedPageKey != value)
+                {
+                    _selectedPageKey = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public bool IsBusy
         {
             get => _isBusy;
-            set => SetProperty(ref _isBusy, value, nameof(IsBusy));
+            set
+            {
+                if (_isBusy != value)
+                {
+                    _isBusy = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         #endregion
