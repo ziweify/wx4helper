@@ -27,6 +27,9 @@
     <Reference Include="DevExpress.Utils.v23.2">
       <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Utils.v23.2.dll</HintPath>
     </Reference>
+    <Reference Include="DevExpress.Xpf.Docking.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Xpf.Docking.v23.2.dll</HintPath>
+    </Reference>
     <Reference Include="DevExpress.XtraBars.v23.2">
       <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraBars.v23.2.dll</HintPath>
     </Reference>

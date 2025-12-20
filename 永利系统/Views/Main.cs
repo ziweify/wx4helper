@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using DevExpress.XtraBars;
+using DevExpress.XtraBars.Docking;
 using DevExpress.XtraBars.Ribbon;
+using 永利系统.Models;
+using 永利系统.Services;
 using 永利系统.ViewModels;
 using 永利系统.Views.Pages;
 
@@ -14,15 +17,21 @@ namespace 永利系统.Views
         private readonly MainViewModel _viewModel;
         private readonly Dictionary<string, UserControl> _pages = new();
         private UserControl? _currentPage;
+        private DockingManager? _dockingManager;
+        private LogWindow? _logWindow;
+        private readonly LoggingService _loggingService;
 
         public Main()
         {
             InitializeComponent();
             _viewModel = new MainViewModel();
+            _loggingService = LoggingService.Instance;
             InitializeApplicationMenu();
+            InitializeLogging();
             InitializeNavigation();
             BindViewModel();
             ApplyModernTheme();
+            SetupKeyboardShortcuts();
         }
 
         private void InitializeApplicationMenu()
@@ -41,6 +50,92 @@ namespace 永利系统.Views
             
             // 当前实现：ApplicationMenu 已通过设计器创建并绑定
             // 菜单项需要在设计器中配置，或者使用 PopupMenu 替代
+        }
+
+        private void InitializeLogging()
+        {
+            // 创建 DockingManager
+            _dockingManager = new DockingManager
+            {
+                Parent = contentPanel,
+                Dock = DockStyle.Fill
+            };
+
+            // 创建日志窗口
+            _logWindow = new LogWindow(_dockingManager)
+            {
+                Dock = DockStyle.Bottom,
+                Height = 250,
+                Visible = false // 默认隐藏
+            };
+
+            // 添加到 DockingManager
+            _dockingManager.Panels.Add(_logWindow);
+
+            // 订阅日志事件，更新状态栏
+            _loggingService.LogReceived += OnLogReceived;
+
+            // 测试日志输出
+            _loggingService.Info("系统", "日志系统已初始化");
+        }
+
+        private void OnLogReceived(object? sender, LogEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => UpdateStatusBarLog(e.LogEntry)));
+            }
+            else
+            {
+                UpdateStatusBarLog(e.LogEntry);
+            }
+        }
+
+        private void UpdateStatusBarLog(LogEntry entry)
+        {
+            var timestamp = entry.Timestamp.ToString("HH:mm:ss");
+            var module = string.IsNullOrEmpty(entry.Module) ? "系统" : entry.Module;
+            var level = entry.Level.ToString().ToUpper();
+            var message = entry.Message.Length > 50 ? entry.Message.Substring(0, 50) + "..." : entry.Message;
+            
+            barStaticItemLog.Caption = $"{timestamp} [{module}] [{level}] {message}";
+            
+            // 根据级别设置颜色
+            switch (entry.Level)
+            {
+                case LogLevel.Error:
+                    barStaticItemLog.ForeColor = Color.Red;
+                    break;
+                case LogLevel.Warn:
+                    barStaticItemLog.ForeColor = Color.Orange;
+                    break;
+                case LogLevel.Info:
+                    barStaticItemLog.ForeColor = Color.Blue;
+                    break;
+                default:
+                    barStaticItemLog.ForeColor = Color.Black;
+                    break;
+            }
+        }
+
+        private void SetupKeyboardShortcuts()
+        {
+            // F12 切换日志窗口
+            KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.F12)
+                {
+                    ToggleLogWindow();
+                }
+            };
+        }
+
+        private void ToggleLogWindow()
+        {
+            if (_logWindow != null)
+            {
+                _logWindow.Visible = !_logWindow.Visible;
+            }
         }
 
         private void InitializeNavigation()
@@ -167,6 +262,20 @@ namespace 永利系统.Views
         private void barButtonItemExit_ItemClick(object sender, ItemClickEventArgs e)
         {
             Close();
+        }
+
+        private void barButtonItemLog_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            ToggleLogWindow();
+        }
+
+        private void barStaticItemLog_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            // 点击状态栏日志项，打开日志窗口
+            if (_logWindow != null)
+            {
+                _logWindow.Visible = true;
+            }
         }
 
         #endregion

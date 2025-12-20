@@ -22,6 +22,13 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "永利系统", "永利系统\永利系统.csproj", "{666ACD2A-3AC7-46E9-BE3E-0F6670946FC6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI工作规则", "AI工作规则", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		AI工作规则\README.md = AI工作规则\README.md
+		AI工作规则\代码实现原则.md = AI工作规则\代码实现原则.md
+		AI工作规则\快速参考.md = AI工作规则\快速参考.md
+		AI工作规则\终端命令执行规则.md = AI工作规则\终端命令执行规则.md
+		AI工作规则\项目说明文件命名规则.md = AI工作规则\项目说明文件命名规则.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

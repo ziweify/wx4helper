@@ -37,8 +37,10 @@
             barButtonItemRefresh = new DevExpress.XtraBars.BarButtonItem();
             barButtonItemSave = new DevExpress.XtraBars.BarButtonItem();
             barButtonItemExit = new DevExpress.XtraBars.BarButtonItem();
+            barButtonItemLog = new DevExpress.XtraBars.BarButtonItem();
             barStaticItemStatus = new DevExpress.XtraBars.BarStaticItem();
             barStaticItemUser = new DevExpress.XtraBars.BarStaticItem();
+            barStaticItemLog = new DevExpress.XtraBars.BarStaticItem();
             menuItemNew = new DevExpress.XtraBars.BarButtonItem();
             menuItemOpen = new DevExpress.XtraBars.BarButtonItem();
             menuItemSave = new DevExpress.XtraBars.BarButtonItem();
@@ -59,9 +61,9 @@
             // ribbonControl1
             // 
             ribbonControl1.ExpandCollapseItem.Id = 0;
-            ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] { ribbonControl1.ExpandCollapseItem, barButtonItemDashboard, barButtonItemDataManagement, barButtonItemReports, barButtonItemSettings, barButtonItemRefresh, barButtonItemSave, barButtonItemExit, barStaticItemStatus, barStaticItemUser, menuItemNew, menuItemOpen, menuItemSave, menuItemSaveAs, menuItemPrint, menuItemOptions, menuItemShowQATBelow, menuItemExit });
+            ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] { ribbonControl1.ExpandCollapseItem, barButtonItemDashboard, barButtonItemDataManagement, barButtonItemReports, barButtonItemSettings, barButtonItemRefresh, barButtonItemSave, barButtonItemExit, barButtonItemLog, barStaticItemStatus, barStaticItemUser, barStaticItemLog, menuItemNew, menuItemOpen, menuItemSave, menuItemSaveAs, menuItemPrint, menuItemOptions, menuItemShowQATBelow, menuItemExit });
             ribbonControl1.Location = new System.Drawing.Point(0, 0);
-            ribbonControl1.MaxItemId = 18;
+            ribbonControl1.MaxItemId = 19;
             ribbonControl1.Name = "ribbonControl1";
             ribbonControl1.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] { ribbonPageMain });
             ribbonControl1.Size = new System.Drawing.Size(1438, 160);
@@ -136,6 +138,13 @@
             barButtonItemExit.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
             barButtonItemExit.ItemClick += barButtonItemExit_ItemClick;
             // 
+            // barButtonItemLog
+            // 
+            barButtonItemLog.Caption = "查看日志";
+            barButtonItemLog.Id = 8;
+            barButtonItemLog.Name = "barButtonItemLog";
+            barButtonItemLog.ItemClick += barButtonItemLog_ItemClick;
+            // 
             // barStaticItemStatus
             // 
             barStaticItemStatus.Caption = "就绪";
@@ -148,6 +157,14 @@
             barStaticItemUser.Caption = "当前用户: 管理员";
             barStaticItemUser.Id = 9;
             barStaticItemUser.Name = "barStaticItemUser";
+            // 
+            // barStaticItemLog
+            // 
+            barStaticItemLog.Alignment = DevExpress.XtraBars.BarItemLinkAlignment.Right;
+            barStaticItemLog.Caption = "";
+            barStaticItemLog.Id = 10;
+            barStaticItemLog.Name = "barStaticItemLog";
+            barStaticItemLog.ItemClick += barStaticItemLog_ItemClick;
             // 
             // applicationMenu1
             // 
@@ -243,6 +260,7 @@
             // 
             ribbonPageGroupActions.ItemLinks.Add(barButtonItemRefresh);
             ribbonPageGroupActions.ItemLinks.Add(barButtonItemSave);
+            ribbonPageGroupActions.ItemLinks.Add(barButtonItemLog);
             ribbonPageGroupActions.ItemLinks.Add(barButtonItemExit);
             ribbonPageGroupActions.Name = "ribbonPageGroupActions";
             ribbonPageGroupActions.Text = "操作";
@@ -251,6 +269,7 @@
             // 
             ribbonStatusBar1.ItemLinks.Add(barStaticItemStatus);
             ribbonStatusBar1.ItemLinks.Add(barStaticItemUser);
+            ribbonStatusBar1.ItemLinks.Add(barStaticItemLog);
             ribbonStatusBar1.Location = new System.Drawing.Point(0, 875);
             ribbonStatusBar1.Name = "ribbonStatusBar1";
             ribbonStatusBar1.Ribbon = ribbonControl1;
@@ -301,9 +320,11 @@
         private DevExpress.XtraBars.BarButtonItem barButtonItemRefresh;
         private DevExpress.XtraBars.BarButtonItem barButtonItemSave;
         private DevExpress.XtraBars.BarButtonItem barButtonItemExit;
+        private DevExpress.XtraBars.BarButtonItem barButtonItemLog;
         private DevExpress.XtraBars.Ribbon.RibbonStatusBar ribbonStatusBar1;
         private DevExpress.XtraBars.BarStaticItem barStaticItemStatus;
         private DevExpress.XtraBars.BarStaticItem barStaticItemUser;
+        private DevExpress.XtraBars.BarStaticItem barStaticItemLog;
         private DevExpress.XtraBars.BarButtonItem menuItemNew;
         private DevExpress.XtraBars.BarButtonItem menuItemOpen;
         private DevExpress.XtraBars.BarButtonItem menuItemSave;
