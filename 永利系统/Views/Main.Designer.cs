@@ -53,9 +53,17 @@
             ribbonPageGroupNavigation = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             ribbonPageGroupActions = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             ribbonStatusBar1 = new DevExpress.XtraBars.Ribbon.RibbonStatusBar();
+            splitContainerControl1 = new DevExpress.XtraEditors.SplitContainerControl();
             contentPanel = new System.Windows.Forms.Panel();
+            logWindow1 = new LogWindow();
             ((System.ComponentModel.ISupportInitialize)ribbonControl1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)applicationMenu1).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)splitContainerControl1).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)splitContainerControl1.Panel1).BeginInit();
+            splitContainerControl1.Panel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)splitContainerControl1.Panel2).BeginInit();
+            splitContainerControl1.Panel2.SuspendLayout();
+            splitContainerControl1.SuspendLayout();
             SuspendLayout();
             // 
             // ribbonControl1
@@ -275,13 +283,41 @@
             ribbonStatusBar1.Ribbon = ribbonControl1;
             ribbonStatusBar1.Size = new System.Drawing.Size(1438, 24);
             // 
+            // splitContainerControl1
+            // 
+            splitContainerControl1.Dock = System.Windows.Forms.DockStyle.Fill;
+            splitContainerControl1.Horizontal = false;
+            splitContainerControl1.Location = new System.Drawing.Point(0, 160);
+            splitContainerControl1.Name = "splitContainerControl1";
+            // 
+            // splitContainerControl1.Panel1
+            // 
+            splitContainerControl1.Panel1.Controls.Add(contentPanel);
+            splitContainerControl1.Panel1.Text = "Panel1";
+            // 
+            // splitContainerControl1.Panel2
+            // 
+            splitContainerControl1.Panel2.Controls.Add(logWindow1);
+            splitContainerControl1.Panel2.Text = "Panel2";
+            splitContainerControl1.Size = new System.Drawing.Size(1438, 715);
+            splitContainerControl1.SplitterPosition = 465;
+            splitContainerControl1.TabIndex = 3;
+            // 
             // contentPanel
             // 
             contentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            contentPanel.Location = new System.Drawing.Point(0, 160);
+            contentPanel.Location = new System.Drawing.Point(0, 0);
             contentPanel.Name = "contentPanel";
-            contentPanel.Size = new System.Drawing.Size(1438, 715);
-            contentPanel.TabIndex = 2;
+            contentPanel.Size = new System.Drawing.Size(1438, 465);
+            contentPanel.TabIndex = 0;
+            // 
+            // logWindow1
+            // 
+            logWindow1.Dock = System.Windows.Forms.DockStyle.Fill;
+            logWindow1.Location = new System.Drawing.Point(0, 0);
+            logWindow1.Name = "logWindow1";
+            logWindow1.Size = new System.Drawing.Size(1438, 245);
+            logWindow1.TabIndex = 0;
             // 
             // Main
             // 
@@ -289,7 +325,7 @@
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 14F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             ClientSize = new System.Drawing.Size(1438, 899);
-            Controls.Add(contentPanel);
+            Controls.Add(splitContainerControl1);
             Controls.Add(ribbonStatusBar1);
             Controls.Add(ribbonControl1);
             Name = "Main";
@@ -301,6 +337,12 @@
             Load += Main_Load;
             ((System.ComponentModel.ISupportInitialize)ribbonControl1).EndInit();
             ((System.ComponentModel.ISupportInitialize)applicationMenu1).EndInit();
+            ((System.ComponentModel.ISupportInitialize)splitContainerControl1.Panel1).EndInit();
+            splitContainerControl1.Panel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)splitContainerControl1.Panel2).EndInit();
+            splitContainerControl1.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)splitContainerControl1).EndInit();
+            splitContainerControl1.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
 
@@ -333,6 +375,8 @@
         private DevExpress.XtraBars.BarButtonItem menuItemOptions;
         private DevExpress.XtraBars.BarCheckItem menuItemShowQATBelow;
         private DevExpress.XtraBars.BarButtonItem menuItemExit;
+        private DevExpress.XtraEditors.SplitContainerControl splitContainerControl1;
         private System.Windows.Forms.Panel contentPanel;
+        private LogWindow logWindow1;
     }
 }

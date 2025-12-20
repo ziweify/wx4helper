@@ -54,17 +54,11 @@ namespace 永利系统.Views
 
         private void InitializeLogging()
         {
-            // 创建日志窗口
-            _logWindow = new LogWindow
-            {
-                Dock = DockStyle.Bottom,
-                Height = 250,
-                Visible = false // 默认隐藏
-            };
+            // logWindow1 已在 Designer 中创建，这里只需要配置
             
-            // 添加到内容面板
-            contentPanel.Controls.Add(_logWindow);
-
+            // 默认隐藏日志面板
+            splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel1;
+            
             // 订阅日志事件，更新状态栏
             _loggingService.LogReceived += OnLogReceived;
 
@@ -156,15 +150,9 @@ namespace 永利系统.Views
                 contentPanel.Controls.Remove(_currentPage);
             }
 
-            // 添加新页面（保留日志窗口）
+            // 添加新页面
             contentPanel.Controls.Add(page);
             _currentPage = page;
-            
-            // 确保日志窗口在最上层（如果存在且可见）
-            if (_logWindow != null && _logWindow.Visible)
-            {
-                contentPanel.Controls.SetChildIndex(_logWindow, contentPanel.Controls.Count - 1);
-            }
 
             // 更新按钮状态
             UpdateNavigationButtons(pageKey);
@@ -268,21 +256,18 @@ namespace 永利系统.Views
         
         private void ToggleLogWindow()
         {
-            // 如果日志窗口未初始化，先初始化
-            if (_logWindow == null)
+            // 切换日志面板的显示/隐藏
+            if (splitContainerControl1.PanelVisibility == DevExpress.XtraEditors.SplitPanelVisibility.Panel1)
             {
-                InitializeLogging();
+                // 显示日志面板
+                splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Both;
+                // 设置分隔位置（距离底部250像素）
+                splitContainerControl1.SplitterPosition = splitContainerControl1.Height - 250;
             }
-            
-            if (_logWindow != null)
+            else
             {
-                _logWindow.Visible = !_logWindow.Visible;
-                
-                // 如果显示，确保在最上层
-                if (_logWindow.Visible)
-                {
-                    contentPanel.Controls.SetChildIndex(_logWindow, contentPanel.Controls.Count - 1);
-                }
+                // 隐藏日志面板
+                splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel1;
             }
         }
 
