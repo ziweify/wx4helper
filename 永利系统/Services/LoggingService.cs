@@ -55,6 +55,13 @@ namespace 永利系统.Services
         /// 最小日志级别（低于此级别的日志将被忽略）
         /// </summary>
         public LogLevel MinLogLevel { get; set; } = LogLevel.Debug;
+        
+        /// <summary>
+        /// 内存中的日志历史（用于在日志窗口打开时显示）
+        /// </summary>
+        private readonly List<LogEntry> _logHistory = new List<LogEntry>();
+        private readonly object _historyLock = new object();
+        private const int MAX_HISTORY_COUNT = 1000; // 最多保留1000条内存日志
 
         private LoggingService()
         {
@@ -98,7 +105,23 @@ namespace 永利系统.Services
                 Exception = exception
             };
 
+            System.Diagnostics.Debug.WriteLine($"LoggingService.Log: [{module}] {message}");
+
+            // 添加到内存历史
+            lock (_historyLock)
+            {
+                _logHistory.Add(logEntry);
+                System.Diagnostics.Debug.WriteLine($"LoggingService.Log: 内存历史数量 = {_logHistory.Count}");
+                
+                // 限制内存日志数量
+                if (_logHistory.Count > MAX_HISTORY_COUNT)
+                {
+                    _logHistory.RemoveAt(0);
+                }
+            }
+
             // 触发事件
+            System.Diagnostics.Debug.WriteLine($"LoggingService.Log: 触发 LogReceived 事件，订阅者数量 = {LogReceived?.GetInvocationList().Length ?? 0}");
             LogReceived?.Invoke(this, new LogEventArgs(logEntry));
 
             // 异步保存到文件（不阻塞UI）
@@ -154,16 +177,40 @@ namespace 永利系统.Services
         }
 
         /// <summary>
-        /// 加载历史日志
+        /// 获取内存中的日志历史
+        /// </summary>
+        /// <returns>日志条目列表</returns>
+        public List<LogEntry> GetMemoryHistory()
+        {
+            lock (_historyLock)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService.GetMemoryHistory: 返回 {_logHistory.Count} 条日志");
+                
+                // 输出前3条日志内容
+                for (int i = 0; i < Math.Min(3, _logHistory.Count); i++)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  内存历史[{i}]: {_logHistory[i].Timestamp:HH:mm:ss.fff} [{_logHistory[i].Module}] {_logHistory[i].Message}");
+                }
+                
+                return new List<LogEntry>(_logHistory);
+            }
+        }
+        
+        /// <summary>
+        /// 加载历史日志（从文件）
         /// </summary>
         /// <param name="date">日期</param>
         /// <returns>日志条目列表</returns>
         public List<LogEntry> LoadHistory(DateTime date)
         {
             var logFile = Path.Combine(_logDirectory, $"log_{date:yyyyMMdd}.txt");
+            System.Diagnostics.Debug.WriteLine($"LoadHistory: 尝试加载文件: {logFile}");
+            System.Diagnostics.Debug.WriteLine($"LoadHistory: _logDirectory = {_logDirectory}");
+            System.Diagnostics.Debug.WriteLine($"LoadHistory: File.Exists = {File.Exists(logFile)}");
             
             if (!File.Exists(logFile))
             {
+                System.Diagnostics.Debug.WriteLine($"LoadHistory: 文件不存在，返回空列表");
                 return new List<LogEntry>();
             }
 
@@ -172,6 +219,7 @@ namespace 永利系统.Services
             try
             {
                 var lines = File.ReadAllLines(logFile);
+                System.Diagnostics.Debug.WriteLine($"LoadHistory: 从文件读取了 {lines.Length} 行");
                 
                 foreach (var line in lines)
                 {
@@ -185,10 +233,12 @@ namespace 永利系统.Services
                         entries.Add(entry);
                     }
                 }
+                
+                System.Diagnostics.Debug.WriteLine($"LoadHistory: 成功解析 {entries.Count} 条日志");
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略读取错误
+                System.Diagnostics.Debug.WriteLine($"LoadHistory: 读取失败: {ex.Message}");
             }
 
             return entries;
@@ -202,31 +252,55 @@ namespace 永利系统.Services
             try
             {
                 // 格式: yyyy-MM-dd HH:mm:ss.fff [模块] [级别] 消息
-                // 这里使用简单的字符串解析，实际可以使用正则表达式
-                var parts = line.Split(new[] { " [" }, StringSplitOptions.None);
-                if (parts.Length < 3)
+                // 使用正则表达式或更健壮的解析方式
+                line = line.Trim();
+                if (string.IsNullOrWhiteSpace(line))
                     return null;
 
-                var timestampStr = parts[0];
-                var modulePart = parts[1].Split(']')[0];
-                var levelPart = parts[2].Split(']')[0];
-                var message = parts.Length > 3 ? string.Join(" [", parts.Skip(3)) : "";
+                // 查找第一个 [ 的位置（时间戳后）
+                var firstBracket = line.IndexOf('[');
+                if (firstBracket < 0)
+                    return null;
 
-                if (DateTime.TryParse(timestampStr, out var timestamp) &&
-                    Enum.TryParse<LogLevel>(levelPart, true, out var level))
+                // 提取时间戳
+                var timestampStr = line.Substring(0, firstBracket).Trim();
+                if (!DateTime.TryParse(timestampStr, out var timestamp))
+                    return null;
+
+                // 提取模块和级别
+                var remaining = line.Substring(firstBracket);
+                // 格式: [模块] [级别] 消息
+                var parts = remaining.Split(new[] { "] [" }, StringSplitOptions.None);
+                if (parts.Length < 2)
+                    return null;
+
+                // 提取模块（去掉开头的 [）
+                var modulePart = parts[0].TrimStart('[').Trim();
+                
+                // 提取级别和消息
+                var levelAndMessage = parts[1];
+                var levelEnd = levelAndMessage.IndexOf(']');
+                if (levelEnd < 0)
+                    return null;
+
+                var levelPart = levelAndMessage.Substring(0, levelEnd).Trim();
+                var message = levelAndMessage.Substring(levelEnd + 1).Trim();
+
+                if (Enum.TryParse<LogLevel>(levelPart, true, out var level))
                 {
                     return new LogEntry
                     {
                         Timestamp = timestamp,
                         Module = modulePart,
                         Level = level,
-                        Message = message.Trim()
+                        Message = message
                     };
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 解析失败，返回null
+                // 解析失败，记录错误但不影响其他日志
+                System.Diagnostics.Debug.WriteLine($"解析日志行失败: {line}, 错误: {ex.Message}");
             }
 
             return null;

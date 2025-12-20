@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using DevExpress.XtraBars;
 using DevExpress.XtraBars.Docking;
+using DevExpress.XtraBars.Helpers.Docking; // DockingManager 在这个命名空间中
 using DevExpress.XtraBars.Ribbon;
 using 永利系统.Models;
 using 永利系统.Services;
@@ -17,7 +18,6 @@ namespace 永利系统.Views
         private readonly MainViewModel _viewModel;
         private readonly Dictionary<string, UserControl> _pages = new();
         private UserControl? _currentPage;
-        private DockingManager? _dockingManager;
         private LogWindow? _logWindow;
         private readonly LoggingService _loggingService;
 
@@ -54,29 +54,22 @@ namespace 永利系统.Views
 
         private void InitializeLogging()
         {
-            // 创建 DockingManager
-            _dockingManager = new DockingManager
-            {
-                Parent = contentPanel,
-                Dock = DockStyle.Fill
-            };
-
             // 创建日志窗口
-            _logWindow = new LogWindow(_dockingManager)
+            _logWindow = new LogWindow
             {
                 Dock = DockStyle.Bottom,
                 Height = 250,
                 Visible = false // 默认隐藏
             };
-
-            // 添加到 DockingManager
-            _dockingManager.Panels.Add(_logWindow);
+            
+            // 添加到内容面板
+            contentPanel.Controls.Add(_logWindow);
 
             // 订阅日志事件，更新状态栏
             _loggingService.LogReceived += OnLogReceived;
 
-            // 测试日志输出
-            _loggingService.Info("系统", "日志系统已初始化");
+            // 启动日志（只记录一次，表示主窗口已初始化）
+            _loggingService.Info("系统", "主窗口初始化完成");
         }
 
         private void OnLogReceived(object? sender, LogEventArgs e)
@@ -100,20 +93,20 @@ namespace 永利系统.Views
             
             barStaticItemLog.Caption = $"{timestamp} [{module}] [{level}] {message}";
             
-            // 根据级别设置颜色
+            // 根据级别设置颜色（使用 Appearance 属性）
             switch (entry.Level)
             {
                 case LogLevel.Error:
-                    barStaticItemLog.ForeColor = Color.Red;
+                    barStaticItemLog.Appearance.ForeColor = Color.Red;
                     break;
                 case LogLevel.Warn:
-                    barStaticItemLog.ForeColor = Color.Orange;
+                    barStaticItemLog.Appearance.ForeColor = Color.Orange;
                     break;
                 case LogLevel.Info:
-                    barStaticItemLog.ForeColor = Color.Blue;
+                    barStaticItemLog.Appearance.ForeColor = Color.Blue;
                     break;
                 default:
-                    barStaticItemLog.ForeColor = Color.Black;
+                    barStaticItemLog.Appearance.ForeColor = Color.Black;
                     break;
             }
         }
@@ -130,13 +123,6 @@ namespace 永利系统.Views
             };
         }
 
-        private void ToggleLogWindow()
-        {
-            if (_logWindow != null)
-            {
-                _logWindow.Visible = !_logWindow.Visible;
-            }
-        }
 
         private void InitializeNavigation()
         {
@@ -170,10 +156,15 @@ namespace 永利系统.Views
                 contentPanel.Controls.Remove(_currentPage);
             }
 
-            // 添加新页面
-            contentPanel.Controls.Clear();
+            // 添加新页面（保留日志窗口）
             contentPanel.Controls.Add(page);
             _currentPage = page;
+            
+            // 确保日志窗口在最上层（如果存在且可见）
+            if (_logWindow != null && _logWindow.Visible)
+            {
+                contentPanel.Controls.SetChildIndex(_logWindow, contentPanel.Controls.Count - 1);
+            }
 
             // 更新按钮状态
             UpdateNavigationButtons(pageKey);
@@ -271,10 +262,27 @@ namespace 永利系统.Views
 
         private void barStaticItemLog_ItemClick(object sender, ItemClickEventArgs e)
         {
-            // 点击状态栏日志项，打开日志窗口
+            // 点击状态栏日志项，切换日志窗口
+            ToggleLogWindow();
+        }
+        
+        private void ToggleLogWindow()
+        {
+            // 如果日志窗口未初始化，先初始化
+            if (_logWindow == null)
+            {
+                InitializeLogging();
+            }
+            
             if (_logWindow != null)
             {
-                _logWindow.Visible = true;
+                _logWindow.Visible = !_logWindow.Visible;
+                
+                // 如果显示，确保在最上层
+                if (_logWindow.Visible)
+                {
+                    contentPanel.Controls.SetChildIndex(_logWindow, contentPanel.Controls.Count - 1);
+                }
             }
         }
 
