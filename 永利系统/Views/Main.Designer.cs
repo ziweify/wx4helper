@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             ribbonControl1 = new DevExpress.XtraBars.Ribbon.RibbonControl();
+            applicationMenu1 = new DevExpress.XtraBars.Ribbon.ApplicationMenu();
             barButtonItemDashboard = new DevExpress.XtraBars.BarButtonItem();
             barButtonItemDataManagement = new DevExpress.XtraBars.BarButtonItem();
             barButtonItemReports = new DevExpress.XtraBars.BarButtonItem();
@@ -38,24 +39,35 @@
             barButtonItemExit = new DevExpress.XtraBars.BarButtonItem();
             barStaticItemStatus = new DevExpress.XtraBars.BarStaticItem();
             barStaticItemUser = new DevExpress.XtraBars.BarStaticItem();
+            menuItemNew = new DevExpress.XtraBars.BarButtonItem();
+            menuItemOpen = new DevExpress.XtraBars.BarButtonItem();
+            menuItemSave = new DevExpress.XtraBars.BarButtonItem();
+            menuItemSaveAs = new DevExpress.XtraBars.BarButtonItem();
+            menuItemPrint = new DevExpress.XtraBars.BarButtonItem();
+            menuItemOptions = new DevExpress.XtraBars.BarButtonItem();
+            menuItemShowQATBelow = new DevExpress.XtraBars.BarCheckItem();
+            menuItemExit = new DevExpress.XtraBars.BarButtonItem();
             ribbonPageMain = new DevExpress.XtraBars.Ribbon.RibbonPage();
             ribbonPageGroupNavigation = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             ribbonPageGroupActions = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             ribbonStatusBar1 = new DevExpress.XtraBars.Ribbon.RibbonStatusBar();
             contentPanel = new System.Windows.Forms.Panel();
             ((System.ComponentModel.ISupportInitialize)ribbonControl1).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)applicationMenu1).BeginInit();
             SuspendLayout();
             // 
             // ribbonControl1
             // 
             ribbonControl1.ExpandCollapseItem.Id = 0;
-            ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] { ribbonControl1.ExpandCollapseItem, barButtonItemDashboard, barButtonItemDataManagement, barButtonItemReports, barButtonItemSettings, barButtonItemRefresh, barButtonItemSave, barButtonItemExit, barStaticItemStatus, barStaticItemUser });
+            ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] { ribbonControl1.ExpandCollapseItem, barButtonItemDashboard, barButtonItemDataManagement, barButtonItemReports, barButtonItemSettings, barButtonItemRefresh, barButtonItemSave, barButtonItemExit, barStaticItemStatus, barStaticItemUser, menuItemNew, menuItemOpen, menuItemSave, menuItemSaveAs, menuItemPrint, menuItemOptions, menuItemShowQATBelow, menuItemExit });
             ribbonControl1.Location = new System.Drawing.Point(0, 0);
-            ribbonControl1.MaxItemId = 10;
+            ribbonControl1.MaxItemId = 18;
             ribbonControl1.Name = "ribbonControl1";
             ribbonControl1.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] { ribbonPageMain });
             ribbonControl1.Size = new System.Drawing.Size(1438, 160);
             ribbonControl1.StatusBar = ribbonStatusBar1;
+            ribbonControl1.ApplicationButtonDropDownControl = applicationMenu1;
+            ribbonControl1.ToolbarLocation = DevExpress.XtraBars.Ribbon.RibbonQuickAccessToolbarLocation.Below;
             // 
             // barButtonItemDashboard
             // 
@@ -137,6 +149,81 @@
             barStaticItemUser.Id = 9;
             barStaticItemUser.Name = "barStaticItemUser";
             // 
+            // applicationMenu1
+            // 
+            applicationMenu1.Name = "applicationMenu1";
+            applicationMenu1.Ribbon = ribbonControl1;
+            // 
+            // menuItemNew
+            // 
+            menuItemNew.Caption = "新建";
+            menuItemNew.Id = 10;
+            menuItemNew.Name = "menuItemNew";
+            menuItemNew.ItemClick += menuItemNew_ItemClick;
+            // 
+            // menuItemOpen
+            // 
+            menuItemOpen.Caption = "打开";
+            menuItemOpen.Id = 11;
+            menuItemOpen.Name = "menuItemOpen";
+            menuItemOpen.ItemClick += menuItemOpen_ItemClick;
+            // 
+            // menuItemSave
+            // 
+            menuItemSave.Caption = "保存";
+            menuItemSave.Id = 12;
+            menuItemSave.Name = "menuItemSave";
+            menuItemSave.ItemClick += menuItemSave_ItemClick;
+            // 
+            // menuItemSaveAs
+            // 
+            menuItemSaveAs.Caption = "另存为";
+            menuItemSaveAs.Id = 13;
+            menuItemSaveAs.Name = "menuItemSaveAs";
+            menuItemSaveAs.ItemClick += menuItemSaveAs_ItemClick;
+            // 
+            // menuItemPrint
+            // 
+            menuItemPrint.Caption = "打印";
+            menuItemPrint.Id = 14;
+            menuItemPrint.Name = "menuItemPrint";
+            menuItemPrint.ItemClick += menuItemPrint_ItemClick;
+            // 
+            // menuItemOptions
+            // 
+            menuItemOptions.Caption = "选项";
+            menuItemOptions.Id = 15;
+            menuItemOptions.Name = "menuItemOptions";
+            menuItemOptions.ItemClick += menuItemOptions_ItemClick;
+            // 
+            // menuItemShowQATBelow
+            // 
+            menuItemShowQATBelow.Caption = "在功能区下方显示快速访问工具栏";
+            menuItemShowQATBelow.Id = 16;
+            menuItemShowQATBelow.Name = "menuItemShowQATBelow";
+            menuItemShowQATBelow.Checked = true;  // 默认选中（QAT 在下方）
+            menuItemShowQATBelow.ItemClick += menuItemShowQATBelow_ItemClick;
+            // 
+            // menuItemExit
+            // 
+            menuItemExit.Caption = "退出";
+            menuItemExit.Id = 17;
+            menuItemExit.Name = "menuItemExit";
+            menuItemExit.ItemClick += menuItemExit_ItemClick;
+            // 
+            // 添加菜单项到 ApplicationMenu
+            // 注意：在 DevExpress WinForms 中，ApplicationMenu 的菜单项通过 BarManager 管理
+            // 菜单项将在 Main.cs 的构造函数中通过代码添加
+            //
+            // 
+            // 添加常用按钮到 Quick Access Toolbar
+            // 注意：在 DevExpress WinForms 中，QAT 可能需要通过其他方式访问
+            // 暂时注释掉，如果需要可以后续实现
+            // 
+            // ribbonControl1.QuickAccessToolbar.ItemLinks.Add(barButtonItemSave);
+            // ribbonControl1.QuickAccessToolbar.ItemLinks.Add(barButtonItemRefresh);
+            // ribbonControl1.QuickAccessToolbar.ShowCustomizeItem = true;
+            // 
             // ribbonPageMain
             // 
             ribbonPageMain.Groups.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPageGroup[] { ribbonPageGroupNavigation, ribbonPageGroupActions });
@@ -194,6 +281,7 @@
             FormClosing += Main_FormClosing;
             Load += Main_Load;
             ((System.ComponentModel.ISupportInitialize)ribbonControl1).EndInit();
+            ((System.ComponentModel.ISupportInitialize)applicationMenu1).EndInit();
             ResumeLayout(false);
             PerformLayout();
 
@@ -202,6 +290,7 @@
         #endregion
 
         private DevExpress.XtraBars.Ribbon.RibbonControl ribbonControl1;
+        private DevExpress.XtraBars.Ribbon.ApplicationMenu applicationMenu1;
         private DevExpress.XtraBars.Ribbon.RibbonPage ribbonPageMain;
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroupNavigation;
         private DevExpress.XtraBars.BarButtonItem barButtonItemDashboard;
@@ -215,6 +304,14 @@
         private DevExpress.XtraBars.Ribbon.RibbonStatusBar ribbonStatusBar1;
         private DevExpress.XtraBars.BarStaticItem barStaticItemStatus;
         private DevExpress.XtraBars.BarStaticItem barStaticItemUser;
+        private DevExpress.XtraBars.BarButtonItem menuItemNew;
+        private DevExpress.XtraBars.BarButtonItem menuItemOpen;
+        private DevExpress.XtraBars.BarButtonItem menuItemSave;
+        private DevExpress.XtraBars.BarButtonItem menuItemSaveAs;
+        private DevExpress.XtraBars.BarButtonItem menuItemPrint;
+        private DevExpress.XtraBars.BarButtonItem menuItemOptions;
+        private DevExpress.XtraBars.BarCheckItem menuItemShowQATBelow;
+        private DevExpress.XtraBars.BarButtonItem menuItemExit;
         private System.Windows.Forms.Panel contentPanel;
     }
 }

@@ -19,9 +19,28 @@ namespace 永利系统.Views
         {
             InitializeComponent();
             _viewModel = new MainViewModel();
+            InitializeApplicationMenu();
             InitializeNavigation();
             BindViewModel();
             ApplyModernTheme();
+        }
+
+        private void InitializeApplicationMenu()
+        {
+            // 在 DevExpress WinForms 中，ApplicationMenu 的菜单项需要通过设计器创建
+            // 或者使用 PopupMenu 作为替代方案
+            // 
+            // 注意：ApplicationMenu.Items 属性在 WinForms 版本中可能不存在
+            // 建议通过 Visual Studio 设计器来配置 ApplicationMenu 的菜单项
+            //
+            // 如果需要通过代码创建菜单，可以使用 PopupMenu：
+            // var popupMenu = new DevExpress.XtraBars.PopupMenu();
+            // popupMenu.Manager = ribbonControl1.Manager;
+            // popupMenu.ItemLinks.Add(menuItemNew);
+            // ribbonControl1.ApplicationButtonDropDownControl = popupMenu;
+            
+            // 当前实现：ApplicationMenu 已通过设计器创建并绑定
+            // 菜单项需要在设计器中配置，或者使用 PopupMenu 替代
         }
 
         private void InitializeNavigation()
@@ -146,6 +165,76 @@ namespace 永利系统.Views
         }
 
         private void barButtonItemExit_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            Close();
+        }
+
+        #endregion
+
+        #region ApplicationMenu Event Handlers
+
+        private void menuItemNew_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            MessageBox.Show("执行新建操作", "新建", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void menuItemOpen_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "所有文件|*.*";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    MessageBox.Show($"打开文件: {dialog.FileName}", "打开", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void menuItemSave_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            _viewModel.SaveCommand?.Execute(null);
+        }
+
+        private void menuItemSaveAs_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "所有文件|*.*";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    MessageBox.Show($"保存到: {dialog.FileName}", "另存为", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void menuItemPrint_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            MessageBox.Show("执行打印操作", "打印", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void menuItemOptions_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            MessageBox.Show("打开选项对话框", "选项", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void menuItemShowQATBelow_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            var checkItem = sender as DevExpress.XtraBars.BarCheckItem;
+            if (checkItem != null)
+            {
+                // 切换 QAT 位置
+                if (checkItem.Checked)
+                {
+                    ribbonControl1.ToolbarLocation = DevExpress.XtraBars.Ribbon.RibbonQuickAccessToolbarLocation.Below;
+                }
+                else
+                {
+                    ribbonControl1.ToolbarLocation = DevExpress.XtraBars.Ribbon.RibbonQuickAccessToolbarLocation.Above;
+                }
+            }
+        }
+
+        private void menuItemExit_ItemClick(object sender, ItemClickEventArgs e)
         {
             Close();
         }
