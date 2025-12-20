@@ -18,7 +18,6 @@ namespace 永利系统.Views
         private readonly MainViewModel _viewModel;
         private readonly Dictionary<string, UserControl> _pages = new();
         private UserControl? _currentPage;
-        private LogWindow? _logWindow;
         private readonly LoggingService _loggingService;
 
         public Main()

@@ -302,6 +302,7 @@
             splitContainerControl1.Size = new System.Drawing.Size(1438, 715);
             splitContainerControl1.SplitterPosition = 465;
             splitContainerControl1.TabIndex = 3;
+            splitContainerControl1.ShowSplitGlyph = DevExpress.Utils.DefaultBoolean.True;
             // 
             // contentPanel
             // 
