@@ -71,6 +71,7 @@
   <ItemGroup>
     <!-- 排除 RenameFiles.cs，避免多个入口点 -->
     <Compile Remove="RenameFiles.cs" />
+    <PackageReference Include="DevExpress.Win.Design" Version="23.2.6" />
     <!-- 确保所有页面都被编译 -->
     <Compile Update="Views\Main.cs">
       <SubType>Form</SubType>

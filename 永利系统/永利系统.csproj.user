@@ -8,10 +8,16 @@
     <Compile Update="Views\Main.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\MainWinform.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\Pages\DashboardPage.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Views\Pages\DataManagementPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\WechatPage.cs">
       <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>

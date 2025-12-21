@@ -31,6 +31,54 @@ namespace 永利系统.Views
             BindViewModel();
             ApplyModernTheme();
             SetupKeyboardShortcuts();
+            SetupRibbonPageNavigation(); // 设置 Ribbon 标签页切换导航
+        }
+
+        /// <summary>
+        /// 设置 Ribbon 标签页切换时的内容导航
+        /// 当用户点击不同的 Ribbon 标签页时，自动切换内容区域
+        /// </summary>
+        private void SetupRibbonPageNavigation()
+        {
+            // 监听 Ribbon 标签页切换事件
+            ribbonControl1.SelectedPageChanged += RibbonControl1_SelectedPageChanged;
+        }
+
+        /// <summary>
+        /// Ribbon 标签页切换事件处理
+        /// </summary>
+        private void RibbonControl1_SelectedPageChanged(object? sender, EventArgs e)
+        {
+            if (ribbonControl1.SelectedPage == null)
+                return;
+
+            // 根据选中的标签页名称，映射到对应的页面键
+            var pageName = ribbonControl1.SelectedPage.Name;
+            string? pageKey = null;
+
+            // 建立标签页名称到页面键的映射
+            switch (pageName)
+            {
+                case "ribbonPageMain":
+                    // 主页标签页 - 默认显示 Dashboard
+                    pageKey = "Dashboard";
+                    break;
+                case "ribbonPageWechat":
+                    // 微信助手标签页 - 显示专门的微信页面
+                    pageKey = "Wechat";
+                    _loggingService.Info("微信助手", "切换到微信助手标签页");
+                    break;
+                // 可以继续添加其他标签页的映射
+                // case "ribbonPageLottery":
+                //     pageKey = "Lottery";
+                //     break;
+            }
+
+            // 如果找到了对应的页面键，则导航到该页面
+            if (pageKey != null && _pages.ContainsKey(pageKey))
+            {
+                NavigateToPage(pageKey);
+            }
         }
 
         private void InitializeApplicationMenu()
@@ -55,7 +103,7 @@ namespace 永利系统.Views
         {
             // logWindow1 已在 Designer 中创建，这里只需要配置
             
-            // 默认隐藏日志面板
+            // 默认隐藏日志面板（用户可以通过点击按钮或F12显示）
             splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel1;
             
             // 订阅日志事件，更新状态栏
@@ -63,6 +111,9 @@ namespace 永利系统.Views
 
             // 启动日志（只记录一次，表示主窗口已初始化）
             _loggingService.Info("系统", "主窗口初始化完成");
+            
+            // 确保日志窗口在切换页面时不会被影响
+            // logWindow1 在 SplitContainer.Panel2 中，独立于 contentPanel
         }
 
         private void OnLogReceived(object? sender, LogEventArgs e)
@@ -124,6 +175,7 @@ namespace 永利系统.Views
             _pages["DataManagement"] = new DataManagementPage();
             _pages["Reports"] = new DashboardPage(); // 可以替换为实际的报表页面
             _pages["Settings"] = new DashboardPage(); // 可以替换为实际的设置页面
+            _pages["Wechat"] = new WechatPage(); // 微信助手页面
 
             // 设置所有页面为 Fill
             foreach (var page in _pages.Values)
@@ -143,6 +195,9 @@ namespace 永利系统.Views
             if (_currentPage == page)
                 return;
 
+            // 保存日志面板的当前状态
+            var logPanelVisible = splitContainerControl1.PanelVisibility == DevExpress.XtraEditors.SplitPanelVisibility.Both;
+
             // 移除当前页面
             if (_currentPage != null)
             {
@@ -152,6 +207,13 @@ namespace 永利系统.Views
             // 添加新页面
             contentPanel.Controls.Add(page);
             _currentPage = page;
+
+            // 恢复日志面板的状态（确保切换页面时日志面板状态不变）
+            if (logPanelVisible && splitContainerControl1.PanelVisibility != DevExpress.XtraEditors.SplitPanelVisibility.Both)
+            {
+                splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Both;
+                splitContainerControl1.SplitterPosition = splitContainerControl1.Height - 250;
+            }
 
             // 更新按钮状态
             UpdateNavigationButtons(pageKey);
@@ -225,6 +287,12 @@ namespace 永利系统.Views
         private void barButtonItemSettings_ItemClick(object sender, ItemClickEventArgs e)
         {
             NavigateToPage("Settings");
+        }
+
+        private void barButtonItemWechatStart_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            _loggingService.Info("微信助手", "启动微信...");
+            // TODO: 实现启动微信的逻辑
         }
 
         private void barButtonItemRefresh_ItemClick(object sender, ItemClickEventArgs e)

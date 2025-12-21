@@ -28,8 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             ribbonControl1 = new DevExpress.XtraBars.Ribbon.RibbonControl();
-            applicationMenu1 = new DevExpress.XtraBars.Ribbon.ApplicationMenu();
+            applicationMenu1 = new DevExpress.XtraBars.Ribbon.ApplicationMenu(components);
             barButtonItemDashboard = new DevExpress.XtraBars.BarButtonItem();
             barButtonItemDataManagement = new DevExpress.XtraBars.BarButtonItem();
             barButtonItemReports = new DevExpress.XtraBars.BarButtonItem();
@@ -49,9 +50,12 @@
             menuItemOptions = new DevExpress.XtraBars.BarButtonItem();
             menuItemShowQATBelow = new DevExpress.XtraBars.BarCheckItem();
             menuItemExit = new DevExpress.XtraBars.BarButtonItem();
+            barButtonItemWechatStart = new DevExpress.XtraBars.BarButtonItem();
             ribbonPageMain = new DevExpress.XtraBars.Ribbon.RibbonPage();
             ribbonPageGroupNavigation = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             ribbonPageGroupActions = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
+            ribbonPageWechat = new DevExpress.XtraBars.Ribbon.RibbonPage();
+            ribbonPageGroupWechatActions = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             ribbonStatusBar1 = new DevExpress.XtraBars.Ribbon.RibbonStatusBar();
             splitContainerControl1 = new DevExpress.XtraEditors.SplitContainerControl();
             contentPanel = new System.Windows.Forms.Panel();
@@ -68,16 +72,21 @@
             // 
             // ribbonControl1
             // 
-            ribbonControl1.ExpandCollapseItem.Id = 0;
-            ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] { ribbonControl1.ExpandCollapseItem, barButtonItemDashboard, barButtonItemDataManagement, barButtonItemReports, barButtonItemSettings, barButtonItemRefresh, barButtonItemSave, barButtonItemExit, barButtonItemLog, barStaticItemStatus, barStaticItemUser, barStaticItemLog, menuItemNew, menuItemOpen, menuItemSave, menuItemSaveAs, menuItemPrint, menuItemOptions, menuItemShowQATBelow, menuItemExit });
-            ribbonControl1.Location = new System.Drawing.Point(0, 0);
-            ribbonControl1.MaxItemId = 19;
-            ribbonControl1.Name = "ribbonControl1";
-            ribbonControl1.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] { ribbonPageMain });
-            ribbonControl1.Size = new System.Drawing.Size(1438, 160);
-            ribbonControl1.StatusBar = ribbonStatusBar1;
             ribbonControl1.ApplicationButtonDropDownControl = applicationMenu1;
+            ribbonControl1.ExpandCollapseItem.Id = 0;
+            ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] { ribbonControl1.ExpandCollapseItem, barButtonItemDashboard, barButtonItemDataManagement, barButtonItemReports, barButtonItemSettings, barButtonItemRefresh, barButtonItemSave, barButtonItemExit, barButtonItemLog, barStaticItemStatus, barStaticItemUser, barStaticItemLog, menuItemNew, menuItemOpen, menuItemSave, menuItemSaveAs, menuItemPrint, menuItemOptions, menuItemShowQATBelow, menuItemExit, barButtonItemWechatStart });
+            ribbonControl1.Location = new System.Drawing.Point(0, 0);
+            ribbonControl1.MaxItemId = 21;
+            ribbonControl1.Name = "ribbonControl1";
+            ribbonControl1.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] { ribbonPageMain, ribbonPageWechat });
+            ribbonControl1.Size = new System.Drawing.Size(1438, 184);
+            ribbonControl1.StatusBar = ribbonStatusBar1;
             ribbonControl1.ToolbarLocation = DevExpress.XtraBars.Ribbon.RibbonQuickAccessToolbarLocation.Below;
+            // 
+            // applicationMenu1
+            // 
+            applicationMenu1.Name = "applicationMenu1";
+            applicationMenu1.Ribbon = ribbonControl1;
             // 
             // barButtonItemDashboard
             // 
@@ -169,15 +178,9 @@
             // barStaticItemLog
             // 
             barStaticItemLog.Alignment = DevExpress.XtraBars.BarItemLinkAlignment.Right;
-            barStaticItemLog.Caption = "";
             barStaticItemLog.Id = 10;
             barStaticItemLog.Name = "barStaticItemLog";
             barStaticItemLog.ItemClick += barStaticItemLog_ItemClick;
-            // 
-            // applicationMenu1
-            // 
-            applicationMenu1.Name = "applicationMenu1";
-            applicationMenu1.Ribbon = ribbonControl1;
             // 
             // menuItemNew
             // 
@@ -223,10 +226,11 @@
             // 
             // menuItemShowQATBelow
             // 
+            menuItemShowQATBelow.BindableChecked = true;
             menuItemShowQATBelow.Caption = "在功能区下方显示快速访问工具栏";
+            menuItemShowQATBelow.Checked = true;
             menuItemShowQATBelow.Id = 16;
             menuItemShowQATBelow.Name = "menuItemShowQATBelow";
-            menuItemShowQATBelow.Checked = true;  // 默认选中（QAT 在下方）
             menuItemShowQATBelow.ItemClick += menuItemShowQATBelow_ItemClick;
             // 
             // menuItemExit
@@ -236,18 +240,14 @@
             menuItemExit.Name = "menuItemExit";
             menuItemExit.ItemClick += menuItemExit_ItemClick;
             // 
-            // 添加菜单项到 ApplicationMenu
-            // 注意：在 DevExpress WinForms 中，ApplicationMenu 的菜单项通过 BarManager 管理
-            // 菜单项将在 Main.cs 的构造函数中通过代码添加
-            //
+            // barButtonItemWechatStart
             // 
-            // 添加常用按钮到 Quick Access Toolbar
-            // 注意：在 DevExpress WinForms 中，QAT 可能需要通过其他方式访问
-            // 暂时注释掉，如果需要可以后续实现
-            // 
-            // ribbonControl1.QuickAccessToolbar.ItemLinks.Add(barButtonItemSave);
-            // ribbonControl1.QuickAccessToolbar.ItemLinks.Add(barButtonItemRefresh);
-            // ribbonControl1.QuickAccessToolbar.ShowCustomizeItem = true;
+            barButtonItemWechatStart.Caption = "启动微信";
+            barButtonItemWechatStart.Id = 20;
+            barButtonItemWechatStart.ImageOptions.SvgImageSize = new System.Drawing.Size(32, 32);
+            barButtonItemWechatStart.Name = "barButtonItemWechatStart";
+            barButtonItemWechatStart.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
+            barButtonItemWechatStart.ItemClick += barButtonItemWechatStart_ItemClick;
             // 
             // ribbonPageMain
             // 
@@ -273,11 +273,22 @@
             ribbonPageGroupActions.Name = "ribbonPageGroupActions";
             ribbonPageGroupActions.Text = "操作";
             // 
+            // ribbonPageWechat
+            // 
+            ribbonPageWechat.Groups.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPageGroup[] { ribbonPageGroupWechatActions });
+            ribbonPageWechat.Name = "ribbonPageWechat";
+            ribbonPageWechat.Text = "微信助手";
+            // 
+            // ribbonPageGroupWechatActions
+            // 
+            ribbonPageGroupWechatActions.Name = "ribbonPageGroupWechatActions";
+            ribbonPageGroupWechatActions.Text = "微信操作";
+            // 
             // ribbonStatusBar1
             // 
             ribbonStatusBar1.ItemLinks.Add(barStaticItemStatus);
-            ribbonStatusBar1.ItemLinks.Add(barStaticItemUser);
-            ribbonStatusBar1.ItemLinks.Add(barStaticItemLog);
+            ribbonStatusBar1.ItemLinks.Add(barStaticItemUser, true);
+            ribbonStatusBar1.ItemLinks.Add(barStaticItemLog, true);
             ribbonStatusBar1.Location = new System.Drawing.Point(0, 875);
             ribbonStatusBar1.Name = "ribbonStatusBar1";
             ribbonStatusBar1.Ribbon = ribbonControl1;
@@ -287,7 +298,7 @@
             // 
             splitContainerControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             splitContainerControl1.Horizontal = false;
-            splitContainerControl1.Location = new System.Drawing.Point(0, 160);
+            splitContainerControl1.Location = new System.Drawing.Point(0, 184);
             splitContainerControl1.Name = "splitContainerControl1";
             // 
             // splitContainerControl1.Panel1
@@ -299,10 +310,10 @@
             // 
             splitContainerControl1.Panel2.Controls.Add(logWindow1);
             splitContainerControl1.Panel2.Text = "Panel2";
-            splitContainerControl1.Size = new System.Drawing.Size(1438, 715);
+            splitContainerControl1.ShowSplitGlyph = DevExpress.Utils.DefaultBoolean.True;
+            splitContainerControl1.Size = new System.Drawing.Size(1438, 691);
             splitContainerControl1.SplitterPosition = 465;
             splitContainerControl1.TabIndex = 3;
-            splitContainerControl1.ShowSplitGlyph = DevExpress.Utils.DefaultBoolean.True;
             // 
             // contentPanel
             // 
@@ -317,7 +328,7 @@
             logWindow1.Dock = System.Windows.Forms.DockStyle.Fill;
             logWindow1.Location = new System.Drawing.Point(0, 0);
             logWindow1.Name = "logWindow1";
-            logWindow1.Size = new System.Drawing.Size(1438, 245);
+            logWindow1.Size = new System.Drawing.Size(1438, 216);
             logWindow1.TabIndex = 0;
             // 
             // Main
@@ -379,5 +390,9 @@
         private DevExpress.XtraEditors.SplitContainerControl splitContainerControl1;
         private System.Windows.Forms.Panel contentPanel;
         private LogWindow logWindow1;
+        // 微信助手标签页
+        private DevExpress.XtraBars.Ribbon.RibbonPage ribbonPageWechat;
+        private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroupWechatActions;
+        private DevExpress.XtraBars.BarButtonItem barButtonItemWechatStart;
     }
 }
