@@ -16,8 +16,8 @@ namespace 永利系统.Views
     public partial class Main : RibbonForm
     {
         private readonly MainViewModel _viewModel;
-        private readonly Dictionary<string, UserControl> _pages = new();
-        private UserControl? _currentPage;
+        private readonly Dictionary<string, Form> _pages = new();
+        private Form? _currentPage;
         private readonly LoggingService _loggingService;
 
         public Main()
@@ -203,6 +203,15 @@ namespace 永利系统.Views
             {
                 contentPanel.Controls.Remove(_currentPage);
             }
+
+            // 确保 Form 已设置为非顶级窗口（可以嵌入到容器中）
+            if (page.TopLevel)
+            {
+                page.TopLevel = false;
+            }
+            page.FormBorderStyle = FormBorderStyle.None;
+            page.Dock = DockStyle.Fill;
+            page.Show(); // 必须调用 Show，即使 TopLevel = false
 
             // 添加新页面
             contentPanel.Controls.Add(page);

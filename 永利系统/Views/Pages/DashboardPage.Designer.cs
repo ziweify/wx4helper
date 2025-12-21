@@ -194,9 +194,10 @@ namespace 永利系统.Views.Pages
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(800, 600);
             this.Controls.Add(this.layoutControl1);
             this.Name = "DashboardPage";
-            this.Size = new System.Drawing.Size(800, 600);
+            this.Text = "主页";
             this.Load += new System.EventHandler(this.DashboardPage_Load);
             ((System.ComponentModel.ISupportInitialize)(this.layoutControl1)).EndInit();
             this.layoutControl1.ResumeLayout(false);

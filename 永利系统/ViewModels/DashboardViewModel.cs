@@ -74,6 +74,14 @@ namespace 永利系统.ViewModels
             TotalAmount = 356789.50m;
         }
 
+        /// <summary>
+        /// 刷新数据（用于后台自动刷新）
+        /// </summary>
+        public void RefreshData()
+        {
+            LoadDashboardData();
+        }
+
         // OnLoaded 方法在 DevExpress.Mvvm.ViewModelBase 中不存在
         // 数据加载已在构造函数中完成
 

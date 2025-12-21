@@ -19,8 +19,8 @@ namespace 永利系统
             // 设置默认字体
             DevExpress.LookAndFeel.UserLookAndFeel.Default.SetSkinStyle("Office 2019 Colorful");
 
-            // 运行主窗体
-            Application.Run(new Main());
+            // 运行主窗体（使用 TabControl 版本）
+            Application.Run(new MainTabs());
         }
     }
 }

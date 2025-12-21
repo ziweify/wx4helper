@@ -28,15 +28,17 @@ namespace 永利系统.Views.Pages
         /// </summary>
         private void InitializeComponent()
         {
-            this.SuspendLayout();
+            SuspendLayout();
             // 
             // WechatPage
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 14F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Name = "WechatPage";
-            this.Size = new System.Drawing.Size(800, 600);
-            this.ResumeLayout(false);
+            AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            ClientSize = new System.Drawing.Size(1185, 688);
+            Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            Name = "WechatPage";
+            Text = "微信助手";
+            ResumeLayout(false);
         }
 
         #endregion
