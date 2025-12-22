@@ -39,18 +39,10 @@ namespace 永利系统.Views
             toolStripSeparator1 = new ToolStripSeparator();
             toolStripMenuItemExit = new ToolStripMenuItem();
             toolStripMenuItemTools = new ToolStripMenuItem();
+            toolStripMenuItemViewLog = new ToolStripMenuItem();
             toolStripMenuItemOptions = new ToolStripMenuItem();
             toolStripMenuItemHelp = new ToolStripMenuItem();
             toolStripMenuItemAbout = new ToolStripMenuItem();
-            toolStrip1 = new ToolStrip();
-            toolStripButtonRefresh = new ToolStripButton();
-            toolStripButtonSave = new ToolStripButton();
-            toolStripSeparator2 = new ToolStripSeparator();
-            toolStripButtonLog = new ToolStripButton();
-            toolStripSeparator3 = new ToolStripSeparator();
-            toolStripButtonWechatStart = new ToolStripButton();
-            toolStripSeparator4 = new ToolStripSeparator();
-            toolStripButtonExit = new ToolStripButton();
             statusStrip1 = new StatusStrip();
             toolStripStatusStatus = new ToolStripStatusLabel();
             toolStripStatusUser = new ToolStripStatusLabel();
@@ -59,7 +51,6 @@ namespace 永利系统.Views
             xtraTabControl1 = new DevExpress.XtraTab.XtraTabControl();
             logWindow1 = new LogWindow();
             menuStrip1.SuspendLayout();
-            toolStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainerControl1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)splitContainerControl1.Panel1).BeginInit();
@@ -138,10 +129,19 @@ namespace 永利系统.Views
             // toolStripMenuItemTools
             // 
             toolStripMenuItemTools.DropDownItems.AddRange(new ToolStripItem[] {
+            toolStripMenuItemViewLog,
             toolStripMenuItemOptions});
             toolStripMenuItemTools.Name = "toolStripMenuItemTools";
             toolStripMenuItemTools.Size = new System.Drawing.Size(44, 20);
             toolStripMenuItemTools.Text = "工具";
+            // 
+            // toolStripMenuItemViewLog
+            // 
+            toolStripMenuItemViewLog.CheckOnClick = true;
+            toolStripMenuItemViewLog.Name = "toolStripMenuItemViewLog";
+            toolStripMenuItemViewLog.Size = new System.Drawing.Size(124, 22);
+            toolStripMenuItemViewLog.Text = "查看日志";
+            toolStripMenuItemViewLog.Click += ToolStripMenuItemViewLog_Click;
             // 
             // toolStripMenuItemOptions
             // 
@@ -165,97 +165,6 @@ namespace 永利系统.Views
             toolStripMenuItemAbout.Text = "关于";
             toolStripMenuItemAbout.Click += ToolStripMenuItemAbout_Click;
             // 
-            // toolStrip1
-            // 
-            toolStrip1.Items.AddRange(new ToolStripItem[] {
-            toolStripButtonRefresh,
-            toolStripButtonSave,
-            toolStripSeparator2,
-            toolStripButtonLog,
-            toolStripSeparator3,
-            toolStripButtonWechatStart,
-            toolStripSeparator4,
-            toolStripButtonExit});
-            toolStrip1.Location = new System.Drawing.Point(0, 24);
-            toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new System.Drawing.Size(1438, 49);
-            toolStrip1.TabIndex = 1;
-            toolStrip1.Text = "toolStrip1";
-            // 
-            // toolStripButtonRefresh
-            // 
-            toolStripButtonRefresh.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButtonRefresh.Image = CreateRefreshIcon();
-            toolStripButtonRefresh.ImageScaling = ToolStripItemImageScaling.None;
-            toolStripButtonRefresh.ImageTransparentColor = System.Drawing.Color.Magenta;
-            toolStripButtonRefresh.Name = "toolStripButtonRefresh";
-            toolStripButtonRefresh.Size = new System.Drawing.Size(60, 46);
-            toolStripButtonRefresh.Text = "刷新";
-            toolStripButtonRefresh.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButtonRefresh.Click += toolStripButtonRefresh_Click;
-            // 
-            // toolStripButtonSave
-            // 
-            toolStripButtonSave.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButtonSave.Image = CreateSaveIcon();
-            toolStripButtonSave.ImageScaling = ToolStripItemImageScaling.None;
-            toolStripButtonSave.ImageTransparentColor = System.Drawing.Color.Magenta;
-            toolStripButtonSave.Name = "toolStripButtonSave";
-            toolStripButtonSave.Size = new System.Drawing.Size(60, 46);
-            toolStripButtonSave.Text = "保存";
-            toolStripButtonSave.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButtonSave.Click += toolStripButtonSave_Click;
-            // 
-            // toolStripSeparator2
-            // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new System.Drawing.Size(6, 25);
-            // 
-            // toolStripButtonLog
-            // 
-            toolStripButtonLog.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButtonLog.Image = CreateLogIcon();
-            toolStripButtonLog.ImageScaling = ToolStripItemImageScaling.None;
-            toolStripButtonLog.ImageTransparentColor = System.Drawing.Color.Magenta;
-            toolStripButtonLog.Name = "toolStripButtonLog";
-            toolStripButtonLog.Size = new System.Drawing.Size(72, 46);
-            toolStripButtonLog.Text = "查看日志";
-            toolStripButtonLog.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButtonLog.Click += toolStripButtonLog_Click;
-            // 
-            // toolStripSeparator3
-            // 
-            toolStripSeparator3.Name = "toolStripSeparator3";
-            toolStripSeparator3.Size = new System.Drawing.Size(6, 25);
-            // 
-            // toolStripButtonWechatStart
-            // 
-            toolStripButtonWechatStart.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButtonWechatStart.Image = CreateWechatIcon();
-            toolStripButtonWechatStart.ImageScaling = ToolStripItemImageScaling.None;
-            toolStripButtonWechatStart.ImageTransparentColor = System.Drawing.Color.Magenta;
-            toolStripButtonWechatStart.Name = "toolStripButtonWechatStart";
-            toolStripButtonWechatStart.Size = new System.Drawing.Size(84, 46);
-            toolStripButtonWechatStart.Text = "启动微信";
-            toolStripButtonWechatStart.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButtonWechatStart.Click += toolStripButtonWechatStart_Click;
-            // 
-            // toolStripSeparator4
-            // 
-            toolStripSeparator4.Name = "toolStripSeparator4";
-            toolStripSeparator4.Size = new System.Drawing.Size(6, 25);
-            // 
-            // toolStripButtonExit
-            // 
-            toolStripButtonExit.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButtonExit.Image = CreateExitIcon();
-            toolStripButtonExit.ImageScaling = ToolStripItemImageScaling.None;
-            toolStripButtonExit.ImageTransparentColor = System.Drawing.Color.Magenta;
-            toolStripButtonExit.Name = "toolStripButtonExit";
-            toolStripButtonExit.Size = new System.Drawing.Size(60, 46);
-            toolStripButtonExit.Text = "退出";
-            toolStripButtonExit.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButtonExit.Click += toolStripButtonExit_Click;
             // 
             // statusStrip1
             // 
@@ -294,7 +203,7 @@ namespace 永利系统.Views
             // 
             splitContainerControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             splitContainerControl1.Horizontal = false;
-            splitContainerControl1.Location = new System.Drawing.Point(0, 73);
+            splitContainerControl1.Location = new System.Drawing.Point(0, 24);
             splitContainerControl1.Name = "splitContainerControl1";
             // 
             // splitContainerControl1.Panel1
@@ -334,7 +243,6 @@ namespace 永利系统.Views
             ClientSize = new System.Drawing.Size(1438, 899);
             Controls.Add(splitContainerControl1);
             Controls.Add(statusStrip1);
-            Controls.Add(toolStrip1);
             Controls.Add(menuStrip1);
             MainMenuStrip = menuStrip1;
             Name = "MainTabs";
@@ -344,8 +252,6 @@ namespace 永利系统.Views
             Load += MainTabs_Load;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
-            toolStrip1.ResumeLayout(false);
-            toolStrip1.PerformLayout();
             statusStrip1.ResumeLayout(false);
             statusStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainerControl1.Panel1).EndInit();
@@ -370,18 +276,10 @@ namespace 永利系统.Views
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripMenuItem toolStripMenuItemExit;
         private ToolStripMenuItem toolStripMenuItemTools;
+        private ToolStripMenuItem toolStripMenuItemViewLog;
         private ToolStripMenuItem toolStripMenuItemOptions;
         private ToolStripMenuItem toolStripMenuItemHelp;
         private ToolStripMenuItem toolStripMenuItemAbout;
-        private ToolStrip toolStrip1;
-        private ToolStripButton toolStripButtonRefresh;
-        private ToolStripButton toolStripButtonSave;
-        private ToolStripSeparator toolStripSeparator2;
-        private ToolStripButton toolStripButtonLog;
-        private ToolStripSeparator toolStripSeparator3;
-        private ToolStripButton toolStripButtonWechatStart;
-        private ToolStripSeparator toolStripSeparator4;
-        private ToolStripButton toolStripButtonExit;
         private StatusStrip statusStrip1;
         private ToolStripStatusLabel toolStripStatusStatus;
         private ToolStripStatusLabel toolStripStatusUser;

@@ -23,18 +23,11 @@ namespace 永利系统.Views
             InitializeComponent();
             _viewModel = new MainViewModel();
             _loggingService = LoggingService.Instance;
-            InitializeToolbar();
             InitializeLogging();
             InitializeTabs();
             BindViewModel();
             ApplyModernTheme();
             SetupKeyboardShortcuts();
-        }
-
-        private void InitializeToolbar()
-        {
-            // 工具栏已通过 Designer 配置
-            // 这里可以添加额外的初始化逻辑
         }
 
         private void InitializeLogging()
@@ -175,43 +168,18 @@ namespace 永利系统.Views
                 splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Both;
                 // 设置分隔位置（距离底部250像素）
                 splitContainerControl1.SplitterPosition = splitContainerControl1.Height - 250;
+                // 更新菜单项的选中状态
+                toolStripMenuItemViewLog.Checked = true;
             }
             else
             {
                 // 隐藏日志面板
                 splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel1;
+                // 更新菜单项的选中状态
+                toolStripMenuItemViewLog.Checked = false;
             }
         }
 
-        #region Toolbar Button Click Events
-
-        private void toolStripButtonRefresh_Click(object sender, EventArgs e)
-        {
-            _viewModel.RefreshCommand?.Execute(null);
-        }
-
-        private void toolStripButtonSave_Click(object sender, EventArgs e)
-        {
-            _viewModel.SaveCommand?.Execute(null);
-        }
-
-        private void toolStripButtonLog_Click(object sender, EventArgs e)
-        {
-            ToggleLogWindow();
-        }
-
-        private void toolStripButtonExit_Click(object sender, EventArgs e)
-        {
-            Close();
-        }
-
-        private void toolStripButtonWechatStart_Click(object sender, EventArgs e)
-        {
-            _loggingService.Info("微信助手", "启动微信...");
-            // TODO: 实现启动微信的逻辑
-        }
-
-        #endregion
 
         #region Menu Item Click Events
 
@@ -252,6 +220,12 @@ namespace 永利系统.Views
         private void ToolStripMenuItemExit_Click(object sender, EventArgs e)
         {
             Close();
+        }
+
+        private void ToolStripMenuItemViewLog_Click(object sender, EventArgs e)
+        {
+            // 切换日志窗口显示/隐藏
+            ToggleLogWindow();
         }
 
         private void ToolStripMenuItemOptions_Click(object sender, EventArgs e)

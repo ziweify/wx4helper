@@ -107,6 +107,7 @@ namespace 永利系统.Views.Wechat
             // 
             // toolStrip1
             // 
+            toolStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
             toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { toolStripButton_Connect, toolStripSeparator1, toolStripButton_Log, toolStripButton_OpenLotteryResult, toolStripButton_CreditWithdrawManage, toolStripButton_ClearData, toolStripSeparator2, toolStripButton_Settings });
             toolStrip1.Location = new System.Drawing.Point(0, 0);
             toolStrip1.Name = "toolStrip1";
@@ -116,10 +117,11 @@ namespace 永利系统.Views.Wechat
             // 
             // toolStripButton_Connect
             // 
-            toolStripButton_Connect.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            toolStripButton_Connect.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_Connect.Name = "toolStripButton_Connect";
             toolStripButton_Connect.Size = new System.Drawing.Size(36, 22);
             toolStripButton_Connect.Text = "连接";
+            toolStripButton_Connect.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_Connect.Click += ToolStripButton_Connect_Click;
             // 
             // toolStripSeparator1
@@ -129,34 +131,38 @@ namespace 永利系统.Views.Wechat
             // 
             // toolStripButton_Log
             // 
-            toolStripButton_Log.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            toolStripButton_Log.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_Log.Name = "toolStripButton_Log";
             toolStripButton_Log.Size = new System.Drawing.Size(36, 22);
             toolStripButton_Log.Text = "日志";
+            toolStripButton_Log.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_Log.Click += ToolStripButton_Log_Click;
             // 
             // toolStripButton_OpenLotteryResult
             // 
-            toolStripButton_OpenLotteryResult.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            toolStripButton_OpenLotteryResult.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_OpenLotteryResult.Name = "toolStripButton_OpenLotteryResult";
             toolStripButton_OpenLotteryResult.Size = new System.Drawing.Size(60, 22);
             toolStripButton_OpenLotteryResult.Text = "开奖结果";
+            toolStripButton_OpenLotteryResult.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_OpenLotteryResult.Click += ToolStripButton_OpenLotteryResult_Click;
             // 
             // toolStripButton_CreditWithdrawManage
             // 
-            toolStripButton_CreditWithdrawManage.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            toolStripButton_CreditWithdrawManage.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_CreditWithdrawManage.Name = "toolStripButton_CreditWithdrawManage";
             toolStripButton_CreditWithdrawManage.Size = new System.Drawing.Size(72, 22);
             toolStripButton_CreditWithdrawManage.Text = "上下分管理";
+            toolStripButton_CreditWithdrawManage.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_CreditWithdrawManage.Click += ToolStripButton_CreditWithdrawManage_Click;
             // 
             // toolStripButton_ClearData
             // 
-            toolStripButton_ClearData.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            toolStripButton_ClearData.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_ClearData.Name = "toolStripButton_ClearData";
             toolStripButton_ClearData.Size = new System.Drawing.Size(60, 22);
             toolStripButton_ClearData.Text = "清空数据";
+            toolStripButton_ClearData.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_ClearData.Click += ToolStripButton_ClearData_Click;
             // 
             // toolStripSeparator2
@@ -166,10 +172,11 @@ namespace 永利系统.Views.Wechat
             // 
             // toolStripButton_Settings
             // 
-            toolStripButton_Settings.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            toolStripButton_Settings.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_Settings.Name = "toolStripButton_Settings";
             toolStripButton_Settings.Size = new System.Drawing.Size(36, 22);
             toolStripButton_Settings.Text = "设置";
+            toolStripButton_Settings.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_Settings.Click += ToolStripButton_Settings_Click;
             // 
             // statusStrip1
@@ -570,6 +577,257 @@ namespace 永利系统.Views.Wechat
         private DevExpress.XtraGrid.Views.Grid.GridView gridView_Orders;
         private DevExpress.XtraEditors.PanelControl panelControl_OrdersTop;
         private DevExpress.XtraEditors.LabelControl labelControl_OrderInfo;
+
+        #region Icon Creation Methods
+
+        /// <summary>
+        /// 创建连接图标 (24x24) - 插头图标
+        /// </summary>
+        private System.Drawing.Image CreateConnectIcon()
+        {
+            var bitmap = new System.Drawing.Bitmap(24, 24);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+                
+                // 绘制插头图标（连接）
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(0, 120, 215), 2))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(0, 120, 215)))
+                {
+                    // 插头主体（矩形）
+                    g.FillRectangle(brush, 6, 8, 12, 10);
+                    g.DrawRectangle(pen, 6, 8, 12, 10);
+                    
+                    // 插头插脚（两个小矩形）
+                    g.FillRectangle(brush, 8, 18, 2, 4);
+                    g.FillRectangle(brush, 14, 18, 2, 4);
+                    
+                    // 连接线（从插头延伸）
+                    g.DrawLine(pen, 12, 4, 12, 8);
+                }
+            }
+            return bitmap;
+        }
+
+        /// <summary>
+        /// 创建日志图标 (24x24) - 文档图标
+        /// </summary>
+        private System.Drawing.Image CreateLogIcon()
+        {
+            var bitmap = new System.Drawing.Bitmap(24, 24);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+                
+                // 绘制文档图标（日志）
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(0, 120, 215), 2))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(0, 120, 215)))
+                {
+                    // 文档主体
+                    var path = new System.Drawing.Drawing2D.GraphicsPath();
+                    path.AddLines(new System.Drawing.Point[] {
+                        new System.Drawing.Point(4, 4),
+                        new System.Drawing.Point(16, 4),
+                        new System.Drawing.Point(20, 8),
+                        new System.Drawing.Point(20, 20),
+                        new System.Drawing.Point(4, 20)
+                    });
+                    path.CloseAllFigures();
+                    g.FillPath(brush, path);
+                    g.DrawPath(pen, path);
+                    
+                    // 文档折角
+                    g.DrawLine(new System.Drawing.Pen(System.Drawing.Color.White, 2), 16, 4, 16, 8);
+                    g.DrawLine(new System.Drawing.Pen(System.Drawing.Color.White, 2), 16, 8, 20, 8);
+                    
+                    // 绘制文本行（日志）
+                    using (var textPen = new System.Drawing.Pen(System.Drawing.Color.White, 1.5f))
+                    {
+                        for (int i = 0; i < 3; i++)
+                        {
+                            g.DrawLine(textPen, 6, 11 + i * 3, 18, 11 + i * 3);
+                        }
+                    }
+                }
+            }
+            return bitmap;
+        }
+
+        /// <summary>
+        /// 创建开奖结果图标 (24x24) - 骰子图标
+        /// </summary>
+        private System.Drawing.Image CreateLotteryIcon()
+        {
+            var bitmap = new System.Drawing.Bitmap(24, 24);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+                
+                // 绘制骰子图标（开奖结果）
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(255, 193, 7), 2))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(255, 193, 7)))
+                {
+                    // 骰子主体（圆角矩形）
+                    var rect = new System.Drawing.Rectangle(6, 6, 12, 12);
+                    g.FillRectangle(brush, rect);
+                    g.DrawRectangle(pen, rect);
+                    
+                    // 骰子点数（5个点）
+                    using (var dotBrush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(48, 48, 48)))
+                    {
+                        // 四个角
+                        g.FillEllipse(dotBrush, 8, 8, 2, 2);
+                        g.FillEllipse(dotBrush, 14, 8, 2, 2);
+                        g.FillEllipse(dotBrush, 8, 14, 2, 2);
+                        g.FillEllipse(dotBrush, 14, 14, 2, 2);
+                        // 中心点
+                        g.FillEllipse(dotBrush, 11, 11, 2, 2);
+                    }
+                }
+            }
+            return bitmap;
+        }
+
+        /// <summary>
+        /// 创建上下分管理图标 (24x24) - 货币/转账图标
+        /// </summary>
+        private System.Drawing.Image CreateCreditIcon()
+        {
+            var bitmap = new System.Drawing.Bitmap(24, 24);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+                
+                // 绘制货币/转账图标（上下分管理）
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(40, 167, 69), 2))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(40, 167, 69)))
+                {
+                    // 圆形货币符号
+                    g.DrawEllipse(pen, 6, 6, 12, 12);
+                    
+                    // 货币符号 "¥" 或 "$"
+                    using (var font = new System.Drawing.Font("Arial", 12, System.Drawing.FontStyle.Bold))
+                    using (var textBrush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(40, 167, 69)))
+                    {
+                        g.DrawString("¥", font, textBrush, 7, 4);
+                    }
+                    
+                    // 上下箭头（表示上下分）
+                    using (var arrowPen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(40, 167, 69), 2))
+                    {
+                        // 上箭头
+                        g.DrawLine(arrowPen, 12, 2, 10, 4);
+                        g.DrawLine(arrowPen, 12, 2, 14, 4);
+                        // 下箭头
+                        g.DrawLine(arrowPen, 12, 20, 10, 18);
+                        g.DrawLine(arrowPen, 12, 20, 14, 18);
+                    }
+                }
+            }
+            return bitmap;
+        }
+
+        /// <summary>
+        /// 创建清空数据图标 (24x24) - 垃圾桶图标
+        /// </summary>
+        private System.Drawing.Image CreateClearIcon()
+        {
+            var bitmap = new System.Drawing.Bitmap(24, 24);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+                
+                // 绘制垃圾桶图标（清空数据）
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(220, 53, 69), 2))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(220, 53, 69)))
+                {
+                    // 垃圾桶主体（梯形）
+                    var path = new System.Drawing.Drawing2D.GraphicsPath();
+                    path.AddLines(new System.Drawing.Point[] {
+                        new System.Drawing.Point(8, 6),
+                        new System.Drawing.Point(16, 6),
+                        new System.Drawing.Point(18, 18),
+                        new System.Drawing.Point(6, 18)
+                    });
+                    path.CloseAllFigures();
+                    g.FillPath(brush, path);
+                    g.DrawPath(pen, path);
+                    
+                    // 垃圾桶盖子
+                    g.DrawRectangle(pen, 7, 4, 10, 2);
+                    g.FillRectangle(brush, 7, 4, 10, 2);
+                    
+                    // 盖子把手
+                    g.DrawEllipse(pen, 11, 2, 2, 2);
+                    g.FillEllipse(brush, 11, 2, 2, 2);
+                    
+                    // 垃圾桶条纹（表示已清空）
+                    using (var linePen = new System.Drawing.Pen(System.Drawing.Color.White, 1))
+                    {
+                        g.DrawLine(linePen, 8, 10, 18, 10);
+                        g.DrawLine(linePen, 8, 14, 18, 14);
+                    }
+                }
+            }
+            return bitmap;
+        }
+
+        /// <summary>
+        /// 创建设置图标 (24x24) - 齿轮图标
+        /// </summary>
+        private System.Drawing.Image CreateSettingsIcon()
+        {
+            var bitmap = new System.Drawing.Bitmap(24, 24);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+                
+                // 绘制齿轮图标（设置）
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(108, 117, 125), 2))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(108, 117, 125)))
+                {
+                    // 齿轮外圈（8个齿）
+                    var centerX = 12f;
+                    var centerY = 12f;
+                    var outerRadius = 8f;
+                    var innerRadius = 5f;
+                    
+                    var points = new System.Drawing.PointF[16];
+                    for (int i = 0; i < 8; i++)
+                    {
+                        var angle1 = i * System.Math.PI / 4 - System.Math.PI / 2;
+                        var angle2 = (i + 0.5) * System.Math.PI / 4 - System.Math.PI / 2;
+                        
+                        points[i * 2] = new System.Drawing.PointF(
+                            centerX + (float)(outerRadius * System.Math.Cos(angle1)),
+                            centerY + (float)(outerRadius * System.Math.Sin(angle1))
+                        );
+                        points[i * 2 + 1] = new System.Drawing.PointF(
+                            centerX + (float)(innerRadius * System.Math.Cos(angle2)),
+                            centerY + (float)(innerRadius * System.Math.Sin(angle2))
+                        );
+                    }
+                    
+                    var path = new System.Drawing.Drawing2D.GraphicsPath();
+                    path.AddPolygon(points);
+                    g.FillPath(brush, path);
+                    g.DrawPath(pen, path);
+                    
+                    // 中心圆
+                    g.FillEllipse(System.Drawing.Brushes.White, 9, 9, 6, 6);
+                    g.DrawEllipse(pen, 9, 9, 6, 6);
+                }
+            }
+            return bitmap;
+        }
+
+        #endregion
     }
 }
 
