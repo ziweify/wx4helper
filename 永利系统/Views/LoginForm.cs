@@ -45,7 +45,18 @@ namespace 永利系统.Views
                 {
                     if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
                     {
-                        MessageBox.Show(_viewModel.ErrorMessage, "登录失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        // 在 UI 线程中显示消息框
+                        if (InvokeRequired)
+                        {
+                            BeginInvoke(new Action(() =>
+                            {
+                                MessageBox.Show(_viewModel.ErrorMessage, "登录失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }));
+                        }
+                        else
+                        {
+                            MessageBox.Show(_viewModel.ErrorMessage, "登录失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                 }
                 else if (e.PropertyName == nameof(_viewModel.IsBusy))

@@ -201,15 +201,22 @@ namespace 永利系统.ViewModels
                         {
                             ErrorMessage = "账号失效! 请重新登录\r\n请检查是否有在其他地方登录导致本次失效!";
                         }
-                        else
+                        else if (!string.IsNullOrEmpty(response.Msg))
                         {
                             ErrorMessage = $"登录失败: {response.Msg}";
+                        }
+                        else
+                        {
+                            ErrorMessage = $"登录失败: 错误代码 {response.Code}";
                         }
                     }
                     else
                     {
-                        ErrorMessage = "登录失败: 未知错误";
+                        ErrorMessage = "登录失败: 服务器无响应，请检查网络连接";
                     }
+                    
+                    // 确保错误消息被触发显示
+                    _loggingService.Error("登录", ErrorMessage);
                 }
             }
             catch (Exception ex)
@@ -221,6 +228,13 @@ namespace 永利系统.ViewModels
             {
                 IsBusy = false;
                 BusyMessage = string.Empty;
+                
+                // 确保错误消息被触发（如果登录失败且 ErrorMessage 不为空）
+                if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    // 触发 PropertyChanged 事件，确保 UI 更新
+                    RaisePropertyChanged(nameof(ErrorMessage));
+                }
             }
         }
         

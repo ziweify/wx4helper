@@ -72,20 +72,38 @@ namespace 永利系统.Services.Auth
                 
                 var response = await _boterApi.LoginAsync(username, password);
                 
-                if (response.Code == 0)
+                if (response.Code == 0 && response.Data != null)
                 {
                     _loggingService.Info("认证服务", $"登录成功: {username}");
+                    
+                    // 验证 Token 是否存在
+                    if (string.IsNullOrEmpty(response.Data.Token))
+                    {
+                        _loggingService.Error("认证服务", "登录成功但 Token 为空");
+                        AuthGuard.ClearAuthentication();
+                        return false;
+                    }
+                    
+                    _loggingService.Info("认证服务", $"Token 已获取，长度: {response.Data.Token.Length}");
+                    
+                    // 设置认证标记（防破解）
+                    AuthGuard.SetAuthenticated(response.Data.Token);
+                    
+                    _loggingService.Info("认证服务", "认证标记已设置");
+                    
                     return true;
                 }
                 else
                 {
                     _loggingService.Error("认证服务", $"登录失败: {response.Msg}");
+                    AuthGuard.ClearAuthentication();
                     return false;
                 }
             }
             catch (Exception ex)
             {
                 _loggingService.Error("认证服务", $"登录异常: {ex.Message}");
+                AuthGuard.ClearAuthentication();
                 return false;
             }
         }
@@ -125,6 +143,7 @@ namespace 永利系统.Services.Auth
         public void Logout()
         {
             _boterApi.Logout();
+            AuthGuard.ClearAuthentication();
             _loggingService.Info("认证服务", "已登出");
         }
         

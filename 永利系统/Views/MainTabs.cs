@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using DevExpress.XtraTab;
 using 永利系统.Models;
 using 永利系统.Services;
+using 永利系统.Services.Auth;
 using 永利系统.ViewModels;
 using 永利系统.Views.Pages;
 using 永利系统.Views.Wechat;
@@ -17,17 +18,42 @@ namespace 永利系统.Views
     {
         private readonly MainViewModel _viewModel;
         private readonly LoggingService _loggingService;
+        private readonly AuthGuard? _authGuard;
+        private System.Windows.Forms.Timer? _authVerifyTimer;
 
-        public MainTabs()
+        /// <summary>
+        /// 构造函数（必须传入 AuthGuard，防止直接实例化）
+        /// </summary>
+        public MainTabs(AuthGuard? authGuard = null)
         {
+            // 🔥 防破解：验证认证状态
+            if (authGuard == null || !authGuard.VerifyAuthentication())
+            {
+                MessageBox.Show("未通过认证验证，无法启动主窗口", "安全验证", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+                return;
+            }
+            
+            _authGuard = authGuard;
+            
             InitializeComponent();
             _viewModel = new MainViewModel();
             _loggingService = LoggingService.Instance;
+            
+            // 再次验证（双重验证）
+            if (!_authGuard.VerifyAuthentication())
+            {
+                MessageBox.Show("认证验证失败，程序将退出", "安全验证", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+                return;
+            }
+            
             InitializeLogging();
             InitializeTabs();
             BindViewModel();
             ApplyModernTheme();
             SetupKeyboardShortcuts();
+            StartPeriodicAuthVerify();
         }
 
         private void InitializeLogging()
@@ -95,6 +121,13 @@ namespace 永利系统.Views
 
         private void InitializeTabs()
         {
+            // 🔥 防破解：关键操作前验证
+            if (_authGuard != null && !_authGuard.VerifyAuthentication())
+            {
+                _loggingService.Error("主窗口", "初始化标签页时验证失败");
+                return;
+            }
+            
             // 创建所有标签页（使用 Form 而不是 UserControl）
             CreateTabPage("主页", "Dashboard", new DashboardPage());
             CreateTabPage("数据管理", "DataManagement", new DataManagementPage());
@@ -202,11 +235,23 @@ namespace 永利系统.Views
 
         private void ToolStripMenuItemSave_Click(object sender, EventArgs e)
         {
+            // 🔥 防破解：关键操作前验证
+            if (_authGuard != null && !_authGuard.VerifyOperation("保存数据"))
+            {
+                return;
+            }
+            
             _viewModel.SaveCommand?.Execute(null);
         }
 
         private void ToolStripMenuItemSaveAs_Click(object sender, EventArgs e)
         {
+            // 🔥 防破解：关键操作前验证
+            if (_authGuard != null && !_authGuard.VerifyOperation("另存为"))
+            {
+                return;
+            }
+            
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
                 dialog.Filter = "所有文件|*.*";
@@ -230,6 +275,12 @@ namespace 永利系统.Views
 
         private void ToolStripMenuItemOptions_Click(object sender, EventArgs e)
         {
+            // 🔥 防破解：关键操作前验证
+            if (_authGuard != null && !_authGuard.VerifyOperation("系统设置"))
+            {
+                return;
+            }
+            
             MessageBox.Show("打开选项对话框", "选项", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -248,9 +299,44 @@ namespace 永利系统.Views
 
         #region Form Events
 
+        /// <summary>
+        /// 启动定期认证验证（每5分钟验证一次）
+        /// </summary>
+        private void StartPeriodicAuthVerify()
+        {
+            if (_authGuard == null)
+                return;
+                
+            _authVerifyTimer = new System.Windows.Forms.Timer();
+            _authVerifyTimer.Interval = 5 * 60 * 1000; // 5分钟
+            _authVerifyTimer.Tick += async (s, e) =>
+            {
+                var isValid = await _authGuard.PeriodicVerifyAsync();
+                if (!isValid)
+                {
+                    _loggingService.Error("主窗口", "定期验证失败，程序将退出");
+                    MessageBox.Show("认证验证失败，程序将退出", "安全验证", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Application.Exit();
+                }
+            };
+            _authVerifyTimer.Start();
+        }
+        
         private void MainTabs_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // 保存设置等
+            // 清理定时器
+            if (_authVerifyTimer != null)
+            {
+                _authVerifyTimer.Stop();
+                _authVerifyTimer.Dispose();
+                _authVerifyTimer = null;
+            }
+            
+            // 清除认证状态
+            if (_authGuard != null)
+            {
+                AuthGuard.ClearAuthentication();
+            }
         }
 
         private void MainTabs_Load(object sender, EventArgs e)

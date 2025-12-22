@@ -74,7 +74,17 @@ namespace 永利系统.Infrastructure.Api
             try
             {
                 var response = await _httpClient.GetAsync(funcUrl);
-                response.EnsureSuccessStatusCode();
+                
+                // 不直接调用 EnsureSuccessStatusCode，因为即使 HTTP 成功，API 也可能返回错误码
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return new ApiResponse<ApiUser>
+                    {
+                        Code = -1,
+                        Msg = $"HTTP 错误: {response.StatusCode} - {errorContent}"
+                    };
+                }
                 
                 var json = await response.Content.ReadAsStringAsync();
                 
@@ -108,6 +118,14 @@ namespace 永利系统.Infrastructure.Api
                 {
                     Code = -1,
                     Msg = "登录响应为空"
+                };
+            }
+            catch (HttpRequestException ex)
+            {
+                return new ApiResponse<ApiUser>
+                {
+                    Code = -1,
+                    Msg = $"网络请求失败: {ex.Message}"
                 };
             }
             catch (Exception ex)
