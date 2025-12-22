@@ -10,6 +10,7 @@ using 永利系统.Models;
 using 永利系统.Services;
 using 永利系统.ViewModels;
 using 永利系统.Views.Pages;
+using 永利系统.Views.Wechat;
 
 namespace 永利系统.Views
 {

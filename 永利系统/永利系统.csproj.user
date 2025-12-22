@@ -23,7 +23,7 @@
     <Compile Update="Views\Pages\SettingsPage.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Views\Pages\WechatPage.cs">
+    <Compile Update="Views\Wechat\WechatPage.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
