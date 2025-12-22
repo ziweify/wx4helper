@@ -32,6 +32,34 @@ namespace 永利系统.Views.Wechat
 
         private void InitializeUI()
         {
+            // 设置工具栏按钮图标（必须在 InitializeComponent 之后调用）
+            toolStripButton_Connect.Image = CreateConnectIcon();
+            toolStripButton_Connect.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton_Connect.Size = new System.Drawing.Size(60, 47);
+            
+            toolStripButton_Log.Image = CreateLogIcon();
+            toolStripButton_Log.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton_Log.Size = new System.Drawing.Size(60, 47);
+            
+            toolStripButton_OpenLotteryResult.Image = CreateLotteryIcon();
+            toolStripButton_OpenLotteryResult.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton_OpenLotteryResult.Size = new System.Drawing.Size(84, 47);
+            
+            toolStripButton_CreditWithdrawManage.Image = CreateCreditIcon();
+            toolStripButton_CreditWithdrawManage.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton_CreditWithdrawManage.Size = new System.Drawing.Size(96, 47);
+            
+            toolStripButton_ClearData.Image = CreateClearIcon();
+            toolStripButton_ClearData.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton_ClearData.Size = new System.Drawing.Size(84, 47);
+            
+            toolStripButton_Settings.Image = CreateSettingsIcon();
+            toolStripButton_Settings.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton_Settings.Size = new System.Drawing.Size(60, 47);
+            
+            // 设置工具栏高度以容纳图片和文字
+            toolStrip1.Size = new System.Drawing.Size(toolStrip1.Size.Width, 50);
+            
             // 初始化界面
             _loggingService.Info("微信助手", "微信助手页面已初始化");
         }

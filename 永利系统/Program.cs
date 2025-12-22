@@ -12,6 +12,17 @@ namespace 永利系统
         [STAThread]
         static void Main()
         {
+            // 初始化 SQLite 原生库（必须在最前面）
+            try
+            {
+                SQLitePCL.Batteries.Init();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"❌ SQLite 初始化失败:\n{ex.Message}\n\n{ex.StackTrace}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             // 启用应用程序的可视样式
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
