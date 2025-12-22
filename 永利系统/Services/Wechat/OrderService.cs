@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using 永利系统.Contracts.Wechat;
-using 永利系统.Contracts.Games.Bingo;
 using 永利系统.Models.Wechat;
 using 永利系统.Models.Games.Bingo;
 using 永利系统.Services;
+using 永利系统.Services.Games.Bingo;
 
 namespace 永利系统.Services.Wechat
 {
@@ -20,9 +20,9 @@ namespace 永利系统.Services.Wechat
     public class OrderService : IOrderService
     {
         private readonly LoggingService _loggingService;
-        private readonly ILotteryService _lotteryService;
+        private readonly BingoGameServiceBase _lotteryService;
 
-        public OrderService(LoggingService loggingService, ILotteryService lotteryService)
+        public OrderService(LoggingService loggingService, BingoGameServiceBase lotteryService)
         {
             _loggingService = loggingService;
             _lotteryService = lotteryService;

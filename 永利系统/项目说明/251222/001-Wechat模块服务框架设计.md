@@ -1,6 +1,16 @@
 # Wechat 模块服务框架设计
 
-## 📁 目录结构
+**更新说明**: 本文档已过时，实际架构已优化为：
+- `ILotteryService` 接口移至 `Contracts/Games/Bingo/`
+- 服务实现使用 `BingoGameServiceBase` 抽象基类（位于 `Services/Games/Bingo/`）
+- `WechatBingoGameService` 继承 `BingoGameServiceBase` 实现微信模块特定逻辑
+- 不再使用独立的 `LotteryService` 类
+
+请参考最新的 `项目结构.md` 文档。
+
+---
+
+## 📁 目录结构（历史参考）
 
 ```
 永利系统/

@@ -83,6 +83,12 @@ namespace 永利系统.Models.Games.Bingo
             get => _secondsToSeal;
             set => SetField(ref _secondsToSeal, value);
         }
+        
+        /// <summary>
+        /// 是否已开奖（用于判断号码是否可见）
+        /// </summary>
+        [Ignore]
+        public bool IsOpened => !string.IsNullOrEmpty(LotteryNumber);
 
         /// <summary>
         /// 创建时间

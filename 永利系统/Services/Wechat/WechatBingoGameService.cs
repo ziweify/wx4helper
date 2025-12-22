@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Contracts.Games.Bingo;
 using 永利系统.Contracts.Wechat;
 using 永利系统.Models.Games.Bingo;
 using 永利系统.Models.Games.Bingo.Events;
@@ -23,7 +22,7 @@ namespace 永利系统.Services.Wechat
 
         public WechatBingoGameService(
             LoggingService loggingService,
-            ILotteryService? lotteryService = null,
+            BingoGameServiceBase? lotteryService = null,
             IOrderService? orderService = null,
             AuthService? authService = null)
             : base(loggingService, lotteryService)

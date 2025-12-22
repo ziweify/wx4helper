@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Contracts.Games.Bingo;
 using 永利系统.Models.Games.Bingo;
 using 永利系统.Models.Games.Bingo.Events;
 using 永利系统.Models.Games.Bingo.Exceptions;
@@ -30,7 +30,7 @@ namespace 永利系统.Services.Games.Bingo
         #region 字段
 
         protected readonly LoggingService _loggingService;
-        protected readonly ILotteryService? _lotteryService;
+        protected readonly BingoGameServiceBase? _lotteryService;
 
         // 状态管理
         private volatile int _currentIssueId;
@@ -171,7 +171,7 @@ namespace 永利系统.Services.Games.Bingo
 
         #region 构造函数
 
-        protected BingoGameServiceBase(LoggingService loggingService, ILotteryService? lotteryService = null)
+        protected BingoGameServiceBase(LoggingService loggingService, BingoGameServiceBase? lotteryService = null)
         {
             _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
             _lotteryService = lotteryService;
@@ -201,6 +201,14 @@ namespace 永利系统.Services.Games.Bingo
 
         /// <summary>
         /// 启动服务
+        /// </summary>
+        public Task StartAsync()
+        {
+            return StartAsync(CancellationToken.None);
+        }
+
+        /// <summary>
+        /// 启动服务（带取消令牌）
         /// </summary>
         /// <param name="cancellationToken">取消令牌</param>
         public virtual async Task StartAsync(CancellationToken cancellationToken = default)
@@ -585,6 +593,49 @@ namespace 永利系统.Services.Games.Bingo
             }
         }
 
+        #endregion
+        
+        #region 数据查询方法（虚方法，派生类可重写）
+        
+        /// <summary>
+        /// 获取指定期号的开奖数据（虚方法，派生类可重写）
+        /// </summary>
+        public virtual async Task<LotteryData?> GetLotteryDataAsync(int issueId, bool forceRefresh = false)
+        {
+            // 基类提供默认实现：返回 null，派生类应重写此方法实现实际逻辑
+            await Task.CompletedTask;
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取最近 N 期的开奖数据（虚方法，派生类可重写）
+        /// </summary>
+        public virtual async Task<List<LotteryData>> GetRecentLotteryDataAsync(int count = 10)
+        {
+            // 基类提供默认实现：返回空列表，派生类应重写此方法实现实际逻辑
+            await Task.CompletedTask;
+            return new List<LotteryData>();
+        }
+        
+        /// <summary>
+        /// 获取指定日期的所有开奖数据（虚方法，派生类可重写）
+        /// </summary>
+        public virtual async Task<List<LotteryData>> GetLotteryDataByDateAsync(DateTime date)
+        {
+            // 基类提供默认实现：返回空列表，派生类应重写此方法实现实际逻辑
+            await Task.CompletedTask;
+            return new List<LotteryData>();
+        }
+        
+        /// <summary>
+        /// 保存开奖数据到本地缓存（虚方法，派生类可重写）
+        /// </summary>
+        public virtual async Task SaveLotteryDataAsync(LotteryData data)
+        {
+            // 基类提供默认实现：不执行任何操作，派生类应重写此方法实现实际逻辑
+            await Task.CompletedTask;
+        }
+        
         #endregion
     }
 }

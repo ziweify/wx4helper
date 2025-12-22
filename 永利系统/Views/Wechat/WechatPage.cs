@@ -1,6 +1,8 @@
 using System;
 using System.Windows.Forms;
 using 永利系统.Services;
+using 永利系统.Services.Wechat;
+using 永利系统.Views.Wechat.Controls;
 
 namespace 永利系统.Views.Wechat
 {
@@ -12,6 +14,11 @@ namespace 永利系统.Views.Wechat
     {
         private readonly LoggingService _loggingService;
         private System.Windows.Forms.Timer? _refreshTimer;
+        private WechatBingoGameService? _gameService;
+        
+        // Bingo 数据控件
+        private UcBingoDataCur? _ucBingoDataCur;
+        private UcBingoDataLast? _ucBingoDataLast;
 
         public WechatPage()
         {
@@ -24,6 +31,7 @@ namespace 永利系统.Views.Wechat
             
             _loggingService = LoggingService.Instance;
             InitializeUI();
+            InitializeGameService();
             StartAutoRefresh();
             
             // 订阅 FormClosing 事件以清理资源
@@ -60,8 +68,71 @@ namespace 永利系统.Views.Wechat
             // 设置工具栏高度以容纳图片和文字
             toolStrip1.Size = new System.Drawing.Size(toolStrip1.Size.Width, 50);
             
+            // 🔥 初始化 Bingo 数据控件并添加到 panelControl_OpenData
+            InitializeBingoDataControls();
+            
             // 初始化界面
             _loggingService.Info("微信助手", "微信助手页面已初始化");
+        }
+        
+        /// <summary>
+        /// 🔥 初始化 Bingo 数据控件
+        /// </summary>
+        private void InitializeBingoDataControls()
+        {
+            // 移除原有的 Label 控件
+            panelControl_OpenData.Controls.Clear();
+            
+            // 创建当前期控件
+            _ucBingoDataCur = new UcBingoDataCur
+            {
+                Location = new System.Drawing.Point(0, 0),
+                Dock = DockStyle.Top
+            };
+            panelControl_OpenData.Controls.Add(_ucBingoDataCur);
+            
+            // 创建上期控件
+            _ucBingoDataLast = new UcBingoDataLast
+            {
+                Location = new System.Drawing.Point(0, 90),
+                Dock = DockStyle.Top
+            };
+            panelControl_OpenData.Controls.Add(_ucBingoDataLast);
+            
+            _loggingService.Info("微信助手", "Bingo数据控件已初始化");
+        }
+        
+        /// <summary>
+        /// 🔥 初始化游戏服务
+        /// </summary>
+        private void InitializeGameService()
+        {
+            try
+            {
+                // 创建游戏服务（WechatBingoGameService 继承自 BingoGameServiceBase，也实现了 ILotteryService）
+                _gameService = new WechatBingoGameService(_loggingService);
+                
+                // 将游戏服务绑定到 Bingo 数据控件（WechatBingoGameService 实现了 ILotteryService）
+                if (_ucBingoDataCur != null && _gameService != null)
+                {
+                    _ucBingoDataCur.SetLotteryService(_gameService);
+                    _loggingService.Info("微信助手", "当前期控件已绑定游戏服务");
+                }
+                
+                if (_ucBingoDataLast != null && _gameService != null)
+                {
+                    _ucBingoDataLast.SetLotteryService(_gameService);
+                    _loggingService.Info("微信助手", "上期控件已绑定游戏服务");
+                }
+                
+                // 启动游戏服务
+                _ = _gameService?.StartAsync(); // 使用 _ = 忽略未等待警告
+                _loggingService.Info("微信助手", "游戏服务已启动");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("微信助手", $"初始化游戏服务失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -84,6 +155,20 @@ namespace 永利系统.Views.Wechat
 
         private void WechatPage_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            // 停止游戏服务
+            if (_gameService != null)
+            {
+                try
+                {
+                    _ = _gameService.StopAsync(); // 使用 _ = 忽略未等待警告
+                    _loggingService.Info("微信助手", "游戏服务已停止");
+                }
+                catch (Exception ex)
+                {
+                    _loggingService.Error("微信助手", $"停止游戏服务失败: {ex.Message}");
+                }
+            }
+            
             // 清理 Timer
             _refreshTimer?.Stop();
             _refreshTimer?.Dispose();
