@@ -29,6 +29,8 @@ namespace 永利系统.Views
             this.lblUsername = new System.Windows.Forms.Label();
             this.lblTitle = new System.Windows.Forms.Label();
             this.pnlHeader = new System.Windows.Forms.Panel();
+            this.btnClose = new System.Windows.Forms.Label();
+            this.btnMinimize = new System.Windows.Forms.Label();
             this.lblWelcome = new System.Windows.Forms.Label();
             this.lblSystemName = new System.Windows.Forms.Label();
             this.pnlMain.SuspendLayout();
@@ -171,6 +173,8 @@ namespace 永利系统.Views
             // pnlHeader
             // 
             this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
+            this.pnlHeader.Controls.Add(this.btnClose);
+            this.pnlHeader.Controls.Add(this.btnMinimize);
             this.pnlHeader.Controls.Add(this.lblWelcome);
             this.pnlHeader.Controls.Add(this.lblSystemName);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
@@ -178,6 +182,41 @@ namespace 永利系统.Views
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Size = new System.Drawing.Size(550, 140);
             this.pnlHeader.TabIndex = 0;
+            this.pnlHeader.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pnlHeader_MouseDown);
+            this.pnlHeader.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pnlHeader_MouseMove);
+            this.pnlHeader.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pnlHeader_MouseUp);
+            // 
+            // btnClose
+            // 
+            this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnClose.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnClose.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Bold);
+            this.btnClose.ForeColor = System.Drawing.Color.White;
+            this.btnClose.Location = new System.Drawing.Point(510, 0);
+            this.btnClose.Name = "btnClose";
+            this.btnClose.Size = new System.Drawing.Size(40, 35);
+            this.btnClose.TabIndex = 3;
+            this.btnClose.Text = "✕";
+            this.btnClose.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
+            this.btnClose.MouseEnter += new System.EventHandler(this.btnClose_MouseEnter);
+            this.btnClose.MouseLeave += new System.EventHandler(this.btnClose_MouseLeave);
+            // 
+            // btnMinimize
+            // 
+            this.btnMinimize.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnMinimize.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnMinimize.Font = new System.Drawing.Font("微软雅黑", 14F, System.Drawing.FontStyle.Bold);
+            this.btnMinimize.ForeColor = System.Drawing.Color.White;
+            this.btnMinimize.Location = new System.Drawing.Point(470, 0);
+            this.btnMinimize.Name = "btnMinimize";
+            this.btnMinimize.Size = new System.Drawing.Size(40, 35);
+            this.btnMinimize.TabIndex = 2;
+            this.btnMinimize.Text = "─";
+            this.btnMinimize.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.btnMinimize.Click += new System.EventHandler(this.btnMinimize_Click);
+            this.btnMinimize.MouseEnter += new System.EventHandler(this.btnMinimize_MouseEnter);
+            this.btnMinimize.MouseLeave += new System.EventHandler(this.btnMinimize_MouseLeave);
             // 
             // lblWelcome
             // 
@@ -208,9 +247,7 @@ namespace 永利系统.Views
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(550, 450);
             this.Controls.Add(this.pnlMain);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "LoginForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "永利管理系统 - 登录";
@@ -229,6 +266,8 @@ namespace 永利系统.Views
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.Label lblSystemName;
         private System.Windows.Forms.Label lblWelcome;
+        private System.Windows.Forms.Label btnClose;
+        private System.Windows.Forms.Label btnMinimize;
         private System.Windows.Forms.Panel pnlLogin;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblUsername;

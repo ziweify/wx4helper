@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Windows.Forms;
 using 永利系统.Services;
 using 永利系统.Services.Auth;
@@ -12,6 +13,10 @@ namespace 永利系统.Views
     public partial class LoginForm : Form
     {
         private readonly LoginViewModel _viewModel;
+        
+        // 窗口拖动相关
+        private bool _isDragging = false;
+        private Point _dragStartPoint;
         
         public LoginViewModel ViewModel => _viewModel;
         
@@ -119,6 +124,70 @@ namespace 永利系统.Views
                 btnLogin.PerformClick();
             }
         }
+        
+        #region 窗口拖动
+        
+        private void pnlHeader_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                _isDragging = true;
+                _dragStartPoint = e.Location;
+            }
+        }
+        
+        private void pnlHeader_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDragging)
+            {
+                Point newLocation = this.Location;
+                newLocation.X += e.X - _dragStartPoint.X;
+                newLocation.Y += e.Y - _dragStartPoint.Y;
+                this.Location = newLocation;
+            }
+        }
+        
+        private void pnlHeader_MouseUp(object sender, MouseEventArgs e)
+        {
+            _isDragging = false;
+        }
+        
+        #endregion
+        
+        #region 自定义按钮事件
+        
+        private void btnClose_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.Cancel;
+            this.Close();
+        }
+        
+        private void btnMinimize_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+        }
+        
+        private void btnClose_MouseEnter(object sender, EventArgs e)
+        {
+            btnClose.BackColor = Color.FromArgb(220, 53, 69); // 红色悬停
+        }
+        
+        private void btnClose_MouseLeave(object sender, EventArgs e)
+        {
+            btnClose.BackColor = Color.Transparent;
+        }
+        
+        private void btnMinimize_MouseEnter(object sender, EventArgs e)
+        {
+            btnMinimize.BackColor = Color.FromArgb(0, 100, 220); // 深蓝色悬停
+        }
+        
+        private void btnMinimize_MouseLeave(object sender, EventArgs e)
+        {
+            btnMinimize.BackColor = Color.Transparent;
+        }
+        
+        #endregion
     }
 }
 
