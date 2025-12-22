@@ -1,9 +1,9 @@
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using 永利系统.Models.Api;
 using 永利系统.Services;
+using 永利系统.Infrastructure.Helpers;
 
 namespace 永利系统.Infrastructure.Api
 {
@@ -26,7 +26,7 @@ namespace 永利系统.Infrastructure.Api
         private static readonly object _lock = new object();
         
         private readonly string _urlRoot = "http://8.134.71.102:789";
-        private readonly HttpClient _httpClient;
+        private readonly ModernHttpHelper _httpHelper;
         
         public ApiResponse<ApiUser>? LoginApiResponse { get; private set; }
         public string User { get; private set; } = string.Empty;
@@ -39,10 +39,7 @@ namespace 永利系统.Infrastructure.Api
         
         private BoterApi()
         {
-            _httpClient = new HttpClient();
-            _httpClient.Timeout = TimeSpan.FromSeconds(30);
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            _httpClient.DefaultRequestHeaders.Add("Accept", "application/json, text/javascript, */*; q=0.01");
+            _httpHelper = new ModernHttpHelper();
         }
         
         /// <summary>
@@ -73,22 +70,22 @@ namespace 永利系统.Infrastructure.Api
             
             try
             {
-                var response = await _httpClient.GetAsync(funcUrl);
-                
-                // 不直接调用 EnsureSuccessStatusCode，因为即使 HTTP 成功，API 也可能返回错误码
-                if (!response.IsSuccessStatusCode)
+                var result = await _httpHelper.GetAsync(new HttpRequestItem
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Url = funcUrl,
+                    Timeout = 10
+                });
+                
+                if (!result.Success)
+                {
                     return new ApiResponse<ApiUser>
                     {
                         Code = -1,
-                        Msg = $"HTTP 错误: {response.StatusCode} - {errorContent}"
+                        Msg = $"HTTP 错误: {result.StatusCode} - {result.ErrorMessage ?? result.Html}"
                     };
                 }
                 
-                var json = await response.Content.ReadAsStringAsync();
-                
-                LoginApiResponse = JsonConvert.DeserializeObject<ApiResponse<ApiUser>>(json);
+                LoginApiResponse = JsonConvert.DeserializeObject<ApiResponse<ApiUser>>(result.Html);
                 
                 if (LoginApiResponse != null && LoginApiResponse.Code == 0)
                 {
@@ -118,14 +115,6 @@ namespace 永利系统.Infrastructure.Api
                 {
                     Code = -1,
                     Msg = "登录响应为空"
-                };
-            }
-            catch (HttpRequestException ex)
-            {
-                return new ApiResponse<ApiUser>
-                {
-                    Code = -1,
-                    Msg = $"网络请求失败: {ex.Message}"
                 };
             }
             catch (Exception ex)

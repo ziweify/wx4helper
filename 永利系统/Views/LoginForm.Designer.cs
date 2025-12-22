@@ -18,6 +18,7 @@ namespace 永利系统.Views
         private void InitializeComponent()
         {
             this.pnlMain = new System.Windows.Forms.Panel();
+            this.pnlLogin = new System.Windows.Forms.Panel();
             this.lblStatus = new System.Windows.Forms.Label();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnLogin = new System.Windows.Forms.Button();
@@ -27,59 +28,87 @@ namespace 永利系统.Views
             this.txtUsername = new System.Windows.Forms.TextBox();
             this.lblUsername = new System.Windows.Forms.Label();
             this.lblTitle = new System.Windows.Forms.Label();
+            this.pnlHeader = new System.Windows.Forms.Panel();
+            this.lblWelcome = new System.Windows.Forms.Label();
+            this.lblSystemName = new System.Windows.Forms.Label();
             this.pnlMain.SuspendLayout();
+            this.pnlLogin.SuspendLayout();
+            this.pnlHeader.SuspendLayout();
             this.SuspendLayout();
             // 
             // pnlMain
             // 
-            this.pnlMain.Controls.Add(this.lblStatus);
-            this.pnlMain.Controls.Add(this.btnCancel);
-            this.pnlMain.Controls.Add(this.btnLogin);
-            this.pnlMain.Controls.Add(this.chkRememberPassword);
-            this.pnlMain.Controls.Add(this.txtPassword);
-            this.pnlMain.Controls.Add(this.lblPassword);
-            this.pnlMain.Controls.Add(this.txtUsername);
-            this.pnlMain.Controls.Add(this.lblUsername);
-            this.pnlMain.Controls.Add(this.lblTitle);
+            this.pnlMain.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(244)))), ((int)(((byte)(248)))));
+            this.pnlMain.Controls.Add(this.pnlLogin);
+            this.pnlMain.Controls.Add(this.pnlHeader);
             this.pnlMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlMain.Location = new System.Drawing.Point(0, 0);
             this.pnlMain.Name = "pnlMain";
-            this.pnlMain.Padding = new System.Windows.Forms.Padding(30);
-            this.pnlMain.Size = new System.Drawing.Size(450, 350);
+            this.pnlMain.Size = new System.Drawing.Size(550, 450);
             this.pnlMain.TabIndex = 0;
+            // 
+            // pnlLogin
+            // 
+            this.pnlLogin.BackColor = System.Drawing.Color.White;
+            this.pnlLogin.Controls.Add(this.lblStatus);
+            this.pnlLogin.Controls.Add(this.btnCancel);
+            this.pnlLogin.Controls.Add(this.btnLogin);
+            this.pnlLogin.Controls.Add(this.chkRememberPassword);
+            this.pnlLogin.Controls.Add(this.txtPassword);
+            this.pnlLogin.Controls.Add(this.lblPassword);
+            this.pnlLogin.Controls.Add(this.txtUsername);
+            this.pnlLogin.Controls.Add(this.lblUsername);
+            this.pnlLogin.Controls.Add(this.lblTitle);
+            this.pnlLogin.Location = new System.Drawing.Point(75, 160);
+            this.pnlLogin.Name = "pnlLogin";
+            this.pnlLogin.Size = new System.Drawing.Size(400, 260);
+            this.pnlLogin.TabIndex = 1;
             // 
             // lblStatus
             // 
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.ForeColor = System.Drawing.Color.Gray;
-            this.lblStatus.Location = new System.Drawing.Point(33, 280);
+            this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(53)))), ((int)(((byte)(69)))));
+            this.lblStatus.Location = new System.Drawing.Point(30, 225);
             this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(0, 17);
+            this.lblStatus.Size = new System.Drawing.Size(340, 20);
             this.lblStatus.TabIndex = 8;
+            this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(240, 230);
+            this.btnCancel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(108)))), ((int)(((byte)(117)))), ((int)(((byte)(125)))));
+            this.btnCancel.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnCancel.FlatAppearance.BorderSize = 0;
+            this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCancel.Font = new System.Drawing.Font("微软雅黑", 10F);
+            this.btnCancel.ForeColor = System.Drawing.Color.White;
+            this.btnCancel.Location = new System.Drawing.Point(215, 180);
             this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(120, 35);
+            this.btnCancel.Size = new System.Drawing.Size(155, 38);
             this.btnCancel.TabIndex = 7;
             this.btnCancel.Text = "取消";
-            this.btnCancel.UseVisualStyleBackColor = true;
+            this.btnCancel.UseVisualStyleBackColor = false;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
             // btnLogin
             // 
-            this.btnLogin.Location = new System.Drawing.Point(90, 230);
+            this.btnLogin.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
+            this.btnLogin.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnLogin.FlatAppearance.BorderSize = 0;
+            this.btnLogin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnLogin.Font = new System.Drawing.Font("微软雅黑", 10F, System.Drawing.FontStyle.Bold);
+            this.btnLogin.ForeColor = System.Drawing.Color.White;
+            this.btnLogin.Location = new System.Drawing.Point(30, 180);
             this.btnLogin.Name = "btnLogin";
-            this.btnLogin.Size = new System.Drawing.Size(120, 35);
+            this.btnLogin.Size = new System.Drawing.Size(155, 38);
             this.btnLogin.TabIndex = 6;
             this.btnLogin.Text = "登录";
-            this.btnLogin.UseVisualStyleBackColor = true;
+            this.btnLogin.UseVisualStyleBackColor = false;
             // 
             // chkRememberPassword
             // 
             this.chkRememberPassword.AutoSize = true;
-            this.chkRememberPassword.Location = new System.Drawing.Point(33, 185);
+            this.chkRememberPassword.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(108)))), ((int)(((byte)(117)))), ((int)(((byte)(125)))));
+            this.chkRememberPassword.Location = new System.Drawing.Point(30, 150);
             this.chkRememberPassword.Name = "chkRememberPassword";
             this.chkRememberPassword.Size = new System.Drawing.Size(75, 21);
             this.chkRememberPassword.TabIndex = 5;
@@ -88,70 +117,119 @@ namespace 永利系统.Views
             // 
             // txtPassword
             // 
-            this.txtPassword.Location = new System.Drawing.Point(33, 145);
+            this.txtPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtPassword.Font = new System.Drawing.Font("微软雅黑", 10F);
+            this.txtPassword.Location = new System.Drawing.Point(30, 115);
             this.txtPassword.Name = "txtPassword";
-            this.txtPassword.PasswordChar = '*';
-            this.txtPassword.Size = new System.Drawing.Size(384, 23);
+            this.txtPassword.PasswordChar = '●';
+            this.txtPassword.Size = new System.Drawing.Size(340, 25);
             this.txtPassword.TabIndex = 4;
             this.txtPassword.KeyDown += new System.Windows.Forms.KeyEventHandler(this.txtPassword_KeyDown);
             // 
             // lblPassword
             // 
             this.lblPassword.AutoSize = true;
-            this.lblPassword.Location = new System.Drawing.Point(33, 125);
+            this.lblPassword.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.lblPassword.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(73)))), ((int)(((byte)(80)))), ((int)(((byte)(87)))));
+            this.lblPassword.Location = new System.Drawing.Point(30, 95);
             this.lblPassword.Name = "lblPassword";
-            this.lblPassword.Size = new System.Drawing.Size(44, 17);
+            this.lblPassword.Size = new System.Drawing.Size(32, 17);
             this.lblPassword.TabIndex = 3;
-            this.lblPassword.Text = "密码：";
+            this.lblPassword.Text = "密码";
             // 
             // txtUsername
             // 
-            this.txtUsername.Location = new System.Drawing.Point(33, 85);
+            this.txtUsername.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtUsername.Font = new System.Drawing.Font("微软雅黑", 10F);
+            this.txtUsername.Location = new System.Drawing.Point(30, 65);
             this.txtUsername.Name = "txtUsername";
-            this.txtUsername.Size = new System.Drawing.Size(384, 23);
+            this.txtUsername.Size = new System.Drawing.Size(340, 25);
             this.txtUsername.TabIndex = 2;
             // 
             // lblUsername
             // 
             this.lblUsername.AutoSize = true;
-            this.lblUsername.Location = new System.Drawing.Point(33, 65);
+            this.lblUsername.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.lblUsername.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(73)))), ((int)(((byte)(80)))), ((int)(((byte)(87)))));
+            this.lblUsername.Location = new System.Drawing.Point(30, 45);
             this.lblUsername.Name = "lblUsername";
-            this.lblUsername.Size = new System.Drawing.Size(56, 17);
+            this.lblUsername.Size = new System.Drawing.Size(44, 17);
             this.lblUsername.TabIndex = 1;
-            this.lblUsername.Text = "用户名：";
+            this.lblUsername.Text = "用户名";
             // 
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("微软雅黑", 14F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.Location = new System.Drawing.Point(33, 20);
+            this.lblTitle.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Bold);
+            this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(33)))), ((int)(((byte)(37)))), ((int)(((byte)(41)))));
+            this.lblTitle.Location = new System.Drawing.Point(26, 15);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(107, 26);
+            this.lblTitle.Size = new System.Drawing.Size(90, 22);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "系统登录";
+            this.lblTitle.Text = "账号登录";
+            // 
+            // pnlHeader
+            // 
+            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
+            this.pnlHeader.Controls.Add(this.lblWelcome);
+            this.pnlHeader.Controls.Add(this.lblSystemName);
+            this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlHeader.Location = new System.Drawing.Point(0, 0);
+            this.pnlHeader.Name = "pnlHeader";
+            this.pnlHeader.Size = new System.Drawing.Size(550, 140);
+            this.pnlHeader.TabIndex = 0;
+            // 
+            // lblWelcome
+            // 
+            this.lblWelcome.AutoSize = true;
+            this.lblWelcome.Font = new System.Drawing.Font("微软雅黑", 11F);
+            this.lblWelcome.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(240)))), ((int)(((byte)(255)))));
+            this.lblWelcome.Location = new System.Drawing.Point(71, 85);
+            this.lblWelcome.Name = "lblWelcome";
+            this.lblWelcome.Size = new System.Drawing.Size(239, 20);
+            this.lblWelcome.TabIndex = 1;
+            this.lblWelcome.Text = "请使用您的账号登录系统";
+            // 
+            // lblSystemName
+            // 
+            this.lblSystemName.AutoSize = true;
+            this.lblSystemName.Font = new System.Drawing.Font("微软雅黑", 20F, System.Drawing.FontStyle.Bold);
+            this.lblSystemName.ForeColor = System.Drawing.Color.White;
+            this.lblSystemName.Location = new System.Drawing.Point(68, 40);
+            this.lblSystemName.Name = "lblSystemName";
+            this.lblSystemName.Size = new System.Drawing.Size(231, 36);
+            this.lblSystemName.TabIndex = 0;
+            this.lblSystemName.Text = "永利管理系统";
             // 
             // LoginForm
             // 
             this.AcceptButton = this.btnLogin;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(450, 350);
+            this.ClientSize = new System.Drawing.Size(550, 450);
             this.Controls.Add(this.pnlMain);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "LoginForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "登录";
+            this.Text = "永利管理系统 - 登录";
             this.Load += new System.EventHandler(this.LoginForm_Load);
             this.pnlMain.ResumeLayout(false);
-            this.pnlMain.PerformLayout();
+            this.pnlLogin.ResumeLayout(false);
+            this.pnlLogin.PerformLayout();
+            this.pnlHeader.ResumeLayout(false);
+            this.pnlHeader.PerformLayout();
             this.ResumeLayout(false);
         }
 
         #endregion
 
         private System.Windows.Forms.Panel pnlMain;
+        private System.Windows.Forms.Panel pnlHeader;
+        private System.Windows.Forms.Label lblSystemName;
+        private System.Windows.Forms.Label lblWelcome;
+        private System.Windows.Forms.Panel pnlLogin;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblUsername;
         private System.Windows.Forms.TextBox txtUsername;
