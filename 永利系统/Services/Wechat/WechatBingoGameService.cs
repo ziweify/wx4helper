@@ -6,6 +6,7 @@ using 永利系统.Contracts.Wechat;
 using 永利系统.Models.Games.Bingo;
 using 永利系统.Models.Games.Bingo.Events;
 using 永利系统.Services;
+using 永利系统.Services.Auth;
 using 永利系统.Services.Games.Bingo;
 
 namespace 永利系统.Services.Wechat
@@ -18,14 +19,17 @@ namespace 永利系统.Services.Wechat
     public class WechatBingoGameService : BingoGameServiceBase
     {
         private readonly IOrderService? _orderService;
+        private readonly AuthService? _authService;
 
         public WechatBingoGameService(
             LoggingService loggingService,
             ILotteryService? lotteryService = null,
-            IOrderService? orderService = null)
+            IOrderService? orderService = null,
+            AuthService? authService = null)
             : base(loggingService, lotteryService)
         {
             _orderService = orderService;
+            _authService = authService;
         }
 
         #region 重写虚方法（实现微信模块特定的业务逻辑）
@@ -36,6 +40,18 @@ namespace 永利系统.Services.Wechat
         protected override void On期号变更(LotteryStatus status, int newIssueId)
         {
             _loggingService.Info("微信Bingo游戏服务", $"期号变更: {CurrentIssueId} -> {newIssueId}");
+
+            // 检查登录状态（如果需要调用需要认证的API）
+            if (_authService != null)
+            {
+                var isLoggedIn = _authService.GetCurrentUser() != null;
+                if (!isLoggedIn)
+                {
+                    _loggingService.Warn("微信Bingo游戏服务", "未登录，无法执行需要认证的操作");
+                    // 可以选择自动登录或跳过
+                    // await _authService.EnsureLoggedInAsync();
+                }
+            }
 
             // TODO: 实现微信模块的期号变更逻辑
             // 例如：
