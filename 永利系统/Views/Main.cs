@@ -173,9 +173,9 @@ namespace 永利系统.Views
             // 注册页面（使用简单的 Dictionary 管理）
             _pages["Dashboard"] = new DashboardPage();
             _pages["DataManagement"] = new DataManagementPage();
-            _pages["Reports"] = new DashboardPage(); // 可以替换为实际的报表页面
-            _pages["Settings"] = new DashboardPage(); // 可以替换为实际的设置页面
-            _pages["Wechat"] = new WechatPage(); // 微信助手页面
+            _pages["Reports"] = new ReportsPage();
+            _pages["Settings"] = new SettingsPage();
+            _pages["Wechat"] = new WechatPage();
 
             // 设置所有页面为 Fill
             foreach (var page in _pages.Values)

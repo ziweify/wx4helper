@@ -17,6 +17,12 @@
     <Compile Update="Views\Pages\DataManagementPage.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\Pages\ReportsPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\SettingsPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\Pages\WechatPage.cs">
       <SubType>Form</SubType>
     </Compile>

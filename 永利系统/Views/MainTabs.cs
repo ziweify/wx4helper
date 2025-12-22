@@ -104,8 +104,8 @@ namespace 永利系统.Views
             // 创建所有标签页（使用 Form 而不是 UserControl）
             CreateTabPage("主页", "Dashboard", new DashboardPage());
             CreateTabPage("数据管理", "DataManagement", new DataManagementPage());
-            CreateTabPage("报表分析", "Reports", new DashboardPage()); // 可以替换为实际的报表页面
-            CreateTabPage("系统设置", "Settings", new DashboardPage()); // 可以替换为实际的设置页面
+            CreateTabPage("报表分析", "Reports", new ReportsPage());
+            CreateTabPage("系统设置", "Settings", new SettingsPage());
             CreateTabPage("微信助手", "Wechat", new WechatPage());
             
             // 默认选中第一个标签页
