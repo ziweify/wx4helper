@@ -152,14 +152,14 @@ namespace 永利系统.Infrastructure.Helpers
                         result.Success = response.IsSuccessStatusCode;
                     }
                 }
-                catch (TaskCanceledException ex)
+                catch (TaskCanceledException)
                 {
                     // 🔥 超时异常特殊处理
                     result.Success = false;
                     result.ErrorMessage = $"请求超时（{item.Timeout}秒）";
                     result.Html = result.ErrorMessage;
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException)
                 {
                     // 🔥 操作取消异常
                     result.Success = false;

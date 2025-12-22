@@ -29,6 +29,9 @@ namespace 永利系统.Views
             var authService = new AuthService(loggingService);
             _viewModel = new LoginViewModel(authService, loggingService);
             
+            // 从配置加载登录信息
+            LoadLoginInfo();
+            
             BindViewModel();
         }
         
@@ -89,8 +92,8 @@ namespace 永利系统.Views
             // 登录成功事件
             _viewModel.LoginSucceeded += (s, e) =>
             {
-                // TODO: 如果勾选了记住密码，保存登录信息
-                // SaveLoginInfo();
+                // 保存登录信息
+                SaveLoginInfo();
                 
                 DialogResult = DialogResult.OK;
                 Close();
@@ -185,6 +188,89 @@ namespace 永利系统.Views
         private void btnMinimize_MouseLeave(object sender, EventArgs e)
         {
             btnMinimize.BackColor = Color.Transparent;
+        }
+        
+        #endregion
+        
+        #region 登录信息保存/加载
+        
+        /// <summary>
+        /// 从配置加载登录信息
+        /// </summary>
+        private void LoadLoginInfo()
+        {
+            try
+            {
+                var config = Services.Config.ConfigManager.Instance.Config.Login;
+                
+                // 始终加载用户名
+                if (!string.IsNullOrEmpty(config.Username))
+                {
+                    _viewModel.Username = config.Username;
+                    LoggingService.Instance.Debug("登录窗口", $"已加载用户名: {config.Username}");
+                }
+                
+                // 如果记住密码，则加载密码
+                if (config.RememberPassword && !string.IsNullOrEmpty(config.EncryptedPassword))
+                {
+                    var decryptedPassword = Services.Config.ConfigManager.DecryptPassword(config.EncryptedPassword);
+                    _viewModel.Password = decryptedPassword;
+                    _viewModel.IsRememberPassword = true;
+                    LoggingService.Instance.Debug("登录窗口", "已加载密码（已加密）");
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.Error("登录窗口", $"加载登录信息失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 保存登录信息到配置
+        /// </summary>
+        private void SaveLoginInfo()
+        {
+            try
+            {
+                LoggingService.Instance.Debug("登录窗口", "开始保存登录信息...");
+                
+                var configManager = Services.Config.ConfigManager.Instance;
+                var config = configManager.Config.Login;
+                
+                LoggingService.Instance.Debug("登录窗口", $"ViewModel - Username: {_viewModel.Username}, Password长度: {_viewModel.Password?.Length ?? 0}, RememberPassword: {_viewModel.IsRememberPassword}");
+                
+                // 始终保存用户名
+                config.Username = _viewModel.Username;
+                LoggingService.Instance.Debug("登录窗口", $"已设置用户名到配置: {config.Username}");
+                
+                // 根据"记住密码"选项决定是否保存密码
+                if (_viewModel.IsRememberPassword)
+                {
+                    // 加密并保存密码
+                    config.EncryptedPassword = Services.Config.ConfigManager.EncryptPassword(_viewModel.Password);
+                    config.RememberPassword = true;
+                    LoggingService.Instance.Debug("登录窗口", $"已加密密码，长度: {config.EncryptedPassword?.Length ?? 0}");
+                }
+                else
+                {
+                    // 清除密码
+                    config.EncryptedPassword = string.Empty;
+                    config.RememberPassword = false;
+                    LoggingService.Instance.Debug("登录窗口", "已清除密码");
+                }
+                
+                LoggingService.Instance.Debug("登录窗口", "准备调用 SaveNow()...");
+                
+                // 立即保存配置
+                configManager.SaveNow();
+                
+                LoggingService.Instance.Info("登录窗口", $"登录信息已保存到: {Infrastructure.Paths.AppPaths.ConfigFile}");
+                LoggingService.Instance.Debug("登录窗口", "SaveLoginInfo 方法执行完成");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.Error("登录窗口", $"保存登录信息失败: {ex.Message}\n堆栈: {ex.StackTrace}");
+            }
         }
         
         #endregion

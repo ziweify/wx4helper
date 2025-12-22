@@ -31,6 +31,10 @@ namespace 永利系统.Views
             {
                 MessageBox.Show("未通过认证验证，无法启动主窗口", "安全验证", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
+                
+                // 初始化必需字段（防止编译器警告）
+                _viewModel = new MainViewModel();
+                _loggingService = LoggingService.Instance;
                 return;
             }
             
@@ -337,13 +341,78 @@ namespace 永利系统.Views
             {
                 AuthGuard.ClearAuthentication();
             }
+            
+            // 🔥 保存配置（窗口位置、大小等）
+            SaveWindowSettings();
+            Services.Config.ConfigManager.Instance.SaveNow();
+            
+            _loggingService.Info("主窗口", "程序正常退出");
         }
 
         private void MainTabs_Load(object sender, EventArgs e)
         {
+            // 加载窗口设置
+            LoadWindowSettings();
+            
             _viewModel.Initialize();
+            _loggingService.Info("主窗口", "主窗口加载完成");
         }
 
+        #endregion
+        
+        #region 窗口设置保存/加载
+        
+        /// <summary>
+        /// 加载窗口设置
+        /// </summary>
+        private void LoadWindowSettings()
+        {
+            var config = Services.Config.ConfigManager.Instance.Config.Window;
+            
+            // 恢复窗口大小
+            if (config.Width > 0 && config.Height > 0)
+            {
+                this.Size = new Size(config.Width, config.Height);
+            }
+            
+            // 恢复窗口位置（-1 表示居中）
+            if (config.X >= 0 && config.Y >= 0)
+            {
+                this.StartPosition = FormStartPosition.Manual;
+                this.Location = new Point(config.X, config.Y);
+            }
+            else
+            {
+                this.StartPosition = FormStartPosition.CenterScreen;
+            }
+            
+            // 恢复最大化状态
+            if (config.Maximized)
+            {
+                this.WindowState = FormWindowState.Maximized;
+            }
+        }
+        
+        /// <summary>
+        /// 保存窗口设置
+        /// </summary>
+        private void SaveWindowSettings()
+        {
+            var config = Services.Config.ConfigManager.Instance.Config.Window;
+            
+            // 保存窗口状态
+            config.Maximized = (this.WindowState == FormWindowState.Maximized);
+            
+            // 只在正常状态下保存位置和大小
+            if (this.WindowState == FormWindowState.Normal)
+            {
+                config.Width = this.Width;
+                config.Height = this.Height;
+                config.X = this.Location.X;
+                config.Y = this.Location.Y;
+            }
+        }
+        
         #endregion
     }
 }

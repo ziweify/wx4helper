@@ -33,6 +33,10 @@ namespace 永利系统
             // 设置默认字体
             DevExpress.LookAndFeel.UserLookAndFeel.Default.SetSkinStyle("Office 2019 Colorful");
 
+            // 🔥 加载配置
+            var configManager = Services.Config.ConfigManager.Instance;
+            configManager.Load();
+
             // 🔥 防破解：必须先登录才能启动主窗口
             var loggingService = LoggingService.Instance;
             var authService = new AuthService(loggingService);
