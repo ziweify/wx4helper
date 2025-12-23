@@ -29,7 +29,6 @@ namespace 永利系统.Views.Wechat
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(WechatPage));
             imageList_Toolbar = new System.Windows.Forms.ImageList(components);
             toolStrip1 = new System.Windows.Forms.ToolStrip();
             toolStripButton_Connect = new System.Windows.Forms.ToolStripButton();
@@ -119,16 +118,15 @@ namespace 永利系统.Views.Wechat
             toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { toolStripButton_Connect, toolStripSeparator1, toolStripButton_Log, toolStripButton_OpenLotteryResult, toolStripButton_CreditWithdrawManage, toolStripButton_ClearData, toolStripSeparator2, toolStripButton_Settings });
             toolStrip1.Location = new System.Drawing.Point(0, 0);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new System.Drawing.Size(1200, 48);
+            toolStrip1.Size = new System.Drawing.Size(1200, 25);
             toolStrip1.TabIndex = 0;
             toolStrip1.Text = "toolStrip1";
             // 
             // toolStripButton_Connect
             // 
-            toolStripButton_Connect.Image = (System.Drawing.Image)resources.GetObject("toolStripButton_Connect.Image");
             toolStripButton_Connect.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_Connect.Name = "toolStripButton_Connect";
-            toolStripButton_Connect.Size = new System.Drawing.Size(36, 45);
+            toolStripButton_Connect.Size = new System.Drawing.Size(36, 22);
             toolStripButton_Connect.Text = "连接";
             toolStripButton_Connect.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_Connect.Click += ToolStripButton_Connect_Click;
@@ -136,44 +134,40 @@ namespace 永利系统.Views.Wechat
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new System.Drawing.Size(6, 48);
+            toolStripSeparator1.Size = new System.Drawing.Size(6, 25);
             // 
             // toolStripButton_Log
             // 
-            toolStripButton_Log.Image = (System.Drawing.Image)resources.GetObject("toolStripButton_Log.Image");
             toolStripButton_Log.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_Log.Name = "toolStripButton_Log";
-            toolStripButton_Log.Size = new System.Drawing.Size(36, 45);
+            toolStripButton_Log.Size = new System.Drawing.Size(36, 22);
             toolStripButton_Log.Text = "日志";
             toolStripButton_Log.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_Log.Click += ToolStripButton_Log_Click;
             // 
             // toolStripButton_OpenLotteryResult
             // 
-            toolStripButton_OpenLotteryResult.Image = (System.Drawing.Image)resources.GetObject("toolStripButton_OpenLotteryResult.Image");
             toolStripButton_OpenLotteryResult.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_OpenLotteryResult.Name = "toolStripButton_OpenLotteryResult";
-            toolStripButton_OpenLotteryResult.Size = new System.Drawing.Size(60, 45);
+            toolStripButton_OpenLotteryResult.Size = new System.Drawing.Size(60, 22);
             toolStripButton_OpenLotteryResult.Text = "开奖结果";
             toolStripButton_OpenLotteryResult.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_OpenLotteryResult.Click += ToolStripButton_OpenLotteryResult_Click;
             // 
             // toolStripButton_CreditWithdrawManage
             // 
-            toolStripButton_CreditWithdrawManage.Image = (System.Drawing.Image)resources.GetObject("toolStripButton_CreditWithdrawManage.Image");
             toolStripButton_CreditWithdrawManage.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_CreditWithdrawManage.Name = "toolStripButton_CreditWithdrawManage";
-            toolStripButton_CreditWithdrawManage.Size = new System.Drawing.Size(72, 45);
+            toolStripButton_CreditWithdrawManage.Size = new System.Drawing.Size(72, 22);
             toolStripButton_CreditWithdrawManage.Text = "上下分管理";
             toolStripButton_CreditWithdrawManage.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_CreditWithdrawManage.Click += ToolStripButton_CreditWithdrawManage_Click;
             // 
             // toolStripButton_ClearData
             // 
-            toolStripButton_ClearData.Image = (System.Drawing.Image)resources.GetObject("toolStripButton_ClearData.Image");
             toolStripButton_ClearData.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_ClearData.Name = "toolStripButton_ClearData";
-            toolStripButton_ClearData.Size = new System.Drawing.Size(60, 45);
+            toolStripButton_ClearData.Size = new System.Drawing.Size(60, 22);
             toolStripButton_ClearData.Text = "清空数据";
             toolStripButton_ClearData.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_ClearData.Click += ToolStripButton_ClearData_Click;
@@ -181,14 +175,13 @@ namespace 永利系统.Views.Wechat
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new System.Drawing.Size(6, 48);
+            toolStripSeparator2.Size = new System.Drawing.Size(6, 25);
             // 
             // toolStripButton_Settings
             // 
-            toolStripButton_Settings.Image = (System.Drawing.Image)resources.GetObject("toolStripButton_Settings.Image");
             toolStripButton_Settings.ImageTransparentColor = System.Drawing.Color.Magenta;
             toolStripButton_Settings.Name = "toolStripButton_Settings";
-            toolStripButton_Settings.Size = new System.Drawing.Size(36, 45);
+            toolStripButton_Settings.Size = new System.Drawing.Size(36, 22);
             toolStripButton_Settings.Text = "设置";
             toolStripButton_Settings.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             toolStripButton_Settings.Click += ToolStripButton_Settings_Click;
@@ -211,7 +204,7 @@ namespace 永利系统.Views.Wechat
             // splitContainerControl_Main
             // 
             splitContainerControl_Main.Dock = System.Windows.Forms.DockStyle.Fill;
-            splitContainerControl_Main.Location = new System.Drawing.Point(0, 48);
+            splitContainerControl_Main.Location = new System.Drawing.Point(0, 25);
             splitContainerControl_Main.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             splitContainerControl_Main.Name = "splitContainerControl_Main";
             // 
@@ -220,7 +213,7 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Main.Panel1.Controls.Add(panelControl_Left);
             splitContainerControl_Main.Panel1.Location = new System.Drawing.Point(0, 0);
             splitContainerControl_Main.Panel1.Name = "";
-            splitContainerControl_Main.Panel1.Size = new System.Drawing.Size(244, 911);
+            splitContainerControl_Main.Panel1.Size = new System.Drawing.Size(244, 934);
             splitContainerControl_Main.Panel1.TabIndex = 0;
             splitContainerControl_Main.Panel1.Text = "Panel1";
             // 
@@ -229,10 +222,10 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Main.Panel2.Controls.Add(panelControl_Right);
             splitContainerControl_Main.Panel2.Location = new System.Drawing.Point(254, 0);
             splitContainerControl_Main.Panel2.Name = "";
-            splitContainerControl_Main.Panel2.Size = new System.Drawing.Size(946, 911);
+            splitContainerControl_Main.Panel2.Size = new System.Drawing.Size(946, 934);
             splitContainerControl_Main.Panel2.TabIndex = 1;
             splitContainerControl_Main.Panel2.Text = "Panel2";
-            splitContainerControl_Main.Size = new System.Drawing.Size(1200, 911);
+            splitContainerControl_Main.Size = new System.Drawing.Size(1200, 934);
             splitContainerControl_Main.SplitterPosition = 244;
             splitContainerControl_Main.TabIndex = 2;
             // 
@@ -246,14 +239,14 @@ namespace 永利系统.Views.Wechat
             panelControl_Left.Location = new System.Drawing.Point(0, 0);
             panelControl_Left.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Left.Name = "panelControl_Left";
-            panelControl_Left.Size = new System.Drawing.Size(244, 911);
+            panelControl_Left.Size = new System.Drawing.Size(244, 934);
             panelControl_Left.TabIndex = 0;
             // 
             // panelControl_FastSetting
             // 
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
             panelControl_FastSetting.Dock = System.Windows.Forms.DockStyle.Bottom;
-            panelControl_FastSetting.Location = new System.Drawing.Point(2, 541);
+            panelControl_FastSetting.Location = new System.Drawing.Point(2, 564);
             panelControl_FastSetting.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
             panelControl_FastSetting.Size = new System.Drawing.Size(240, 368);
@@ -314,7 +307,7 @@ namespace 永利系统.Views.Wechat
             gridControl_Contacts.MainView = gridView_Contacts;
             gridControl_Contacts.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Contacts.Name = "gridControl_Contacts";
-            gridControl_Contacts.Size = new System.Drawing.Size(240, 858);
+            gridControl_Contacts.Size = new System.Drawing.Size(240, 881);
             gridControl_Contacts.TabIndex = 1;
             gridControl_Contacts.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Contacts });
             // 
@@ -378,7 +371,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Right.Location = new System.Drawing.Point(0, 0);
             panelControl_Right.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Right.Name = "panelControl_Right";
-            panelControl_Right.Size = new System.Drawing.Size(946, 911);
+            panelControl_Right.Size = new System.Drawing.Size(946, 934);
             panelControl_Right.TabIndex = 0;
             // 
             // splitContainerControl_Right
@@ -403,10 +396,10 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Right.Panel2.Controls.Add(panelControl_Orders);
             splitContainerControl_Right.Panel2.Location = new System.Drawing.Point(0, 416);
             splitContainerControl_Right.Panel2.Name = "";
-            splitContainerControl_Right.Panel2.Size = new System.Drawing.Size(942, 491);
+            splitContainerControl_Right.Panel2.Size = new System.Drawing.Size(942, 514);
             splitContainerControl_Right.Panel2.TabIndex = 1;
             splitContainerControl_Right.Panel2.Text = "Panel2";
-            splitContainerControl_Right.Size = new System.Drawing.Size(942, 907);
+            splitContainerControl_Right.Size = new System.Drawing.Size(942, 930);
             splitContainerControl_Right.SplitterPosition = 406;
             splitContainerControl_Right.TabIndex = 0;
             // 
@@ -473,7 +466,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Orders.Location = new System.Drawing.Point(0, 0);
             panelControl_Orders.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Orders.Name = "panelControl_Orders";
-            panelControl_Orders.Size = new System.Drawing.Size(942, 491);
+            panelControl_Orders.Size = new System.Drawing.Size(942, 514);
             panelControl_Orders.TabIndex = 0;
             // 
             // gridControl_Orders
@@ -487,7 +480,7 @@ namespace 永利系统.Views.Wechat
             gridControl_Orders.MainView = gridView_Orders;
             gridControl_Orders.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Orders.Name = "gridControl_Orders";
-            gridControl_Orders.Size = new System.Drawing.Size(938, 451);
+            gridControl_Orders.Size = new System.Drawing.Size(938, 474);
             gridControl_Orders.TabIndex = 1;
             gridControl_Orders.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Orders });
             // 
