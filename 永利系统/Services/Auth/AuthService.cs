@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using 永利系统.Infrastructure.Api;
-using 永利系统.Models.Api;
+using 永利系统.Models.BotApi.V1;  // 使用 BotApi V1 版本
 using 永利系统.Services;
 using 永利系统.Views;
 
@@ -15,16 +15,16 @@ namespace 永利系统.Services.Auth
     public class AuthService
     {
         private readonly LoggingService _loggingService;
-        private readonly BoterApi _boterApi;
+        private readonly BotApiV1 _botApi;
         
         public AuthService(LoggingService loggingService)
         {
             _loggingService = loggingService;
-            _boterApi = BoterApi.GetInstance();
+            _botApi = BotApiV1.GetInstance();
             
             // 订阅账号失效事件
-            _boterApi.OnAccountInvalid += HandleAccountInvalid;
-            _boterApi.OnAccountOffTime += HandleAccountOffTime;
+            _botApi.OnAccountInvalid += HandleAccountInvalid;
+            _botApi.OnAccountOffTime += HandleAccountOffTime;
         }
         
         /// <summary>
@@ -70,7 +70,7 @@ namespace 永利系统.Services.Auth
             {
                 _loggingService.Info("认证服务", $"正在登录: {username}");
                 
-                var response = await _boterApi.LoginAsync(username, password);
+                var response = await _botApi.LoginAsync(username, password);
                 
                 if (response.Code == 0 && response.Data != null)
                 {
@@ -113,7 +113,7 @@ namespace 永利系统.Services.Auth
         /// </summary>
         public async Task<bool> EnsureLoggedInAsync()
         {
-            if (_boterApi.IsLoggedIn())
+            if (_botApi.IsLoggedIn())
             {
                 return true;
             }
@@ -126,7 +126,7 @@ namespace 永利系统.Services.Auth
         /// </summary>
         public ApiUser? GetCurrentUser()
         {
-            return _boterApi.LoginApiResponse?.Data;
+            return _botApi.LoginApiResponse?.Data;
         }
         
         /// <summary>
@@ -134,7 +134,7 @@ namespace 永利系统.Services.Auth
         /// </summary>
         public string? GetToken()
         {
-            return _boterApi.GetToken();
+            return _botApi.GetToken();
         }
         
         /// <summary>
@@ -142,7 +142,7 @@ namespace 永利系统.Services.Auth
         /// </summary>
         public void Logout()
         {
-            _boterApi.Logout();
+            _botApi.Logout();
             AuthGuard.ClearAuthentication();
             _loggingService.Info("认证服务", "已登出");
         }
@@ -192,4 +192,3 @@ namespace 永利系统.Services.Auth
         }
     }
 }
-

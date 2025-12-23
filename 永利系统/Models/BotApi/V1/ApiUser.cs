@@ -1,11 +1,17 @@
 using System;
 using Newtonsoft.Json;
 
-namespace 永利系统.Models.Api
+namespace 永利系统.Models.BotApi.V1
 {
     /// <summary>
-    /// API 用户信息
+    /// BotApi V1 版本 - API 用户信息
     /// 用于系统级认证，包含登录凭证和权限信息
+    /// 
+    /// JSON 字段映射：
+    /// - c_soft_name: 软件名称
+    /// - c_sign: 认证签名（Token）
+    /// - c_token_public: 公共 Token
+    /// - c_off_time: 账号过期时间
     /// </summary>
     public class ApiUser
     {
@@ -32,7 +38,7 @@ namespace 永利系统.Models.Api
         /// </summary>
         [JsonProperty("c_off_time")]
         public DateTime ValidUntil { get; set; }
-        
+
         /// <summary>
         /// Token 是否有效
         /// </summary>

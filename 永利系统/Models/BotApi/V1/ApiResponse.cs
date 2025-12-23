@@ -1,9 +1,14 @@
 using Newtonsoft.Json;
 
-namespace 永利系统.Models.Api
+namespace 永利系统.Models.BotApi.V1
 {
     /// <summary>
-    /// API 响应基类
+    /// BotApi V1 版本 - API 响应基类
+    /// 
+    /// JSON 字段映射：
+    /// - code: 响应代码 (0=成功, 其他=失败)
+    /// - msg: 响应消息
+    /// - data: 响应数据
     /// </summary>
     /// <typeparam name="T">响应数据类型</typeparam>
     public class ApiResponse<T>

@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using 永利系统.Infrastructure.Api;
-using 永利系统.Models.Api;
+using 永利系统.Models.BotApi.V1;  // 使用 BotApi V1 版本
 using 永利系统.Services;
 
 namespace 永利系统.Services.Auth
@@ -19,7 +19,7 @@ namespace 永利系统.Services.Auth
     public class AuthGuard
     {
         private readonly LoggingService _loggingService;
-        private readonly BoterApi _boterApi;
+        private readonly BotApiV1 _botApi;
         private readonly AuthService _authService;
         
         // 验证标记（防止直接实例化主窗口）
@@ -36,7 +36,7 @@ namespace 永利系统.Services.Auth
         {
             _loggingService = loggingService;
             _authService = authService;
-            _boterApi = BoterApi.GetInstance();
+            _botApi = BotApiV1.GetInstance();
         }
         
         /// <summary>
@@ -116,8 +116,8 @@ namespace 永利系统.Services.Auth
                 return false;
             }
             
-            // 检查5：BoterApi 登录状态验证
-            if (!_boterApi.IsLoggedIn())
+            // 检查5：BotApiV1 登录状态验证
+            if (!_botApi.IsLoggedIn())
             {
                 _loggingService.Error("认证守卫", "API 未登录，拒绝启动主窗口");
                 ClearAuthentication();
@@ -142,7 +142,7 @@ namespace 永利系统.Services.Auth
         public bool VerifyOperation(string operationName)
         {
             // 重新验证登录状态
-            if (!_boterApi.IsLoggedIn())
+            if (!_botApi.IsLoggedIn())
             {
                 _loggingService.Warn("认证守卫", $"操作 '{operationName}' 被拒绝：未登录");
                 MessageBox.Show("请先登录", "操作被拒绝", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -239,7 +239,7 @@ namespace 永利系统.Services.Auth
             }
             
             // 重新验证登录状态
-            if (!_boterApi.IsLoggedIn())
+            if (!_botApi.IsLoggedIn())
             {
                 _loggingService.Warn("认证守卫", "定期验证失败：未登录");
                 ClearAuthentication();
@@ -259,4 +259,3 @@ namespace 永利系统.Services.Auth
         }
     }
 }
-

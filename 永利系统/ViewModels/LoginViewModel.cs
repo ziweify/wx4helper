@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using DevExpress.Mvvm;
 using 永利系统.Infrastructure.Api;
-using 永利系统.Models.Api;
+using 永利系统.Models.BotApi.V1;  // 使用 BotApi V1 版本
 using 永利系统.Services;
 using 永利系统.Services.Auth;
 
@@ -30,7 +30,7 @@ namespace 永利系统.ViewModels
             _loggingService = loggingService;
             
             // 订阅账号失效事件
-            var api = BoterApi.GetInstance();
+            var api = BotApiV1.GetInstance();
             api.OnAccountInvalid += HandleAccountInvalid;
             api.OnAccountOffTime += HandleAccountOffTime;
         }
@@ -188,16 +188,16 @@ namespace 永利系统.ViewModels
                 }
                 else
                 {
-                    var api = BoterApi.GetInstance();
+                    var api = BotApiV1.GetInstance();
                     var response = api.LoginApiResponse;
                     
                     if (response != null)
                     {
-                        if (response.Code == BoterApi.VERIFY_SIGN_OFFTIME)
+                        if (response.Code == BotApiV1.VERIFY_SIGN_OFFTIME)
                         {
                             ErrorMessage = "账号过期";
                         }
-                        else if (response.Code == BoterApi.VERIFY_SIGN_INVALID)
+                        else if (response.Code == BotApiV1.VERIFY_SIGN_INVALID)
                         {
                             ErrorMessage = "账号失效! 请重新登录\r\n请检查是否有在其他地方登录导致本次失效!";
                         }
@@ -257,4 +257,3 @@ namespace 永利系统.ViewModels
         #endregion
     }
 }
-

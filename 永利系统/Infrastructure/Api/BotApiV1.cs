@@ -1,28 +1,29 @@
 using System;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using 永利系统.Models.Api;
+using 永利系统.Models.BotApi.V1;  // 使用 BotApi V1 版本的模型
 using 永利系统.Services;
 using 永利系统.Infrastructure.Helpers;
 
 namespace 永利系统.Infrastructure.Api
 {
     /// <summary>
-    /// Boter API 客户端（完全参考 BaiShengVx3Plus 的 BoterApi）
+    /// BotApi V1 版本客户端
     /// 
     /// 设计原则：
     /// 1. 单例模式（Singleton）
     /// 2. 登录后保存 Token，后续请求自动使用
     /// 3. 简单直接，不过度设计
+    /// 4. 使用 BotApi.V1 命名空间的模型类
     /// </summary>
-    public class BoterApi
+    public class BotApiV1
     {
         // 账号状态码（参考 F5BotV2）
         public static int VERIFY_SIGN_OFFTIME = 10000;  // 账户过期
         public static int VERIFY_SIGN_INVALID = 10001;  // 无效令牌（账号被其他地方登录）
         public static int VERIFY_SIGN_SUCCESS = 0;      // 成功
         
-        private static BoterApi? _instance;
+        private static BotApiV1? _instance;
         private static readonly object _lock = new object();
         
         private readonly string _urlRoot = "http://8.134.71.102:789";
@@ -37,7 +38,7 @@ namespace 永利系统.Infrastructure.Api
         public event Action<string>? OnAccountInvalid;
         public event Action<string>? OnAccountOffTime;
         
-        private BoterApi()
+        private BotApiV1()
         {
             _httpHelper = new ModernHttpHelper();
         }
@@ -45,14 +46,14 @@ namespace 永利系统.Infrastructure.Api
         /// <summary>
         /// 获取单例实例
         /// </summary>
-        public static BoterApi GetInstance()
+        public static BotApiV1 GetInstance()
         {
             if (_instance == null)
             {
                 lock (_lock)
                 {
                     if (_instance == null)
-                        _instance = new BoterApi();
+                        _instance = new BotApiV1();
                 }
             }
             return _instance;
