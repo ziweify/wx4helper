@@ -26,6 +26,27 @@ namespace 永利系统
                 return;
             }
 
+            // 🔥 DevExpress 许可证初始化（必须在 Application.EnableVisualStyles() 之前）
+            // 尝试使用不同的 API 注册许可证（DevExpress 23.2）
+            try
+            {
+                // 方法1: 尝试使用 XtraEditors 命名空间
+                var licenseType = Type.GetType("DevExpress.XtraEditors.LicenseManager, DevExpress.XtraEditors.v23.2");
+                if (licenseType != null)
+                {
+                    var registerMethod = licenseType.GetMethod("RegisterLicense", new[] { typeof(string) });
+                    if (registerMethod != null)
+                    {
+                        registerMethod.Invoke(null, new object[] { "DeltaFoX, 697903559/6 (#9223372036854775807)" });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 许可证注册失败，但不阻止程序运行（可能会显示注册对话框）
+                System.Diagnostics.Debug.WriteLine($"DevExpress 许可证注册失败: {ex.Message}");
+            }
+
             // 启用应用程序的可视样式
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
