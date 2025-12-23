@@ -371,7 +371,7 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Right.Panel2.Controls.Add(panelControl_Orders);
             splitContainerControl_Right.Panel2.Text = "Panel2";
             splitContainerControl_Right.Size = new System.Drawing.Size(942, 930);
-            splitContainerControl_Right.SplitterPosition = 390;
+            splitContainerControl_Right.SplitterPosition = 406;
             splitContainerControl_Right.TabIndex = 0;
             // 
             // panelControl_Members
@@ -382,7 +382,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Members.Location = new System.Drawing.Point(0, 0);
             panelControl_Members.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Members.Name = "panelControl_Members";
-            panelControl_Members.Size = new System.Drawing.Size(942, 390);
+            panelControl_Members.Size = new System.Drawing.Size(942, 406);
             panelControl_Members.TabIndex = 0;
             // 
             // gridControl_Members
@@ -393,7 +393,7 @@ namespace 永利系统.Views.Wechat
             gridControl_Members.MainView = gridView_Members;
             gridControl_Members.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Members.Name = "gridControl_Members";
-            gridControl_Members.Size = new System.Drawing.Size(938, 350);
+            gridControl_Members.Size = new System.Drawing.Size(938, 366);
             gridControl_Members.TabIndex = 1;
             gridControl_Members.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Members });
             // 
@@ -434,7 +434,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Orders.Location = new System.Drawing.Point(0, 0);
             panelControl_Orders.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Orders.Name = "panelControl_Orders";
-            panelControl_Orders.Size = new System.Drawing.Size(942, 530);
+            panelControl_Orders.Size = new System.Drawing.Size(942, 514);
             panelControl_Orders.TabIndex = 0;
             // 
             // gridControl_Orders
@@ -445,7 +445,7 @@ namespace 永利系统.Views.Wechat
             gridControl_Orders.MainView = gridView_Orders;
             gridControl_Orders.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Orders.Name = "gridControl_Orders";
-            gridControl_Orders.Size = new System.Drawing.Size(938, 490);
+            gridControl_Orders.Size = new System.Drawing.Size(938, 474);
             gridControl_Orders.TabIndex = 1;
             gridControl_Orders.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Orders });
             // 
