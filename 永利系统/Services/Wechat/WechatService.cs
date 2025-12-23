@@ -82,6 +82,12 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public Task<bool> RefreshWechatDataAsync()
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (_currentState != WechatConnectionState.Connected)
+                throw new InvalidOperationException($"微信未连接，当前状态: {_currentState}");
+            
             // TODO: 实现刷新微信数据逻辑
             _loggingService.Info("微信服务", "刷新微信数据...");
             
@@ -98,6 +104,15 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public Task<bool> BindGroupAsync(string groupWxId)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (string.IsNullOrEmpty(groupWxId))
+                throw new ArgumentNullException(nameof(groupWxId), "群组ID不能为空");
+            
+            if (_currentState != WechatConnectionState.Connected)
+                throw new InvalidOperationException($"微信未连接，当前状态: {_currentState}");
+            
             // TODO: 实现绑定群组逻辑
             _loggingService.Info("微信服务", $"绑定群组: {groupWxId}");
             
@@ -106,7 +121,7 @@ namespace 永利系统.Services.Wechat
                 _currentGroupWxId = groupWxId;
             }
             
-            // 触发群组绑定事件
+            // 📋 后置条件：触发群组绑定事件
             GroupBound?.Invoke(this, groupWxId);
             
             return Task.FromResult(true);
@@ -117,9 +132,25 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public Task<List<Contact>> GetContactsAsync()
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (_currentState != WechatConnectionState.Connected)
+                throw new InvalidOperationException($"微信未连接，当前状态: {_currentState}");
+            
             // TODO: 实现获取联系人列表逻辑
             _loggingService.Debug("微信服务", "获取联系人列表");
-            return Task.FromResult(new List<Contact>());
+            
+            var contacts = new List<Contact>();  // TODO: 从微信获取
+            
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 后置条件检查（Debug模式）
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            #if DEBUG
+            System.Diagnostics.Debug.Assert(contacts != null, "违反契约：返回值不能为 null");
+            #endif
+            
+            return Task.FromResult(contacts);
         }
 
         /// <summary>
@@ -127,9 +158,25 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public Task<List<Contact>> GetGroupsAsync()
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (_currentState != WechatConnectionState.Connected)
+                throw new InvalidOperationException($"微信未连接，当前状态: {_currentState}");
+            
             // TODO: 实现获取群组列表逻辑
             _loggingService.Debug("微信服务", "获取群组列表");
-            return Task.FromResult(new List<Contact>());
+            
+            var groups = new List<Contact>();  // TODO: 从微信获取
+            
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 后置条件检查（Debug模式）
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            #if DEBUG
+            System.Diagnostics.Debug.Assert(groups != null, "违反契约：返回值不能为 null");
+            #endif
+            
+            return Task.FromResult(groups);
         }
 
         /// <summary>

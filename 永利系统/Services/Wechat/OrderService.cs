@@ -37,6 +37,18 @@ namespace 永利系统.Services.Wechat
             int issueId,
             LotteryStatus currentStatus)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (member == null)
+                throw new ArgumentNullException(nameof(member), "会员不能为 null");
+            
+            if (string.IsNullOrEmpty(messageContent))
+                throw new ArgumentException("消息内容不能为空", nameof(messageContent));
+            
+            if (issueId <= 0)
+                throw new ArgumentException("期号必须大于0", nameof(issueId));
+            
             // TODO: 实现创建订单逻辑
             _loggingService.Info("订单服务", $"创建订单: 会员={member.Nickname}, 期号={issueId}, 内容={messageContent}");
             return Task.FromResult<(bool, string, Order?)>((false, "功能未实现", null));
@@ -51,6 +63,21 @@ namespace 永利系统.Services.Wechat
             int issueId,
             decimal amount)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (member == null)
+                throw new ArgumentNullException(nameof(member), "会员不能为 null");
+            
+            if (string.IsNullOrEmpty(betContent))
+                throw new ArgumentException("投注内容不能为空", nameof(betContent));
+            
+            if (issueId <= 0)
+                throw new ArgumentException("期号必须大于0", nameof(issueId));
+            
+            if (amount <= 0)
+                throw new ArgumentException("投注金额必须大于0", nameof(amount));
+            
             // TODO: 实现手动补单逻辑
             _loggingService.Info("订单服务", $"手动补单: 会员={member.Nickname}, 期号={issueId}, 金额={amount}");
             return Task.FromResult<(bool, string, Order?)>((false, "功能未实现", null));
@@ -73,6 +100,18 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public Task SettleSingleOrderAsync(Order order, LotteryData lotteryData)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (order == null)
+                throw new ArgumentNullException(nameof(order), "订单不能为 null");
+            
+            if (lotteryData == null)
+                throw new ArgumentNullException(nameof(lotteryData), "开奖数据不能为 null");
+            
+            if (order.IssueId != lotteryData.IssueId)
+                throw new ArgumentException($"期号不匹配: 订单期号={order.IssueId}, 开奖期号={lotteryData.IssueId}");
+            
             // TODO: 实现单个订单结算逻辑
             _loggingService.Info("订单服务", $"结算订单 ID={order.Id}");
             return Task.CompletedTask;
@@ -83,8 +122,16 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public IEnumerable<Order> GetPendingOrdersForIssue(int issueId)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (issueId <= 0)
+                throw new ArgumentException("期号必须大于0", nameof(issueId));
+            
             // TODO: 实现查询待投注订单逻辑
             _loggingService.Debug("订单服务", $"获取期号 {issueId} 的待投注订单");
+            
+            // 📋 后置条件：永不返回 null
             return new List<Order>();
         }
 
@@ -93,8 +140,19 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public IEnumerable<Order> GetPendingOrdersForMemberAndIssue(string wxid, int issueId)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (string.IsNullOrEmpty(wxid))
+                throw new ArgumentException("微信ID不能为空", nameof(wxid));
+            
+            if (issueId <= 0)
+                throw new ArgumentException("期号必须大于0", nameof(issueId));
+            
             // TODO: 实现查询会员订单逻辑
             _loggingService.Debug("订单服务", $"获取会员 {wxid} 期号 {issueId} 的待处理订单");
+            
+            // 📋 后置条件：永不返回 null
             return new List<Order>();
         }
 
@@ -103,8 +161,22 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public decimal GetIssueBetAmountByItem(int issueId, int carNumber, string playType)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (issueId <= 0)
+                throw new ArgumentException("期号必须大于0", nameof(issueId));
+            
+            if (carNumber < 1 || carNumber > 10)
+                throw new ArgumentException("车号必须在1-10之间", nameof(carNumber));
+            
+            if (string.IsNullOrEmpty(playType))
+                throw new ArgumentException("玩法不能为空", nameof(playType));
+            
             // TODO: 实现限额验证逻辑
             _loggingService.Debug("订单服务", $"获取期号 {issueId} 车号 {carNumber} 玩法 {playType} 的累计金额");
+            
+            // 📋 后置条件：返回值 >= 0
             return 0;
         }
 
@@ -113,6 +185,15 @@ namespace 永利系统.Services.Wechat
         /// </summary>
         public void UpdateOrder(Order order)
         {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 📋 前置条件检查
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            if (order == null)
+                throw new ArgumentNullException(nameof(order), "订单不能为 null");
+            
+            if (order.Id <= 0)
+                throw new ArgumentException("订单ID必须大于0", nameof(order));
+            
             // TODO: 实现更新订单逻辑
             _loggingService.Debug("订单服务", $"更新订单 ID={order.Id}");
         }

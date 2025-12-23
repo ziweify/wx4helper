@@ -12,7 +12,12 @@ using 永利系统.Services;
 namespace 永利系统.Services.Games.Bingo
 {
     /// <summary>
-    /// Bingo 游戏服务基类（混合模式：虚方法 + 事件）
+    /// Bingo 游戏服务抽象基类（契约式编程）
+    /// 
+    /// 📋 契约说明：
+    /// - 前置条件：派生类必须实现所有抽象方法，且参数必须有效
+    /// - 后置条件：服务启动后，IsRunning = true，且事件必须正常触发
+    /// - 不变式：服务运行期间，IsRunning 状态必须准确，CurrentIssueId >= 0
     /// 
     /// 核心功能：
     /// 1. 管理游戏状态（开盘中、封盘中、开奖中等）
