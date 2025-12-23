@@ -40,33 +40,36 @@ namespace 永利系统.Views.Wechat
 
         private void InitializeUI()
         {
-            // 设置工具栏按钮图标（必须在 InitializeComponent 之后调用）
-            toolStripButton_Connect.Image = CreateConnectIcon();
+            // 初始化 ImageList（图标现在可以在设计器中直接设置）
+            // 如果 ImageList 为空，则通过代码添加图标（向后兼容）
+            if (imageList_Toolbar.Images.Count == 0)
+            {
+                imageList_Toolbar.Images.Add(CreateConnectIcon());
+                imageList_Toolbar.Images.Add(CreateLogIcon());
+                imageList_Toolbar.Images.Add(CreateLotteryIcon());
+                imageList_Toolbar.Images.Add(CreateCreditIcon());
+                imageList_Toolbar.Images.Add(CreateClearIcon());
+                imageList_Toolbar.Images.Add(CreateSettingsIcon());
+            }
+            
+            // 设置工具栏按钮的图标索引和显示样式（这样可以在设计器中看到）
+            toolStripButton_Connect.ImageIndex = 0;
             toolStripButton_Connect.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton_Connect.Size = new System.Drawing.Size(60, 47);
             
-            toolStripButton_Log.Image = CreateLogIcon();
+            toolStripButton_Log.ImageIndex = 1;
             toolStripButton_Log.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton_Log.Size = new System.Drawing.Size(60, 47);
             
-            toolStripButton_OpenLotteryResult.Image = CreateLotteryIcon();
+            toolStripButton_OpenLotteryResult.ImageIndex = 2;
             toolStripButton_OpenLotteryResult.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton_OpenLotteryResult.Size = new System.Drawing.Size(84, 47);
             
-            toolStripButton_CreditWithdrawManage.Image = CreateCreditIcon();
+            toolStripButton_CreditWithdrawManage.ImageIndex = 3;
             toolStripButton_CreditWithdrawManage.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton_CreditWithdrawManage.Size = new System.Drawing.Size(96, 47);
             
-            toolStripButton_ClearData.Image = CreateClearIcon();
+            toolStripButton_ClearData.ImageIndex = 4;
             toolStripButton_ClearData.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton_ClearData.Size = new System.Drawing.Size(84, 47);
             
-            toolStripButton_Settings.Image = CreateSettingsIcon();
+            toolStripButton_Settings.ImageIndex = 5;
             toolStripButton_Settings.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton_Settings.Size = new System.Drawing.Size(60, 47);
-            
-            // 设置工具栏高度以容纳图片和文字
-            toolStrip1.Size = new System.Drawing.Size(toolStrip1.Size.Width, 50);
             
             // 🔥 初始化 Bingo 数据控件并添加到 panelControl_OpenData
             InitializeBingoDataControls();
