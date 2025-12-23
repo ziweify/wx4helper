@@ -71,7 +71,7 @@
   <ItemGroup>
     <!-- 排除 RenameFiles.cs，避免多个入口点 -->
     <Compile Remove="RenameFiles.cs" />
-    <PackageReference Include="DevExpress.Win.Design" Version="23.2.6" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
     <!-- 确保所有页面都被编译 -->
