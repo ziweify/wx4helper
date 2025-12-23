@@ -40,36 +40,8 @@ namespace 永利系统.Views.Wechat
 
         private void InitializeUI()
         {
-            // 初始化 ImageList（图标现在可以在设计器中直接设置）
-            // 如果 ImageList 为空，则通过代码添加图标（向后兼容）
-            if (imageList_Toolbar.Images.Count == 0)
-            {
-                imageList_Toolbar.Images.Add(CreateConnectIcon());
-                imageList_Toolbar.Images.Add(CreateLogIcon());
-                imageList_Toolbar.Images.Add(CreateLotteryIcon());
-                imageList_Toolbar.Images.Add(CreateCreditIcon());
-                imageList_Toolbar.Images.Add(CreateClearIcon());
-                imageList_Toolbar.Images.Add(CreateSettingsIcon());
-            }
-            
-            // 设置工具栏按钮的图标索引和显示样式（这样可以在设计器中看到）
-            toolStripButton_Connect.ImageIndex = 0;
-            toolStripButton_Connect.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            
-            toolStripButton_Log.ImageIndex = 1;
-            toolStripButton_Log.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            
-            toolStripButton_OpenLotteryResult.ImageIndex = 2;
-            toolStripButton_OpenLotteryResult.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            
-            toolStripButton_CreditWithdrawManage.ImageIndex = 3;
-            toolStripButton_CreditWithdrawManage.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            
-            toolStripButton_ClearData.ImageIndex = 4;
-            toolStripButton_ClearData.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            
-            toolStripButton_Settings.ImageIndex = 5;
-            toolStripButton_Settings.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            // 注意：工具栏按钮的图标已在 Designer.cs 中设置（使用 WechatPageIcons 类）
+            // 这样可以在 Visual Studio 设计器中直接看到和修改图标
             
             // 🔥 初始化 Bingo 数据控件并添加到 panelControl_OpenData
             InitializeBingoDataControls();
