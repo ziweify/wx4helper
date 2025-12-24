@@ -206,7 +206,7 @@ namespace 永利系统.Views.Wechat
             // splitContainerControl_Main
             // 
             splitContainerControl_Main.Dock = System.Windows.Forms.DockStyle.Fill;
-            splitContainerControl_Main.Location = new System.Drawing.Point(0, 0);
+            splitContainerControl_Main.Location = new System.Drawing.Point(0, 25);
             splitContainerControl_Main.Name = "splitContainerControl_Main";
             // 
             // splitContainerControl_Main.Panel1
@@ -218,7 +218,7 @@ namespace 永利系统.Views.Wechat
             // 
             splitContainerControl_Main.Panel2.Controls.Add(panelControl_Right);
             splitContainerControl_Main.Panel2.Text = "Panel2";
-            splitContainerControl_Main.Size = new System.Drawing.Size(1200, 808);
+            splitContainerControl_Main.Size = new System.Drawing.Size(1200, 761);
             splitContainerControl_Main.SplitterPosition = 244;
             splitContainerControl_Main.TabIndex = 2;
             // 
@@ -230,7 +230,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Left.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Left.Location = new System.Drawing.Point(0, 0);
             panelControl_Left.Name = "panelControl_Left";
-            panelControl_Left.Size = new System.Drawing.Size(244, 808);
+            panelControl_Left.Size = new System.Drawing.Size(244, 761);
             panelControl_Left.TabIndex = 0;
             // 
             // panelControl_FastSetting
@@ -238,7 +238,7 @@ namespace 永利系统.Views.Wechat
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
             panelControl_FastSetting.Controls.Add(panelControl_OpenData);
             panelControl_FastSetting.Dock = System.Windows.Forms.DockStyle.Bottom;
-            panelControl_FastSetting.Location = new System.Drawing.Point(2, 503);
+            panelControl_FastSetting.Location = new System.Drawing.Point(2, 456);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
             panelControl_FastSetting.Size = new System.Drawing.Size(240, 303);
             panelControl_FastSetting.TabIndex = 3;
@@ -342,7 +342,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Right.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Right.Location = new System.Drawing.Point(0, 0);
             panelControl_Right.Name = "panelControl_Right";
-            panelControl_Right.Size = new System.Drawing.Size(946, 808);
+            panelControl_Right.Size = new System.Drawing.Size(946, 761);
             panelControl_Right.TabIndex = 0;
             // 
             // splitContainerControl_Right
@@ -361,7 +361,7 @@ namespace 永利系统.Views.Wechat
             // 
             splitContainerControl_Right.Panel2.Controls.Add(panelControl_Orders);
             splitContainerControl_Right.Panel2.Text = "Panel2";
-            splitContainerControl_Right.Size = new System.Drawing.Size(942, 804);
+            splitContainerControl_Right.Size = new System.Drawing.Size(942, 757);
             splitContainerControl_Right.SplitterPosition = 334;
             splitContainerControl_Right.TabIndex = 0;
             // 
@@ -418,7 +418,7 @@ namespace 永利系统.Views.Wechat
             panelControl_Orders.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Orders.Location = new System.Drawing.Point(0, 0);
             panelControl_Orders.Name = "panelControl_Orders";
-            panelControl_Orders.Size = new System.Drawing.Size(942, 460);
+            panelControl_Orders.Size = new System.Drawing.Size(942, 413);
             panelControl_Orders.TabIndex = 0;
             // 
             // gridControl_Orders
@@ -427,7 +427,7 @@ namespace 永利系统.Views.Wechat
             gridControl_Orders.Location = new System.Drawing.Point(2, 32);
             gridControl_Orders.MainView = gridView_Orders;
             gridControl_Orders.Name = "gridControl_Orders";
-            gridControl_Orders.Size = new System.Drawing.Size(938, 426);
+            gridControl_Orders.Size = new System.Drawing.Size(938, 379);
             gridControl_Orders.TabIndex = 1;
             gridControl_Orders.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Orders });
             // 
@@ -462,9 +462,9 @@ namespace 永利系统.Views.Wechat
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 14F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             ClientSize = new System.Drawing.Size(1200, 808);
+            Controls.Add(splitContainerControl_Main);
             Controls.Add(toolStrip1);
             Controls.Add(statusStrip1);
-            Controls.Add(splitContainerControl_Main);
             Name = "WechatPage";
             Text = "微信助手";
             toolStrip1.ResumeLayout(false);
