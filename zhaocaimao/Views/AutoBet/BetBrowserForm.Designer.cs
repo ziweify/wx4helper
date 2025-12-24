@@ -207,6 +207,7 @@ namespace zhaocaimao.Views.AutoBet
             txtLog.Location = new Point(0, 0);
             txtLog.Name = "txtLog";
             txtLog.ReadOnly = true;
+            txtLog.ScrollBars = RichTextBoxScrollBars.Vertical; // 🔥 启用垂直滚动条
             txtLog.Size = new Size(1264, 186);
             txtLog.TabIndex = 0;
             txtLog.Text = "";
@@ -306,7 +307,9 @@ namespace zhaocaimao.Views.AutoBet
             Controls.Add(splitContainer);
             Controls.Add(pnlTop);
             Controls.Add(statusStrip1);
+            FormBorderStyle = FormBorderStyle.Sizable; // 🔥 允许调整窗口大小
             Name = "BetBrowserForm";
+            SizeGripStyle = SizeGripStyle.Show; // 🔥 显示右下角调整大小手柄
             Style = Sunny.UI.UIStyle.Custom;
             Text = "自动投注浏览器";
             ZoomScaleRect = new Rectangle(15, 15, 1264, 860);

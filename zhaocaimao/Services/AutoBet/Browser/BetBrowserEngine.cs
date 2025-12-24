@@ -229,6 +229,7 @@ namespace zhaocaimao.Services.AutoBet.Browser
                 BetPlatform.bingo168 => CreateHy168Script(logCallback), // 🔥 bingo168 使用HY168脚本
                 BetPlatform.云顶 => CreateYunDing28Script(logCallback),
                 BetPlatform.yyds => CreateYydsScript(logCallback), // 🔥 YYDS 平台
+                BetPlatform.黄金海岸 => CreateHuangJinHaiAnScript(logCallback), // 🔥 黄金海岸平台
                 _ => CreateNoneSiteScript(logCallback) // 默认使用"不使用盘口"
             };
         }
@@ -245,6 +246,22 @@ namespace zhaocaimao.Services.AutoBet.Browser
             catch (Exception ex)
             {
                 OnLog?.Invoke($"❌ 创建YYDS脚本失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 创建黄金海岸脚本
+        /// </summary>
+        private PlatformScripts.IPlatformScript? CreateHuangJinHaiAnScript(Action<string> logCallback)
+        {
+            try
+            {
+                return new PlatformScripts.HuangJinHaiAnScript(_webView, logCallback);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"❌ 创建黄金海岸脚本失败: {ex.Message}");
                 return null;
             }
         }
