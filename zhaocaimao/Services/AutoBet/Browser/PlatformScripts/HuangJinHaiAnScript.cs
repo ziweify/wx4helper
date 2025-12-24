@@ -103,8 +103,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                             passwordInput.dispatchEvent(new KeyboardEvent('keyup', {{ bubbles: true }}));
                             
                             // 🔥 尝试查找并点击登录按钮（如果有验证码，需要手动输入）
+                            // 注意：:contains() 不是有效的 CSS 选择器，需要使用 JavaScript 查找
                             const loginButton = document.querySelector('button[type=""submit""]') ||
-                                              document.querySelector('button:contains(""登录"")') ||
                                               Array.from(document.querySelectorAll('button')).find(btn => 
                                                   btn.textContent.includes('登录') || 
                                                   btn.textContent.includes('登 录') ||

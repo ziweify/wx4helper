@@ -913,6 +913,47 @@ namespace zhaocaimao.Services.AutoBet.Browser
                         }
                         break;
                         
+                    case "获取赔率":
+                        if (_platformScript == null)
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "平台脚本未初始化";
+                            break;
+                        }
+                        
+                        // 🔥 获取赔率列表
+                        List<zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo> oddsList;
+                        if (_webView.InvokeRequired)
+                        {
+                            oddsList = await Task.Run(async () =>
+                            {
+                                var tcs = new TaskCompletionSource<List<zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo>>();
+                                _webView.Invoke(() =>
+                                {
+                                    try
+                                    {
+                                        var r = _platformScript.GetOddsList();
+                                        tcs.SetResult(r);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        OnLog?.Invoke($"❌ 获取赔率失败: {ex.Message}");
+                                        tcs.SetResult(new List<zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo>());
+                                    }
+                                });
+                                return await tcs.Task;
+                            });
+                        }
+                        else
+                        {
+                            oddsList = _platformScript.GetOddsList();
+                        }
+                        
+                        result.Success = oddsList.Count > 0;
+                        result.Data = oddsList;
+                        result.ErrorMessage = result.Success ? null : "赔率数据尚未加载";
+                        break;
+                        
                     case "心跳检测":
                         result.Success = true;
                         result.Data = new

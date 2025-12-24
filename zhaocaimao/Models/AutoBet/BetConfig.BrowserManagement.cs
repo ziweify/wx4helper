@@ -20,7 +20,6 @@ namespace zhaocaimao.Models.AutoBet
         private bool _isStartingBrowser; // 🔥 正在启动浏览器的标志，防止重复启动
         private readonly object _browserLock = new object();
         private ILogService? _logService;
-        private AutoBetSocketServer? _socketServer;
         
         #endregion
         
@@ -30,10 +29,9 @@ namespace zhaocaimao.Models.AutoBet
         /// 设置依赖服务（在 AutoBetService 中调用）
         /// 🔥 如果配置已启用，立即启动监控线程并检查是否需要启动浏览器
         /// </summary>
-        public void SetDependencies(ILogService logService, AutoBetSocketServer socketServer)
+        public void SetDependencies(ILogService logService)
         {
             _logService = logService;
-            _socketServer = socketServer;
             
             // 🔥 记录配置状态以便调试
             _logService?.Info("BetConfig", $"📋 [{ConfigName}] SetDependencies 被调用");

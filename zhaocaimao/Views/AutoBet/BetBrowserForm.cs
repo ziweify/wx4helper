@@ -97,6 +97,11 @@ namespace zhaocaimao.Views.AutoBet
                 txtUrl.Text = platformUrl;
             }
             
+            // 🔥 显式设置窗口大小调整属性（确保 UIForm 基类不会覆盖）
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.SizeGripStyle = SizeGripStyle.Show;
+            this.MinimumSize = new Size(900, 768); // 设置最小尺寸，确保可以调整
+            
             InitializeLogSystem();
             
             // 🔥 浏览器初始化在 Load 事件中异步执行
@@ -109,6 +114,10 @@ namespace zhaocaimao.Views.AutoBet
         /// </summary>
         private async void BetBrowserForm_Load(object? sender, EventArgs e)
         {
+            // 🔥 再次确保窗口大小调整属性已设置（防止 UIForm 基类覆盖）
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.SizeGripStyle = SizeGripStyle.Show;
+            
             await InitializeBrowserAsync();
         }
         
@@ -659,18 +668,44 @@ namespace zhaocaimao.Views.AutoBet
             }
         }
         
-        private void LblOddsInfo_Click(object? sender, EventArgs e)
+        private async void LblOddsInfo_Click(object? sender, EventArgs e)
         {
             try
             {
-                // TODO: 实现赔率显示功能
-                MessageBox.Show("赔率数据尚未加载，请先登录并等待赔率更新", "提示", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (_browserControl == null || !_browserControl.IsInitialized)
+                {
+                    MessageBox.Show("浏览器未初始化", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // 🔥 获取赔率列表（通过执行命令）
+                var oddsResult = await _browserControl.ExecuteCommandAsync("获取赔率", null);
+                
+                if (!oddsResult.Success)
+                {
+                    MessageBox.Show($"获取赔率失败: {oddsResult.ErrorMessage ?? "未知错误"}", "提示",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // 解析赔率数据
+                var oddsList = oddsResult.Data as List<zhaocaimao.Services.AutoBet.Browser.Models.OddsInfo>;
+                if (oddsList == null || oddsList.Count == 0)
+                {
+                    MessageBox.Show("赔率数据尚未加载，请先登录并等待赔率更新", "提示",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // 创建并显示赔率窗口
+                var oddsForm = new OddsDisplayForm();
+                oddsForm.SetOddsData(oddsList);
+                oddsForm.ShowDialog(this);
             }
             catch (Exception ex)
             {
                 OnLogMessage($"❌ 打开赔率窗口失败: {ex.Message}");
-                MessageBox.Show($"打开赔率窗口失败: {ex.Message}", "错误", 
+                MessageBox.Show($"打开赔率窗口失败: {ex.Message}", "错误",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

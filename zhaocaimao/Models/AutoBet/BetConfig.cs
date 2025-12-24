@@ -270,8 +270,21 @@ namespace zhaocaimao.Models.AutoBet
     
     /// <summary>
     /// 状态（运行时状态，如"已连接"、"未连接"，不持久化）
+    /// 🔥 添加 PropertyChanged 通知，确保 UI 能自动刷新
     /// </summary>
-    public string Status { get; set; } = "未启动";
+    private string _status = "未启动";
+    public string Status
+    {
+        get => _status;
+        set
+        {
+            if (_status != value)
+            {
+                _status = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Status)));
+            }
+        }
+    }
     
     /// <summary>
     /// 最后更新时间（自动更新，不需要通知）

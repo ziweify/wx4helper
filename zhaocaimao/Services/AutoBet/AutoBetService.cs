@@ -23,9 +23,6 @@ namespace zhaocaimao.Services.AutoBet
         // 🔥 已删除字典！配置对象自己管理 Browser 连接
         // private readonly Dictionary<int, BrowserClient> _browsers = new();  // ❌ 不需要了
         
-        // Socket 服务器（双向通信：心跳、状态推送、远程控制）
-        private AutoBetSocketServer? _socketServer;
-        
         // 🔥 HTTP 服务器（用于 BsBrowserClient 获取配置、提交结果）
         private AutoBetHttpServer? _httpServer;
         
@@ -53,16 +50,11 @@ namespace zhaocaimao.Services.AutoBet
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             _log.Info("AutoBet", "🚀 AutoBetService 构造函数执行");
             
-            // 启动 Socket 服务器（端口 19527，用于双向通信）
-            _socketServer = new AutoBetSocketServer(log, OnBrowserConnected, OnMessageReceived, OnBrowserDisconnected); // 🔥 添加连接断开回调
-            _socketServer.Start();
-            
             // 🔥 监控任务暂不启动，等待 SetDatabase 完成后再启动
             _log.Info("AutoBet", "⏸️ 后台监控任务暂未启动（等待数据库初始化）");
             _log.Info("AutoBet", "⏸️ HTTP 服务器暂未启动（等待数据库初始化）");
             
             _log.Info("AutoBet", "✅ AutoBetService 初始化完成");
-            _log.Info("AutoBet", $"   Socket 服务器状态: {(_socketServer.IsRunning ? "运行中" : "未运行")}");
             _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         }
         
@@ -178,21 +170,13 @@ namespace zhaocaimao.Services.AutoBet
                                     break;
                                 }
                                 
-                                // 检查 Socket 服务器是否有连接
-                                var connection = _socketServer?.GetConnection(config.Id);
-                                if (connection != null && connection.IsConnected)
+                                // 🔥 使用内置浏览器窗口，直接检查浏览器连接状态
+                                if (config.Browser != null && config.Browser.IsConnected)
                                 {
-                                    _log.Info("AutoBet", $"   📌 [{config.ConfigName}] 发现 Socket 连接，但未附加到 BrowserClient");
-                                    
-                                    // 🔥 使用内置浏览器窗口，不再需要 Socket 连接
-                                    // 如果浏览器窗口已存在且已初始化，则认为已连接
-                                    if (config.Browser != null && config.Browser.IsConnected)
-                                    {
-                                        _log.Info("AutoBet", $"   ✅ [{config.ConfigName}] 浏览器窗口已连接！");
-                                        config.Status = "已连接";
-                                        SaveConfig(config);
-                                        break;
-                                    }
+                                    _log.Info("AutoBet", $"   ✅ [{config.ConfigName}] 浏览器窗口已连接！");
+                                    config.Status = "已连接";
+                                    SaveConfig(config);
+                                    break;
                                 }
                             }
                             
@@ -221,7 +205,7 @@ namespace zhaocaimao.Services.AutoBet
                 }
             }, _cancellationTokenSource.Token);
             
-            // 🔥 给所有配置注入依赖（LogService 和 SocketServer）
+            // 🔥 给所有配置注入依赖（LogService）
             InjectDependenciesToConfigs();
             
             _log.Info("AutoBet", "✅ 数据库设置完成，等待配置同步后启动监控");
@@ -236,7 +220,7 @@ namespace zhaocaimao.Services.AutoBet
             
             foreach (var config in _configs)
             {
-                config.SetDependencies(_log, _socketServer);
+                config.SetDependencies(_log);
             }
             
             _log.Info("AutoBet", $"✅ 已为 {_configs.Count} 个配置注入依赖服务");
@@ -1432,16 +1416,7 @@ namespace zhaocaimao.Services.AutoBet
                     _monitorThread = null;
                 }
                 
-                // 🔥 步骤4: 停止 Socket 服务器（停止接受新连接）
-                if (_socketServer != null)
-                {
-                    _log.Info("AutoBet", "⏹️ 停止 Socket 服务器...");
-                    _socketServer.Dispose();
-                    _socketServer = null;
-                    _log.Info("AutoBet", "✅ Socket 服务器已停止");
-                }
-                
-                // 🔥 步骤5: 停止 HTTP 服务器
+                // 🔥 步骤4: 停止 HTTP 服务器
                 if (_httpServer != null)
                 {
                     _log.Info("AutoBet", "⏹️ 停止 HTTP 服务器...");
