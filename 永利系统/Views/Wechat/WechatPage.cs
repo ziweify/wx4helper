@@ -33,7 +33,9 @@ namespace 永利系统.Views.Wechat
                 TopLevel = true;
                 return;
             }
-              
+            
+            // 🔥 临时：生成工具栏图标文件（只运行一次，然后删除此代码）
+            GenerateToolbarIconFiles();
 
             
             // 设置为非顶级窗口，可以嵌入到 TabPage 中
@@ -50,10 +52,38 @@ namespace 永利系统.Views.Wechat
             FormClosing += WechatPage_FormClosing;
         }
 
+        /// <summary>
+        /// 🔥 临时方法：生成工具栏图标PNG文件
+        /// 运行一次后请删除此方法和构造函数中的调用
+        /// </summary>
+        private void GenerateToolbarIconFiles()
+        {
+            try
+            {
+                // 获取项目根目录（向上3层：bin/Debug/net8.0-windows -> bin/Debug -> bin -> 项目根目录）
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string projectDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(baseDir, "..", "..", ".."));
+                string iconsDir = System.IO.Path.Combine(projectDir, "Resources", "Icons");
+                
+                // 如果目录不存在则创建
+                if (!System.IO.Directory.Exists(iconsDir))
+                {
+                    System.IO.Directory.CreateDirectory(iconsDir);
+                }
+                
+                // 生成图标
+                Helpers.ToolbarIconGenerator.GenerateAllIcons(iconsDir);
+            }
+            catch (Exception ex)
+            {
+                _loggingService?.Error("WechatPage", $"生成图标文件失败: {ex.Message}");
+            }
+        }
+
         private void InitializeUI()
         {
-            // 注意：工具栏按钮的图标已在 Designer.cs 中设置（使用 WechatPageIcons 类）
-            // 这样可以在 Visual Studio 设计器中直接看到和修改图标
+            // 注意：工具栏图标已在 Designer.cs 的 InitializeComponent() 中初始化
+            // 这样设计器可以直接显示图标占位
             
             // 🔥 初始化 Bingo 数据控件并添加到 panelControl_OpenData
             InitializeBingoDataControls();
