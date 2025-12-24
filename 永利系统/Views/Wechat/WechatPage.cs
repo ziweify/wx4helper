@@ -1,5 +1,7 @@
 using System;
+using System.ComponentModel;
 using System.Windows.Forms;
+using DevExpress.XtraEditors;  // ✅ 添加 DevExpress 命名空间
 using 永利系统.Services;
 using 永利系统.Services.Wechat;
 using 永利系统.Views.Wechat.Controls;
@@ -7,12 +9,13 @@ using 永利系统.Views.Wechat.Controls;
 namespace 永利系统.Views.Wechat
 {
     /// <summary>
-    /// 微信助手页面 - 使用 Form 实现，支持后台自动刷新
+    /// 微信助手页面 - 使用 XtraForm 实现，支持后台自动刷新
     /// 复刻 BaiShengVx3Plus 的 VxMain 界面设计
+    /// ✅ 修复：改用 XtraForm 以支持 DevExpress 控件在设计器中正常工作
     /// </summary>
-    public partial class WechatPage : Form
+    public partial class WechatPage : XtraForm  // ✅ 修改：Form → XtraForm
     {
-        private readonly LoggingService _loggingService;
+        private readonly LoggingService? _loggingService;
         private System.Windows.Forms.Timer? _refreshTimer;
         private WechatBingoGameService? _gameService;
         
@@ -23,6 +26,15 @@ namespace 永利系统.Views.Wechat
         public WechatPage()
         {
             InitializeComponent();
+            
+            // ⚠️ 设计器模式下不执行运行时初始化代码（使用更可靠的检查方法）
+            if (IsDesignMode())
+            {
+                TopLevel = true;
+                return;
+            }
+              
+
             
             // 设置为非顶级窗口，可以嵌入到 TabPage 中
             TopLevel = false;
@@ -177,7 +189,44 @@ namespace 永利系统.Views.Wechat
 
         private void ToolStripButton_Settings_Click(object sender, EventArgs e)
         {
-            _loggingService.Info("微信助手", "设置按钮被点击");
+            _loggingService?.Info("微信助手", "设置按钮被点击");
+        }
+
+        /// <summary>
+        /// 判断是否处于设计器模式（更可靠的方法）
+        /// </summary>
+        private bool IsDesignMode()
+        {
+            // 方法1：检查 DesignMode 属性
+            if (DesignMode)
+                return true;
+            
+            // 方法2：检查 LicenseManager（更可靠）
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return true;
+            
+            // 方法3：检查 Site
+            if (Site != null && Site.DesignMode)
+                return true;
+            
+            // 方法4：检查是否有 Handle（设计器模式下通常没有 Handle）
+            // 注意：这个检查需要在 HandleCreated 之后才准确，所以只作为辅助检查
+            try
+            {
+                if (!IsHandleCreated)
+                {
+                    // 如果还没有 Handle，可能是设计器模式
+                    // 但这不是绝对可靠的，因为运行时也可能还没有 Handle
+                    return false; // 不依赖这个检查
+                }
+            }
+            catch
+            {
+                // 如果检查 Handle 时出错，可能是设计器模式
+                return true;
+            }
+            
+            return false;
         }
     }
 }

@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ✅ DevExpress 核心库 -->
     <Reference Include="DevExpress.Data.Desktop.v23.2">
       <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Data.Desktop.v23.2.dll</HintPath>
     </Reference>
@@ -41,6 +42,34 @@
     </Reference>
     <Reference Include="DevExpress.XtraLayout.v23.2">
       <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraLayout.v23.2.dll</HintPath>
+    </Reference>
+    
+    <!-- ✅ DevExpress 设计器支持 DLL（关键！） -->
+    <Reference Include="DevExpress.Design.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.Design.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraEditors.v23.2.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraGrid.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraGrid.v23.2.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraLayout.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraLayout.v23.2.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraBars.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraBars.v23.2.Design.dll</HintPath>
+    </Reference>
+    
+    <!-- ✅ 其他可能需要的库 -->
+    <Reference Include="DevExpress.Utils.v23.2.UI">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Utils.v23.2.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Sparkline.v23.2.Core">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Sparkline.v23.2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Images.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Images.v23.2.dll</HintPath>
     </Reference>
   </ItemGroup>
 

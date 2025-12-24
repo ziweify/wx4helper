@@ -73,6 +73,7 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Main.Panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainerControl_Main.Panel2).BeginInit();
             splitContainerControl_Main.Panel2.SuspendLayout();
+            splitContainerControl_Main.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)panelControl_Left).BeginInit();
             panelControl_Left.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)panelControl_FastSetting).BeginInit();
@@ -91,6 +92,7 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Right.Panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainerControl_Right.Panel2).BeginInit();
             splitContainerControl_Right.Panel2.SuspendLayout();
+            splitContainerControl_Right.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)panelControl_Members).BeginInit();
             panelControl_Members.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridControl_Members).BeginInit();
@@ -189,7 +191,7 @@ namespace 永利系统.Views.Wechat
             // statusStrip1
             // 
             statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { toolStripStatusLabel1 });
-            statusStrip1.Location = new System.Drawing.Point(0, 959);
+            statusStrip1.Location = new System.Drawing.Point(0, 786);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new System.Drawing.Size(1200, 22);
             statusStrip1.TabIndex = 1;
@@ -204,60 +206,48 @@ namespace 永利系统.Views.Wechat
             // splitContainerControl_Main
             // 
             splitContainerControl_Main.Dock = System.Windows.Forms.DockStyle.Fill;
-            splitContainerControl_Main.Location = new System.Drawing.Point(0, 25);
-            splitContainerControl_Main.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            splitContainerControl_Main.Location = new System.Drawing.Point(0, 0);
             splitContainerControl_Main.Name = "splitContainerControl_Main";
             // 
-            // 
+            // splitContainerControl_Main.Panel1
             // 
             splitContainerControl_Main.Panel1.Controls.Add(panelControl_Left);
-            splitContainerControl_Main.Panel1.Location = new System.Drawing.Point(0, 0);
-            splitContainerControl_Main.Panel1.Name = "";
-            splitContainerControl_Main.Panel1.Size = new System.Drawing.Size(244, 934);
-            splitContainerControl_Main.Panel1.TabIndex = 0;
             splitContainerControl_Main.Panel1.Text = "Panel1";
             // 
-            // 
+            // splitContainerControl_Main.Panel2
             // 
             splitContainerControl_Main.Panel2.Controls.Add(panelControl_Right);
-            splitContainerControl_Main.Panel2.Location = new System.Drawing.Point(254, 0);
-            splitContainerControl_Main.Panel2.Name = "";
-            splitContainerControl_Main.Panel2.Size = new System.Drawing.Size(946, 934);
-            splitContainerControl_Main.Panel2.TabIndex = 1;
             splitContainerControl_Main.Panel2.Text = "Panel2";
-            splitContainerControl_Main.Size = new System.Drawing.Size(1200, 934);
+            splitContainerControl_Main.Size = new System.Drawing.Size(1200, 808);
             splitContainerControl_Main.SplitterPosition = 244;
             splitContainerControl_Main.TabIndex = 2;
             // 
             // panelControl_Left
             // 
             panelControl_Left.Controls.Add(panelControl_FastSetting);
-            panelControl_Left.Controls.Add(panelControl_OpenData);
             panelControl_Left.Controls.Add(gridControl_Contacts);
             panelControl_Left.Controls.Add(panelControl_LeftTop);
             panelControl_Left.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Left.Location = new System.Drawing.Point(0, 0);
-            panelControl_Left.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Left.Name = "panelControl_Left";
-            panelControl_Left.Size = new System.Drawing.Size(244, 934);
+            panelControl_Left.Size = new System.Drawing.Size(244, 808);
             panelControl_Left.TabIndex = 0;
             // 
             // panelControl_FastSetting
             // 
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
+            panelControl_FastSetting.Controls.Add(panelControl_OpenData);
             panelControl_FastSetting.Dock = System.Windows.Forms.DockStyle.Bottom;
-            panelControl_FastSetting.Location = new System.Drawing.Point(2, 564);
-            panelControl_FastSetting.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            panelControl_FastSetting.Location = new System.Drawing.Point(2, 503);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
-            panelControl_FastSetting.Size = new System.Drawing.Size(240, 368);
+            panelControl_FastSetting.Size = new System.Drawing.Size(240, 303);
             panelControl_FastSetting.TabIndex = 3;
             // 
             // labelControl_FastSetting
             // 
             labelControl_FastSetting.Appearance.Font = new System.Drawing.Font("微软雅黑", 10F, System.Drawing.FontStyle.Bold);
             labelControl_FastSetting.Appearance.Options.UseFont = true;
-            labelControl_FastSetting.Location = new System.Drawing.Point(5, 6);
-            labelControl_FastSetting.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            labelControl_FastSetting.Location = new System.Drawing.Point(5, 160);
             labelControl_FastSetting.Name = "labelControl_FastSetting";
             labelControl_FastSetting.Size = new System.Drawing.Size(56, 19);
             labelControl_FastSetting.TabIndex = 0;
@@ -267,19 +257,16 @@ namespace 永利系统.Views.Wechat
             // 
             panelControl_OpenData.Controls.Add(labelControl_CurrentLottery);
             panelControl_OpenData.Controls.Add(labelControl_LastLottery);
-            panelControl_OpenData.Dock = System.Windows.Forms.DockStyle.Top;
-            panelControl_OpenData.Location = new System.Drawing.Point(2, 51);
-            panelControl_OpenData.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            panelControl_OpenData.Location = new System.Drawing.Point(0, 21);
             panelControl_OpenData.Name = "panelControl_OpenData";
-            panelControl_OpenData.Size = new System.Drawing.Size(240, 243);
+            panelControl_OpenData.Size = new System.Drawing.Size(240, 200);
             panelControl_OpenData.TabIndex = 2;
             // 
             // labelControl_CurrentLottery
             // 
             labelControl_CurrentLottery.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
             labelControl_CurrentLottery.Appearance.Options.UseFont = true;
-            labelControl_CurrentLottery.Location = new System.Drawing.Point(5, 6);
-            labelControl_CurrentLottery.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            labelControl_CurrentLottery.Location = new System.Drawing.Point(5, 5);
             labelControl_CurrentLottery.Name = "labelControl_CurrentLottery";
             labelControl_CurrentLottery.Size = new System.Drawing.Size(60, 17);
             labelControl_CurrentLottery.TabIndex = 0;
@@ -289,8 +276,7 @@ namespace 永利系统.Views.Wechat
             // 
             labelControl_LastLottery.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
             labelControl_LastLottery.Appearance.Options.UseFont = true;
-            labelControl_LastLottery.Location = new System.Drawing.Point(5, 121);
-            labelControl_LastLottery.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            labelControl_LastLottery.Location = new System.Drawing.Point(5, 100);
             labelControl_LastLottery.Name = "labelControl_LastLottery";
             labelControl_LastLottery.Size = new System.Drawing.Size(60, 17);
             labelControl_LastLottery.TabIndex = 1;
@@ -298,22 +284,15 @@ namespace 永利系统.Views.Wechat
             // 
             // gridControl_Contacts
             // 
-            gridControl_Contacts.Dock = System.Windows.Forms.DockStyle.Fill;
-            // 
-            // 
-            // 
-            gridControl_Contacts.EmbeddedNavigator.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            gridControl_Contacts.Location = new System.Drawing.Point(2, 51);
+            gridControl_Contacts.Location = new System.Drawing.Point(2, 165);
             gridControl_Contacts.MainView = gridView_Contacts;
-            gridControl_Contacts.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Contacts.Name = "gridControl_Contacts";
-            gridControl_Contacts.Size = new System.Drawing.Size(240, 881);
+            gridControl_Contacts.Size = new System.Drawing.Size(240, 332);
             gridControl_Contacts.TabIndex = 1;
             gridControl_Contacts.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Contacts });
             // 
             // gridView_Contacts
             // 
-            gridView_Contacts.DetailHeight = 425;
             gridView_Contacts.GridControl = gridControl_Contacts;
             gridView_Contacts.Name = "gridView_Contacts";
             gridView_Contacts.OptionsView.ShowGroupPanel = false;
@@ -325,18 +304,16 @@ namespace 永利系统.Views.Wechat
             panelControl_LeftTop.Controls.Add(textEdit_CurrentContact);
             panelControl_LeftTop.Dock = System.Windows.Forms.DockStyle.Top;
             panelControl_LeftTop.Location = new System.Drawing.Point(2, 2);
-            panelControl_LeftTop.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_LeftTop.Name = "panelControl_LeftTop";
-            panelControl_LeftTop.Size = new System.Drawing.Size(240, 49);
+            panelControl_LeftTop.Size = new System.Drawing.Size(240, 40);
             panelControl_LeftTop.TabIndex = 0;
             // 
             // simpleButton_RefreshContacts
             // 
             simpleButton_RefreshContacts.Dock = System.Windows.Forms.DockStyle.Right;
             simpleButton_RefreshContacts.Location = new System.Drawing.Point(165, 2);
-            simpleButton_RefreshContacts.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             simpleButton_RefreshContacts.Name = "simpleButton_RefreshContacts";
-            simpleButton_RefreshContacts.Size = new System.Drawing.Size(36, 45);
+            simpleButton_RefreshContacts.Size = new System.Drawing.Size(36, 36);
             simpleButton_RefreshContacts.TabIndex = 2;
             simpleButton_RefreshContacts.Text = "刷新";
             // 
@@ -344,9 +321,8 @@ namespace 永利系统.Views.Wechat
             // 
             simpleButton_BindingContacts.Dock = System.Windows.Forms.DockStyle.Right;
             simpleButton_BindingContacts.Location = new System.Drawing.Point(201, 2);
-            simpleButton_BindingContacts.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             simpleButton_BindingContacts.Name = "simpleButton_BindingContacts";
-            simpleButton_BindingContacts.Size = new System.Drawing.Size(37, 45);
+            simpleButton_BindingContacts.Size = new System.Drawing.Size(37, 36);
             simpleButton_BindingContacts.TabIndex = 1;
             simpleButton_BindingContacts.Text = "绑定";
             // 
@@ -355,11 +331,7 @@ namespace 永利系统.Views.Wechat
             textEdit_CurrentContact.Dock = System.Windows.Forms.DockStyle.Fill;
             textEdit_CurrentContact.EditValue = "未绑定联系人";
             textEdit_CurrentContact.Location = new System.Drawing.Point(2, 2);
-            textEdit_CurrentContact.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             textEdit_CurrentContact.Name = "textEdit_CurrentContact";
-            // 
-            // 
-            // 
             textEdit_CurrentContact.Properties.ReadOnly = true;
             textEdit_CurrentContact.Size = new System.Drawing.Size(236, 20);
             textEdit_CurrentContact.TabIndex = 0;
@@ -369,9 +341,8 @@ namespace 永利系统.Views.Wechat
             panelControl_Right.Controls.Add(splitContainerControl_Right);
             panelControl_Right.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Right.Location = new System.Drawing.Point(0, 0);
-            panelControl_Right.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Right.Name = "panelControl_Right";
-            panelControl_Right.Size = new System.Drawing.Size(946, 934);
+            panelControl_Right.Size = new System.Drawing.Size(946, 808);
             panelControl_Right.TabIndex = 0;
             // 
             // splitContainerControl_Right
@@ -379,28 +350,19 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Right.Dock = System.Windows.Forms.DockStyle.Fill;
             splitContainerControl_Right.Horizontal = false;
             splitContainerControl_Right.Location = new System.Drawing.Point(2, 2);
-            splitContainerControl_Right.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             splitContainerControl_Right.Name = "splitContainerControl_Right";
             // 
-            // 
+            // splitContainerControl_Right.Panel1
             // 
             splitContainerControl_Right.Panel1.Controls.Add(panelControl_Members);
-            splitContainerControl_Right.Panel1.Location = new System.Drawing.Point(0, 0);
-            splitContainerControl_Right.Panel1.Name = "";
-            splitContainerControl_Right.Panel1.Size = new System.Drawing.Size(942, 406);
-            splitContainerControl_Right.Panel1.TabIndex = 0;
             splitContainerControl_Right.Panel1.Text = "Panel1";
             // 
-            // 
+            // splitContainerControl_Right.Panel2
             // 
             splitContainerControl_Right.Panel2.Controls.Add(panelControl_Orders);
-            splitContainerControl_Right.Panel2.Location = new System.Drawing.Point(0, 416);
-            splitContainerControl_Right.Panel2.Name = "";
-            splitContainerControl_Right.Panel2.Size = new System.Drawing.Size(942, 514);
-            splitContainerControl_Right.Panel2.TabIndex = 1;
             splitContainerControl_Right.Panel2.Text = "Panel2";
-            splitContainerControl_Right.Size = new System.Drawing.Size(942, 930);
-            splitContainerControl_Right.SplitterPosition = 406;
+            splitContainerControl_Right.Size = new System.Drawing.Size(942, 804);
+            splitContainerControl_Right.SplitterPosition = 334;
             splitContainerControl_Right.TabIndex = 0;
             // 
             // panelControl_Members
@@ -409,29 +371,22 @@ namespace 永利系统.Views.Wechat
             panelControl_Members.Controls.Add(panelControl_MembersTop);
             panelControl_Members.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Members.Location = new System.Drawing.Point(0, 0);
-            panelControl_Members.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Members.Name = "panelControl_Members";
-            panelControl_Members.Size = new System.Drawing.Size(942, 406);
+            panelControl_Members.Size = new System.Drawing.Size(942, 334);
             panelControl_Members.TabIndex = 0;
             // 
             // gridControl_Members
             // 
             gridControl_Members.Dock = System.Windows.Forms.DockStyle.Fill;
-            // 
-            // 
-            // 
-            gridControl_Members.EmbeddedNavigator.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            gridControl_Members.Location = new System.Drawing.Point(2, 38);
+            gridControl_Members.Location = new System.Drawing.Point(2, 32);
             gridControl_Members.MainView = gridView_Members;
-            gridControl_Members.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Members.Name = "gridControl_Members";
-            gridControl_Members.Size = new System.Drawing.Size(938, 366);
+            gridControl_Members.Size = new System.Drawing.Size(938, 300);
             gridControl_Members.TabIndex = 1;
             gridControl_Members.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Members });
             // 
             // gridView_Members
             // 
-            gridView_Members.DetailHeight = 425;
             gridView_Members.GridControl = gridControl_Members;
             gridView_Members.Name = "gridView_Members";
             gridView_Members.OptionsView.ShowGroupPanel = false;
@@ -441,9 +396,8 @@ namespace 永利系统.Views.Wechat
             panelControl_MembersTop.Controls.Add(labelControl_MemberInfo);
             panelControl_MembersTop.Dock = System.Windows.Forms.DockStyle.Top;
             panelControl_MembersTop.Location = new System.Drawing.Point(2, 2);
-            panelControl_MembersTop.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_MembersTop.Name = "panelControl_MembersTop";
-            panelControl_MembersTop.Size = new System.Drawing.Size(938, 36);
+            panelControl_MembersTop.Size = new System.Drawing.Size(938, 30);
             panelControl_MembersTop.TabIndex = 0;
             // 
             // labelControl_MemberInfo
@@ -452,7 +406,6 @@ namespace 永利系统.Views.Wechat
             labelControl_MemberInfo.Appearance.Options.UseFont = true;
             labelControl_MemberInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             labelControl_MemberInfo.Location = new System.Drawing.Point(2, 2);
-            labelControl_MemberInfo.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             labelControl_MemberInfo.Name = "labelControl_MemberInfo";
             labelControl_MemberInfo.Size = new System.Drawing.Size(107, 19);
             labelControl_MemberInfo.TabIndex = 0;
@@ -464,29 +417,22 @@ namespace 永利系统.Views.Wechat
             panelControl_Orders.Controls.Add(panelControl_OrdersTop);
             panelControl_Orders.Dock = System.Windows.Forms.DockStyle.Fill;
             panelControl_Orders.Location = new System.Drawing.Point(0, 0);
-            panelControl_Orders.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_Orders.Name = "panelControl_Orders";
-            panelControl_Orders.Size = new System.Drawing.Size(942, 514);
+            panelControl_Orders.Size = new System.Drawing.Size(942, 460);
             panelControl_Orders.TabIndex = 0;
             // 
             // gridControl_Orders
             // 
             gridControl_Orders.Dock = System.Windows.Forms.DockStyle.Fill;
-            // 
-            // 
-            // 
-            gridControl_Orders.EmbeddedNavigator.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            gridControl_Orders.Location = new System.Drawing.Point(2, 38);
+            gridControl_Orders.Location = new System.Drawing.Point(2, 32);
             gridControl_Orders.MainView = gridView_Orders;
-            gridControl_Orders.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             gridControl_Orders.Name = "gridControl_Orders";
-            gridControl_Orders.Size = new System.Drawing.Size(938, 474);
+            gridControl_Orders.Size = new System.Drawing.Size(938, 426);
             gridControl_Orders.TabIndex = 1;
             gridControl_Orders.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Orders });
             // 
             // gridView_Orders
             // 
-            gridView_Orders.DetailHeight = 425;
             gridView_Orders.GridControl = gridControl_Orders;
             gridView_Orders.Name = "gridView_Orders";
             gridView_Orders.OptionsView.ShowGroupPanel = false;
@@ -496,9 +442,8 @@ namespace 永利系统.Views.Wechat
             panelControl_OrdersTop.Controls.Add(labelControl_OrderInfo);
             panelControl_OrdersTop.Dock = System.Windows.Forms.DockStyle.Top;
             panelControl_OrdersTop.Location = new System.Drawing.Point(2, 2);
-            panelControl_OrdersTop.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             panelControl_OrdersTop.Name = "panelControl_OrdersTop";
-            panelControl_OrdersTop.Size = new System.Drawing.Size(938, 36);
+            panelControl_OrdersTop.Size = new System.Drawing.Size(938, 30);
             panelControl_OrdersTop.TabIndex = 0;
             // 
             // labelControl_OrderInfo
@@ -507,7 +452,6 @@ namespace 永利系统.Views.Wechat
             labelControl_OrderInfo.Appearance.Options.UseFont = true;
             labelControl_OrderInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             labelControl_OrderInfo.Location = new System.Drawing.Point(2, 2);
-            labelControl_OrderInfo.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             labelControl_OrderInfo.Name = "labelControl_OrderInfo";
             labelControl_OrderInfo.Size = new System.Drawing.Size(107, 19);
             labelControl_OrderInfo.TabIndex = 0;
@@ -515,13 +459,12 @@ namespace 永利系统.Views.Wechat
             // 
             // WechatPage
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
+            AutoScaleDimensions = new System.Drawing.SizeF(7F, 14F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(1200, 981);
-            Controls.Add(splitContainerControl_Main);
-            Controls.Add(statusStrip1);
+            ClientSize = new System.Drawing.Size(1200, 808);
             Controls.Add(toolStrip1);
-            Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            Controls.Add(statusStrip1);
+            Controls.Add(splitContainerControl_Main);
             Name = "WechatPage";
             Text = "微信助手";
             toolStrip1.ResumeLayout(false);
@@ -533,6 +476,7 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)splitContainerControl_Main.Panel2).EndInit();
             splitContainerControl_Main.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainerControl_Main).EndInit();
+            splitContainerControl_Main.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)panelControl_Left).EndInit();
             panelControl_Left.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)panelControl_FastSetting).EndInit();
@@ -553,6 +497,7 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)splitContainerControl_Right.Panel2).EndInit();
             splitContainerControl_Right.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainerControl_Right).EndInit();
+            splitContainerControl_Right.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)panelControl_Members).EndInit();
             panelControl_Members.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridControl_Members).EndInit();
