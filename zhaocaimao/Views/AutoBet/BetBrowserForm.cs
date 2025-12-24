@@ -98,9 +98,8 @@ namespace zhaocaimao.Views.AutoBet
             }
             
             // 🔥 显式设置窗口大小调整属性（确保 UIForm 基类不会覆盖）
-            this.FormBorderStyle = FormBorderStyle.Sizable;
-            this.SizeGripStyle = SizeGripStyle.Show;
-            this.MinimumSize = new Size(900, 768); // 设置最小尺寸，确保可以调整
+            EnsureResizable();
+            this.MinimumSize = new Size(1000, 900); // 设置最小尺寸，确保可以调整
             
             InitializeLogSystem();
             
@@ -115,10 +114,48 @@ namespace zhaocaimao.Views.AutoBet
         private async void BetBrowserForm_Load(object? sender, EventArgs e)
         {
             // 🔥 再次确保窗口大小调整属性已设置（防止 UIForm 基类覆盖）
-            this.FormBorderStyle = FormBorderStyle.Sizable;
-            this.SizeGripStyle = SizeGripStyle.Show;
+            EnsureResizable();
             
             await InitializeBrowserAsync();
+        }
+        
+        /// <summary>
+        /// 窗体显示后再次确保窗口可调整大小（防止 UIForm 基类在显示时覆盖）
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            
+            // 🔥 在窗体显示后再次强制设置，确保 UIForm 基类不会覆盖
+            EnsureResizable();
+        }
+        
+        /// <summary>
+        /// 确保窗口可以调整大小（在多个地方调用，防止被覆盖）
+        /// </summary>
+        private void EnsureResizable()
+        {
+            try
+            {
+                this.FormBorderStyle = FormBorderStyle.Sizable;
+                this.SizeGripStyle = SizeGripStyle.Show;
+                this.MaximizeBox = true;
+                this.MinimizeBox = true;
+                this.ControlBox = true;
+            }
+            catch
+            {
+                // 忽略设置失败的情况
+            }
+        }
+        
+        /// <summary>
+        /// 窗体激活时确保窗口可调整大小
+        /// </summary>
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            EnsureResizable();
         }
         
         private async Task InitializeBrowserAsync()

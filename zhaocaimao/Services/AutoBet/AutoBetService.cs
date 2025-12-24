@@ -129,7 +129,7 @@ namespace zhaocaimao.Services.AutoBet
                 try
                 {
                     // 🔥 使用 CancellationToken，如果已取消则立即返回
-                    await Task.Delay(1000, _cancellationTokenSource.Token);  // 等待1秒，让 Socket 服务器完全启动
+                    await Task.Delay(1000, _cancellationTokenSource.Token);  // 等待1秒，让服务完全启动
                     
                     _log.Info("AutoBet", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     _log.Info("AutoBet", "🔍 检查是否有浏览器进程在运行（主程序重启场景）...");
@@ -150,7 +150,7 @@ namespace zhaocaimao.Services.AutoBet
                             _log.Info("AutoBet", $"   - [{config.ConfigName}] 进程ID: {config.ProcessId}");
                             
                             // 等待浏览器重连（最多等待2秒，本机连接应该很快）
-                            _log.Info("AutoBet", $"   ⏳ 等待浏览器重连到 Socket 服务器...");
+                            _log.Info("AutoBet", $"   ⏳ 等待浏览器窗口重连...");
                             
                             for (int i = 0; i < 4; i++)
                             {
@@ -626,39 +626,17 @@ namespace zhaocaimao.Services.AutoBet
                 };
             }
             
-            // 🔥 检查连接状态
+            // 🔥 检查连接状态（使用内置浏览器窗口，IsConnected 表示窗口是否已初始化）
             if (!browserClient.IsConnected)
             {
-                _log.Error("AutoBet", $"❌ 浏览器客户端存在但 IsConnected=false");
-                
-                // 🔥 详细诊断（仅在连接失败时输出）
-                var connection = browserClient.GetConnection();
-                _log.Error("AutoBet", $"   📊 诊断: connection={connection != null}");
-                
-                if (connection != null)
-                {
-                    _log.Error("AutoBet", $"   Client={connection.Client != null}, Connected={connection.Client?.Connected}");
-                    
-                    if (connection.Client?.Client != null)
-                    {
-                        try
-                        {
-                            var socket = connection.Client.Client;
-                            bool pollResult = socket.Poll(1, System.Net.Sockets.SelectMode.SelectRead);
-                            int available = socket.Available;
-                            _log.Error("AutoBet", $"   Socket.Poll={pollResult}, Available={available}");
-                        }
-                        catch (Exception ex)
-                        {
-                            _log.Error("AutoBet", $"   Socket检查异常: {ex.Message}");
-                        }
-                    }
-                }
+                _log.Error("AutoBet", $"❌ 浏览器窗口未初始化或已关闭");
+                _log.Error("AutoBet", $"   📊 诊断: BrowserClient.IsConnected=false");
+                _log.Error("AutoBet", $"   💡 提示: 请确保浏览器窗口已打开并完成初始化");
                 
                 return new BetResult
                 {
                     Success = false,
-                    ErrorMessage = "连接状态异常(请查看日志)"
+                    ErrorMessage = "浏览器窗口未初始化或已关闭"
                 };
             }
             
@@ -794,13 +772,10 @@ namespace zhaocaimao.Services.AutoBet
                 return null;
             }
             
-            // 🔥 诊断连接状态
-            var connection = browserClient.GetConnection();
+            // 🔥 诊断窗口状态（使用内置浏览器窗口，不再使用 Socket 连接）
             _log.Info("AutoBet", $"📊 GetBrowserClient 诊断: ConfigId={configId}");
             _log.Info("AutoBet", $"   BrowserClient 存在: {browserClient != null}");
-            _log.Info("AutoBet", $"   Connection 存在: {connection != null}");
-            _log.Info("AutoBet", $"   Connection.IsConnected: {connection?.IsConnected ?? false}");
-            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected}");
+            _log.Info("AutoBet", $"   BrowserClient.IsConnected: {browserClient.IsConnected} (表示浏览器窗口是否已初始化)");
             
             return browserClient;
         }
@@ -940,7 +915,7 @@ namespace zhaocaimao.Services.AutoBet
                 _log.Info("AutoBet", $"   平台: {config.Platform}");
                 _log.Info("AutoBet", $"   URL: {config.PlatformUrl}");
                 
-                // 创建浏览器客户端（Socket 服务器使用固定端口 19527）
+                // 创建浏览器客户端（使用内置浏览器窗口，不需要 Socket 连接）
                 var newBrowserClient = new BrowserClient(configId);
                 
                 // 🔥 先设置到配置，这样 OnBrowserConnected 能找到它
@@ -955,33 +930,33 @@ namespace zhaocaimao.Services.AutoBet
                 config.Status = "已启动";
                 SaveConfig(config);
                 
-                // 3️⃣ 等待 Socket 连接建立（浏览器会主动连接到端口 19527）
-                _log.Info("AutoBet", $"⏳ 等待浏览器连接到 Socket 服务器（端口 19527）...");
+                // 3️⃣ 等待浏览器窗口初始化完成（使用内置窗口，不需要 Socket 连接）
+                _log.Info("AutoBet", $"⏳ 等待浏览器窗口初始化完成...");
                 
-                // 🔥 等待连接建立，最多等待5秒
-                for (int i = 0; i < 10; i++)
+                // 🔥 等待窗口初始化，最多等待10秒
+                for (int i = 0; i < 20; i++)
                 {
                     await Task.Delay(500);
                     
-                    // 检查连接状态
+                    // 检查窗口是否已初始化
                     if (config.IsConnected)
                     {
-                        _log.Info("AutoBet", $"✅ Socket 连接已建立！等待时间: {i * 0.5}秒");
+                        _log.Info("AutoBet", $"✅ 浏览器窗口已初始化！等待时间: {i * 0.5}秒");
                         break;
                     }
                 }
                 
-                // 最终检查连接状态
+                // 最终检查窗口初始化状态
                 if (config.IsConnected)
                 {
-                    _log.Info("AutoBet", $"✅ 浏览器连接成功，可以发送命令");
+                    _log.Info("AutoBet", $"✅ 浏览器窗口初始化成功，可以发送命令");
                 }
                 else
                 {
-                    // 🔥 使用内置浏览器窗口，不再需要 Socket 连接
-                    // IsConnected 现在表示浏览器窗口是否已初始化
-                    _log.Warning("AutoBet", $"⚠️ 浏览器窗口尚未初始化（等待5秒后）");
+                    // 🔥 使用内置浏览器窗口，IsConnected 表示浏览器窗口是否已初始化
+                    _log.Warning("AutoBet", $"⚠️ 浏览器窗口尚未完成初始化（等待10秒后）");
                     _log.Warning("AutoBet", $"   当前 BrowserClient.IsConnected: {newBrowserClient.IsConnected}");
+                    _log.Warning("AutoBet", $"   💡 提示: 浏览器窗口可能正在初始化中，请稍候...");
                 }
                 
                 // 4️⃣ 自动登录
@@ -1212,14 +1187,12 @@ namespace zhaocaimao.Services.AutoBet
                     _log.Debug("AutoBet", $"   IsEnabled={config.IsEnabled}, IsConnected={config.IsConnected}");
                     _log.Debug("AutoBet", $"   ProcessId={config.ProcessId}, Browser={(config.Browser != null ? "存在" : "null")}");
                     
-                    // 🔥 如果 Browser 存在但未连接，移除它
+                    // 🔥 如果 Browser 存在但窗口未初始化，移除它
                     if (config.Browser != null && !config.Browser.IsConnected)
                     {
-                        _log.Warning("AutoBet", $"⚠️ 配置 [{config.ConfigName}] Browser存在但IsConnected=False");
-                        
-                        // 🔥 详细诊断
-                        var connection = config.Browser.GetConnection();
-                        _log.Warning("AutoBet", $"   诊断: connection={connection != null}, Client={connection?.Client != null}, Connected={connection?.Client?.Connected}");
+                        _log.Warning("AutoBet", $"⚠️ 配置 [{config.ConfigName}] Browser存在但窗口未初始化");
+                        _log.Warning("AutoBet", $"   诊断: BrowserClient.IsConnected={config.Browser.IsConnected}");
+                        _log.Warning("AutoBet", $"   💡 可能原因: 浏览器窗口已关闭或初始化失败");
                         
                         // 🔥 移除失效的 Browser，允许重新启动
                         config.Browser = null;

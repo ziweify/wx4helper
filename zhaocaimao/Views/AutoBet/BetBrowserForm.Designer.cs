@@ -308,6 +308,9 @@ namespace zhaocaimao.Views.AutoBet
             Controls.Add(pnlTop);
             Controls.Add(statusStrip1);
             FormBorderStyle = FormBorderStyle.Sizable; // 🔥 允许调整窗口大小
+            MaximizeBox = true; // 🔥 允许最大化
+            MinimizeBox = true; // 🔥 允许最小化
+            ControlBox = true; // 🔥 显示控制框
             Name = "BetBrowserForm";
             SizeGripStyle = SizeGripStyle.Show; // 🔥 显示右下角调整大小手柄
             Style = Sunny.UI.UIStyle.Custom;
