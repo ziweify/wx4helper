@@ -67,6 +67,7 @@ namespace zhaocaimao
         // 设置窗口单实例
         private Views.SettingsForm? _settingsForm;
         private Views.BinggoLotteryResultForm? _lotteryResultForm;  // 🎲 开奖结果窗口
+        private Views.LogViewerForm? _logViewerForm;  // 📋 日志查看窗口（单例）
         
 
         //private string _currentGroupWxId = ""; // 🔥 当前绑定的群 wxid
@@ -1196,6 +1197,13 @@ namespace zhaocaimao
                 
                 lblStatus.Text = "正在初始化...";
                 
+                // 🔥 设置状态栏标签为可点击（用于切换日志窗口显示/隐藏）
+                lblStatus.IsLink = true;
+                lblStatus.Click += lblStatus_Click;
+                
+                // 🔥 初始化日志窗口（默认不显示）
+                InitializeLogViewer();
+                
                 // 🔥 平台下拉框已在 InitializeGlobalServices() -> LoadAutoBetSettings() 中初始化
                 // 不要在这里重复调用 InitializePlatformComboBox()，否则会清空下拉框并触发事件导致配置被重置
                 
@@ -2092,24 +2100,76 @@ namespace zhaocaimao
 
         private void btnLog_Click(object sender, EventArgs e)
         {
+            ToggleLogViewer();
+        }
+        
+        /// <summary>
+        /// 初始化日志窗口（默认不显示）
+        /// </summary>
+        private void InitializeLogViewer()
+        {
             try
             {
-                _logService.Info("VxMain", "打开日志查看窗口");
-                lblStatus.Text = "打开日志窗口...";
-                
-                // 从 DI 容器获取日志窗口
-                var logViewer = Program.ServiceProvider?.GetRequiredService<Views.LogViewerForm>();
-                if (logViewer != null)
+                // 从 DI 容器获取日志窗口（单例）
+                _logViewerForm = Program.ServiceProvider?.GetRequiredService<Views.LogViewerForm>();
+                if (_logViewerForm != null)
                 {
-                    logViewer.Show();  // 非模态窗口，可以同时查看日志和操作主窗口
-                    lblStatus.Text = "日志窗口已打开";
+                    // 🔥 默认不显示日志窗口
+                    _logViewerForm.Hide();
+                    _logService.Info("VxMain", "日志窗口已初始化（默认隐藏）");
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error("VxMain", "打开日志窗口失败", ex);
-                UIMessageBox.ShowError($"打开日志窗口失败: {ex.Message}");
+                _logService.Error("VxMain", "初始化日志窗口失败", ex);
             }
+        }
+        
+        /// <summary>
+        /// 切换日志窗口显示/隐藏
+        /// </summary>
+        private void ToggleLogViewer()
+        {
+            try
+            {
+                // 如果日志窗口未初始化，先初始化
+                if (_logViewerForm == null || _logViewerForm.IsDisposed)
+                {
+                    InitializeLogViewer();
+                }
+                
+                if (_logViewerForm != null)
+                {
+                    if (_logViewerForm.Visible)
+                    {
+                        // 如果已显示，则隐藏
+                        _logViewerForm.Hide();
+                        _logService.Info("VxMain", "日志窗口已隐藏");
+                        lblStatus.Text = "日志窗口已隐藏";
+                    }
+                    else
+                    {
+                        // 如果未显示，则显示
+                        _logViewerForm.Show();
+                        _logViewerForm.BringToFront(); // 确保窗口显示在最前面
+                        _logService.Info("VxMain", "日志窗口已显示");
+                        lblStatus.Text = "日志窗口已显示";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("VxMain", "切换日志窗口失败", ex);
+                UIMessageBox.ShowError($"切换日志窗口失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 状态栏标签点击事件 - 切换日志窗口显示/隐藏
+        /// </summary>
+        private void lblStatus_Click(object sender, EventArgs e)
+        {
+            ToggleLogViewer();
         }
 
         /// <summary>

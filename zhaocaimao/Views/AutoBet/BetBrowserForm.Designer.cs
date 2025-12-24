@@ -32,6 +32,7 @@ namespace zhaocaimao.Views.AutoBet
             lblStatus = new ToolStripStatusLabel();
             lblBalance = new ToolStripStatusLabel();
             lblOddsInfo = new ToolStripStatusLabel();
+            lblLogToggle = new ToolStripStatusLabel();
             pnlTop = new Panel();
             lblUrl = new Label();
             txtUrl = new TextBox();
@@ -63,7 +64,7 @@ namespace zhaocaimao.Views.AutoBet
             // 
             // statusStrip1
             // 
-            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblOddsInfo });
+            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblOddsInfo, lblLogToggle });
             statusStrip1.Location = new Point(0, 838);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(1264, 22);
@@ -88,6 +89,14 @@ namespace zhaocaimao.Views.AutoBet
             lblOddsInfo.Size = new Size(76, 17);
             lblOddsInfo.Text = "📊 查看赔率";
             lblOddsInfo.Click += LblOddsInfo_Click;
+            // 
+            // lblLogToggle
+            // 
+            lblLogToggle.IsLink = true;
+            lblLogToggle.Name = "lblLogToggle";
+            lblLogToggle.Size = new Size(56, 17);
+            lblLogToggle.Text = "📋 当前日志";
+            lblLogToggle.Click += LblLogToggle_Click;
             // 
             // pnlTop
             // 

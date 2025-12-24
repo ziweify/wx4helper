@@ -31,6 +31,7 @@ namespace zhaocaimao.Views.AutoBet
         private ToolStripStatusLabel? lblStatus;
         private ToolStripStatusLabel? lblBalance;
         private ToolStripStatusLabel? lblOddsInfo;
+        private ToolStripStatusLabel? lblLogToggle;  // 🔥 日志切换标签
         private Panel? pnlTop;
         private Button? btnTestBet;
         private Button? btnTestCookie;
@@ -101,7 +102,16 @@ namespace zhaocaimao.Views.AutoBet
             EnsureResizable();
             this.MinimumSize = new Size(1000, 900); // 设置最小尺寸，确保可以调整
             
+            // 🔥 默认隐藏日志面板
+            if (splitContainer != null)
+            {
+                splitContainer.Panel2Collapsed = true;  // 默认隐藏日志面板
+            }
+            
             InitializeLogSystem();
+            
+            // 🔥 初始化日志切换标签
+            InitializeLogToggle();
             
             // 🔥 浏览器初始化在 Load 事件中异步执行
             // 注意：不能使用 async lambda，否则设计器无法解析
@@ -239,6 +249,79 @@ namespace zhaocaimao.Views.AutoBet
                 {
                     lblBalance.Text = $"余额: ¥{balance:F2}";
                 }
+            }
+        }
+        
+        /// <summary>
+        /// 初始化日志切换标签
+        /// </summary>
+        private void InitializeLogToggle()
+        {
+            if (lblLogToggle != null)
+            {
+                // 标签已在 Designer 中设置，这里只需要更新文本
+                UpdateLogToggleText();
+            }
+        }
+        
+        /// <summary>
+        /// 更新日志切换标签文本
+        /// </summary>
+        private void UpdateLogToggleText()
+        {
+            if (lblLogToggle != null && splitContainer != null)
+            {
+                if (splitContainer.Panel2Collapsed)
+                {
+                    lblLogToggle.Text = "📋 当前日志";
+                }
+                else
+                {
+                    lblLogToggle.Text = "📋 隐藏日志";
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 日志切换标签点击事件 - 切换日志面板显示/隐藏
+        /// </summary>
+        private void LblLogToggle_Click(object? sender, EventArgs e)
+        {
+            ToggleLogPanel();
+        }
+        
+        /// <summary>
+        /// 切换日志面板显示/隐藏
+        /// </summary>
+        private void ToggleLogPanel()
+        {
+            if (splitContainer == null) return;
+            
+            try
+            {
+                if (splitContainer.Panel2Collapsed)
+                {
+                    // 如果已隐藏，则显示
+                    splitContainer.Panel2Collapsed = false;
+                    // 设置分割器位置（日志面板占30%高度）
+                    if (splitContainer.Orientation == Orientation.Horizontal)
+                    {
+                        splitContainer.SplitterDistance = (int)(splitContainer.Height * 0.7);
+                    }
+                    OnLogMessage("📋 日志面板已显示", LogType.System);
+                }
+                else
+                {
+                    // 如果已显示，则隐藏
+                    splitContainer.Panel2Collapsed = true;
+                    OnLogMessage("📋 日志面板已隐藏", LogType.System);
+                }
+                
+                UpdateLogToggleText();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"切换日志面板失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         
