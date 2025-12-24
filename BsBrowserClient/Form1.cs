@@ -70,11 +70,20 @@ public partial class Form1 : Form
         lblPort.Text = $"配置: {configName} (ID:{configId}) | 平台: {platform}";
         txtUrl.Text = _platformUrl;
     }
-
+    
     private async void Form1_Load(object sender, EventArgs e)
     {
         try
         {
+            // 🔥 默认隐藏日志面板（在 Load 事件中设置，确保控件已初始化）
+            if (splitContainer != null)
+            {
+                splitContainer.Panel2Collapsed = true;  // 默认隐藏日志面板
+            }
+            
+            // 🔥 初始化日志切换标签
+            InitializeLogToggle();
+            
             // 初始化日志系统（优先初始化，以便记录后续日志）
             InitializeLogSystem();
 
@@ -1019,6 +1028,79 @@ public partial class Form1 : Form
         UpdateLogStatus();
     }
 
+    /// <summary>
+    /// 初始化日志切换标签
+    /// </summary>
+    private void InitializeLogToggle()
+    {
+        if (lblLogToggle != null)
+        {
+            // 标签已在 Designer 中设置，这里只需要更新文本
+            UpdateLogToggleText();
+        }
+    }
+    
+    /// <summary>
+    /// 更新日志切换标签文本
+    /// </summary>
+    private void UpdateLogToggleText()
+    {
+        if (lblLogToggle != null && splitContainer != null)
+        {
+            if (splitContainer.Panel2Collapsed)
+            {
+                lblLogToggle.Text = "📋 当前日志";
+            }
+            else
+            {
+                lblLogToggle.Text = "📋 隐藏日志";
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 日志切换标签点击事件 - 切换日志面板显示/隐藏
+    /// </summary>
+    private void LblLogToggle_Click(object? sender, EventArgs e)
+    {
+        ToggleLogPanel();
+    }
+    
+    /// <summary>
+    /// 切换日志面板显示/隐藏
+    /// </summary>
+    private void ToggleLogPanel()
+    {
+        if (splitContainer == null) return;
+        
+        try
+        {
+            if (splitContainer.Panel2Collapsed)
+            {
+                // 如果已隐藏，则显示
+                splitContainer.Panel2Collapsed = false;
+                // 设置分割器位置（日志面板占30%高度）
+                if (splitContainer.Orientation == Orientation.Horizontal)
+                {
+                    splitContainer.SplitterDistance = (int)(splitContainer.Height * 0.7);
+                }
+                OnLogMessage("📋 日志面板已显示", LogType.System);
+            }
+            else
+            {
+                // 如果已显示，则隐藏
+                splitContainer.Panel2Collapsed = true;
+                OnLogMessage("📋 日志面板已隐藏", LogType.System);
+            }
+            
+            UpdateLogToggleText();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"切换日志面板失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+    
     /// <summary>
     /// 更新日志状态显示
     /// </summary>

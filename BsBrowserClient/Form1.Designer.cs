@@ -35,6 +35,7 @@
             lblBalance = new ToolStripStatusLabel();
             lblPort = new ToolStripStatusLabel();
             lblOddsInfo = new ToolStripStatusLabel();
+            lblLogToggle = new ToolStripStatusLabel();
             pnlTop = new Panel();
             btnTestBet = new Button();
             btnTestCookie = new Button();
@@ -67,7 +68,7 @@
             // 
             // statusStrip1
             // 
-            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblPort, lblOddsInfo });
+            statusStrip1.Items.AddRange(new ToolStripItem[] { lblStatus, lblBalance, lblPort, lblOddsInfo, lblLogToggle });
             statusStrip1.Location = new Point(0, 838);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(1264, 22);
@@ -98,6 +99,14 @@
             lblOddsInfo.Name = "lblOddsInfo";
             lblOddsInfo.Size = new Size(76, 17);
             lblOddsInfo.Text = "📊 查看赔率";
+            // 
+            // lblLogToggle
+            // 
+            lblLogToggle.IsLink = true;
+            lblLogToggle.Name = "lblLogToggle";
+            lblLogToggle.Size = new Size(56, 17);
+            lblLogToggle.Text = "📋 当前日志";
+            lblLogToggle.Click += LblLogToggle_Click;
             lblOddsInfo.Click += LblOddsInfo_Click;
             // 
             // pnlTop
@@ -369,6 +378,7 @@
         private System.Windows.Forms.ToolStripStatusLabel lblStatus;
         private System.Windows.Forms.ToolStripStatusLabel lblBalance;
         private System.Windows.Forms.ToolStripStatusLabel lblPort;
+        private System.Windows.Forms.ToolStripStatusLabel lblLogToggle;
         private System.Windows.Forms.Panel pnlTop;
         private System.Windows.Forms.Button btnTestBet;
         private System.Windows.Forms.Button btnTestCookie;
