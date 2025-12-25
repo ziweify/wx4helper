@@ -32,6 +32,9 @@
     <Compile Update="Views\Wechat\Controls\UcBingoDataLast.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Views\Wechat\CreditManageForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\Wechat\WechatPage.cs">
       <SubType>Form</SubType>
     </Compile>

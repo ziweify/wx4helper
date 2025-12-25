@@ -19,6 +19,7 @@ namespace 永利系统.Views.Wechat
         private System.Windows.Forms.Timer? _refreshTimer;
         private WechatBingoGameService? _gameService;
         private WechatSettingsForm? _settingsForm; // 设置窗口引用
+        private CreditManageForm? _creditManageForm; // 上下分管理窗口引用
 
         public WechatPage()
         {
@@ -178,11 +179,6 @@ namespace 永利系统.Views.Wechat
             _loggingService.Info("微信助手", "开奖结果按钮被点击");
         }
 
-        private void ToolStripButton_CreditWithdrawManage_Click(object sender, EventArgs e)
-        {
-            _loggingService.Info("微信助手", "上下分管理按钮被点击");
-        }
-
         private void ToolStripButton_ClearData_Click(object sender, EventArgs e)
         {
             _loggingService.Info("微信助手", "清空数据按钮被点击");
@@ -289,6 +285,58 @@ namespace 永利系统.Views.Wechat
             {
                 _loggingService?.Error("微信助手", $"打开设置窗口失败: {ex.Message}", ex);
                 MessageBox.Show($"打开设置窗口失败:\n{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// 上下分管理按钮点击事件
+        /// </summary>
+        private void ToolStripButton_CreditWithdrawManage_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _loggingService?.Info("微信助手", "上下分管理按钮被点击");
+
+                // 检查窗口是否已打开
+                if (_creditManageForm != null && !_creditManageForm.IsDisposed)
+                {
+                    _loggingService?.Info("微信助手", "上下分管理窗口已存在，激活窗口");
+                    
+                    // 如果窗口最小化，先恢复
+                    if (_creditManageForm.WindowState == FormWindowState.Minimized)
+                    {
+                        _creditManageForm.WindowState = FormWindowState.Normal;
+                    }
+                    
+                    // 激活窗口并显示到最前面
+                    _creditManageForm.Activate();
+                    _creditManageForm.BringToFront();
+                    _creditManageForm.Focus();
+                    
+                    return;
+                }
+
+                _loggingService?.Info("微信助手", "创建新的上下分管理窗口");
+                
+                // 创建新的上下分管理窗口
+                _creditManageForm = new CreditManageForm();
+                
+                // 订阅关闭事件，清理引用
+                _creditManageForm.FormClosed += (s, args) =>
+                {
+                    _creditManageForm = null;
+                    _loggingService?.Info("微信助手", "上下分管理窗口已关闭");
+                };
+                
+                // 显示窗口
+                _creditManageForm.Show();
+                _creditManageForm.Activate();
+                _creditManageForm.Focus();
+            }
+            catch (Exception ex)
+            {
+                _loggingService?.Error("微信助手", $"打开上下分管理窗口失败: {ex.Message}", ex);
+                MessageBox.Show($"打开上下分管理窗口失败:\n{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
