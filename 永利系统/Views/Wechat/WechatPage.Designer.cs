@@ -53,16 +53,21 @@ namespace 永利系统.Views.Wechat
             labelControl_Odds = new DevExpress.XtraEditors.LabelControl();
             textEdit_AutoBetPassword = new DevExpress.XtraEditors.TextEdit();
             labelControl_AutoBetPassword = new DevExpress.XtraEditors.LabelControl();
+            spinEdit_Balance = new DevExpress.XtraEditors.SpinEdit();
+            labelControl_Balance = new DevExpress.XtraEditors.LabelControl();
             textEdit_AutoBetUsername = new DevExpress.XtraEditors.TextEdit();
             labelControl_AutoBetUsername = new DevExpress.XtraEditors.LabelControl();
             comboBoxEdit_Platform = new DevExpress.XtraEditors.ComboBoxEdit();
             labelControl_Platform = new DevExpress.XtraEditors.LabelControl();
+            spinEdit_FlyBetMultiplier = new DevExpress.XtraEditors.SpinEdit();
+            labelControl_FlyBetMultiplier = new DevExpress.XtraEditors.LabelControl();
             spinEdit_MaxBet = new DevExpress.XtraEditors.SpinEdit();
             labelControl_MaxBet = new DevExpress.XtraEditors.LabelControl();
             spinEdit_MinBet = new DevExpress.XtraEditors.SpinEdit();
             labelControl_MinBet = new DevExpress.XtraEditors.LabelControl();
             spinEdit_SealSeconds = new DevExpress.XtraEditors.SpinEdit();
             labelControl_SealSeconds = new DevExpress.XtraEditors.LabelControl();
+            labelControl1 = new DevExpress.XtraEditors.LabelControl();
             labelControl_FastSetting = new DevExpress.XtraEditors.LabelControl();
             panelControl_OpenData = new DevExpress.XtraEditors.PanelControl();
             ucBingoDataCur = new 永利系统.Views.Wechat.Controls.UcBingoDataCur();
@@ -101,8 +106,10 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)toggleSwitch_OrdersTasking.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_Odds.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetPassword.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_Balance.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetUsername.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)comboBoxEdit_Platform.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_FlyBetMultiplier.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_MaxBet.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_MinBet.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_SealSeconds.Properties).BeginInit();
@@ -285,16 +292,21 @@ namespace 永利系统.Views.Wechat
             panelControl_FastSetting.Controls.Add(labelControl_Odds);
             panelControl_FastSetting.Controls.Add(textEdit_AutoBetPassword);
             panelControl_FastSetting.Controls.Add(labelControl_AutoBetPassword);
+            panelControl_FastSetting.Controls.Add(spinEdit_Balance);
+            panelControl_FastSetting.Controls.Add(labelControl_Balance);
             panelControl_FastSetting.Controls.Add(textEdit_AutoBetUsername);
             panelControl_FastSetting.Controls.Add(labelControl_AutoBetUsername);
             panelControl_FastSetting.Controls.Add(comboBoxEdit_Platform);
             panelControl_FastSetting.Controls.Add(labelControl_Platform);
+            panelControl_FastSetting.Controls.Add(spinEdit_FlyBetMultiplier);
+            panelControl_FastSetting.Controls.Add(labelControl_FlyBetMultiplier);
             panelControl_FastSetting.Controls.Add(spinEdit_MaxBet);
             panelControl_FastSetting.Controls.Add(labelControl_MaxBet);
             panelControl_FastSetting.Controls.Add(spinEdit_MinBet);
             panelControl_FastSetting.Controls.Add(labelControl_MinBet);
             panelControl_FastSetting.Controls.Add(spinEdit_SealSeconds);
             panelControl_FastSetting.Controls.Add(labelControl_SealSeconds);
+            panelControl_FastSetting.Controls.Add(labelControl1);
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
             panelControl_FastSetting.Location = new System.Drawing.Point(2, 390);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
@@ -303,7 +315,7 @@ namespace 永利系统.Views.Wechat
             // 
             // simpleButton_ConfigManager
             // 
-            simpleButton_ConfigManager.Location = new System.Drawing.Point(120, 265);
+            simpleButton_ConfigManager.Location = new System.Drawing.Point(117, 314);
             simpleButton_ConfigManager.Name = "simpleButton_ConfigManager";
             simpleButton_ConfigManager.Size = new System.Drawing.Size(110, 25);
             simpleButton_ConfigManager.TabIndex = 18;
@@ -311,7 +323,7 @@ namespace 永利系统.Views.Wechat
             // 
             // simpleButton_StartBrowser
             // 
-            simpleButton_StartBrowser.Location = new System.Drawing.Point(5, 265);
+            simpleButton_StartBrowser.Location = new System.Drawing.Point(2, 314);
             simpleButton_StartBrowser.Name = "simpleButton_StartBrowser";
             simpleButton_StartBrowser.Size = new System.Drawing.Size(110, 25);
             simpleButton_StartBrowser.TabIndex = 17;
@@ -319,7 +331,7 @@ namespace 永利系统.Views.Wechat
             // 
             // toggleSwitch_AutoOrdersBet
             // 
-            toggleSwitch_AutoOrdersBet.Location = new System.Drawing.Point(5, 235);
+            toggleSwitch_AutoOrdersBet.Location = new System.Drawing.Point(2, 284);
             toggleSwitch_AutoOrdersBet.Name = "toggleSwitch_AutoOrdersBet";
             toggleSwitch_AutoOrdersBet.Properties.OffText = "飞单停";
             toggleSwitch_AutoOrdersBet.Properties.OnText = "飞单中";
@@ -328,7 +340,7 @@ namespace 永利系统.Views.Wechat
             // 
             // toggleSwitch_OrdersTasking
             // 
-            toggleSwitch_OrdersTasking.Location = new System.Drawing.Point(5, 205);
+            toggleSwitch_OrdersTasking.Location = new System.Drawing.Point(2, 253);
             toggleSwitch_OrdersTasking.Name = "toggleSwitch_OrdersTasking";
             toggleSwitch_OrdersTasking.Properties.OffText = "收单停";
             toggleSwitch_OrdersTasking.Properties.OnText = "收单中";
@@ -361,7 +373,7 @@ namespace 永利系统.Views.Wechat
             // 
             // textEdit_AutoBetPassword
             // 
-            textEdit_AutoBetPassword.Location = new System.Drawing.Point(47, 177);
+            textEdit_AutoBetPassword.Location = new System.Drawing.Point(47, 203);
             textEdit_AutoBetPassword.Name = "textEdit_AutoBetPassword";
             textEdit_AutoBetPassword.Properties.NullValuePrompt = "投注密码";
             textEdit_AutoBetPassword.Properties.PasswordChar = '*';
@@ -372,15 +384,40 @@ namespace 永利系统.Views.Wechat
             // 
             labelControl_AutoBetPassword.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
             labelControl_AutoBetPassword.Appearance.Options.UseFont = true;
-            labelControl_AutoBetPassword.Location = new System.Drawing.Point(5, 179);
+            labelControl_AutoBetPassword.Location = new System.Drawing.Point(5, 205);
             labelControl_AutoBetPassword.Name = "labelControl_AutoBetPassword";
             labelControl_AutoBetPassword.Size = new System.Drawing.Size(27, 17);
             labelControl_AutoBetPassword.TabIndex = 11;
             labelControl_AutoBetPassword.Text = "密码:";
             // 
+            // spinEdit_Balance
+            // 
+            spinEdit_Balance.EditValue = new decimal(new int[] { 0, 0, 0, 0 });
+            spinEdit_Balance.Location = new System.Drawing.Point(47, 228);
+            spinEdit_Balance.Name = "spinEdit_Balance";
+            spinEdit_Balance.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_Balance.Properties.DisplayFormat.FormatString = "F2";
+            spinEdit_Balance.Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_Balance.Properties.EditFormat.FormatString = "F2";
+            spinEdit_Balance.Properties.EditFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_Balance.Properties.MaxValue = new decimal(new int[] { 999999999, 0, 0, 0 });
+            spinEdit_Balance.Properties.ReadOnly = true;
+            spinEdit_Balance.Size = new System.Drawing.Size(111, 20);
+            spinEdit_Balance.TabIndex = 20;
+            // 
+            // labelControl_Balance
+            // 
+            labelControl_Balance.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_Balance.Appearance.Options.UseFont = true;
+            labelControl_Balance.Location = new System.Drawing.Point(5, 230);
+            labelControl_Balance.Name = "labelControl_Balance";
+            labelControl_Balance.Size = new System.Drawing.Size(27, 17);
+            labelControl_Balance.TabIndex = 19;
+            labelControl_Balance.Text = "余额:";
+            // 
             // textEdit_AutoBetUsername
             // 
-            textEdit_AutoBetUsername.Location = new System.Drawing.Point(47, 152);
+            textEdit_AutoBetUsername.Location = new System.Drawing.Point(47, 178);
             textEdit_AutoBetUsername.Name = "textEdit_AutoBetUsername";
             textEdit_AutoBetUsername.Properties.NullValuePrompt = "投注账号";
             textEdit_AutoBetUsername.Size = new System.Drawing.Size(111, 20);
@@ -390,7 +427,7 @@ namespace 永利系统.Views.Wechat
             // 
             labelControl_AutoBetUsername.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
             labelControl_AutoBetUsername.Appearance.Options.UseFont = true;
-            labelControl_AutoBetUsername.Location = new System.Drawing.Point(5, 154);
+            labelControl_AutoBetUsername.Location = new System.Drawing.Point(5, 180);
             labelControl_AutoBetUsername.Name = "labelControl_AutoBetUsername";
             labelControl_AutoBetUsername.Size = new System.Drawing.Size(27, 17);
             labelControl_AutoBetUsername.TabIndex = 9;
@@ -399,7 +436,7 @@ namespace 永利系统.Views.Wechat
             // comboBoxEdit_Platform
             // 
             comboBoxEdit_Platform.EditValue = "";
-            comboBoxEdit_Platform.Location = new System.Drawing.Point(47, 127);
+            comboBoxEdit_Platform.Location = new System.Drawing.Point(47, 153);
             comboBoxEdit_Platform.Name = "comboBoxEdit_Platform";
             comboBoxEdit_Platform.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
             comboBoxEdit_Platform.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor;
@@ -410,11 +447,35 @@ namespace 永利系统.Views.Wechat
             // 
             labelControl_Platform.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
             labelControl_Platform.Appearance.Options.UseFont = true;
-            labelControl_Platform.Location = new System.Drawing.Point(5, 129);
+            labelControl_Platform.Location = new System.Drawing.Point(5, 155);
             labelControl_Platform.Name = "labelControl_Platform";
             labelControl_Platform.Size = new System.Drawing.Size(27, 17);
             labelControl_Platform.TabIndex = 7;
             labelControl_Platform.Text = "盘口:";
+            // 
+            // spinEdit_FlyBetMultiplier
+            // 
+            spinEdit_FlyBetMultiplier.EditValue = new decimal(new int[] { 1, 0, 0, 0 });
+            spinEdit_FlyBetMultiplier.Location = new System.Drawing.Point(47, 128);
+            spinEdit_FlyBetMultiplier.Name = "spinEdit_FlyBetMultiplier";
+            spinEdit_FlyBetMultiplier.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_FlyBetMultiplier.Properties.DisplayFormat.FormatString = "F2";
+            spinEdit_FlyBetMultiplier.Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_FlyBetMultiplier.Properties.EditFormat.FormatString = "F2";
+            spinEdit_FlyBetMultiplier.Properties.EditFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_FlyBetMultiplier.Properties.MaxValue = new decimal(new int[] { 100, 0, 0, 0 });
+            spinEdit_FlyBetMultiplier.Size = new System.Drawing.Size(111, 20);
+            spinEdit_FlyBetMultiplier.TabIndex = 22;
+            // 
+            // labelControl_FlyBetMultiplier
+            // 
+            labelControl_FlyBetMultiplier.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_FlyBetMultiplier.Appearance.Options.UseFont = true;
+            labelControl_FlyBetMultiplier.Location = new System.Drawing.Point(5, 130);
+            labelControl_FlyBetMultiplier.Name = "labelControl_FlyBetMultiplier";
+            labelControl_FlyBetMultiplier.Size = new System.Drawing.Size(39, 17);
+            labelControl_FlyBetMultiplier.TabIndex = 21;
+            labelControl_FlyBetMultiplier.Text = "飞单倍:";
             // 
             // spinEdit_MaxBet
             // 
@@ -478,6 +539,16 @@ namespace 永利系统.Views.Wechat
             labelControl_SealSeconds.Size = new System.Drawing.Size(60, 17);
             labelControl_SealSeconds.TabIndex = 1;
             labelControl_SealSeconds.Text = "封盘提前秒";
+            // 
+            // labelControl1
+            // 
+            labelControl1.Appearance.Font = new System.Drawing.Font("微软雅黑", 10F, System.Drawing.FontStyle.Bold);
+            labelControl1.Appearance.Options.UseFont = true;
+            labelControl1.Location = new System.Drawing.Point(93, 103);
+            labelControl1.Name = "labelControl1";
+            labelControl1.Size = new System.Drawing.Size(56, 19);
+            labelControl1.TabIndex = 0;
+            labelControl1.Text = "网盘设置";
             // 
             // labelControl_FastSetting
             // 
@@ -724,8 +795,10 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)toggleSwitch_OrdersTasking.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_Odds.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetPassword.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_Balance.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetUsername.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)comboBoxEdit_Platform.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_FlyBetMultiplier.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_MaxBet.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_MinBet.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_SealSeconds.Properties).EndInit();
@@ -791,10 +864,14 @@ namespace 永利系统.Views.Wechat
         private DevExpress.XtraEditors.SpinEdit spinEdit_MaxBet;
         private DevExpress.XtraEditors.LabelControl labelControl_Platform;
         private DevExpress.XtraEditors.ComboBoxEdit comboBoxEdit_Platform;
+        private DevExpress.XtraEditors.LabelControl labelControl_FlyBetMultiplier;
+        private DevExpress.XtraEditors.SpinEdit spinEdit_FlyBetMultiplier;
         private DevExpress.XtraEditors.LabelControl labelControl_AutoBetUsername;
         private DevExpress.XtraEditors.TextEdit textEdit_AutoBetUsername;
         private DevExpress.XtraEditors.LabelControl labelControl_AutoBetPassword;
         private DevExpress.XtraEditors.TextEdit textEdit_AutoBetPassword;
+        private DevExpress.XtraEditors.LabelControl labelControl_Balance;
+        private DevExpress.XtraEditors.SpinEdit spinEdit_Balance;
         private DevExpress.XtraEditors.LabelControl labelControl_Odds;
         private DevExpress.XtraEditors.SpinEdit spinEdit_Odds;
         private DevExpress.XtraEditors.SimpleButton simpleButton_StartBrowser;
@@ -820,7 +897,7 @@ namespace 永利系统.Views.Wechat
         private DevExpress.XtraGrid.Views.Grid.GridView gridView_Orders;
         private DevExpress.XtraEditors.PanelControl panelControl_OrdersTop;
         private DevExpress.XtraEditors.LabelControl labelControl_OrderInfo;
-
+        private DevExpress.XtraEditors.LabelControl labelControl1;
     }
 }
 
