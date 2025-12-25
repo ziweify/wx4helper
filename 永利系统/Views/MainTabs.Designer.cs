@@ -181,8 +181,8 @@ namespace 永利系统.Views
             // toolStripStatusStatus
             // 
             toolStripStatusStatus.Name = "toolStripStatusStatus";
-            toolStripStatusStatus.Size = new System.Drawing.Size(32, 19);
-            toolStripStatusStatus.Text = "就绪";
+            toolStripStatusStatus.Size = new System.Drawing.Size(80, 19);
+            toolStripStatusStatus.Text = "永利系统就绪";
             // 
             // toolStripStatusUser
             // 

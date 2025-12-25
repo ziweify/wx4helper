@@ -247,8 +247,8 @@ namespace 永利系统.Views.Wechat
             // toolStripStatusLabel1
             // 
             toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            toolStripStatusLabel1.Size = new System.Drawing.Size(32, 17);
-            toolStripStatusLabel1.Text = "就绪";
+            toolStripStatusLabel1.Size = new System.Drawing.Size(80, 17);
+            toolStripStatusLabel1.Text = "微信助手就绪";
             // 
             // splitContainerControl_Main
             // 
@@ -357,6 +357,7 @@ namespace 永利系统.Views.Wechat
             spinEdit_Odds.Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
             spinEdit_Odds.Properties.EditFormat.FormatString = "F2";
             spinEdit_Odds.Properties.EditFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_Odds.Properties.Increment = new decimal(new int[] { 1, 0, 0, 131072 });
             spinEdit_Odds.Properties.MaxValue = new decimal(new int[] { 1000, 0, 0, 0 });
             spinEdit_Odds.Size = new System.Drawing.Size(65, 20);
             spinEdit_Odds.TabIndex = 14;
@@ -459,10 +460,11 @@ namespace 永利系统.Views.Wechat
             spinEdit_FlyBetMultiplier.Location = new System.Drawing.Point(47, 128);
             spinEdit_FlyBetMultiplier.Name = "spinEdit_FlyBetMultiplier";
             spinEdit_FlyBetMultiplier.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
-            spinEdit_FlyBetMultiplier.Properties.DisplayFormat.FormatString = "F2";
+            spinEdit_FlyBetMultiplier.Properties.DisplayFormat.FormatString = "F1";
             spinEdit_FlyBetMultiplier.Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
-            spinEdit_FlyBetMultiplier.Properties.EditFormat.FormatString = "F2";
+            spinEdit_FlyBetMultiplier.Properties.EditFormat.FormatString = "F1";
             spinEdit_FlyBetMultiplier.Properties.EditFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_FlyBetMultiplier.Properties.Increment = new decimal(new int[] { 1, 0, 0, 65536 });
             spinEdit_FlyBetMultiplier.Properties.MaxValue = new decimal(new int[] { 100, 0, 0, 0 });
             spinEdit_FlyBetMultiplier.Size = new System.Drawing.Size(111, 20);
             spinEdit_FlyBetMultiplier.TabIndex = 22;
@@ -483,6 +485,7 @@ namespace 永利系统.Views.Wechat
             spinEdit_MaxBet.Location = new System.Drawing.Point(164, 52);
             spinEdit_MaxBet.Name = "spinEdit_MaxBet";
             spinEdit_MaxBet.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_MaxBet.Properties.IsFloatValue = false;
             spinEdit_MaxBet.Properties.MaxValue = new decimal(new int[] { 1000000, 0, 0, 0 });
             spinEdit_MaxBet.Properties.MinValue = new decimal(new int[] { 1, 0, 0, 0 });
             spinEdit_MaxBet.Size = new System.Drawing.Size(66, 20);
@@ -504,6 +507,7 @@ namespace 永利系统.Views.Wechat
             spinEdit_MinBet.Location = new System.Drawing.Point(47, 53);
             spinEdit_MinBet.Name = "spinEdit_MinBet";
             spinEdit_MinBet.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_MinBet.Properties.IsFloatValue = false;
             spinEdit_MinBet.Properties.MaxValue = new decimal(new int[] { 10000, 0, 0, 0 });
             spinEdit_MinBet.Properties.MinValue = new decimal(new int[] { 1, 0, 0, 0 });
             spinEdit_MinBet.Size = new System.Drawing.Size(65, 20);
@@ -525,6 +529,7 @@ namespace 永利系统.Views.Wechat
             spinEdit_SealSeconds.Location = new System.Drawing.Point(71, 28);
             spinEdit_SealSeconds.Name = "spinEdit_SealSeconds";
             spinEdit_SealSeconds.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_SealSeconds.Properties.IsFloatValue = false;
             spinEdit_SealSeconds.Properties.MaxValue = new decimal(new int[] { 300, 0, 0, 0 });
             spinEdit_SealSeconds.Properties.MinValue = new decimal(new int[] { 10, 0, 0, 0 });
             spinEdit_SealSeconds.Size = new System.Drawing.Size(43, 20);

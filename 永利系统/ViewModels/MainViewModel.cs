@@ -10,7 +10,7 @@ namespace 永利系统.ViewModels
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
-        private string _statusMessage = "就绪";
+        private string _statusMessage = "永利系统就绪";
         private string _currentUser = "管理员";
         private string _selectedPageKey = "Dashboard";
 

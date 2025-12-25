@@ -177,7 +177,7 @@ namespace 永利系统.Views
         private void BindViewModel()
         {
             // 绑定状态栏
-            toolStripStatusStatus.Text = _viewModel.StatusMessage;
+            toolStripStatusStatus.Text = FormatStatusMessage(_viewModel.StatusMessage);
             toolStripStatusUser.Text = $"当前用户: {_viewModel.CurrentUser}";
 
             // 监听属性变更
@@ -185,9 +185,20 @@ namespace 永利系统.Views
             {
                 if (e.PropertyName == nameof(_viewModel.StatusMessage))
                 {
-                    toolStripStatusStatus.Text = _viewModel.StatusMessage;
+                    toolStripStatusStatus.Text = FormatStatusMessage(_viewModel.StatusMessage);
                 }
             };
+        }
+
+        private string FormatStatusMessage(string message)
+        {
+            // 如果消息已经包含"永利系统"前缀，则直接返回
+            if (message.StartsWith("永利系统"))
+            {
+                return message;
+            }
+            // 否则加上"永利系统"前缀
+            return $"永利系统{message}";
         }
 
         private void ApplyModernTheme()
