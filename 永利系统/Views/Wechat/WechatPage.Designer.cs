@@ -238,6 +238,7 @@ namespace 永利系统.Views.Wechat
             // panelControl_Left
             // 
             panelControl_Left.Controls.Add(panelControl_FastSetting);
+            panelControl_Left.Controls.Add(panelControl_OpenData);
             panelControl_Left.Controls.Add(gridControl_Contacts);
             panelControl_Left.Controls.Add(panelControl_LeftTop);
             panelControl_Left.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -249,18 +250,17 @@ namespace 永利系统.Views.Wechat
             // panelControl_FastSetting
             // 
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
-            panelControl_FastSetting.Controls.Add(panelControl_OpenData);
-            panelControl_FastSetting.Dock = System.Windows.Forms.DockStyle.Bottom;
-            panelControl_FastSetting.Location = new System.Drawing.Point(2, 433);
+            panelControl_FastSetting.Dock = System.Windows.Forms.DockStyle.Top;
+            panelControl_FastSetting.Location = new System.Drawing.Point(2, 390);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
-            panelControl_FastSetting.Size = new System.Drawing.Size(240, 303);
+            panelControl_FastSetting.Size = new System.Drawing.Size(240, 343);
             panelControl_FastSetting.TabIndex = 3;
             // 
             // labelControl_FastSetting
             // 
             labelControl_FastSetting.Appearance.Font = new System.Drawing.Font("微软雅黑", 10F, System.Drawing.FontStyle.Bold);
             labelControl_FastSetting.Appearance.Options.UseFont = true;
-            labelControl_FastSetting.Location = new System.Drawing.Point(5, 160);
+            labelControl_FastSetting.Location = new System.Drawing.Point(10, 375);
             labelControl_FastSetting.Name = "labelControl_FastSetting";
             labelControl_FastSetting.Size = new System.Drawing.Size(56, 19);
             labelControl_FastSetting.TabIndex = 0;
@@ -270,9 +270,10 @@ namespace 永利系统.Views.Wechat
             // 
             panelControl_OpenData.Controls.Add(labelControl_CurrentLottery);
             panelControl_OpenData.Controls.Add(labelControl_LastLottery);
-            panelControl_OpenData.Location = new System.Drawing.Point(0, 21);
+            panelControl_OpenData.Dock = System.Windows.Forms.DockStyle.Top;
+            panelControl_OpenData.Location = new System.Drawing.Point(2, 193);
             panelControl_OpenData.Name = "panelControl_OpenData";
-            panelControl_OpenData.Size = new System.Drawing.Size(240, 200);
+            panelControl_OpenData.Size = new System.Drawing.Size(240, 197);
             panelControl_OpenData.TabIndex = 2;
             // 
             // labelControl_CurrentLottery
@@ -297,10 +298,11 @@ namespace 永利系统.Views.Wechat
             // 
             // gridControl_Contacts
             // 
-            gridControl_Contacts.Location = new System.Drawing.Point(2, 165);
+            gridControl_Contacts.Dock = System.Windows.Forms.DockStyle.Top;
+            gridControl_Contacts.Location = new System.Drawing.Point(2, 42);
             gridControl_Contacts.MainView = gridView_Contacts;
             gridControl_Contacts.Name = "gridControl_Contacts";
-            gridControl_Contacts.Size = new System.Drawing.Size(240, 332);
+            gridControl_Contacts.Size = new System.Drawing.Size(240, 151);
             gridControl_Contacts.TabIndex = 1;
             gridControl_Contacts.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridView_Contacts });
             // 

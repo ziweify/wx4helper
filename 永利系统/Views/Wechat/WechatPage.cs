@@ -35,7 +35,7 @@ namespace 永利系统.Views.Wechat
             }
             
             // 🔥 临时：生成工具栏图标文件（只运行一次，然后删除此代码）
-            GenerateToolbarIconFiles();
+            // GenerateToolbarIconFiles();
 
             
             // 设置为非顶级窗口，可以嵌入到 TabPage 中
