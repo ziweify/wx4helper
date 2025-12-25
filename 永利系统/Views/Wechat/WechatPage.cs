@@ -171,7 +171,49 @@ namespace 永利系统.Views.Wechat
 
         private void ToolStripButton_Log_Click(object sender, EventArgs e)
         {
-            _loggingService.Info("微信助手", "日志按钮被点击");
+            try
+            {
+                _loggingService?.Info("微信助手", "日志按钮被点击");
+                
+                // 获取主窗口 (MainTabs)
+                Form? mainForm = this.TopLevelControl as Form;
+                
+                if (mainForm != null && mainForm is MainTabs mainTabs)
+                {
+                    // 显示主窗口日志并过滤"微信助手"模块
+                    mainTabs.ShowLogWindowAndFilter("微信助手");
+                    
+                    _loggingService?.Info("微信助手", "已打开主窗口日志（仅显示微信助手日志）");
+                }
+                else
+                {
+                    // 尝试遍历所有打开的窗体
+                    bool found = false;
+                    foreach (Form form in Application.OpenForms)
+                    {
+                        if (form is MainTabs tabs)
+                        {
+                            tabs.ShowLogWindowAndFilter("微信助手");
+                            found = true;
+                            _loggingService?.Info("微信助手", "已打开主窗口日志（仅显示微信助手日志）");
+                            break;
+                        }
+                    }
+                    
+                    if (!found)
+                    {
+                        MessageBox.Show("无法访问主窗口日志面板", "提示", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _loggingService?.Warn("微信助手", "未找到主窗口，无法打开日志");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService?.Error("微信助手", $"打开日志失败: {ex.Message}", ex);
+                MessageBox.Show($"打开日志失败:\n{ex.Message}", "错误", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void ToolStripButton_OpenLotteryResult_Click(object sender, EventArgs e)

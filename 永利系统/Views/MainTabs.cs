@@ -228,6 +228,36 @@ namespace 永利系统.Views
             }
         }
 
+        /// <summary>
+        /// 显示日志窗口（公开方法，供子窗口调用）
+        /// </summary>
+        public void ShowLogWindow()
+        {
+            // 确保日志面板显示
+            if (splitContainerControl1.PanelVisibility == DevExpress.XtraEditors.SplitPanelVisibility.Panel1)
+            {
+                splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Both;
+                splitContainerControl1.SplitterPosition = splitContainerControl1.Height - 250;
+                toolStripMenuItemViewLog.Checked = true;
+            }
+        }
+
+        /// <summary>
+        /// 显示日志窗口并过滤指定模块（公开方法，供子窗口调用）
+        /// </summary>
+        /// <param name="module">模块名称，如"微信助手"</param>
+        public void ShowLogWindowAndFilter(string module)
+        {
+            // 显示日志面板
+            ShowLogWindow();
+            
+            // 设置模块过滤
+            if (logWindow1 != null)
+            {
+                logWindow1.FilterByModule(module);
+            }
+        }
+
 
         #region Menu Item Click Events
 

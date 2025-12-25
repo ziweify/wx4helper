@@ -103,7 +103,7 @@ namespace 永利系统.Views
             _cmbModule.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor;
             _cmbModule.EditValue = "全部"; // 使用 EditValue 而不是 Text
             _cmbModule.SelectedIndex = 0; // 确保选中第一项
-            // 先不订阅事件，等初始化完成后再订阅
+            _cmbModule.SelectedIndexChanged += CmbModule_SelectedIndexChanged; // 订阅事件
             toolbar.Controls.Add(_cmbModule);
 
             // 创建级别过滤下拉框
@@ -116,7 +116,7 @@ namespace 永利系统.Views
             _cmbLevel.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor;
             _cmbLevel.EditValue = "全部"; // 使用 EditValue 而不是 Text
             _cmbLevel.SelectedIndex = 0; // 确保选中第一项
-            // 先不订阅事件，等初始化完成后再订阅
+            _cmbLevel.SelectedIndexChanged += CmbLevel_SelectedIndexChanged; // 订阅事件
             toolbar.Controls.Add(_cmbLevel);
 
             // 创建搜索框
@@ -472,29 +472,8 @@ namespace 永利系统.Views
             
             System.Diagnostics.Debug.WriteLine($"========== ApplyFilters 开始 ==========");
             System.Diagnostics.Debug.WriteLine($"原始日志: {entries.Count} 条");
-            
-            // 输出所有原始日志
-            if (entries.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine("所有原始日志:");
-                foreach (var e in entries.Take(10))
-                {
-                    System.Diagnostics.Debug.WriteLine($"  模块:'{e.Module}' 级别:{e.Level} 消息:{e.Message}");
-                }
-            }
-            
             System.Diagnostics.Debug.WriteLine($"_selectedModule = '{_selectedModule}'");
-            System.Diagnostics.Debug.WriteLine($"_cmbModule?.EditValue = '{_cmbModule?.EditValue}'");
-            System.Diagnostics.Debug.WriteLine($"_cmbLevel?.EditValue = '{_cmbLevel?.EditValue}'");
-            System.Diagnostics.Debug.WriteLine($"_txtSearch?.Text = '{_txtSearch?.Text}'");
             
-            // 不使用任何过滤，直接返回所有日志（临时测试）
-            System.Diagnostics.Debug.WriteLine("***** 暂时跳过所有过滤，返回全部日志 *****");
-            System.Diagnostics.Debug.WriteLine($"========== ApplyFilters 结束 ==========");
-            return entries;
-            
-            /* 
-            // 原过滤逻辑（暂时注释）
             var filtered = entries.AsEnumerable();
 
             // 模块过滤
@@ -504,10 +483,6 @@ namespace 永利系统.Views
                 var beforeCount = filtered.Count();
                 filtered = filtered.Where(e => e.Module == _selectedModule);
                 System.Diagnostics.Debug.WriteLine($"模块过滤: {beforeCount} -> {filtered.Count()} 条");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("跳过模块过滤（选择了'全部'）");
             }
 
             // 级别过滤
@@ -522,10 +497,6 @@ namespace 永利系统.Views
                     System.Diagnostics.Debug.WriteLine($"级别过滤: {beforeCount} -> {filtered.Count()} 条");
                 }
             }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("跳过级别过滤（选择了'全部'）");
-            }
 
             // 搜索过滤
             if (!string.IsNullOrWhiteSpace(_txtSearch?.Text))
@@ -538,16 +509,32 @@ namespace 永利系统.Views
                     e.Module.ToLower().Contains(searchText));
                 System.Diagnostics.Debug.WriteLine($"搜索过滤: {beforeCount} -> {filtered.Count()} 条");
             }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("跳过搜索过滤（无搜索关键词）");
-            }
 
             var result = filtered.ToList();
             System.Diagnostics.Debug.WriteLine($"最终返回: {result.Count} 条");
+            System.Diagnostics.Debug.WriteLine($"========== ApplyFilters 结束 ==========");
             
             return result;
-            */
+        }
+
+        /// <summary>
+        /// 设置模块过滤（公开方法，供外部调用）
+        /// </summary>
+        public void FilterByModule(string module)
+        {
+            if (_cmbModule != null)
+            {
+                _selectedModule = module;
+                _cmbModule.EditValue = module;
+                
+                // 如果模块不在列表中，添加它
+                if (!_cmbModule.Properties.Items.Contains(module))
+                {
+                    _cmbModule.Properties.Items.Add(module);
+                }
+                
+                RefreshDisplay();
+            }
         }
 
         private void CmbModule_SelectedIndexChanged(object? sender, EventArgs e)
