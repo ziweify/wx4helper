@@ -20,6 +20,7 @@ namespace 永利系统.Views
         private readonly LoggingService _loggingService;
         private readonly AuthGuard? _authGuard;
         private System.Windows.Forms.Timer? _authVerifyTimer;
+        private FloatingLogWindow? _floatingLogWindow; // 浮动日志窗口
 
         /// <summary>
         /// 构造函数（必须传入 AuthGuard，防止直接实例化）
@@ -70,6 +71,13 @@ namespace 永利系统.Views
 
             // 启动日志
             _loggingService.Info("系统", "主窗口初始化完成");
+            
+            // 订阅日志窗口的分离/附加事件
+            if (logWindow1 != null)
+            {
+                logWindow1.DetachRequested += LogWindow_DetachRequested;
+                logWindow1.AttachRequested += LogWindow_AttachRequested;
+            }
         }
 
         private void OnLogReceived(object? sender, LogEventArgs e)
@@ -218,6 +226,9 @@ namespace 永利系统.Views
                 splitContainerControl1.SplitterPosition = splitContainerControl1.Height - 250;
                 // 更新菜单项的选中状态
                 toolStripMenuItemViewLog.Checked = true;
+                
+                // 🔥 显示日志面板后，强制刷新显示
+                logWindow1?.ForceRefresh();
             }
             else
             {
@@ -239,6 +250,9 @@ namespace 永利系统.Views
                 splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Both;
                 splitContainerControl1.SplitterPosition = splitContainerControl1.Height - 250;
                 toolStripMenuItemViewLog.Checked = true;
+                
+                // 🔥 显示日志面板后，强制刷新显示
+                logWindow1?.ForceRefresh();
             }
         }
 
@@ -257,6 +271,118 @@ namespace 永利系统.Views
                 logWindow1.FilterByModule(module);
             }
         }
+
+        #region 日志窗口分离/附加
+
+        /// <summary>
+        /// 日志窗口请求分离
+        /// </summary>
+        private void LogWindow_DetachRequested(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (_floatingLogWindow != null && !_floatingLogWindow.IsDisposed)
+                {
+                    // 已经分离了，直接激活
+                    _floatingLogWindow.Activate();
+                    return;
+                }
+
+                // 从主窗口移除 logWindow1
+                if (logWindow1 != null && splitContainerControl1.Panel2.Controls.Contains(logWindow1))
+                {
+                    splitContainerControl1.Panel2.Controls.Remove(logWindow1);
+                }
+
+                // 隐藏主窗口的日志面板
+                splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel1;
+                toolStripMenuItemViewLog.Checked = false;
+
+                // 创建浮动日志窗口
+                _floatingLogWindow = new FloatingLogWindow(logWindow1!, () =>
+                {
+                    // 窗口关闭时自动附加回主窗口
+                    AttachLogWindow();
+                });
+
+                _floatingLogWindow.Owner = this; // 设置所有者
+                _floatingLogWindow.Show();
+
+                // 更新按钮状态
+                logWindow1?.SetDetachedState(true);
+
+                // 🔥 强制刷新日志显示（确保数据正常显示）
+                logWindow1?.ForceRefresh();
+
+                _loggingService.Info("主窗口", "日志窗口已分离");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("主窗口", $"分离日志窗口失败: {ex.Message}", ex);
+                MessageBox.Show($"分离日志窗口失败:\n{ex.Message}", "错误", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// 日志窗口请求附加
+        /// </summary>
+        private void LogWindow_AttachRequested(object? sender, EventArgs e)
+        {
+            AttachLogWindow();
+        }
+
+        /// <summary>
+        /// 附加日志窗口回主窗口
+        /// </summary>
+        private void AttachLogWindow()
+        {
+            try
+            {
+                if (_floatingLogWindow != null && !_floatingLogWindow.IsDisposed)
+                {
+                    // 🔥 关键：标记为正在附加，防止 FormClosing 事件重复调用
+                    _floatingLogWindow.MarkAsAttaching();
+
+                    // 从浮动窗口移除 logWindow1
+                    if (logWindow1 != null && _floatingLogWindow.Controls.Contains(logWindow1))
+                    {
+                        _floatingLogWindow.Controls.Remove(logWindow1);
+                    }
+
+                    // 关闭浮动窗口
+                    _floatingLogWindow.Close();
+                    _floatingLogWindow.Dispose();
+                    _floatingLogWindow = null;
+                }
+
+                // 附加回主窗口
+                if (logWindow1 != null && !splitContainerControl1.Panel2.Controls.Contains(logWindow1))
+                {
+                    logWindow1.Dock = DockStyle.Fill;
+                    splitContainerControl1.Panel2.Controls.Add(logWindow1);
+                }
+
+                // 显示主窗口的日志面板
+                ShowLogWindow();
+
+                // 更新按钮状态
+                logWindow1?.SetDetachedState(false);
+
+                // 🔥 强制刷新日志显示（确保数据正常显示）
+                logWindow1?.ForceRefresh();
+
+                _loggingService.Info("主窗口", "日志窗口已附加");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("主窗口", $"附加日志窗口失败: {ex.Message}", ex);
+                MessageBox.Show($"附加日志窗口失败:\n{ex.Message}", "错误", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        #endregion
 
 
         #region Menu Item Click Events

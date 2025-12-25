@@ -27,12 +27,18 @@ namespace 永利系统.Views
         private bool _isPaused = false;
         private bool _isHistoryLoaded = false; // 标记是否已加载历史日志
         
+        // 分离状态
+        private bool _isDetached = false; // 是否已分离
+        public event EventHandler? DetachRequested; // 分离请求事件
+        public event EventHandler? AttachRequested; // 附加请求事件
+        
         // UI 控件
         private GridControl? _gridControl;
         private GridView? _gridView;
         private SimpleButton? _btnClear;
         private SimpleButton? _btnPause;
         private SimpleButton? _btnExport;
+        private SimpleButton? _btnDetach; // 分离/附加按钮
         private ComboBoxEdit? _cmbModule;
         private ComboBoxEdit? _cmbLevel;
         private TextEdit? _txtSearch;
@@ -49,6 +55,9 @@ namespace 永利系统.Views
             // 在窗口首次显示时加载历史日志
             VisibleChanged += LogWindow_VisibleChanged;
             
+            // 订阅 HandleCreated 事件，确保在控件重新创建后重新订阅日志事件
+            HandleCreated += LogWindow_HandleCreated;
+            
             // 立即尝试加载历史日志（如果控件已创建）
             if (IsHandleCreated || Visible)
             {
@@ -58,14 +67,31 @@ namespace 永利系统.Views
             }
         }
         
+        private void LogWindow_HandleCreated(object? sender, EventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("LogWindow_HandleCreated: 控件句柄已创建，重新订阅日志事件");
+            // 确保日志事件已订阅
+            SubscribeToLogEvents();
+        }
+        
         private void LogWindow_VisibleChanged(object? sender, EventArgs e)
         {
             System.Diagnostics.Debug.WriteLine($"LogWindow_VisibleChanged: Visible={Visible}, _isHistoryLoaded={_isHistoryLoaded}");
+            
+            // 确保日志事件已订阅（防止在移动控件时丢失订阅）
+            SubscribeToLogEvents();
+            
             if (Visible && !_isHistoryLoaded)
             {
                 _isHistoryLoaded = true;
                 System.Diagnostics.Debug.WriteLine("LogWindow_VisibleChanged: 开始加载历史日志");
                 LoadHistoricalLogs();
+            }
+            else if (Visible)
+            {
+                // 如果已加载过历史日志，只需刷新显示
+                System.Diagnostics.Debug.WriteLine("LogWindow_VisibleChanged: 控件变为可见，刷新显示");
+                RefreshDisplay();
             }
         }
 
@@ -159,6 +185,16 @@ namespace 永利系统.Views
             _btnExport.Click += BtnExport_Click;
             toolbar.Controls.Add(_btnExport);
 
+            // 创建分离/附加按钮
+            _btnDetach = new SimpleButton
+            {
+                Location = new Point(635, 5),
+                Width = 80,
+                Text = "🔓 分离"
+            };
+            _btnDetach.Click += BtnDetach_Click;
+            toolbar.Controls.Add(_btnDetach);
+
             // 创建 GridControl
             _gridControl = new GridControl
             {
@@ -207,8 +243,8 @@ namespace 永利系统.Views
             // 添加自定义列显示文本事件（用于格式化时间）
             _gridView.CustomColumnDisplayText += GridView_CustomColumnDisplayText;
 
-            // 不在初始化时设置数据源，等待加载历史日志后设置
-            // _gridControl.DataSource = _logEntries;
+            // 🔥 初始化时设置空的数据源（确保 GridControl 可以正常绑定）
+            _gridControl.DataSource = new List<LogEntry>();
 
             // 添加行样式
             _gridView.RowStyle += GridView_RowStyle;
@@ -499,9 +535,11 @@ namespace 永利系统.Views
             }
 
             // 搜索过滤
-            if (!string.IsNullOrWhiteSpace(_txtSearch?.Text))
+            // 🔥 使用 EditValue 而不是 Text，避免 NullText 干扰
+            var searchText = _txtSearch?.EditValue?.ToString();
+            if (!string.IsNullOrWhiteSpace(searchText))
             {
-                var searchText = _txtSearch.Text.ToLower();
+                searchText = searchText.ToLower();
                 System.Diagnostics.Debug.WriteLine($"应用搜索过滤: '{searchText}'");
                 var beforeCount = filtered.Count();
                 filtered = filtered.Where(e => 
@@ -535,6 +573,40 @@ namespace 永利系统.Views
                 
                 RefreshDisplay();
             }
+        }
+
+        /// <summary>
+        /// 强制刷新显示（公开方法，供外部调用）
+        /// </summary>
+        public void ForceRefresh()
+        {
+            System.Diagnostics.Debug.WriteLine("========== ForceRefresh 开始 ==========");
+            System.Diagnostics.Debug.WriteLine($"ForceRefresh: _logEntries.Count = {_logEntries.Count}");
+            System.Diagnostics.Debug.WriteLine($"ForceRefresh: IsHandleCreated = {IsHandleCreated}");
+            System.Diagnostics.Debug.WriteLine($"ForceRefresh: Visible = {Visible}");
+            System.Diagnostics.Debug.WriteLine($"ForceRefresh: InvokeRequired = {InvokeRequired}");
+            
+            // 重新订阅事件（确保不会丢失）
+            SubscribeToLogEvents();
+            
+            // 如果需要跨线程调用
+            if (InvokeRequired)
+            {
+                System.Diagnostics.Debug.WriteLine("ForceRefresh: 使用 Invoke 调用刷新");
+                BeginInvoke(new Action(() => 
+                {
+                    RefreshDisplay();
+                    System.Diagnostics.Debug.WriteLine($"ForceRefresh 完成: GridView 行数 = {_gridView?.RowCount ?? 0}");
+                }));
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ForceRefresh: 直接调用刷新");
+                RefreshDisplay();
+                System.Diagnostics.Debug.WriteLine($"ForceRefresh 完成: GridView 行数 = {_gridView?.RowCount ?? 0}");
+            }
+            
+            System.Diagnostics.Debug.WriteLine("========== ForceRefresh 结束 ==========");
         }
 
         private void CmbModule_SelectedIndexChanged(object? sender, EventArgs e)
@@ -601,6 +673,32 @@ namespace 永利系统.Views
                         MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
+            }
+        }
+
+        private void BtnDetach_Click(object? sender, EventArgs e)
+        {
+            if (_isDetached)
+            {
+                // 请求附加回主窗口
+                AttachRequested?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                // 请求分离到独立窗口
+                DetachRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// 设置分离状态（由主窗口调用）
+        /// </summary>
+        public void SetDetachedState(bool isDetached)
+        {
+            _isDetached = isDetached;
+            if (_btnDetach != null)
+            {
+                _btnDetach.Text = isDetached ? "🔒 附加" : "🔓 分离";
             }
         }
 
