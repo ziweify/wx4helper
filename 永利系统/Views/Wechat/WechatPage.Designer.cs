@@ -47,8 +47,8 @@ namespace 永利系统.Views.Wechat
             panelControl_FastSetting = new DevExpress.XtraEditors.PanelControl();
             labelControl_FastSetting = new DevExpress.XtraEditors.LabelControl();
             panelControl_OpenData = new DevExpress.XtraEditors.PanelControl();
-            labelControl_CurrentLottery = new DevExpress.XtraEditors.LabelControl();
-            labelControl_LastLottery = new DevExpress.XtraEditors.LabelControl();
+            ucBingoDataCur = new 永利系统.Views.Wechat.Controls.UcBingoDataCur();
+            ucBingoDataLast = new 永利系统.Views.Wechat.Controls.UcBingoDataLast();
             gridControl_Contacts = new DevExpress.XtraGrid.GridControl();
             gridView_Contacts = new DevExpress.XtraGrid.Views.Grid.GridView();
             panelControl_LeftTop = new DevExpress.XtraEditors.PanelControl();
@@ -249,8 +249,8 @@ namespace 永利系统.Views.Wechat
             // 
             // panelControl_FastSetting
             // 
+            panelControl_FastSetting.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
-            panelControl_FastSetting.Dock = System.Windows.Forms.DockStyle.Top;
             panelControl_FastSetting.Location = new System.Drawing.Point(2, 390);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
             panelControl_FastSetting.Size = new System.Drawing.Size(240, 343);
@@ -268,33 +268,33 @@ namespace 永利系统.Views.Wechat
             // 
             // panelControl_OpenData
             // 
-            panelControl_OpenData.Controls.Add(labelControl_CurrentLottery);
-            panelControl_OpenData.Controls.Add(labelControl_LastLottery);
+            panelControl_OpenData.Controls.Add(ucBingoDataCur);
+            panelControl_OpenData.Controls.Add(ucBingoDataLast);
             panelControl_OpenData.Dock = System.Windows.Forms.DockStyle.Top;
             panelControl_OpenData.Location = new System.Drawing.Point(2, 193);
             panelControl_OpenData.Name = "panelControl_OpenData";
-            panelControl_OpenData.Size = new System.Drawing.Size(240, 197);
+            panelControl_OpenData.Size = new System.Drawing.Size(240, 199);
             panelControl_OpenData.TabIndex = 2;
             // 
-            // labelControl_CurrentLottery
+            // ucBingoDataCur
             // 
-            labelControl_CurrentLottery.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
-            labelControl_CurrentLottery.Appearance.Options.UseFont = true;
-            labelControl_CurrentLottery.Location = new System.Drawing.Point(5, 5);
-            labelControl_CurrentLottery.Name = "labelControl_CurrentLottery";
-            labelControl_CurrentLottery.Size = new System.Drawing.Size(60, 17);
-            labelControl_CurrentLottery.TabIndex = 0;
-            labelControl_CurrentLottery.Text = "当前开奖：";
+            ucBingoDataCur.BackColor = System.Drawing.Color.FromArgb(243, 249, 255);
+            ucBingoDataCur.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            ucBingoDataCur.Dock = System.Windows.Forms.DockStyle.Top;
+            ucBingoDataCur.Location = new System.Drawing.Point(2, 107);
+            ucBingoDataCur.Name = "ucBingoDataCur";
+            ucBingoDataCur.Size = new System.Drawing.Size(236, 90);
+            ucBingoDataCur.TabIndex = 0;
             // 
-            // labelControl_LastLottery
+            // ucBingoDataLast
             // 
-            labelControl_LastLottery.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
-            labelControl_LastLottery.Appearance.Options.UseFont = true;
-            labelControl_LastLottery.Location = new System.Drawing.Point(5, 100);
-            labelControl_LastLottery.Name = "labelControl_LastLottery";
-            labelControl_LastLottery.Size = new System.Drawing.Size(60, 17);
-            labelControl_LastLottery.TabIndex = 1;
-            labelControl_LastLottery.Text = "上期开奖：";
+            ucBingoDataLast.BackColor = System.Drawing.Color.FromArgb(255, 248, 225);
+            ucBingoDataLast.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            ucBingoDataLast.Dock = System.Windows.Forms.DockStyle.Top;
+            ucBingoDataLast.Location = new System.Drawing.Point(2, 2);
+            ucBingoDataLast.Name = "ucBingoDataLast";
+            ucBingoDataLast.Size = new System.Drawing.Size(236, 105);
+            ucBingoDataLast.TabIndex = 1;
             // 
             // gridControl_Contacts
             // 
@@ -499,7 +499,6 @@ namespace 永利系统.Views.Wechat
             panelControl_FastSetting.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)panelControl_OpenData).EndInit();
             panelControl_OpenData.ResumeLayout(false);
-            panelControl_OpenData.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)gridControl_Contacts).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Contacts).EndInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_LeftTop).EndInit();
@@ -551,8 +550,8 @@ namespace 永利系统.Views.Wechat
         private DevExpress.XtraEditors.PanelControl panelControl_FastSetting;
         private DevExpress.XtraEditors.LabelControl labelControl_FastSetting;
         private DevExpress.XtraEditors.PanelControl panelControl_OpenData;
-        private DevExpress.XtraEditors.LabelControl labelControl_CurrentLottery;
-        private DevExpress.XtraEditors.LabelControl labelControl_LastLottery;
+        private 永利系统.Views.Wechat.Controls.UcBingoDataCur ucBingoDataCur;
+        private 永利系统.Views.Wechat.Controls.UcBingoDataLast ucBingoDataLast;
         private DevExpress.XtraGrid.GridControl gridControl_Contacts;
         private DevExpress.XtraGrid.Views.Grid.GridView gridView_Contacts;
         private DevExpress.XtraEditors.PanelControl panelControl_LeftTop;

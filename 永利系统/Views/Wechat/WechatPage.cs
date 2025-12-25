@@ -18,10 +18,6 @@ namespace 永利系统.Views.Wechat
         private readonly LoggingService? _loggingService;
         private System.Windows.Forms.Timer? _refreshTimer;
         private WechatBingoGameService? _gameService;
-        
-        // Bingo 数据控件
-        private UcBingoDataCur? _ucBingoDataCur;
-        private UcBingoDataLast? _ucBingoDataLast;
 
         public WechatPage()
         {
@@ -85,38 +81,11 @@ namespace 永利系统.Views.Wechat
             // 注意：工具栏图标已在 Designer.cs 的 InitializeComponent() 中初始化
             // 这样设计器可以直接显示图标占位
             
-            // 🔥 初始化 Bingo 数据控件并添加到 panelControl_OpenData
-            InitializeBingoDataControls();
+            // 🔥 Bingo 数据控件已在设计器中添加，这里只需要绑定服务即可
+            // 不再需要动态创建控件
             
             // 初始化界面
             _loggingService.Info("微信助手", "微信助手页面已初始化");
-        }
-        
-        /// <summary>
-        /// 🔥 初始化 Bingo 数据控件
-        /// </summary>
-        private void InitializeBingoDataControls()
-        {
-            // 移除原有的 Label 控件
-            panelControl_OpenData.Controls.Clear();
-            
-            // 创建当前期控件
-            _ucBingoDataCur = new UcBingoDataCur
-            {
-                Location = new System.Drawing.Point(0, 0),
-                Dock = DockStyle.Top
-            };
-            panelControl_OpenData.Controls.Add(_ucBingoDataCur);
-            
-            // 创建上期控件
-            _ucBingoDataLast = new UcBingoDataLast
-            {
-                Location = new System.Drawing.Point(0, 90),
-                Dock = DockStyle.Top
-            };
-            panelControl_OpenData.Controls.Add(_ucBingoDataLast);
-            
-            _loggingService.Info("微信助手", "Bingo数据控件已初始化");
         }
         
         /// <summary>
@@ -130,15 +99,16 @@ namespace 永利系统.Views.Wechat
                 _gameService = new WechatBingoGameService(_loggingService);
                 
                 // 将游戏服务绑定到 Bingo 数据控件（WechatBingoGameService 实现了 ILotteryService）
-                if (_ucBingoDataCur != null && _gameService != null)
+                // 控件已在设计器中创建，这里直接使用
+                if (ucBingoDataCur != null && _gameService != null)
                 {
-                    _ucBingoDataCur.SetLotteryService(_gameService);
+                    ucBingoDataCur.SetLotteryService(_gameService);
                     _loggingService.Info("微信助手", "当前期控件已绑定游戏服务");
                 }
                 
-                if (_ucBingoDataLast != null && _gameService != null)
+                if (ucBingoDataLast != null && _gameService != null)
                 {
-                    _ucBingoDataLast.SetLotteryService(_gameService);
+                    ucBingoDataLast.SetLotteryService(_gameService);
                     _loggingService.Info("微信助手", "上期控件已绑定游戏服务");
                 }
                 
