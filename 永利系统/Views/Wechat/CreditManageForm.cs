@@ -84,7 +84,7 @@ namespace 永利系统.Views.Wechat
         /// <summary>
         /// 关闭按钮点击
         /// </summary>
-        private void SimpleButton_Close_Click(object sender, EventArgs e)
+        private void Label_Close_Click(object sender, EventArgs e)
         {
             this.Close();
         }
@@ -92,9 +92,41 @@ namespace 永利系统.Views.Wechat
         /// <summary>
         /// 最小化按钮点击
         /// </summary>
-        private void SimpleButton_Minimize_Click(object sender, EventArgs e)
+        private void Label_Minimize_Click(object sender, EventArgs e)
         {
             this.WindowState = FormWindowState.Minimized;
+        }
+
+        /// <summary>
+        /// 关闭按钮鼠标进入 - 红色悬停
+        /// </summary>
+        private void Label_Close_MouseEnter(object sender, EventArgs e)
+        {
+            label_Close.BackColor = System.Drawing.Color.FromArgb(220, 53, 69);
+        }
+
+        /// <summary>
+        /// 关闭按钮鼠标离开
+        /// </summary>
+        private void Label_Close_MouseLeave(object sender, EventArgs e)
+        {
+            label_Close.BackColor = System.Drawing.Color.Transparent;
+        }
+
+        /// <summary>
+        /// 最小化按钮鼠标进入 - 深蓝色悬停
+        /// </summary>
+        private void Label_Minimize_MouseEnter(object sender, EventArgs e)
+        {
+            label_Minimize.BackColor = System.Drawing.Color.FromArgb(0, 100, 220);
+        }
+
+        /// <summary>
+        /// 最小化按钮鼠标离开
+        /// </summary>
+        private void Label_Minimize_MouseLeave(object sender, EventArgs e)
+        {
+            label_Minimize.BackColor = System.Drawing.Color.Transparent;
         }
 
         /// <summary>

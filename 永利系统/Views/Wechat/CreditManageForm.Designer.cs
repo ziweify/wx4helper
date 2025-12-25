@@ -10,8 +10,8 @@ namespace 永利系统.Views.Wechat
         // 标题栏（可拖动区域）
         private DevExpress.XtraEditors.PanelControl panelControl_TitleBar;
         private DevExpress.XtraEditors.LabelControl labelControl_Title;
-        private DevExpress.XtraEditors.SimpleButton simpleButton_Minimize;
-        private DevExpress.XtraEditors.SimpleButton simpleButton_Close;
+        private System.Windows.Forms.Label label_Minimize;
+        private System.Windows.Forms.Label label_Close;
 
         // 工具栏区域
         private DevExpress.XtraEditors.PanelControl panelControl_Toolbar;
@@ -47,8 +47,8 @@ namespace 永利系统.Views.Wechat
             
             this.panelControl_TitleBar = new DevExpress.XtraEditors.PanelControl();
             this.labelControl_Title = new DevExpress.XtraEditors.LabelControl();
-            this.simpleButton_Minimize = new DevExpress.XtraEditors.SimpleButton();
-            this.simpleButton_Close = new DevExpress.XtraEditors.SimpleButton();
+            this.label_Minimize = new System.Windows.Forms.Label();
+            this.label_Close = new System.Windows.Forms.Label();
             
             this.panelControl_Toolbar = new DevExpress.XtraEditors.PanelControl();
             this.labelControl_StatusLabel = new DevExpress.XtraEditors.LabelControl();
@@ -82,72 +82,68 @@ namespace 永利系统.Views.Wechat
             // 
             // panelControl_TitleBar
             // 
-            this.panelControl_TitleBar.Appearance.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.panelControl_TitleBar.Appearance.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
             this.panelControl_TitleBar.Appearance.Options.UseBackColor = true;
             this.panelControl_TitleBar.BorderStyle = DevExpress.XtraEditors.Controls.BorderStyles.NoBorder;
             this.panelControl_TitleBar.Controls.Add(this.labelControl_Title);
-            this.panelControl_TitleBar.Controls.Add(this.simpleButton_Minimize);
-            this.panelControl_TitleBar.Controls.Add(this.simpleButton_Close);
+            this.panelControl_TitleBar.Controls.Add(this.label_Minimize);
+            this.panelControl_TitleBar.Controls.Add(this.label_Close);
             this.panelControl_TitleBar.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelControl_TitleBar.Location = new System.Drawing.Point(0, 0);
             this.panelControl_TitleBar.Name = "panelControl_TitleBar";
-            this.panelControl_TitleBar.Size = new System.Drawing.Size(1200, 50);
+            this.panelControl_TitleBar.Size = new System.Drawing.Size(1200, 35);
             this.panelControl_TitleBar.TabIndex = 0;
             this.panelControl_TitleBar.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PanelControl_TitleBar_MouseDown);
             
             // 
             // labelControl_Title
             // 
-            this.labelControl_Title.Appearance.Font = new System.Drawing.Font("微软雅黑", 14F, System.Drawing.FontStyle.Bold);
+            this.labelControl_Title.Appearance.Font = new System.Drawing.Font("微软雅黑", 11F, System.Drawing.FontStyle.Bold);
             this.labelControl_Title.Appearance.ForeColor = System.Drawing.Color.White;
             this.labelControl_Title.Appearance.Options.UseFont = true;
             this.labelControl_Title.Appearance.Options.UseForeColor = true;
-            this.labelControl_Title.Location = new System.Drawing.Point(20, 14);
+            this.labelControl_Title.Location = new System.Drawing.Point(15, 9);
             this.labelControl_Title.Name = "labelControl_Title";
-            this.labelControl_Title.Size = new System.Drawing.Size(123, 22);
+            this.labelControl_Title.Size = new System.Drawing.Size(108, 19);
             this.labelControl_Title.TabIndex = 0;
             this.labelControl_Title.Text = "💰 上下分管理";
             this.labelControl_Title.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PanelControl_TitleBar_MouseDown);
             
             // 
-            // simpleButton_Minimize
+            // label_Minimize
             // 
-            this.simpleButton_Minimize.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.simpleButton_Minimize.Appearance.BackColor = System.Drawing.Color.Transparent;
-            this.simpleButton_Minimize.Appearance.Font = new System.Drawing.Font("微软雅黑", 12F);
-            this.simpleButton_Minimize.Appearance.ForeColor = System.Drawing.Color.White;
-            this.simpleButton_Minimize.Appearance.Options.UseBackColor = true;
-            this.simpleButton_Minimize.Appearance.Options.UseFont = true;
-            this.simpleButton_Minimize.Appearance.Options.UseForeColor = true;
-            this.simpleButton_Minimize.AppearanceHovered.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(158)))), ((int)(((byte)(255)))));
-            this.simpleButton_Minimize.AppearanceHovered.Options.UseBackColor = true;
-            this.simpleButton_Minimize.ImageOptions.Location = DevExpress.XtraEditors.ImageLocation.MiddleCenter;
-            this.simpleButton_Minimize.Location = new System.Drawing.Point(1100, 10);
-            this.simpleButton_Minimize.Name = "simpleButton_Minimize";
-            this.simpleButton_Minimize.Size = new System.Drawing.Size(40, 30);
-            this.simpleButton_Minimize.TabIndex = 1;
-            this.simpleButton_Minimize.Text = "─";
-            this.simpleButton_Minimize.Click += new System.EventHandler(this.SimpleButton_Minimize_Click);
+            this.label_Minimize.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label_Minimize.BackColor = System.Drawing.Color.Transparent;
+            this.label_Minimize.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.label_Minimize.Font = new System.Drawing.Font("微软雅黑", 14F, System.Drawing.FontStyle.Bold);
+            this.label_Minimize.ForeColor = System.Drawing.Color.White;
+            this.label_Minimize.Location = new System.Drawing.Point(1120, 0);
+            this.label_Minimize.Name = "label_Minimize";
+            this.label_Minimize.Size = new System.Drawing.Size(40, 35);
+            this.label_Minimize.TabIndex = 1;
+            this.label_Minimize.Text = "─";
+            this.label_Minimize.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.label_Minimize.Click += new System.EventHandler(this.Label_Minimize_Click);
+            this.label_Minimize.MouseEnter += new System.EventHandler(this.Label_Minimize_MouseEnter);
+            this.label_Minimize.MouseLeave += new System.EventHandler(this.Label_Minimize_MouseLeave);
             
             // 
-            // simpleButton_Close
+            // label_Close
             // 
-            this.simpleButton_Close.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.simpleButton_Close.Appearance.BackColor = System.Drawing.Color.Transparent;
-            this.simpleButton_Close.Appearance.Font = new System.Drawing.Font("微软雅黑", 12F);
-            this.simpleButton_Close.Appearance.ForeColor = System.Drawing.Color.White;
-            this.simpleButton_Close.Appearance.Options.UseBackColor = true;
-            this.simpleButton_Close.Appearance.Options.UseFont = true;
-            this.simpleButton_Close.Appearance.Options.UseForeColor = true;
-            this.simpleButton_Close.AppearanceHovered.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(77)))), ((int)(((byte)(79)))));
-            this.simpleButton_Close.AppearanceHovered.Options.UseBackColor = true;
-            this.simpleButton_Close.ImageOptions.Location = DevExpress.XtraEditors.ImageLocation.MiddleCenter;
-            this.simpleButton_Close.Location = new System.Drawing.Point(1150, 10);
-            this.simpleButton_Close.Name = "simpleButton_Close";
-            this.simpleButton_Close.Size = new System.Drawing.Size(40, 30);
-            this.simpleButton_Close.TabIndex = 2;
-            this.simpleButton_Close.Text = "✕";
-            this.simpleButton_Close.Click += new System.EventHandler(this.SimpleButton_Close_Click);
+            this.label_Close.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label_Close.BackColor = System.Drawing.Color.Transparent;
+            this.label_Close.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.label_Close.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Bold);
+            this.label_Close.ForeColor = System.Drawing.Color.White;
+            this.label_Close.Location = new System.Drawing.Point(1160, 0);
+            this.label_Close.Name = "label_Close";
+            this.label_Close.Size = new System.Drawing.Size(40, 35);
+            this.label_Close.TabIndex = 2;
+            this.label_Close.Text = "✕";
+            this.label_Close.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.label_Close.Click += new System.EventHandler(this.Label_Close_Click);
+            this.label_Close.MouseEnter += new System.EventHandler(this.Label_Close_MouseEnter);
+            this.label_Close.MouseLeave += new System.EventHandler(this.Label_Close_MouseLeave);
             
             // 
             // panelControl_Toolbar
@@ -158,7 +154,7 @@ namespace 永利系统.Views.Wechat
             this.panelControl_Toolbar.Controls.Add(this.simpleButton_Refresh);
             this.panelControl_Toolbar.Controls.Add(this.simpleButton_Export);
             this.panelControl_Toolbar.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelControl_Toolbar.Location = new System.Drawing.Point(0, 50);
+            this.panelControl_Toolbar.Location = new System.Drawing.Point(0, 35);
             this.panelControl_Toolbar.Name = "panelControl_Toolbar";
             this.panelControl_Toolbar.Size = new System.Drawing.Size(1200, 60);
             this.panelControl_Toolbar.TabIndex = 1;
@@ -220,10 +216,10 @@ namespace 永利系统.Views.Wechat
             this.panelControl_Main.BorderStyle = DevExpress.XtraEditors.Controls.BorderStyles.NoBorder;
             this.panelControl_Main.Controls.Add(this.gridControl_Requests);
             this.panelControl_Main.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelControl_Main.Location = new System.Drawing.Point(0, 110);
+            this.panelControl_Main.Location = new System.Drawing.Point(0, 95);
             this.panelControl_Main.Name = "panelControl_Main";
             this.panelControl_Main.Padding = new System.Windows.Forms.Padding(15, 10, 15, 10);
-            this.panelControl_Main.Size = new System.Drawing.Size(1200, 540);
+            this.panelControl_Main.Size = new System.Drawing.Size(1200, 555);
             this.panelControl_Main.TabIndex = 2;
             
             // 
