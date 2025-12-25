@@ -217,6 +217,54 @@ namespace 永利系统.Views.Wechat
                 // 创建新的设置窗口（非模态）
                 _settingsForm = new WechatSettingsForm();
                 
+                // 🔥 获取真正的主窗口（MainTabs）
+                // WechatPage 是 XtraForm，被嵌入到 MainTabs 的 TabPage 中
+                // 需要通过 TopLevelControl 或 Application.OpenForms 获取主窗口
+                Form? mainForm = null;
+                
+                // 方法1：使用 TopLevelControl 属性（最可靠）
+                mainForm = this.TopLevelControl as Form;
+                
+                // 方法2：如果方法1失败，遍历所有打开的窗体查找 MainTabs
+                if (mainForm == null)
+                {
+                    foreach (Form form in Application.OpenForms)
+                    {
+                        if (form.GetType().Name == "MainTabs")
+                        {
+                            mainForm = form;
+                            break;
+                        }
+                    }
+                }
+                
+                _loggingService?.Info("微信助手", $"找到主窗口: {mainForm?.GetType().Name ?? "null"}, WindowState={mainForm?.WindowState}, Location=({mainForm?.Location.X}, {mainForm?.Location.Y}), DesktopLocation=({mainForm?.DesktopLocation.X}, {mainForm?.DesktopLocation.Y})");
+                
+                // 手动设置窗口位置为主窗口正中间
+                if (mainForm != null)
+                {
+                    _settingsForm.StartPosition = FormStartPosition.Manual;
+                    
+                    // 🔥 使用 DesktopLocation 获取窗口在屏幕上的绝对坐标
+                    // Location 可能是相对于父容器的，DesktopLocation 才是屏幕坐标
+                    int mainX = mainForm.DesktopLocation.X;
+                    int mainY = mainForm.DesktopLocation.Y;
+                    int mainWidth = mainForm.Width;
+                    int mainHeight = mainForm.Height;
+                    
+                    int x = mainX + (mainWidth - _settingsForm.Width) / 2;
+                    int y = mainY + (mainHeight - _settingsForm.Height) / 2;
+                    
+                    _settingsForm.Location = new System.Drawing.Point(x, y);
+                    _loggingService?.Info("微信助手", $"设置窗口位置: 主窗口DesktopLocation({mainX}, {mainY}, {mainWidth}x{mainHeight}), 设置窗口({x}, {y}, {_settingsForm.Width}x{_settingsForm.Height})");
+                }
+                else
+                {
+                    // 找不到主窗口，使用屏幕中心
+                    _settingsForm.StartPosition = FormStartPosition.CenterScreen;
+                    _loggingService?.Warn("微信助手", "未找到主窗口，设置窗口将在屏幕中央显示");
+                }
+                
                 // 订阅关闭事件，清理引用
                 _settingsForm.FormClosed += (s, args) =>
                 {
@@ -225,7 +273,15 @@ namespace 永利系统.Views.Wechat
                 };
                 
                 // 显示窗口（非模态，TopMost 已在窗口构造函数中设置）
-                _settingsForm.Show();
+                if (mainForm != null)
+                {
+                    _settingsForm.Show(mainForm); // 传递父窗口参数
+                }
+                else
+                {
+                    _settingsForm.Show();
+                }
+                
                 _settingsForm.Activate();
                 _settingsForm.Focus();
             }

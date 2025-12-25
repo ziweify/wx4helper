@@ -17,7 +17,7 @@ namespace 永利系统.Views.Wechat
 
             // 设置窗口属性
             this.Text = "微信助手设置";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual; // 🔥 改为 Manual，由调用方设置位置
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
