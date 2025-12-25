@@ -272,6 +272,25 @@ namespace 永利系统.Views
             }
         }
 
+        /// <summary>
+        /// 切换日志窗口显示/隐藏，并过滤指定模块（公开方法，供子窗口调用）
+        /// </summary>
+        /// <param name="module">模块名称，如"微信助手"</param>
+        public void ToggleLogWindowAndFilter(string module)
+        {
+            if (splitContainerControl1.PanelVisibility == DevExpress.XtraEditors.SplitPanelVisibility.Panel1)
+            {
+                // 日志面板隐藏，显示它
+                ShowLogWindowAndFilter(module);
+            }
+            else
+            {
+                // 日志面板显示，隐藏它
+                splitContainerControl1.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel1;
+                toolStripMenuItemViewLog.Checked = false;
+            }
+        }
+
         #region 日志窗口分离/附加
 
         /// <summary>

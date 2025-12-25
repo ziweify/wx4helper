@@ -180,10 +180,10 @@ namespace 永利系统.Views.Wechat
                 
                 if (mainForm != null && mainForm is MainTabs mainTabs)
                 {
-                    // 显示主窗口日志并过滤"微信助手"模块
-                    mainTabs.ShowLogWindowAndFilter("微信助手");
+                    // 切换主窗口日志面板显示/隐藏，并过滤"微信助手"模块
+                    mainTabs.ToggleLogWindowAndFilter("微信助手");
                     
-                    _loggingService?.Info("微信助手", "已打开主窗口日志（仅显示微信助手日志）");
+                    _loggingService?.Info("微信助手", "已切换主窗口日志（仅显示微信助手日志）");
                 }
                 else
                 {
@@ -193,9 +193,9 @@ namespace 永利系统.Views.Wechat
                     {
                         if (form is MainTabs tabs)
                         {
-                            tabs.ShowLogWindowAndFilter("微信助手");
+                            tabs.ToggleLogWindowAndFilter("微信助手");
                             found = true;
-                            _loggingService?.Info("微信助手", "已打开主窗口日志（仅显示微信助手日志）");
+                            _loggingService?.Info("微信助手", "已切换主窗口日志（仅显示微信助手日志）");
                             break;
                         }
                     }
@@ -210,8 +210,8 @@ namespace 永利系统.Views.Wechat
             }
             catch (Exception ex)
             {
-                _loggingService?.Error("微信助手", $"打开日志失败: {ex.Message}", ex);
-                MessageBox.Show($"打开日志失败:\n{ex.Message}", "错误", 
+                _loggingService?.Error("微信助手", $"切换日志失败: {ex.Message}", ex);
+                MessageBox.Show($"切换日志失败:\n{ex.Message}", "错误", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
