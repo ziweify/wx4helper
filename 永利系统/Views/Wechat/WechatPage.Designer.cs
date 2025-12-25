@@ -45,6 +45,24 @@ namespace 永利系统.Views.Wechat
             splitContainerControl_Main = new DevExpress.XtraEditors.SplitContainerControl();
             panelControl_Left = new DevExpress.XtraEditors.PanelControl();
             panelControl_FastSetting = new DevExpress.XtraEditors.PanelControl();
+            simpleButton_ConfigManager = new DevExpress.XtraEditors.SimpleButton();
+            simpleButton_StartBrowser = new DevExpress.XtraEditors.SimpleButton();
+            toggleSwitch_AutoOrdersBet = new DevExpress.XtraEditors.ToggleSwitch();
+            toggleSwitch_OrdersTasking = new DevExpress.XtraEditors.ToggleSwitch();
+            spinEdit_Odds = new DevExpress.XtraEditors.SpinEdit();
+            labelControl_Odds = new DevExpress.XtraEditors.LabelControl();
+            textEdit_AutoBetPassword = new DevExpress.XtraEditors.TextEdit();
+            labelControl_AutoBetPassword = new DevExpress.XtraEditors.LabelControl();
+            textEdit_AutoBetUsername = new DevExpress.XtraEditors.TextEdit();
+            labelControl_AutoBetUsername = new DevExpress.XtraEditors.LabelControl();
+            comboBoxEdit_Platform = new DevExpress.XtraEditors.ComboBoxEdit();
+            labelControl_Platform = new DevExpress.XtraEditors.LabelControl();
+            spinEdit_MaxBet = new DevExpress.XtraEditors.SpinEdit();
+            labelControl_MaxBet = new DevExpress.XtraEditors.LabelControl();
+            spinEdit_MinBet = new DevExpress.XtraEditors.SpinEdit();
+            labelControl_MinBet = new DevExpress.XtraEditors.LabelControl();
+            spinEdit_SealSeconds = new DevExpress.XtraEditors.SpinEdit();
+            labelControl_SealSeconds = new DevExpress.XtraEditors.LabelControl();
             labelControl_FastSetting = new DevExpress.XtraEditors.LabelControl();
             panelControl_OpenData = new DevExpress.XtraEditors.PanelControl();
             ucBingoDataCur = new 永利系统.Views.Wechat.Controls.UcBingoDataCur();
@@ -79,6 +97,15 @@ namespace 永利系统.Views.Wechat
             panelControl_Left.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)panelControl_FastSetting).BeginInit();
             panelControl_FastSetting.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)toggleSwitch_AutoOrdersBet.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)toggleSwitch_OrdersTasking.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_Odds.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetPassword.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetUsername.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)comboBoxEdit_Platform.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_MaxBet.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_MinBet.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_SealSeconds.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_OpenData).BeginInit();
             panelControl_OpenData.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridControl_Contacts).BeginInit();
@@ -250,17 +277,213 @@ namespace 永利系统.Views.Wechat
             // panelControl_FastSetting
             // 
             panelControl_FastSetting.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            panelControl_FastSetting.Controls.Add(simpleButton_ConfigManager);
+            panelControl_FastSetting.Controls.Add(simpleButton_StartBrowser);
+            panelControl_FastSetting.Controls.Add(toggleSwitch_AutoOrdersBet);
+            panelControl_FastSetting.Controls.Add(toggleSwitch_OrdersTasking);
+            panelControl_FastSetting.Controls.Add(spinEdit_Odds);
+            panelControl_FastSetting.Controls.Add(labelControl_Odds);
+            panelControl_FastSetting.Controls.Add(textEdit_AutoBetPassword);
+            panelControl_FastSetting.Controls.Add(labelControl_AutoBetPassword);
+            panelControl_FastSetting.Controls.Add(textEdit_AutoBetUsername);
+            panelControl_FastSetting.Controls.Add(labelControl_AutoBetUsername);
+            panelControl_FastSetting.Controls.Add(comboBoxEdit_Platform);
+            panelControl_FastSetting.Controls.Add(labelControl_Platform);
+            panelControl_FastSetting.Controls.Add(spinEdit_MaxBet);
+            panelControl_FastSetting.Controls.Add(labelControl_MaxBet);
+            panelControl_FastSetting.Controls.Add(spinEdit_MinBet);
+            panelControl_FastSetting.Controls.Add(labelControl_MinBet);
+            panelControl_FastSetting.Controls.Add(spinEdit_SealSeconds);
+            panelControl_FastSetting.Controls.Add(labelControl_SealSeconds);
             panelControl_FastSetting.Controls.Add(labelControl_FastSetting);
             panelControl_FastSetting.Location = new System.Drawing.Point(2, 390);
             panelControl_FastSetting.Name = "panelControl_FastSetting";
             panelControl_FastSetting.Size = new System.Drawing.Size(240, 343);
             panelControl_FastSetting.TabIndex = 3;
             // 
+            // simpleButton_ConfigManager
+            // 
+            simpleButton_ConfigManager.Location = new System.Drawing.Point(120, 265);
+            simpleButton_ConfigManager.Name = "simpleButton_ConfigManager";
+            simpleButton_ConfigManager.Size = new System.Drawing.Size(110, 25);
+            simpleButton_ConfigManager.TabIndex = 18;
+            simpleButton_ConfigManager.Text = "配置管理";
+            // 
+            // simpleButton_StartBrowser
+            // 
+            simpleButton_StartBrowser.Location = new System.Drawing.Point(5, 265);
+            simpleButton_StartBrowser.Name = "simpleButton_StartBrowser";
+            simpleButton_StartBrowser.Size = new System.Drawing.Size(110, 25);
+            simpleButton_StartBrowser.TabIndex = 17;
+            simpleButton_StartBrowser.Text = "启动浏览器";
+            // 
+            // toggleSwitch_AutoOrdersBet
+            // 
+            toggleSwitch_AutoOrdersBet.Location = new System.Drawing.Point(5, 235);
+            toggleSwitch_AutoOrdersBet.Name = "toggleSwitch_AutoOrdersBet";
+            toggleSwitch_AutoOrdersBet.Properties.OffText = "飞单停";
+            toggleSwitch_AutoOrdersBet.Properties.OnText = "飞单中";
+            toggleSwitch_AutoOrdersBet.Size = new System.Drawing.Size(110, 19);
+            toggleSwitch_AutoOrdersBet.TabIndex = 16;
+            // 
+            // toggleSwitch_OrdersTasking
+            // 
+            toggleSwitch_OrdersTasking.Location = new System.Drawing.Point(5, 205);
+            toggleSwitch_OrdersTasking.Name = "toggleSwitch_OrdersTasking";
+            toggleSwitch_OrdersTasking.Properties.OffText = "收单停";
+            toggleSwitch_OrdersTasking.Properties.OnText = "收单中";
+            toggleSwitch_OrdersTasking.Size = new System.Drawing.Size(110, 19);
+            toggleSwitch_OrdersTasking.TabIndex = 15;
+            // 
+            // spinEdit_Odds
+            // 
+            spinEdit_Odds.EditValue = new decimal(new int[] { 197, 0, 0, 131072 });
+            spinEdit_Odds.Location = new System.Drawing.Point(47, 77);
+            spinEdit_Odds.Name = "spinEdit_Odds";
+            spinEdit_Odds.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_Odds.Properties.DisplayFormat.FormatString = "F2";
+            spinEdit_Odds.Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_Odds.Properties.EditFormat.FormatString = "F2";
+            spinEdit_Odds.Properties.EditFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
+            spinEdit_Odds.Properties.MaxValue = new decimal(new int[] { 1000, 0, 0, 0 });
+            spinEdit_Odds.Size = new System.Drawing.Size(65, 20);
+            spinEdit_Odds.TabIndex = 14;
+            // 
+            // labelControl_Odds
+            // 
+            labelControl_Odds.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_Odds.Appearance.Options.UseFont = true;
+            labelControl_Odds.Location = new System.Drawing.Point(5, 79);
+            labelControl_Odds.Name = "labelControl_Odds";
+            labelControl_Odds.Size = new System.Drawing.Size(27, 17);
+            labelControl_Odds.TabIndex = 13;
+            labelControl_Odds.Text = "赔率:";
+            // 
+            // textEdit_AutoBetPassword
+            // 
+            textEdit_AutoBetPassword.Location = new System.Drawing.Point(47, 177);
+            textEdit_AutoBetPassword.Name = "textEdit_AutoBetPassword";
+            textEdit_AutoBetPassword.Properties.NullValuePrompt = "投注密码";
+            textEdit_AutoBetPassword.Properties.PasswordChar = '*';
+            textEdit_AutoBetPassword.Size = new System.Drawing.Size(111, 20);
+            textEdit_AutoBetPassword.TabIndex = 12;
+            // 
+            // labelControl_AutoBetPassword
+            // 
+            labelControl_AutoBetPassword.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_AutoBetPassword.Appearance.Options.UseFont = true;
+            labelControl_AutoBetPassword.Location = new System.Drawing.Point(5, 179);
+            labelControl_AutoBetPassword.Name = "labelControl_AutoBetPassword";
+            labelControl_AutoBetPassword.Size = new System.Drawing.Size(27, 17);
+            labelControl_AutoBetPassword.TabIndex = 11;
+            labelControl_AutoBetPassword.Text = "密码:";
+            // 
+            // textEdit_AutoBetUsername
+            // 
+            textEdit_AutoBetUsername.Location = new System.Drawing.Point(47, 152);
+            textEdit_AutoBetUsername.Name = "textEdit_AutoBetUsername";
+            textEdit_AutoBetUsername.Properties.NullValuePrompt = "投注账号";
+            textEdit_AutoBetUsername.Size = new System.Drawing.Size(111, 20);
+            textEdit_AutoBetUsername.TabIndex = 10;
+            // 
+            // labelControl_AutoBetUsername
+            // 
+            labelControl_AutoBetUsername.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_AutoBetUsername.Appearance.Options.UseFont = true;
+            labelControl_AutoBetUsername.Location = new System.Drawing.Point(5, 154);
+            labelControl_AutoBetUsername.Name = "labelControl_AutoBetUsername";
+            labelControl_AutoBetUsername.Size = new System.Drawing.Size(27, 17);
+            labelControl_AutoBetUsername.TabIndex = 9;
+            labelControl_AutoBetUsername.Text = "账号:";
+            // 
+            // comboBoxEdit_Platform
+            // 
+            comboBoxEdit_Platform.EditValue = "";
+            comboBoxEdit_Platform.Location = new System.Drawing.Point(47, 127);
+            comboBoxEdit_Platform.Name = "comboBoxEdit_Platform";
+            comboBoxEdit_Platform.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            comboBoxEdit_Platform.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor;
+            comboBoxEdit_Platform.Size = new System.Drawing.Size(111, 20);
+            comboBoxEdit_Platform.TabIndex = 8;
+            // 
+            // labelControl_Platform
+            // 
+            labelControl_Platform.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_Platform.Appearance.Options.UseFont = true;
+            labelControl_Platform.Location = new System.Drawing.Point(5, 129);
+            labelControl_Platform.Name = "labelControl_Platform";
+            labelControl_Platform.Size = new System.Drawing.Size(27, 17);
+            labelControl_Platform.TabIndex = 7;
+            labelControl_Platform.Text = "盘口:";
+            // 
+            // spinEdit_MaxBet
+            // 
+            spinEdit_MaxBet.EditValue = new decimal(new int[] { 20000, 0, 0, 0 });
+            spinEdit_MaxBet.Location = new System.Drawing.Point(164, 52);
+            spinEdit_MaxBet.Name = "spinEdit_MaxBet";
+            spinEdit_MaxBet.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_MaxBet.Properties.MaxValue = new decimal(new int[] { 1000000, 0, 0, 0 });
+            spinEdit_MaxBet.Properties.MinValue = new decimal(new int[] { 1, 0, 0, 0 });
+            spinEdit_MaxBet.Size = new System.Drawing.Size(66, 20);
+            spinEdit_MaxBet.TabIndex = 6;
+            // 
+            // labelControl_MaxBet
+            // 
+            labelControl_MaxBet.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_MaxBet.Appearance.Options.UseFont = true;
+            labelControl_MaxBet.Location = new System.Drawing.Point(122, 54);
+            labelControl_MaxBet.Name = "labelControl_MaxBet";
+            labelControl_MaxBet.Size = new System.Drawing.Size(36, 17);
+            labelControl_MaxBet.TabIndex = 5;
+            labelControl_MaxBet.Text = "最大额";
+            // 
+            // spinEdit_MinBet
+            // 
+            spinEdit_MinBet.EditValue = new decimal(new int[] { 20, 0, 0, 0 });
+            spinEdit_MinBet.Location = new System.Drawing.Point(47, 53);
+            spinEdit_MinBet.Name = "spinEdit_MinBet";
+            spinEdit_MinBet.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_MinBet.Properties.MaxValue = new decimal(new int[] { 10000, 0, 0, 0 });
+            spinEdit_MinBet.Properties.MinValue = new decimal(new int[] { 1, 0, 0, 0 });
+            spinEdit_MinBet.Size = new System.Drawing.Size(65, 20);
+            spinEdit_MinBet.TabIndex = 4;
+            // 
+            // labelControl_MinBet
+            // 
+            labelControl_MinBet.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_MinBet.Appearance.Options.UseFont = true;
+            labelControl_MinBet.Location = new System.Drawing.Point(5, 55);
+            labelControl_MinBet.Name = "labelControl_MinBet";
+            labelControl_MinBet.Size = new System.Drawing.Size(36, 17);
+            labelControl_MinBet.TabIndex = 3;
+            labelControl_MinBet.Text = "最小额";
+            // 
+            // spinEdit_SealSeconds
+            // 
+            spinEdit_SealSeconds.EditValue = new decimal(new int[] { 39, 0, 0, 0 });
+            spinEdit_SealSeconds.Location = new System.Drawing.Point(71, 28);
+            spinEdit_SealSeconds.Name = "spinEdit_SealSeconds";
+            spinEdit_SealSeconds.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] { new DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo) });
+            spinEdit_SealSeconds.Properties.MaxValue = new decimal(new int[] { 300, 0, 0, 0 });
+            spinEdit_SealSeconds.Properties.MinValue = new decimal(new int[] { 10, 0, 0, 0 });
+            spinEdit_SealSeconds.Size = new System.Drawing.Size(43, 20);
+            spinEdit_SealSeconds.TabIndex = 2;
+            // 
+            // labelControl_SealSeconds
+            // 
+            labelControl_SealSeconds.Appearance.Font = new System.Drawing.Font("微软雅黑", 9F);
+            labelControl_SealSeconds.Appearance.Options.UseFont = true;
+            labelControl_SealSeconds.Location = new System.Drawing.Point(5, 30);
+            labelControl_SealSeconds.Name = "labelControl_SealSeconds";
+            labelControl_SealSeconds.Size = new System.Drawing.Size(60, 17);
+            labelControl_SealSeconds.TabIndex = 1;
+            labelControl_SealSeconds.Text = "封盘提前秒";
+            // 
             // labelControl_FastSetting
             // 
             labelControl_FastSetting.Appearance.Font = new System.Drawing.Font("微软雅黑", 10F, System.Drawing.FontStyle.Bold);
             labelControl_FastSetting.Appearance.Options.UseFont = true;
-            labelControl_FastSetting.Location = new System.Drawing.Point(10, 375);
+            labelControl_FastSetting.Location = new System.Drawing.Point(93, 5);
             labelControl_FastSetting.Name = "labelControl_FastSetting";
             labelControl_FastSetting.Size = new System.Drawing.Size(56, 19);
             labelControl_FastSetting.TabIndex = 0;
@@ -497,6 +720,15 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)panelControl_FastSetting).EndInit();
             panelControl_FastSetting.ResumeLayout(false);
             panelControl_FastSetting.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)toggleSwitch_AutoOrdersBet.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)toggleSwitch_OrdersTasking.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_Odds.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetPassword.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)textEdit_AutoBetUsername.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)comboBoxEdit_Platform.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_MaxBet.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_MinBet.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)spinEdit_SealSeconds.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_OpenData).EndInit();
             panelControl_OpenData.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridControl_Contacts).EndInit();
@@ -549,6 +781,24 @@ namespace 永利系统.Views.Wechat
         private DevExpress.XtraEditors.PanelControl panelControl_Left;
         private DevExpress.XtraEditors.PanelControl panelControl_FastSetting;
         private DevExpress.XtraEditors.LabelControl labelControl_FastSetting;
+        private DevExpress.XtraEditors.ToggleSwitch toggleSwitch_OrdersTasking;
+        private DevExpress.XtraEditors.ToggleSwitch toggleSwitch_AutoOrdersBet;
+        private DevExpress.XtraEditors.LabelControl labelControl_SealSeconds;
+        private DevExpress.XtraEditors.SpinEdit spinEdit_SealSeconds;
+        private DevExpress.XtraEditors.LabelControl labelControl_MinBet;
+        private DevExpress.XtraEditors.SpinEdit spinEdit_MinBet;
+        private DevExpress.XtraEditors.LabelControl labelControl_MaxBet;
+        private DevExpress.XtraEditors.SpinEdit spinEdit_MaxBet;
+        private DevExpress.XtraEditors.LabelControl labelControl_Platform;
+        private DevExpress.XtraEditors.ComboBoxEdit comboBoxEdit_Platform;
+        private DevExpress.XtraEditors.LabelControl labelControl_AutoBetUsername;
+        private DevExpress.XtraEditors.TextEdit textEdit_AutoBetUsername;
+        private DevExpress.XtraEditors.LabelControl labelControl_AutoBetPassword;
+        private DevExpress.XtraEditors.TextEdit textEdit_AutoBetPassword;
+        private DevExpress.XtraEditors.LabelControl labelControl_Odds;
+        private DevExpress.XtraEditors.SpinEdit spinEdit_Odds;
+        private DevExpress.XtraEditors.SimpleButton simpleButton_StartBrowser;
+        private DevExpress.XtraEditors.SimpleButton simpleButton_ConfigManager;
         private DevExpress.XtraEditors.PanelControl panelControl_OpenData;
         private 永利系统.Views.Wechat.Controls.UcBingoDataCur ucBingoDataCur;
         private 永利系统.Views.Wechat.Controls.UcBingoDataLast ucBingoDataLast;
