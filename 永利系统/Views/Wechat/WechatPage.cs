@@ -18,6 +18,7 @@ namespace 永利系统.Views.Wechat
         private readonly LoggingService? _loggingService;
         private System.Windows.Forms.Timer? _refreshTimer;
         private WechatBingoGameService? _gameService;
+        private WechatSettingsForm? _settingsForm; // 设置窗口引用
 
         public WechatPage()
         {
@@ -189,7 +190,50 @@ namespace 永利系统.Views.Wechat
 
         private void ToolStripButton_Settings_Click(object sender, EventArgs e)
         {
-            _loggingService?.Info("微信助手", "设置按钮被点击");
+            try
+            {
+                // 检查设置窗口是否已打开
+                if (_settingsForm != null && !_settingsForm.IsDisposed)
+                {
+                    // 窗口已打开，激活并显示到前台
+                    _loggingService?.Info("微信助手", "设置窗口已打开，激活到前台");
+                    
+                    // 如果窗口最小化，先恢复
+                    if (_settingsForm.WindowState == FormWindowState.Minimized)
+                    {
+                        _settingsForm.WindowState = FormWindowState.Normal;
+                    }
+                    
+                    // 激活窗口并显示到最前面
+                    _settingsForm.Activate();
+                    _settingsForm.BringToFront();
+                    _settingsForm.Focus();
+                    
+                    return;
+                }
+                
+                _loggingService?.Info("微信助手", "创建新的设置窗口");
+                
+                // 创建新的设置窗口（非模态）
+                _settingsForm = new WechatSettingsForm();
+                
+                // 订阅关闭事件，清理引用
+                _settingsForm.FormClosed += (s, args) =>
+                {
+                    _settingsForm = null;
+                    _loggingService?.Info("微信助手", "设置窗口已关闭");
+                };
+                
+                // 显示窗口（非模态，TopMost 已在窗口构造函数中设置）
+                _settingsForm.Show();
+                _settingsForm.Activate();
+                _settingsForm.Focus();
+            }
+            catch (Exception ex)
+            {
+                _loggingService?.Error("微信助手", $"打开设置窗口失败: {ex.Message}", ex);
+                MessageBox.Show($"打开设置窗口失败:\n{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>

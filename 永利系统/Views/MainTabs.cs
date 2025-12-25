@@ -132,17 +132,17 @@ namespace 永利系统.Views
                 return;
             }
             
-            // 创建所有标签页（使用 Form 而不是 UserControl）
+            // 创建所有标签页（顺序：主页/微信助手/数据管理/报表分析/系统设置）
             CreateTabPage("主页", "Dashboard", new DashboardPage());
+            CreateTabPage("微信助手", "Wechat", new WechatPage());
             CreateTabPage("数据管理", "DataManagement", new DataManagementPage());
             CreateTabPage("报表分析", "Reports", new ReportsPage());
             CreateTabPage("系统设置", "Settings", new SettingsPage());
-            CreateTabPage("微信助手", "Wechat", new WechatPage());
             
-            // 默认选中第一个标签页
-            if (xtraTabControl1.TabPages.Count > 0)
+            // 默认选中微信助手（第2个标签页，索引为1）
+            if (xtraTabControl1.TabPages.Count > 1)
             {
-                xtraTabControl1.SelectedTabPageIndex = 0;
+                xtraTabControl1.SelectedTabPageIndex = 1; // 微信助手
             }
         }
 
