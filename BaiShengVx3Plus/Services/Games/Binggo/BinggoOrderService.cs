@@ -179,6 +179,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     float betFronMoney = member.Balance;  // 下注前余额
                     float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（暂存）
                     
+                    // 🔥 获取当前结算方式配置，生成备注（创建时差额为0，结算后才会更新）
+                    bool isIntegerSettlement = _configService.GetIsIntegerSettlement();
+                    string settlementNote = isIntegerSettlement ? "结算:赚点(0)" : "结算:精确";
+                    
                     order = new V2MemberOrder
                 {
                     // 🔥 会员信息
@@ -215,6 +219,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     OrderType = member.State == MemberState.托 ? OrderType.托 : OrderType.待定,
                     MemberState = member.State,  // 🔥 记录会员等级快照（订单创建时的会员状态）
                     IsSettled = false,
+                    
+                    // 🔥 备注：记录结算方式（格式：键值对用分号分隔）
+                    Notes = settlementNote,
                     
                     // 🔥 开奖服务专用字段（保留兼容）
                     BetContent = betContent.ToStandardString(),
@@ -424,10 +431,23 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 3. 在原订单上结算（参考 F5BotV2 第 622-624 行）
                 await SettleSingleOrderAsync(order, lotteryData);
                 
-                // 🔥 4. 添加备注（参考 F5BotV2：记录补单信息）
-                string notePrefix = string.IsNullOrEmpty(order.Notes) ? "" : $"{order.Notes}\r";
-                string noteSuffix = $"{type} - {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-                order.Notes = $"{notePrefix}{noteSuffix}";
+                // 🔥 4. 更新备注：添加补单标记
+                // 格式：结算:xxx; 补单:是
+                // 如果原备注有结算信息，保留并添加补单标记
+                string settlementPart = "";
+                if (!string.IsNullOrEmpty(order.Notes))
+                {
+                    // 检查是否已有结算信息
+                    if (order.Notes.Contains("结算:"))
+                    {
+                        settlementPart = order.Notes;
+                    }
+                }
+                
+                // 添加补单标记
+                order.Notes = string.IsNullOrEmpty(settlementPart) 
+                    ? "补单:是" 
+                    : $"{settlementPart}; 补单:是";
                 
                 // 🔥 5. 更新订单到数据库（备注已更新）
                 // 🔥 使用全局锁：虽然这里只更新订单，但保持一致性
@@ -594,11 +614,22 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 //   - 中奖时：总投注额 × 赔率（总赢金额，包含本金）
                 //   - 未中奖时：-总投注额（损失）
                 decimal totalWin = 0m;  // 总赢金额（包含本金）
+                decimal totalWinBeforeFloor = 0m;  // 取整前的总赢金额（用于计算差额）
+                
                 foreach (var item in betContent.Items)
                 {
-                    decimal profit = BinggoHelper.CalculateProfit(item, lotteryData, (decimal)odds, isIntegerSettlement);
-                    if (profit > 0)  // 中奖了
+                    bool isWin = BinggoHelper.IsWin(item, lotteryData);
+                    if (isWin)  // 中奖了
                     {
+                        // 计算该项的赢金额（包含本金）
+                        decimal profitBeforeFloor = item.TotalAmount * (decimal)odds;
+                        totalWinBeforeFloor += profitBeforeFloor;
+                        
+                        // 如果是整数结算，取整
+                        decimal profit = isIntegerSettlement 
+                            ? Math.Floor(profitBeforeFloor) 
+                            : profitBeforeFloor;
+                        
                         totalWin += profit;  // 累加总赢金额（包含本金）
                     }
                 }
@@ -606,9 +637,20 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 6. 计算纯利 = 总赢金额 - 投注额
                 decimal netProfit = totalWin - (decimal)order.AmountTotal;
                 
-                // 7. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
+                // 7. 计算赚取差额（仅整数结算时有差额）
+                decimal earnedDiff = isIntegerSettlement ? totalWinBeforeFloor - totalWin : 0m;
+                
+                // 8. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
                 order.Profit = (float)totalWin;  // 总赢金额（包含本金）
                 order.NetProfit = (float)netProfit;  // 纯利 = 总赢 - 投注额
+                order.OrderStatus = OrderStatus.已完成;
+                order.IsSettled = true;
+                
+                // 9. 更新备注：结算方式 + 赚取差额
+                string settlementNote = isIntegerSettlement 
+                    ? $"结算:赚点({earnedDiff:F2})" 
+                    : "结算:精确";
+                order.Notes = settlementNote;
                 order.OrderStatus = OrderStatus.已完成;
                 order.IsSettled = true;
                 
