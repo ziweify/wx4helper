@@ -59,6 +59,9 @@ namespace BaiShengVx3Plus
             txtAutoBetPassword = new Sunny.UI.UITextBox();
             lblOdds = new Label();
             txtOdds = new Sunny.UI.UIDoubleUpDown();
+            lblSettlement = new Label();
+            rdoSettlementDecimal = new RadioButton();
+            rdoSettlementInteger = new RadioButton();
             btnStartBrowser = new Sunny.UI.UIButton();
             btnConfigManager = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
@@ -330,10 +333,45 @@ namespace BaiShengVx3Plus
             txtOdds.TextAlignment = ContentAlignment.MiddleLeft;
             txtOdds.Value = 1.97D;
             // 
+            // lblSettlement
+            // 
+            lblSettlement.Font = new Font("微软雅黑", 9F);
+            lblSettlement.Location = new Point(5, 230);
+            lblSettlement.Name = "lblSettlement";
+            lblSettlement.Size = new Size(50, 20);
+            lblSettlement.TabIndex = 15;
+            lblSettlement.Text = "结算:";
+            lblSettlement.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // rdoSettlementDecimal
+            // 
+            rdoSettlementDecimal.AutoSize = true;
+            rdoSettlementDecimal.Checked = true;
+            rdoSettlementDecimal.Font = new Font("微软雅黑", 9F);
+            rdoSettlementDecimal.Location = new Point(60, 230);
+            rdoSettlementDecimal.Name = "rdoSettlementDecimal";
+            rdoSettlementDecimal.Size = new Size(69, 21);
+            rdoSettlementDecimal.TabIndex = 16;
+            rdoSettlementDecimal.TabStop = true;
+            rdoSettlementDecimal.Text = "小数2位";
+            rdoSettlementDecimal.UseVisualStyleBackColor = true;
+            // 
+            // rdoSettlementInteger
+            // 
+            rdoSettlementInteger.AutoSize = true;
+            rdoSettlementInteger.Font = new Font("微软雅黑", 9F);
+            rdoSettlementInteger.Location = new Point(140, 230);
+            rdoSettlementInteger.Name = "rdoSettlementInteger";
+            rdoSettlementInteger.Size = new Size(50, 21);
+            rdoSettlementInteger.TabIndex = 17;
+            rdoSettlementInteger.TabStop = true;
+            rdoSettlementInteger.Text = "整数";
+            rdoSettlementInteger.UseVisualStyleBackColor = true;
+            // 
             // btnStartBrowser
             // 
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
-            btnStartBrowser.Location = new Point(120, 253);
+            btnStartBrowser.Location = new Point(120, 251);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
             btnStartBrowser.Size = new Size(110, 25);
@@ -345,7 +383,7 @@ namespace BaiShengVx3Plus
             // btnConfigManager
             // 
             btnConfigManager.Font = new Font("微软雅黑", 9F);
-            btnConfigManager.Location = new Point(120, 282);
+            btnConfigManager.Location = new Point(120, 284);
             btnConfigManager.MinimumSize = new Size(1, 1);
             btnConfigManager.Name = "btnConfigManager";
             btnConfigManager.Size = new Size(110, 25);
@@ -507,14 +545,17 @@ namespace BaiShengVx3Plus
             pnl_fastsetting.Controls.Add(txtAutoBetPassword);
             pnl_fastsetting.Controls.Add(lblOdds);
             pnl_fastsetting.Controls.Add(txtOdds);
+            pnl_fastsetting.Controls.Add(lblSettlement);
+            pnl_fastsetting.Controls.Add(rdoSettlementDecimal);
+            pnl_fastsetting.Controls.Add(rdoSettlementInteger);
             pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Controls.Add(btnConfigManager);
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            pnl_fastsetting.Location = new Point(5, 377);
+            pnl_fastsetting.Location = new Point(4, 378);
             pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
-            pnl_fastsetting.Size = new Size(237, 311);
+            pnl_fastsetting.Size = new Size(237, 310);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
@@ -524,7 +565,7 @@ namespace BaiShengVx3Plus
             swi_OrdersTasking.ActiveText = "收单中";
             swi_OrdersTasking.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             swi_OrdersTasking.InActiveText = "收单停";
-            swi_OrdersTasking.Location = new Point(10, 255);
+            swi_OrdersTasking.Location = new Point(10, 253);
             swi_OrdersTasking.MinimumSize = new Size(1, 1);
             swi_OrdersTasking.Name = "swi_OrdersTasking";
             swi_OrdersTasking.Size = new Size(85, 25);
@@ -537,7 +578,7 @@ namespace BaiShengVx3Plus
             swiAutoOrdersBet.ActiveText = "飞单中";
             swiAutoOrdersBet.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             swiAutoOrdersBet.InActiveText = "飞单停";
-            swiAutoOrdersBet.Location = new Point(10, 282);
+            swiAutoOrdersBet.Location = new Point(10, 284);
             swiAutoOrdersBet.MinimumSize = new Size(1, 1);
             swiAutoOrdersBet.Name = "swiAutoOrdersBet";
             swiAutoOrdersBet.Size = new Size(85, 25);
@@ -910,9 +951,9 @@ namespace BaiShengVx3Plus
             // ucUserInfo1
             // 
             ucUserInfo1.BackColor = Color.White;
-            ucUserInfo1.Location = new Point(1, 0);
+            ucUserInfo1.Location = new Point(1, 5);
             ucUserInfo1.Name = "ucUserInfo1";
-            ucUserInfo1.Size = new Size(246, 60);
+            ucUserInfo1.Size = new Size(246, 55);
             ucUserInfo1.TabIndex = 5;
             // 
             // btnClearData
@@ -1037,6 +1078,7 @@ namespace BaiShengVx3Plus
             splitContainerMain.ResumeLayout(false);
             pnlLeft.ResumeLayout(false);
             pnl_fastsetting.ResumeLayout(false);
+            pnl_fastsetting.PerformLayout();
             pnl_opendata.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvContacts).EndInit();
             pnlLeftTop.ResumeLayout(false);
@@ -1121,6 +1163,9 @@ namespace BaiShengVx3Plus
         private Sunny.UI.UITextBox txtAutoBetPassword;
         private System.Windows.Forms.Label lblOdds;
         private Sunny.UI.UIDoubleUpDown txtOdds;
+        private System.Windows.Forms.Label lblSettlement;
+        private System.Windows.Forms.RadioButton rdoSettlementDecimal;
+        private System.Windows.Forms.RadioButton rdoSettlementInteger;
         private Sunny.UI.UIButton btnStartBrowser;
         private Sunny.UI.UIButton btnConfigManager;
         private Sunny.UI.UISwitch swi_OrdersTasking;
