@@ -135,7 +135,7 @@ namespace BaiShengVx3Plus
             // 
             ucBinggoDataCur.BackColor = Color.FromArgb(243, 249, 255);
             ucBinggoDataCur.BorderStyle = BorderStyle.FixedSingle;
-            ucBinggoDataCur.Location = new Point(0, 5);
+            ucBinggoDataCur.Location = new Point(0, 3);
             ucBinggoDataCur.Name = "ucBinggoDataCur";
             ucBinggoDataCur.Size = new Size(239, 85);
             ucBinggoDataCur.TabIndex = 0;
@@ -151,7 +151,7 @@ namespace BaiShengVx3Plus
             // lblSealSeconds
             // 
             lblSealSeconds.Font = new Font("微软雅黑", 10F);
-            lblSealSeconds.Location = new Point(5, 25);
+            lblSealSeconds.Location = new Point(5, 22);
             lblSealSeconds.Name = "lblSealSeconds";
             lblSealSeconds.Size = new Size(90, 23);
             lblSealSeconds.TabIndex = 0;
@@ -161,7 +161,7 @@ namespace BaiShengVx3Plus
             // txtSealSeconds
             // 
             txtSealSeconds.Font = new Font("微软雅黑", 10F);
-            txtSealSeconds.Location = new Point(100, 23);
+            txtSealSeconds.Location = new Point(100, 20);
             txtSealSeconds.Margin = new Padding(4, 5, 4, 5);
             txtSealSeconds.Maximum = 300;
             txtSealSeconds.Minimum = 10;
@@ -177,7 +177,7 @@ namespace BaiShengVx3Plus
             // lblMinBet
             // 
             lblMinBet.Font = new Font("微软雅黑", 10F);
-            lblMinBet.Location = new Point(5, 58);
+            lblMinBet.Location = new Point(5, 54);
             lblMinBet.Name = "lblMinBet";
             lblMinBet.Size = new Size(90, 23);
             lblMinBet.TabIndex = 2;
@@ -187,7 +187,7 @@ namespace BaiShengVx3Plus
             // txtMinBet
             // 
             txtMinBet.Font = new Font("微软雅黑", 10F);
-            txtMinBet.Location = new Point(100, 56);
+            txtMinBet.Location = new Point(100, 52);
             txtMinBet.Margin = new Padding(4, 5, 4, 5);
             txtMinBet.Maximum = 10000;
             txtMinBet.Minimum = 1;
@@ -202,7 +202,7 @@ namespace BaiShengVx3Plus
             // lblMaxBet
             // 
             lblMaxBet.Font = new Font("微软雅黑", 10F);
-            lblMaxBet.Location = new Point(5, 91);
+            lblMaxBet.Location = new Point(5, 86);
             lblMaxBet.Name = "lblMaxBet";
             lblMaxBet.Size = new Size(90, 23);
             lblMaxBet.TabIndex = 4;
@@ -212,7 +212,7 @@ namespace BaiShengVx3Plus
             // txtMaxBet
             // 
             txtMaxBet.Font = new Font("微软雅黑", 10F);
-            txtMaxBet.Location = new Point(100, 89);
+            txtMaxBet.Location = new Point(100, 84);
             txtMaxBet.Margin = new Padding(4, 5, 4, 5);
             txtMaxBet.Maximum = 1000000;
             txtMaxBet.Minimum = 1;
@@ -227,7 +227,7 @@ namespace BaiShengVx3Plus
             // lblPlatform
             // 
             lblPlatform.Font = new Font("微软雅黑", 9F);
-            lblPlatform.Location = new Point(5, 124);
+            lblPlatform.Location = new Point(5, 120);
             lblPlatform.Name = "lblPlatform";
             lblPlatform.Size = new Size(50, 20);
             lblPlatform.TabIndex = 7;
@@ -241,9 +241,8 @@ namespace BaiShengVx3Plus
             cbxPlatform.FillColor = Color.White;
             cbxPlatform.Font = new Font("微软雅黑", 9F);
             cbxPlatform.ItemHoverColor = Color.FromArgb(155, 200, 255);
-            // 🔥 平台列表将在 VxMain_Load 中从 BetPlatformHelper 统一初始化
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(235, 243, 255);
-            cbxPlatform.Location = new Point(60, 122);
+            cbxPlatform.Location = new Point(60, 118);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);
             cbxPlatform.MinimumSize = new Size(63, 0);
             cbxPlatform.Name = "cbxPlatform";
@@ -257,7 +256,7 @@ namespace BaiShengVx3Plus
             // lblAutoBetUsername
             // 
             lblAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            lblAutoBetUsername.Location = new Point(5, 154);
+            lblAutoBetUsername.Location = new Point(5, 148);
             lblAutoBetUsername.Name = "lblAutoBetUsername";
             lblAutoBetUsername.Size = new Size(50, 20);
             lblAutoBetUsername.TabIndex = 9;
@@ -267,7 +266,7 @@ namespace BaiShengVx3Plus
             // txtAutoBetUsername
             // 
             txtAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            txtAutoBetUsername.Location = new Point(60, 152);
+            txtAutoBetUsername.Location = new Point(60, 146);
             txtAutoBetUsername.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetUsername.MinimumSize = new Size(1, 16);
             txtAutoBetUsername.Name = "txtAutoBetUsername";
@@ -281,7 +280,7 @@ namespace BaiShengVx3Plus
             // lblAutoBetPassword
             // 
             lblAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            lblAutoBetPassword.Location = new Point(5, 184);
+            lblAutoBetPassword.Location = new Point(5, 175);
             lblAutoBetPassword.Name = "lblAutoBetPassword";
             lblAutoBetPassword.Size = new Size(50, 20);
             lblAutoBetPassword.TabIndex = 11;
@@ -291,7 +290,7 @@ namespace BaiShengVx3Plus
             // txtAutoBetPassword
             // 
             txtAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            txtAutoBetPassword.Location = new Point(60, 182);
+            txtAutoBetPassword.Location = new Point(60, 174);
             txtAutoBetPassword.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetPassword.MinimumSize = new Size(1, 16);
             txtAutoBetPassword.Name = "txtAutoBetPassword";
@@ -306,7 +305,7 @@ namespace BaiShengVx3Plus
             // lblOdds
             // 
             lblOdds.Font = new Font("微软雅黑", 9F);
-            lblOdds.Location = new Point(5, 214);
+            lblOdds.Location = new Point(5, 203);
             lblOdds.Name = "lblOdds";
             lblOdds.Size = new Size(50, 20);
             lblOdds.TabIndex = 13;
@@ -315,28 +314,29 @@ namespace BaiShengVx3Plus
             // 
             // txtOdds
             // 
+            txtOdds.DecimalPlaces = 2;
             txtOdds.Font = new Font("微软雅黑", 9F);
-            txtOdds.Location = new Point(60, 212);
+            txtOdds.Location = new Point(60, 202);
             txtOdds.Margin = new Padding(4, 5, 4, 5);
+            txtOdds.Maximum = 2.5D;
+            txtOdds.Minimum = 1D;
             txtOdds.MinimumSize = new Size(1, 16);
             txtOdds.Name = "txtOdds";
             txtOdds.Padding = new Padding(5);
+            txtOdds.ShowText = false;
             txtOdds.Size = new Size(170, 25);
             txtOdds.TabIndex = 14;
+            txtOdds.Text = null;
             txtOdds.TextAlignment = ContentAlignment.MiddleLeft;
             txtOdds.Value = 1.97D;
-            txtOdds.DecimalPlaces = 2;
-            txtOdds.Minimum = 1D;
-            txtOdds.Maximum = 2.5D;
-            // txtOdds.Increment = 0.01D;  // UIDoubleUpDown 不支持 Increment 属性
             // 
             // btnStartBrowser
             // 
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
-            btnStartBrowser.Location = new Point(120, 240);
+            btnStartBrowser.Location = new Point(120, 253);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
-            btnStartBrowser.Size = new Size(110, 30);
+            btnStartBrowser.Size = new Size(110, 25);
             btnStartBrowser.TabIndex = 14;
             btnStartBrowser.Text = "启动浏览器";
             btnStartBrowser.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -345,10 +345,10 @@ namespace BaiShengVx3Plus
             // btnConfigManager
             // 
             btnConfigManager.Font = new Font("微软雅黑", 9F);
-            btnConfigManager.Location = new Point(120, 275);
+            btnConfigManager.Location = new Point(120, 282);
             btnConfigManager.MinimumSize = new Size(1, 1);
             btnConfigManager.Name = "btnConfigManager";
-            btnConfigManager.Size = new Size(110, 30);
+            btnConfigManager.Size = new Size(110, 25);
             btnConfigManager.TabIndex = 15;
             btnConfigManager.Text = "配置管理";
             btnConfigManager.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -510,11 +510,11 @@ namespace BaiShengVx3Plus
             pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Controls.Add(btnConfigManager);
             pnl_fastsetting.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            pnl_fastsetting.Location = new Point(5, 378);
+            pnl_fastsetting.Location = new Point(5, 377);
             pnl_fastsetting.Margin = new Padding(4, 5, 4, 5);
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
-            pnl_fastsetting.Size = new Size(237, 305);
+            pnl_fastsetting.Size = new Size(237, 311);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
@@ -524,10 +524,10 @@ namespace BaiShengVx3Plus
             swi_OrdersTasking.ActiveText = "收单中";
             swi_OrdersTasking.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             swi_OrdersTasking.InActiveText = "收单停";
-            swi_OrdersTasking.Location = new Point(10, 243);
+            swi_OrdersTasking.Location = new Point(10, 255);
             swi_OrdersTasking.MinimumSize = new Size(1, 1);
             swi_OrdersTasking.Name = "swi_OrdersTasking";
-            swi_OrdersTasking.Size = new Size(85, 29);
+            swi_OrdersTasking.Size = new Size(85, 25);
             swi_OrdersTasking.TabIndex = 6;
             swi_OrdersTasking.Text = "关单中";
             swi_OrdersTasking.ValueChanged += swi_OrdersTasking_ValueChanged;
@@ -537,10 +537,10 @@ namespace BaiShengVx3Plus
             swiAutoOrdersBet.ActiveText = "飞单中";
             swiAutoOrdersBet.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             swiAutoOrdersBet.InActiveText = "飞单停";
-            swiAutoOrdersBet.Location = new Point(10, 273);
+            swiAutoOrdersBet.Location = new Point(10, 282);
             swiAutoOrdersBet.MinimumSize = new Size(1, 1);
             swiAutoOrdersBet.Name = "swiAutoOrdersBet";
-            swiAutoOrdersBet.Size = new Size(85, 29);
+            swiAutoOrdersBet.Size = new Size(85, 25);
             swiAutoOrdersBet.TabIndex = 6;
             swiAutoOrdersBet.Text = "关单中";
             swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
@@ -603,7 +603,7 @@ namespace BaiShengVx3Plus
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvContacts.Size = new Size(244, 147);
+            dgvContacts.Size = new Size(244, 130);
             dgvContacts.StripeOddColor = Color.FromArgb(235, 243, 255);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;
