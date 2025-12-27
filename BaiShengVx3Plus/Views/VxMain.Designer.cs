@@ -345,27 +345,26 @@ namespace BaiShengVx3Plus
             // 
             // rdoSettlementDecimal
             // 
-            rdoSettlementDecimal.AutoSize = true;
             rdoSettlementDecimal.Checked = true;
             rdoSettlementDecimal.Font = new Font("微软雅黑", 9F);
-            rdoSettlementDecimal.Location = new Point(60, 230);
+            rdoSettlementDecimal.Location = new Point(57, 230);
             rdoSettlementDecimal.Name = "rdoSettlementDecimal";
-            rdoSettlementDecimal.Size = new Size(69, 21);
+            rdoSettlementDecimal.Size = new Size(101, 21);
             rdoSettlementDecimal.TabIndex = 16;
             rdoSettlementDecimal.TabStop = true;
-            rdoSettlementDecimal.Text = "小数2位";
+            rdoSettlementDecimal.Text = "小数2位(精确)";
             rdoSettlementDecimal.UseVisualStyleBackColor = true;
             // 
             // rdoSettlementInteger
             // 
             rdoSettlementInteger.AutoSize = true;
             rdoSettlementInteger.Font = new Font("微软雅黑", 9F);
-            rdoSettlementInteger.Location = new Point(140, 230);
+            rdoSettlementInteger.Location = new Point(160, 230);
             rdoSettlementInteger.Name = "rdoSettlementInteger";
-            rdoSettlementInteger.Size = new Size(50, 21);
+            rdoSettlementInteger.Size = new Size(82, 21);
             rdoSettlementInteger.TabIndex = 17;
             rdoSettlementInteger.TabStop = true;
-            rdoSettlementInteger.Text = "整数";
+            rdoSettlementInteger.Text = "整数(赚点)";
             rdoSettlementInteger.UseVisualStyleBackColor = true;
             // 
             // btnStartBrowser

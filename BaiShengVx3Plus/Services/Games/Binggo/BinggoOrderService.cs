@@ -585,21 +585,30 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 3. 获取赔率（参考 F5BotV2: _appSetting.wxOdds）
                 float odds = order.Odds > 0 ? order.Odds : 1.97f;
                 
-                // 4. 调用 OpenLottery 计算盈利（参考 F5BotV2: order.OpenLottery(data, odds, zsjs)）
-                float totalWin = 0f; // 总赢金额（包含本金）
+                // 4. 获取结算方式配置（true=整数结算，false=小数2位结算）
+                bool isIntegerSettlement = _configService.GetIsIntegerSettlement();
+                
+                // 5. 计算总赢金额（包含本金）和纯利（支持整数结算）
+                // 使用 BinggoHelper.CalculateTotalProfit 计算总盈利
+                // 注意：CalculateProfit 返回的是每个投注项的盈利：
+                //   - 中奖时：总投注额 × 赔率（总赢金额，包含本金）
+                //   - 未中奖时：-总投注额（损失）
+                decimal totalWin = 0m;  // 总赢金额（包含本金）
                 foreach (var item in betContent.Items)
                 {
-                    bool isWin = BinggoHelper.IsWin(item, lotteryData);
-                    if (isWin)
+                    decimal profit = BinggoHelper.CalculateProfit(item, lotteryData, (decimal)odds, isIntegerSettlement);
+                    if (profit > 0)  // 中奖了
                     {
-                        // 🔥 参考 F5BotV2: 赢了返回 金额 × 赔率
-                        totalWin += (float)item.TotalAmount * odds;
+                        totalWin += profit;  // 累加总赢金额（包含本金）
                     }
                 }
                 
-                // 5. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
-                order.Profit = totalWin;  // 总赢金额（包含本金）
-                order.NetProfit = totalWin - order.AmountTotal;  // 纯利 = 总赢 - 投注额
+                // 6. 计算纯利 = 总赢金额 - 投注额
+                decimal netProfit = totalWin - (decimal)order.AmountTotal;
+                
+                // 7. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
+                order.Profit = (float)totalWin;  // 总赢金额（包含本金）
+                order.NetProfit = (float)netProfit;  // 纯利 = 总赢 - 投注额
                 order.OrderStatus = OrderStatus.已完成;
                 order.IsSettled = true;
                 

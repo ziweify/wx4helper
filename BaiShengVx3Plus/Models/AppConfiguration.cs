@@ -64,6 +64,12 @@ namespace BaiShengVx3Plus.Models
         public float WechatOrderOdds { get; set; } = 1.97f;
         
         /// <summary>
+        /// 结算方式：true=整数结算（抹掉小数点），false=小数2位结算（精确）
+        /// 默认 false（小数2位精确结算）
+        /// </summary>
+        public bool IsIntegerSettlement { get; set; } = false;
+        
+        /// <summary>
         /// 最小单注金额
         /// </summary>
         public float MinBet { get; set; } = 1.0f;

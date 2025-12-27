@@ -3786,6 +3786,25 @@ namespace BaiShengVx3Plus
                     ValidateAndSaveOdds();
                 };
                 
+                // 🔥 结算方式设置：单选框变化时立即保存
+                rdoSettlementDecimal.CheckedChanged += (s, e) =>
+                {
+                    if (rdoSettlementDecimal.Checked)
+                    {
+                        _configService.SetIsIntegerSettlement(false);
+                        _logService.Info("VxMain", "✅ 结算方式已保存: 小数2位(精确)");
+                    }
+                };
+                
+                rdoSettlementInteger.CheckedChanged += (s, e) =>
+                {
+                    if (rdoSettlementInteger.Checked)
+                    {
+                        _configService.SetIsIntegerSettlement(true);
+                        _logService.Info("VxMain", "✅ 结算方式已保存: 整数(赚点)");
+                    }
+                };
+                
                 _logService.Info("VxMain", "✅ 自动投注UI事件已绑定（包含 TextChanged 和 LostFocus）");
             }
             catch (Exception ex)
@@ -4107,7 +4126,12 @@ namespace BaiShengVx3Plus
                     _lastOddsValue = odds;  // 初始化记录值
                     txtOdds.Value = odds;
                     
-                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}, 赔率={odds:F2}");
+                    // 🔥 加载结算方式（从全局配置，默认 false=小数2位）
+                    var isIntegerSettlement = _configService.GetIsIntegerSettlement();
+                    rdoSettlementDecimal.Checked = !isIntegerSettlement;
+                    rdoSettlementInteger.Checked = isIntegerSettlement;
+                    
+                    _logService.Info("VxMain", $"✅ 已加载默认配置: 平台={defaultConfig.Platform}, 账号={(string.IsNullOrEmpty(defaultConfig.Username) ? "(空)" : defaultConfig.Username)}, 赔率={odds:F2}, 结算方式={(isIntegerSettlement ? "整数结算" : "小数2位结算")}");
                 }
                 else
                 {
@@ -4140,6 +4164,10 @@ namespace BaiShengVx3Plus
                     txtAutoBetUsername.Text = "";
                     txtAutoBetPassword.Text = "";
                     txtOdds.Value = 1.97;  // 🔥 默认赔率
+                    
+                    // 🔥 默认结算方式：小数2位
+                    rdoSettlementDecimal.Checked = true;
+                    rdoSettlementInteger.Checked = false;
                     
                     _logService.Info("VxMain", $"✅ 已创建新的默认配置: 平台={platform}, 索引={index}, 显示={cbxPlatform.Text}");
                 }
