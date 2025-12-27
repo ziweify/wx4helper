@@ -915,6 +915,7 @@ namespace BaiShengVx3Plus
             public float CreditToday { get; set; }
             public float WithdrawTotal { get; set; }
             public float WithdrawToday { get; set; }
+            public float EarnedDiffTotal { get; set; }  // 赚点总额
         }
         
         private StatsData _currentStats = new StatsData();
@@ -938,12 +939,14 @@ namespace BaiShengVx3Plus
             _currentStats.CreditToday = _statisticsService.CreditToday;
             _currentStats.WithdrawTotal = _statisticsService.WithdrawTotal;
             _currentStats.WithdrawToday = _statisticsService.WithdrawToday;
+            _currentStats.EarnedDiffTotal = _statisticsService.EarnedDiffTotal;
             
             // 🔥 触发重绘
             lblMemberInfo.Invalidate();
+            lblOrderInfo.Invalidate();  // 🔥 触发订单信息重绘
             
-            // 订单信息标签（可选保留）
-            lblOrderInfo.Text = $"订单列表 (共{_currentStats.OrderCount}单)";
+            _logService.Info("VxMain", 
+                $"✅ 更新订单信息显示: 订单数={_currentStats.OrderCount}, 赚点={_currentStats.EarnedDiffTotal:F2}");
         }
         
         /// <summary>
@@ -991,6 +994,37 @@ namespace BaiShengVx3Plus
             
             // 🔥 总下/今下（整块显示）
             DrawDoubleDataBlock(g, "总下/今下", _currentStats.WithdrawTotal, _currentStats.WithdrawToday, ref x, y);
+        }
+        
+        /// <summary>
+        /// 🔥 自定义绘制订单统计信息（带颜色和背景）
+        /// 显示订单数 + 赚点总额
+        /// </summary>
+        private void lblOrderInfo_Paint(object sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            
+            // 🔥 绘制整行统一背景色（淡蓝灰色，与 lblMemberInfo 一致）
+            using (var brush = new SolidBrush(Color.FromArgb(240, 245, 250)))
+            {
+                g.FillRectangle(brush, 0, 0, lblOrderInfo.Width, lblOrderInfo.Height);
+            }
+            
+            float x = 8;
+            float y = 6;
+            
+            // 🔥 基础信息（订单数）
+            DrawText(g, $"订单列表 (共{_currentStats.OrderCount}单)", 
+                ref x, y, Color.FromArgb(48, 48, 48), Color.Transparent);
+            
+            // 🔥 赚点信息（仅当有赚点时显示）
+            if (_currentStats.EarnedDiffTotal > 0)
+            {
+                DrawText(g, " | ", ref x, y, Color.FromArgb(100, 100, 100), Color.Transparent);
+                DrawDataBlock(g, "赚点", _currentStats.EarnedDiffTotal, ref x, y);
+            }
         }
         
         /// <summary>

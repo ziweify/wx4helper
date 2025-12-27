@@ -34,6 +34,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private int _withdrawTotal;     // 总下分
         private int _withdrawToday;     // 今日下分
         private int _issueidCur;        // 当前期号
+        private float _earnedDiffTotal; // 赚点总额（整数结算时的差额累计）
         
         public event PropertyChangedEventHandler? PropertyChanged;
         
@@ -106,6 +107,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             set => SetField(ref _issueidCur, value);
         }
         
+        public float EarnedDiffTotal
+        {
+            get => _earnedDiffTotal;
+            set => SetField(ref _earnedDiffTotal, value);
+        }
+        
         /// <summary>
         /// 盘口描述字符串
         /// 🔥 完全参考 F5BotV2 第 805 行
@@ -149,6 +156,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     WithdrawTotal = 0;
                     CreditToday = 0;
                     WithdrawToday = 0;
+                    EarnedDiffTotal = 0f;
                     
                     _logService.Info("BinggoStatistics", "统计数据已清零");
                     return;
@@ -167,6 +175,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 int curBet = 0;
                 float totalIncome = 0f;
                 float todayIncome = 0f;
+                float earnedDiff = 0f; // 赚点总额
                 
                 foreach (var order in _ordersBindingList)
                 {
@@ -210,6 +219,51 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         {
                             todayIncome += order.NetProfit;
                         }
+                        
+                        // 🔥 调试：输出所有已结算订单的备注
+                        _logService.Info("BinggoStatistics", 
+                            $"🔍 订单{order.Id} 已结算 - 备注: [{order.Notes ?? "null"}]");
+                        
+                        // 🔥 计算赚点总额：从备注中解析
+                        // 格式：结算:赚点(0.64) 或 结算:赚点(0.64); 补单:是
+                        if (!string.IsNullOrEmpty(order.Notes) && order.Notes.Contains("结算:赚点"))
+                        {
+                            try
+                            {
+                                // 使用正则表达式提取括号中的数字
+                                // 模式：结算:赚点(数字)，数字可以是整数或小数，支持负数
+                                var match = System.Text.RegularExpressions.Regex.Match(
+                                    order.Notes, 
+                                    @"结算:赚点\(([-+]?\d+(?:\.\d+)?)\)");
+                                
+                                if (match.Success)
+                                {
+                                    string diffStr = match.Groups[1].Value;
+                                    
+                                    if (float.TryParse(diffStr, out float diff))
+                                    {
+                                        earnedDiff += diff;
+                                        _logService.Info("BinggoStatistics", 
+                                            $"✅ 解析赚点: 订单{order.Id} - 备注[{order.Notes}] - 赚点{diff:F2}, 累计{earnedDiff:F2}");
+                                    }
+                                    else
+                                    {
+                                        _logService.Warning("BinggoStatistics", 
+                                            $"❌ 解析数字失败: 订单{order.Id}, 提取字符串=[{diffStr}]");
+                                    }
+                                }
+                                else
+                                {
+                                    _logService.Warning("BinggoStatistics", 
+                                        $"❌ 正则匹配失败: 订单{order.Id}, 备注=[{order.Notes}]");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("BinggoStatistics", 
+                                    $"解析赚点异常: 订单{order.Id} - 备注[{order.Notes}] - {ex.Message}");
+                            }
+                        }
                     }
                 }
                 
@@ -241,9 +295,10 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 BetMoneyCur = curBet;
                 IncomeTotal = totalIncome;
                 IncomeToday = todayIncome;
+                EarnedDiffTotal = earnedDiff;
                 
                 _logService.Info("BinggoStatistics", 
-                    $"统计更新: 总注{totalBet} 今投{todayBet} 当前{curBet} 总盈{totalIncome:F2} 今盈{todayIncome:F2}");
+                    $"统计更新: 总注{totalBet} 今投{todayBet} 当前{curBet} 总盈{totalIncome:F2} 今盈{todayIncome:F2} 赚点{earnedDiff:F2}");
                 
                 // 🔥 重要：UpdateStatistics 会重新计算所有统计，覆盖 OnOrderCanceled 的更新
                 // 所以必须在 UpdateStatistics 后触发 PropertyChanged，确保 UI 更新
@@ -447,6 +502,29 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             catch (Exception ex)
             {
                 _logService.Error("BinggoStatistics", $"OnOrderSettled 失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 订单结算时更新赚点统计（增量更新）
+        /// </summary>
+        /// <param name="earnedDiff">本次结算赚取的差额</param>
+        public void OnEarnedDiffSettled(float earnedDiff)
+        {
+            try
+            {
+                EarnedDiffTotal += earnedDiff;
+                
+                _logService.Info("BinggoStatistics", 
+                    $"📊 赚点统计更新: 本次赚点 {earnedDiff:F2} - 累计赚点 {EarnedDiffTotal:F2}");
+                
+                // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
+                OnPropertyChanged(nameof(PanDescribe));
+                OnPropertyChanged(nameof(EarnedDiffTotal));
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("BinggoStatistics", $"OnEarnedDiffSettled 失败: {ex.Message}", ex);
             }
         }
         

@@ -179,10 +179,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     float betFronMoney = member.Balance;  // 下注前余额
                     float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（暂存）
                     
-                    // 🔥 获取当前结算方式配置，生成备注（创建时差额为0，结算后才会更新）
-                    bool isIntegerSettlement = _configService.GetIsIntegerSettlement();
-                    string settlementNote = isIntegerSettlement ? "结算:赚点(0)" : "结算:精确";
-                    
                     order = new V2MemberOrder
                 {
                     // 🔥 会员信息
@@ -219,9 +215,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     OrderType = member.State == MemberState.托 ? OrderType.托 : OrderType.待定,
                     MemberState = member.State,  // 🔥 记录会员等级快照（订单创建时的会员状态）
                     IsSettled = false,
-                    
-                    // 🔥 备注：记录结算方式（格式：键值对用分号分隔）
-                    Notes = settlementNote,
                     
                     // 🔥 开奖服务专用字段（保留兼容）
                     BetContent = betContent.ToStandardString(),
@@ -647,15 +640,46 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 order.IsSettled = true;
                 
                 // 9. 更新备注：结算方式 + 赚取差额
+                // 如果备注中已经有结算相关的内容，替换它；否则追加
                 string settlementNote = isIntegerSettlement 
                     ? $"结算:赚点({earnedDiff:F2})" 
                     : "结算:精确";
-                order.Notes = settlementNote;
-                order.OrderStatus = OrderStatus.已完成;
-                order.IsSettled = true;
+                
+                if (!string.IsNullOrEmpty(order.Notes))
+                {
+                    // 如果已有备注，检查是否包含旧的结算信息，替换或追加
+                    if (order.Notes.Contains("结算:"))
+                    {
+                        // 替换旧的结算信息
+                        order.Notes = System.Text.RegularExpressions.Regex.Replace(
+                            order.Notes, 
+                            @"结算:(精确|赚点\([0-9.]+\))", 
+                            settlementNote);
+                    }
+                    else
+                    {
+                        // 追加新的结算信息
+                        order.Notes = $"{order.Notes}; {settlementNote}";
+                    }
+                }
+                else
+                {
+                    order.Notes = settlementNote;
+                }
                 
                 _logService.Info("BinggoOrderService", 
-                    $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
+                    $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2} - 赚点 {earnedDiff:F2}");
+                
+                _logService.Info("BinggoOrderService", 
+                    $"📝 订单备注: OrderId={order.Id}, Notes=[{order.Notes}]");
+                
+                // 🔥 5.5 更新赚点统计（如果是整数结算）
+                if (isIntegerSettlement && earnedDiff > 0)
+                {
+                    _statisticsService?.OnEarnedDiffSettled((float)earnedDiff);
+                    _logService.Info("BinggoOrderService", 
+                        $"📊 赚点已累加到统计: {earnedDiff:F2}");
+                }
                 
                 // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"

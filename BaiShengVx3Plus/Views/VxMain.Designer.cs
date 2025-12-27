@@ -925,6 +925,7 @@ namespace BaiShengVx3Plus
             lblOrderInfo.TabIndex = 0;
             lblOrderInfo.Text = "订单列表 (共0单)";
             lblOrderInfo.TextAlign = ContentAlignment.MiddleLeft;
+            lblOrderInfo.Paint += lblOrderInfo_Paint;
             // 
             // pnlTopButtons
             // 
