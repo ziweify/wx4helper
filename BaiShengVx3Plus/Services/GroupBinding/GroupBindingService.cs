@@ -95,11 +95,12 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                 _logService.Info("GroupBindingService", $"🔄 刷新群成员: {CurrentBoundGroup.Nickname}");
                 
                 // 🔥 调用内部刷新方法
+                // 🔥 重要：刷新同一个群时使用 clearBeforeLoad: false，避免清空列表导致 UI 绘制异常
                 bool success = await RefreshGroupMembersInternalAsync(
                     CurrentBoundGroup.Wxid,
                     socketClient,
                     membersBindingList,
-                    clearBeforeLoad: true);
+                    clearBeforeLoad: false);  // 🔥 刷新同一个群，不清空列表
                 
                 return (success, membersBindingList.Count);
             }

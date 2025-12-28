@@ -179,6 +179,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 
                 foreach (var order in _ordersBindingList)
                 {
+                    // 🔥 防止 null 订单导致异常
+                    if (order == null)
+                    {
+                        _logService.Warning("BinggoStatistics", "⚠️ 发现 null 订单，跳过");
+                        continue;
+                    }
+                    
                     // 🔥 跳过托单和已取消订单（参考 F5BotV2 第 548 行）
                     if (order.OrderType == OrderType.托 || order.OrderStatus == OrderStatus.已取消)
                         continue;
@@ -277,6 +284,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     
                     foreach (var member in _membersBindingList)
                     {
+                        // 🔥 防止 null 会员导致异常
+                        if (member == null)
+                        {
+                            _logService.Warning("BinggoStatistics", "⚠️ 发现 null 会员，跳过");
+                            continue;
+                        }
                         totalCredit += (int)member.CreditTotal;
                         todayCredit += (int)member.CreditToday;
                         totalWithdraw += (int)member.WithdrawTotal;
