@@ -70,8 +70,6 @@ namespace 永利系统.Views.Wechat
             labelControl1 = new DevExpress.XtraEditors.LabelControl();
             labelControl_FastSetting = new DevExpress.XtraEditors.LabelControl();
             panelControl_OpenData = new DevExpress.XtraEditors.PanelControl();
-            ucBingoDataCur = new 永利系统.Views.Wechat.Controls.UcBingoDataCur();
-            ucBingoDataLast = new 永利系统.Views.Wechat.Controls.UcBingoDataLast();
             gridControl_Contacts = new DevExpress.XtraGrid.GridControl();
             gridView_Contacts = new DevExpress.XtraGrid.Views.Grid.GridView();
             panelControl_LeftTop = new DevExpress.XtraEditors.PanelControl();
@@ -114,7 +112,6 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)spinEdit_MinBet.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_SealSeconds.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_OpenData).BeginInit();
-            panelControl_OpenData.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridControl_Contacts).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Contacts).BeginInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_LeftTop).BeginInit();
@@ -567,33 +564,11 @@ namespace 永利系统.Views.Wechat
             // 
             // panelControl_OpenData
             // 
-            panelControl_OpenData.Controls.Add(ucBingoDataCur);
-            panelControl_OpenData.Controls.Add(ucBingoDataLast);
             panelControl_OpenData.Dock = System.Windows.Forms.DockStyle.Top;
             panelControl_OpenData.Location = new System.Drawing.Point(2, 193);
             panelControl_OpenData.Name = "panelControl_OpenData";
             panelControl_OpenData.Size = new System.Drawing.Size(240, 199);
             panelControl_OpenData.TabIndex = 2;
-            // 
-            // ucBingoDataCur
-            // 
-            ucBingoDataCur.BackColor = System.Drawing.Color.FromArgb(243, 249, 255);
-            ucBingoDataCur.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            ucBingoDataCur.Dock = System.Windows.Forms.DockStyle.Top;
-            ucBingoDataCur.Location = new System.Drawing.Point(2, 107);
-            ucBingoDataCur.Name = "ucBingoDataCur";
-            ucBingoDataCur.Size = new System.Drawing.Size(236, 90);
-            ucBingoDataCur.TabIndex = 0;
-            // 
-            // ucBingoDataLast
-            // 
-            ucBingoDataLast.BackColor = System.Drawing.Color.FromArgb(255, 248, 225);
-            ucBingoDataLast.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            ucBingoDataLast.Dock = System.Windows.Forms.DockStyle.Top;
-            ucBingoDataLast.Location = new System.Drawing.Point(2, 2);
-            ucBingoDataLast.Name = "ucBingoDataLast";
-            ucBingoDataLast.Size = new System.Drawing.Size(236, 105);
-            ucBingoDataLast.TabIndex = 1;
             // 
             // gridControl_Contacts
             // 
@@ -808,7 +783,6 @@ namespace 永利系统.Views.Wechat
             ((System.ComponentModel.ISupportInitialize)spinEdit_MinBet.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)spinEdit_SealSeconds.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_OpenData).EndInit();
-            panelControl_OpenData.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridControl_Contacts).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Contacts).EndInit();
             ((System.ComponentModel.ISupportInitialize)panelControl_LeftTop).EndInit();

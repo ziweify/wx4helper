@@ -8,6 +8,7 @@ using 永利系统.Services.Auth;
 using 永利系统.ViewModels;
 using 永利系统.Views.Pages;
 using 永利系统.Views.Wechat;
+using 永利系统.Views.Dashboard;
 
 namespace 永利系统.Views
 {
@@ -140,9 +141,10 @@ namespace 永利系统.Views
                 return;
             }
             
-            // 创建所有标签页（顺序：主页/微信助手/数据管理/报表分析/系统设置）
+            // 创建所有标签页（顺序：主页/微信助手/数据采集/数据管理/报表分析/系统设置）
             CreateTabPage("主页", "Dashboard", new DashboardPage());
             CreateTabPage("微信助手", "Wechat", new WechatPage());
+            CreateTabPage("数据采集", "DataCollection", new DataCollectionPage());
             CreateTabPage("数据管理", "DataManagement", new DataManagementPage());
             CreateTabPage("报表分析", "Reports", new ReportsPage());
             CreateTabPage("系统设置", "Settings", new SettingsPage());
