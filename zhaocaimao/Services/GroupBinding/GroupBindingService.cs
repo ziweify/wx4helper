@@ -111,11 +111,45 @@ namespace zhaocaimao.Services.GroupBinding
                 var mergedMembers = LoadAndMergeMembers(serverMembers, CurrentBoundGroup.Wxid);
                 _logService.Info("GroupBindingService", $"合并完成: {mergedMembers.Count} 个会员");
                 
-                // 🔥 更新 BindingList
-                membersBindingList.Clear();
-                foreach (var member in mergedMembers)
+                // 🔥 更新 BindingList（采用更新模式，不清空列表，避免 DataGridView 绘制异常）
+                // 🔥 关键修复：刷新同一个群时，逐个更新会员，而不是清空列表
+                lock (Core.ResourceLocks.BindingListUpdateLock)
                 {
-                    membersBindingList.Add(member);
+                    _logService.Info("GroupBindingService", "刷新会员：采用更新模式（逐个更新，避免引用失效）");
+                    
+                    // 🔥 更新现有会员，添加新会员
+                    foreach (var newMember in mergedMembers)
+                    {
+                        var existingMember = membersBindingList.FirstOrDefault(m => m.Wxid == newMember.Wxid);
+                        if (existingMember != null)
+                        {
+                            // 更新现有会员的数据（保持引用不变）
+                            existingMember.Nickname = newMember.Nickname;
+                            existingMember.DisplayName = newMember.DisplayName;
+                            existingMember.Alias = newMember.Alias;
+                            existingMember.Remark = newMember.Remark;
+                            existingMember.TimeStampLastActive = newMember.TimeStampLastActive;
+                            // 注意：不更新统计数据（Balance, OrderCount, TotalBet 等），保留历史统计
+                        }
+                        else
+                        {
+                            // 新会员：添加到列表
+                            membersBindingList.Add(newMember);
+                        }
+                    }
+                    
+                    // 🔥 移除已退群的会员（服务器没返回的）
+                    var serverWxids = new HashSet<string>(
+                        mergedMembers.Where(m => !string.IsNullOrEmpty(m.Wxid))
+                                     .Select(m => m.Wxid!)
+                    );
+                    
+                    var toRemove = membersBindingList.Where(m => !serverWxids.Contains(m.Wxid)).ToList();
+                    foreach (var member in toRemove)
+                    {
+                        _logService.Warning("GroupBindingService", $"会员已退群，移除: {member.DisplayName} ({member.Wxid})");
+                        membersBindingList.Remove(member);
+                    }
                 }
                 
                 _logService.Info("GroupBindingService", $"✅ 会员列表已更新: {membersBindingList.Count} 个会员");

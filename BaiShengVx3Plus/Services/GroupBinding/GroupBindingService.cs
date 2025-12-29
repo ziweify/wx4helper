@@ -442,6 +442,8 @@ namespace BaiShengVx3Plus.Services.GroupBinding
                                 existingMember.Nickname = newMember.Nickname;
                                 existingMember.State = newMember.State;
                                 existingMember.DisplayName = newMember.DisplayName;
+                                //明天处理名字问题, 名单用备注的
+
                                 // 不更新余额等财务数据（从数据库加载的是最新的）
                                 existingMember.Balance = newMember.Balance;
                                 existingMember.BetWait = newMember.BetWait;
