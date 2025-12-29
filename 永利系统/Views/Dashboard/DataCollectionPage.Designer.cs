@@ -45,7 +45,8 @@ namespace 永利系统.Views.Dashboard
             colCompletedIssueId = new DevExpress.XtraGrid.Columns.GridColumn();
             colCompletedOpenData = new DevExpress.XtraGrid.Columns.GridColumn();
             colCompletedCollectionTime = new DevExpress.XtraGrid.Columns.GridColumn();
-            panelRight = new DevExpress.XtraEditors.PanelControl();
+            xtraTabControl1 = new DevExpress.XtraTab.XtraTabControl();
+            xtraTabPageConfig = new DevExpress.XtraTab.XtraTabPage();
             groupActions = new DevExpress.XtraEditors.GroupControl();
             btnExportData = new DevExpress.XtraEditors.SimpleButton();
             btnClearCompleted = new DevExpress.XtraEditors.SimpleButton();
@@ -72,6 +73,9 @@ namespace 永利系统.Views.Dashboard
             labelControl2 = new DevExpress.XtraEditors.LabelControl();
             txtCurrentIssue = new DevExpress.XtraEditors.TextEdit();
             labelControl1 = new DevExpress.XtraEditors.LabelControl();
+            xtraTabPageMonitorA = new DevExpress.XtraTab.XtraTabPage();
+            xtraTabPageMonitorB = new DevExpress.XtraTab.XtraTabPage();
+            xtraTabPageMonitorC = new DevExpress.XtraTab.XtraTabPage();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -88,8 +92,9 @@ namespace 永利系统.Views.Dashboard
             groupCompleted.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridCompleted).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridViewCompleted).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)panelRight).BeginInit();
-            panelRight.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)xtraTabControl1).BeginInit();
+            xtraTabControl1.SuspendLayout();
+            xtraTabPageConfig.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)groupActions).BeginInit();
             groupActions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)groupSubmitAddress).BeginInit();
@@ -122,9 +127,9 @@ namespace 永利系统.Views.Dashboard
             // 
             // splitContainerMain.Panel2
             // 
-            splitContainerMain.Panel2.Controls.Add(panelRight);
+            splitContainerMain.Panel2.Controls.Add(xtraTabControl1);
             splitContainerMain.Size = new System.Drawing.Size(1050, 756);
-            splitContainerMain.SplitterDistance = 377;
+            splitContainerMain.SplitterDistance = 360;
             splitContainerMain.TabIndex = 0;
             // 
             // splitContainerLeft
@@ -141,7 +146,7 @@ namespace 永利系统.Views.Dashboard
             // splitContainerLeft.Panel2
             // 
             splitContainerLeft.Panel2.Controls.Add(groupCompleted);
-            splitContainerLeft.Size = new System.Drawing.Size(377, 756);
+            splitContainerLeft.Size = new System.Drawing.Size(360, 756);
             splitContainerLeft.SplitterDistance = 359;
             splitContainerLeft.TabIndex = 0;
             // 
@@ -151,7 +156,7 @@ namespace 永利系统.Views.Dashboard
             groupPending.Dock = System.Windows.Forms.DockStyle.Fill;
             groupPending.Location = new System.Drawing.Point(0, 0);
             groupPending.Name = "groupPending";
-            groupPending.Size = new System.Drawing.Size(377, 359);
+            groupPending.Size = new System.Drawing.Size(360, 359);
             groupPending.TabIndex = 0;
             groupPending.Text = "待采集任务";
             // 
@@ -161,7 +166,7 @@ namespace 永利系统.Views.Dashboard
             gridPending.Location = new System.Drawing.Point(2, 23);
             gridPending.MainView = gridViewPending;
             gridPending.Name = "gridPending";
-            gridPending.Size = new System.Drawing.Size(373, 334);
+            gridPending.Size = new System.Drawing.Size(356, 334);
             gridPending.TabIndex = 0;
             gridPending.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewPending });
             // 
@@ -234,7 +239,7 @@ namespace 永利系统.Views.Dashboard
             groupCompleted.Dock = System.Windows.Forms.DockStyle.Fill;
             groupCompleted.Location = new System.Drawing.Point(0, 0);
             groupCompleted.Name = "groupCompleted";
-            groupCompleted.Size = new System.Drawing.Size(377, 393);
+            groupCompleted.Size = new System.Drawing.Size(360, 393);
             groupCompleted.TabIndex = 0;
             groupCompleted.Text = "已完成任务";
             // 
@@ -244,7 +249,7 @@ namespace 永利系统.Views.Dashboard
             gridCompleted.Location = new System.Drawing.Point(2, 23);
             gridCompleted.MainView = gridViewCompleted;
             gridCompleted.Name = "gridCompleted";
-            gridCompleted.Size = new System.Drawing.Size(373, 368);
+            gridCompleted.Size = new System.Drawing.Size(356, 368);
             gridCompleted.TabIndex = 0;
             gridCompleted.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewCompleted });
             // 
@@ -301,17 +306,25 @@ namespace 永利系统.Views.Dashboard
             colCompletedCollectionTime.VisibleIndex = 3;
             colCompletedCollectionTime.Width = 157;
             // 
-            // panelRight
+            // xtraTabControl1
             // 
-            panelRight.Controls.Add(groupActions);
-            panelRight.Controls.Add(groupSubmitAddress);
-            panelRight.Controls.Add(groupDataSource);
-            panelRight.Controls.Add(groupIssueInfo);
-            panelRight.Dock = System.Windows.Forms.DockStyle.Fill;
-            panelRight.Location = new System.Drawing.Point(0, 0);
-            panelRight.Name = "panelRight";
-            panelRight.Size = new System.Drawing.Size(669, 756);
-            panelRight.TabIndex = 0;
+            xtraTabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
+            xtraTabControl1.Location = new System.Drawing.Point(0, 0);
+            xtraTabControl1.Name = "xtraTabControl1";
+            xtraTabControl1.SelectedTabPage = xtraTabPageConfig;
+            xtraTabControl1.Size = new System.Drawing.Size(686, 756);
+            xtraTabControl1.TabIndex = 0;
+            xtraTabControl1.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] { xtraTabPageConfig, xtraTabPageMonitorA, xtraTabPageMonitorB, xtraTabPageMonitorC });
+            // 
+            // xtraTabPageConfig
+            // 
+            xtraTabPageConfig.Controls.Add(groupActions);
+            xtraTabPageConfig.Controls.Add(groupSubmitAddress);
+            xtraTabPageConfig.Controls.Add(groupDataSource);
+            xtraTabPageConfig.Controls.Add(groupIssueInfo);
+            xtraTabPageConfig.Name = "xtraTabPageConfig";
+            xtraTabPageConfig.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageConfig.Text = "配置";
             // 
             // groupActions
             // 
@@ -320,9 +333,9 @@ namespace 永利系统.Views.Dashboard
             groupActions.Controls.Add(btnManualCollect);
             groupActions.Controls.Add(btnStopAuto);
             groupActions.Controls.Add(btnStartAuto);
-            groupActions.Location = new System.Drawing.Point(2, 484);
+            groupActions.Location = new System.Drawing.Point(0, 484);
             groupActions.Name = "groupActions";
-            groupActions.Size = new System.Drawing.Size(343, 269);
+            groupActions.Size = new System.Drawing.Size(345, 244);
             groupActions.TabIndex = 3;
             groupActions.Text = "操作";
             // 
@@ -377,9 +390,9 @@ namespace 永利系统.Views.Dashboard
             // groupSubmitAddress
             // 
             groupSubmitAddress.Controls.Add(memoSubmitAddresses);
-            groupSubmitAddress.Location = new System.Drawing.Point(2, 296);
+            groupSubmitAddress.Location = new System.Drawing.Point(0, 296);
             groupSubmitAddress.Name = "groupSubmitAddress";
-            groupSubmitAddress.Size = new System.Drawing.Size(343, 189);
+            groupSubmitAddress.Size = new System.Drawing.Size(345, 189);
             groupSubmitAddress.TabIndex = 2;
             groupSubmitAddress.Text = "提交地址 (多行, 格式: [标识]URL)";
             // 
@@ -388,7 +401,7 @@ namespace 永利系统.Views.Dashboard
             memoSubmitAddresses.Dock = System.Windows.Forms.DockStyle.Fill;
             memoSubmitAddresses.Location = new System.Drawing.Point(2, 23);
             memoSubmitAddresses.Name = "memoSubmitAddresses";
-            memoSubmitAddresses.Size = new System.Drawing.Size(339, 164);
+            memoSubmitAddresses.Size = new System.Drawing.Size(341, 164);
             memoSubmitAddresses.TabIndex = 0;
             // 
             // groupDataSource
@@ -398,9 +411,9 @@ namespace 永利系统.Views.Dashboard
             groupDataSource.Controls.Add(chkUseProxy);
             groupDataSource.Controls.Add(txtDataSourceUrl);
             groupDataSource.Controls.Add(labelControl6);
-            groupDataSource.Location = new System.Drawing.Point(2, 173);
+            groupDataSource.Location = new System.Drawing.Point(0, 173);
             groupDataSource.Name = "groupDataSource";
-            groupDataSource.Size = new System.Drawing.Size(343, 123);
+            groupDataSource.Size = new System.Drawing.Size(345, 123);
             groupDataSource.TabIndex = 1;
             groupDataSource.Text = "数据源";
             // 
@@ -455,9 +468,9 @@ namespace 永利系统.Views.Dashboard
             groupIssueInfo.Controls.Add(labelControl2);
             groupIssueInfo.Controls.Add(txtCurrentIssue);
             groupIssueInfo.Controls.Add(labelControl1);
-            groupIssueInfo.Location = new System.Drawing.Point(2, 3);
+            groupIssueInfo.Location = new System.Drawing.Point(0, 0);
             groupIssueInfo.Name = "groupIssueInfo";
-            groupIssueInfo.Size = new System.Drawing.Size(343, 171);
+            groupIssueInfo.Size = new System.Drawing.Size(345, 173);
             groupIssueInfo.TabIndex = 0;
             groupIssueInfo.Text = "期号信息";
             // 
@@ -555,6 +568,24 @@ namespace 永利系统.Views.Dashboard
             labelControl1.TabIndex = 0;
             labelControl1.Text = "当期期号:";
             // 
+            // xtraTabPageMonitorA
+            // 
+            xtraTabPageMonitorA.Name = "xtraTabPageMonitorA";
+            xtraTabPageMonitorA.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageMonitorA.Text = "监控A";
+            // 
+            // xtraTabPageMonitorB
+            // 
+            xtraTabPageMonitorB.Name = "xtraTabPageMonitorB";
+            xtraTabPageMonitorB.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageMonitorB.Text = "监控B";
+            // 
+            // xtraTabPageMonitorC
+            // 
+            xtraTabPageMonitorC.Name = "xtraTabPageMonitorC";
+            xtraTabPageMonitorC.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageMonitorC.Text = "监控C";
+            // 
             // DataCollectionPage
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
@@ -580,8 +611,9 @@ namespace 永利系统.Views.Dashboard
             groupCompleted.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridCompleted).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridViewCompleted).EndInit();
-            ((System.ComponentModel.ISupportInitialize)panelRight).EndInit();
-            panelRight.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)xtraTabControl1).EndInit();
+            xtraTabControl1.ResumeLayout(false);
+            xtraTabPageConfig.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)groupActions).EndInit();
             groupActions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)groupSubmitAddress).EndInit();
@@ -624,32 +656,36 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedIssueId;
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedOpenData;
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedCollectionTime;
-        private DevExpress.XtraEditors.PanelControl panelRight;
-        private DevExpress.XtraEditors.GroupControl groupIssueInfo;
-        private DevExpress.XtraEditors.LabelControl labelControl1;
-        private DevExpress.XtraEditors.TextEdit txtCurrentIssue;
-        private DevExpress.XtraEditors.LabelControl labelControl2;
-        private DevExpress.XtraEditors.TextEdit txtCurrentTime;
-        private DevExpress.XtraEditors.LabelControl labelControl3;
-        private DevExpress.XtraEditors.TextEdit txtNextIssue;
-        private DevExpress.XtraEditors.LabelControl labelControl4;
-        private DevExpress.XtraEditors.TextEdit txtNextTime;
-        private DevExpress.XtraEditors.LabelControl labelControl5;
-        private DevExpress.XtraEditors.TextEdit txtCountdown;
-        private DevExpress.XtraEditors.SimpleButton btnGetIssueInfo;
-        private DevExpress.XtraEditors.GroupControl groupDataSource;
-        private DevExpress.XtraEditors.LabelControl labelControl6;
-        private DevExpress.XtraEditors.TextEdit txtDataSourceUrl;
-        private DevExpress.XtraEditors.CheckEdit chkUseProxy;
-        private DevExpress.XtraEditors.TextEdit txtProxyAddress;
-        private DevExpress.XtraEditors.SimpleButton btnTestConnection;
+        private DevExpress.XtraTab.XtraTabControl xtraTabControl1;
+        private DevExpress.XtraTab.XtraTabPage xtraTabPageConfig;
+        private DevExpress.XtraEditors.GroupControl groupActions;
+        private DevExpress.XtraEditors.SimpleButton btnExportData;
+        private DevExpress.XtraEditors.SimpleButton btnClearCompleted;
+        private DevExpress.XtraEditors.SimpleButton btnManualCollect;
+        private DevExpress.XtraEditors.SimpleButton btnStopAuto;
+        private DevExpress.XtraEditors.SimpleButton btnStartAuto;
         private DevExpress.XtraEditors.GroupControl groupSubmitAddress;
         private DevExpress.XtraEditors.MemoEdit memoSubmitAddresses;
-        private DevExpress.XtraEditors.GroupControl groupActions;
-        private DevExpress.XtraEditors.SimpleButton btnStartAuto;
-        private DevExpress.XtraEditors.SimpleButton btnStopAuto;
-        private DevExpress.XtraEditors.SimpleButton btnManualCollect;
-        private DevExpress.XtraEditors.SimpleButton btnClearCompleted;
-        private DevExpress.XtraEditors.SimpleButton btnExportData;
+        private DevExpress.XtraEditors.GroupControl groupDataSource;
+        private DevExpress.XtraEditors.SimpleButton btnTestConnection;
+        private DevExpress.XtraEditors.TextEdit txtProxyAddress;
+        private DevExpress.XtraEditors.CheckEdit chkUseProxy;
+        private DevExpress.XtraEditors.TextEdit txtDataSourceUrl;
+        private DevExpress.XtraEditors.LabelControl labelControl6;
+        private DevExpress.XtraEditors.GroupControl groupIssueInfo;
+        private DevExpress.XtraEditors.SimpleButton btnGetIssueInfo;
+        private DevExpress.XtraEditors.TextEdit txtCountdown;
+        private DevExpress.XtraEditors.LabelControl labelControl5;
+        private DevExpress.XtraEditors.TextEdit txtNextTime;
+        private DevExpress.XtraEditors.LabelControl labelControl4;
+        private DevExpress.XtraEditors.TextEdit txtNextIssue;
+        private DevExpress.XtraEditors.LabelControl labelControl3;
+        private DevExpress.XtraEditors.TextEdit txtCurrentTime;
+        private DevExpress.XtraEditors.LabelControl labelControl2;
+        private DevExpress.XtraEditors.TextEdit txtCurrentIssue;
+        private DevExpress.XtraEditors.LabelControl labelControl1;
+        private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorA;
+        private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorB;
+        private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorC;
     }
 }
