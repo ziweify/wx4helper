@@ -126,9 +126,7 @@ namespace zhaocaimao.Services.GroupBinding
                             // 更新现有会员的数据（保持引用不变）
                             existingMember.Nickname = newMember.Nickname;
                             existingMember.DisplayName = newMember.DisplayName;
-                            existingMember.Alias = newMember.Alias;
-                            existingMember.Remark = newMember.Remark;
-                            existingMember.TimeStampLastActive = newMember.TimeStampLastActive;
+                            existingMember.Account = newMember.Account;
                             // 注意：不更新统计数据（Balance, OrderCount, TotalBet 等），保留历史统计
                         }
                         else
