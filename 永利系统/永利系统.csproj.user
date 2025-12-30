@@ -5,6 +5,9 @@
     <Compile Update="Views\Dashboard\DataCollectionPage.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorAControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Views\FloatingLogWindow.cs">
       <SubType>Form</SubType>
     </Compile>

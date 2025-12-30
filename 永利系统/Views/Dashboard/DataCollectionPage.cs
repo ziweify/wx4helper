@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using 永利系统.ViewModels.Dashboard;
+using 永利系统.Views.Dashboard.Monitors;
 
 namespace 永利系统.Views.Dashboard
 {
@@ -10,6 +11,7 @@ namespace 永利系统.Views.Dashboard
     public partial class DataCollectionPage : Form
     {
         private readonly DataCollectionViewModel _viewModel;
+        private MonitorAControl? _monitorAControl;
 
         public DataCollectionPage()
         {
@@ -22,6 +24,23 @@ namespace 永利系统.Views.Dashboard
             
             _viewModel = new DataCollectionViewModel();
             InitializeBindings();
+            InitializeMonitorControls();
+        }
+
+        /// <summary>
+        /// 初始化监控控件
+        /// </summary>
+        private void InitializeMonitorControls()
+        {
+            // 创建监控A控件并添加到对应的TabPage
+            _monitorAControl = new MonitorAControl
+            {
+                Dock = DockStyle.Fill
+            };
+            xtraTabPageMonitorA.Controls.Add(_monitorAControl);
+
+            // 监控B和C暂时空白，稍后添加
+            // TODO: 添加 MonitorBControl 和 MonitorCControl
         }
 
         /// <summary>
