@@ -76,6 +76,7 @@ namespace 永利系统.Views.Dashboard
             xtraTabPageMonitorA = new DevExpress.XtraTab.XtraTabPage();
             xtraTabPageMonitorB = new DevExpress.XtraTab.XtraTabPage();
             xtraTabPageMonitorC = new DevExpress.XtraTab.XtraTabPage();
+            groupControl_Monitor_config = new DevExpress.XtraEditors.GroupControl();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -112,6 +113,7 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).BeginInit();
             SuspendLayout();
             // 
             // splitContainerMain
@@ -147,7 +149,7 @@ namespace 永利系统.Views.Dashboard
             // 
             splitContainerLeft.Panel2.Controls.Add(groupCompleted);
             splitContainerLeft.Size = new System.Drawing.Size(360, 756);
-            splitContainerLeft.SplitterDistance = 359;
+            splitContainerLeft.SplitterDistance = 358;
             splitContainerLeft.TabIndex = 0;
             // 
             // groupPending
@@ -156,7 +158,7 @@ namespace 永利系统.Views.Dashboard
             groupPending.Dock = System.Windows.Forms.DockStyle.Fill;
             groupPending.Location = new System.Drawing.Point(0, 0);
             groupPending.Name = "groupPending";
-            groupPending.Size = new System.Drawing.Size(360, 359);
+            groupPending.Size = new System.Drawing.Size(360, 358);
             groupPending.TabIndex = 0;
             groupPending.Text = "待采集任务";
             // 
@@ -166,7 +168,7 @@ namespace 永利系统.Views.Dashboard
             gridPending.Location = new System.Drawing.Point(2, 23);
             gridPending.MainView = gridViewPending;
             gridPending.Name = "gridPending";
-            gridPending.Size = new System.Drawing.Size(356, 334);
+            gridPending.Size = new System.Drawing.Size(356, 333);
             gridPending.TabIndex = 0;
             gridPending.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewPending });
             // 
@@ -239,7 +241,7 @@ namespace 永利系统.Views.Dashboard
             groupCompleted.Dock = System.Windows.Forms.DockStyle.Fill;
             groupCompleted.Location = new System.Drawing.Point(0, 0);
             groupCompleted.Name = "groupCompleted";
-            groupCompleted.Size = new System.Drawing.Size(360, 393);
+            groupCompleted.Size = new System.Drawing.Size(360, 394);
             groupCompleted.TabIndex = 0;
             groupCompleted.Text = "已完成任务";
             // 
@@ -249,7 +251,7 @@ namespace 永利系统.Views.Dashboard
             gridCompleted.Location = new System.Drawing.Point(2, 23);
             gridCompleted.MainView = gridViewCompleted;
             gridCompleted.Name = "gridCompleted";
-            gridCompleted.Size = new System.Drawing.Size(356, 368);
+            gridCompleted.Size = new System.Drawing.Size(356, 369);
             gridCompleted.TabIndex = 0;
             gridCompleted.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewCompleted });
             // 
@@ -318,6 +320,7 @@ namespace 永利系统.Views.Dashboard
             // 
             // xtraTabPageConfig
             // 
+            xtraTabPageConfig.Controls.Add(groupControl_Monitor_config);
             xtraTabPageConfig.Controls.Add(groupActions);
             xtraTabPageConfig.Controls.Add(groupSubmitAddress);
             xtraTabPageConfig.Controls.Add(groupDataSource);
@@ -333,7 +336,7 @@ namespace 永利系统.Views.Dashboard
             groupActions.Controls.Add(btnManualCollect);
             groupActions.Controls.Add(btnStopAuto);
             groupActions.Controls.Add(btnStartAuto);
-            groupActions.Location = new System.Drawing.Point(0, 484);
+            groupActions.Location = new System.Drawing.Point(339, 484);
             groupActions.Name = "groupActions";
             groupActions.Size = new System.Drawing.Size(345, 244);
             groupActions.TabIndex = 3;
@@ -390,7 +393,7 @@ namespace 永利系统.Views.Dashboard
             // groupSubmitAddress
             // 
             groupSubmitAddress.Controls.Add(memoSubmitAddresses);
-            groupSubmitAddress.Location = new System.Drawing.Point(0, 296);
+            groupSubmitAddress.Location = new System.Drawing.Point(339, 296);
             groupSubmitAddress.Name = "groupSubmitAddress";
             groupSubmitAddress.Size = new System.Drawing.Size(345, 189);
             groupSubmitAddress.TabIndex = 2;
@@ -411,7 +414,7 @@ namespace 永利系统.Views.Dashboard
             groupDataSource.Controls.Add(chkUseProxy);
             groupDataSource.Controls.Add(txtDataSourceUrl);
             groupDataSource.Controls.Add(labelControl6);
-            groupDataSource.Location = new System.Drawing.Point(0, 173);
+            groupDataSource.Location = new System.Drawing.Point(339, 173);
             groupDataSource.Name = "groupDataSource";
             groupDataSource.Size = new System.Drawing.Size(345, 123);
             groupDataSource.TabIndex = 1;
@@ -468,7 +471,7 @@ namespace 永利系统.Views.Dashboard
             groupIssueInfo.Controls.Add(labelControl2);
             groupIssueInfo.Controls.Add(txtCurrentIssue);
             groupIssueInfo.Controls.Add(labelControl1);
-            groupIssueInfo.Location = new System.Drawing.Point(0, 0);
+            groupIssueInfo.Location = new System.Drawing.Point(339, 0);
             groupIssueInfo.Name = "groupIssueInfo";
             groupIssueInfo.Size = new System.Drawing.Size(345, 173);
             groupIssueInfo.TabIndex = 0;
@@ -586,6 +589,14 @@ namespace 永利系统.Views.Dashboard
             xtraTabPageMonitorC.Size = new System.Drawing.Size(684, 730);
             xtraTabPageMonitorC.Text = "监控C";
             // 
+            // groupControl_Monitor_config
+            // 
+            groupControl_Monitor_config.Location = new System.Drawing.Point(5, 3);
+            groupControl_Monitor_config.Name = "groupControl_Monitor_config";
+            groupControl_Monitor_config.Size = new System.Drawing.Size(330, 716);
+            groupControl_Monitor_config.TabIndex = 5;
+            groupControl_Monitor_config.Text = "监控配置";
+            // 
             // DataCollectionPage
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
@@ -633,6 +644,7 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).EndInit();
             ResumeLayout(false);
 
         }
@@ -687,5 +699,6 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorA;
         private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorB;
         private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorC;
+        private DevExpress.XtraEditors.GroupControl groupControl_Monitor_config;
     }
 }
