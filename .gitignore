@@ -117,3 +117,6 @@ BaiShengVx3Plus/MyLog/logs.db
 /永利系统/obj
 /永利系统/bin/Debug/net8.0-windows
 /WinSSSPlan
+/BrowserControlLib
+/Unit.Browser/bin/Debug/net8.0-windows
+/Unit.Browser/obj
