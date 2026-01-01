@@ -30,14 +30,6 @@ namespace 永利系统.Views.Dashboard
         {
             splitContainerMain = new System.Windows.Forms.SplitContainer();
             splitContainerLeft = new System.Windows.Forms.SplitContainer();
-            groupPending = new DevExpress.XtraEditors.GroupControl();
-            gridPending = new DevExpress.XtraGrid.GridControl();
-            gridViewPending = new DevExpress.XtraGrid.Views.Grid.GridView();
-            colPendingId = new DevExpress.XtraGrid.Columns.GridColumn();
-            colPendingIssueId = new DevExpress.XtraGrid.Columns.GridColumn();
-            colPendingOpenData = new DevExpress.XtraGrid.Columns.GridColumn();
-            colPendingAttemptCount = new DevExpress.XtraGrid.Columns.GridColumn();
-            colPendingCreatedTime = new DevExpress.XtraGrid.Columns.GridColumn();
             groupCompleted = new DevExpress.XtraEditors.GroupControl();
             gridCompleted = new DevExpress.XtraGrid.GridControl();
             gridViewCompleted = new DevExpress.XtraGrid.Views.Grid.GridView();
@@ -47,10 +39,7 @@ namespace 永利系统.Views.Dashboard
             colCompletedCollectionTime = new DevExpress.XtraGrid.Columns.GridColumn();
             xtraTabControl1 = new DevExpress.XtraTab.XtraTabControl();
             xtraTabPageConfig = new DevExpress.XtraTab.XtraTabPage();
-            groupActions = new DevExpress.XtraEditors.GroupControl();
-            btnExportData = new DevExpress.XtraEditors.SimpleButton();
-            btnClearCompleted = new DevExpress.XtraEditors.SimpleButton();
-            btnManualCollect = new DevExpress.XtraEditors.SimpleButton();
+            groupControl_Monitor_config = new DevExpress.XtraEditors.GroupControl();
             btnStopAuto = new DevExpress.XtraEditors.SimpleButton();
             btnStartAuto = new DevExpress.XtraEditors.SimpleButton();
             groupSubmitAddress = new DevExpress.XtraEditors.GroupControl();
@@ -76,7 +65,14 @@ namespace 永利系统.Views.Dashboard
             xtraTabPageMonitorA = new DevExpress.XtraTab.XtraTabPage();
             xtraTabPageMonitorB = new DevExpress.XtraTab.XtraTabPage();
             xtraTabPageMonitorC = new DevExpress.XtraTab.XtraTabPage();
-            groupControl_Monitor_config = new DevExpress.XtraEditors.GroupControl();
+            groupPending = new DevExpress.XtraEditors.GroupControl();
+            gridPending = new DevExpress.XtraGrid.GridControl();
+            gridViewPending = new DevExpress.XtraGrid.Views.Grid.GridView();
+            colPendingId = new DevExpress.XtraGrid.Columns.GridColumn();
+            colPendingIssueId = new DevExpress.XtraGrid.Columns.GridColumn();
+            colPendingOpenData = new DevExpress.XtraGrid.Columns.GridColumn();
+            colPendingAttemptCount = new DevExpress.XtraGrid.Columns.GridColumn();
+            colPendingCreatedTime = new DevExpress.XtraGrid.Columns.GridColumn();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -85,10 +81,6 @@ namespace 永利系统.Views.Dashboard
             splitContainerLeft.Panel1.SuspendLayout();
             splitContainerLeft.Panel2.SuspendLayout();
             splitContainerLeft.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)groupPending).BeginInit();
-            groupPending.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)gridPending).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)gridViewPending).BeginInit();
             ((System.ComponentModel.ISupportInitialize)groupCompleted).BeginInit();
             groupCompleted.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridCompleted).BeginInit();
@@ -96,8 +88,7 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)xtraTabControl1).BeginInit();
             xtraTabControl1.SuspendLayout();
             xtraTabPageConfig.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)groupActions).BeginInit();
-            groupActions.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).BeginInit();
             ((System.ComponentModel.ISupportInitialize)groupSubmitAddress).BeginInit();
             groupSubmitAddress.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)memoSubmitAddresses.Properties).BeginInit();
@@ -113,7 +104,10 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)groupPending).BeginInit();
+            groupPending.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridPending).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)gridViewPending).BeginInit();
             SuspendLayout();
             // 
             // splitContainerMain
@@ -130,8 +124,8 @@ namespace 永利系统.Views.Dashboard
             // splitContainerMain.Panel2
             // 
             splitContainerMain.Panel2.Controls.Add(xtraTabControl1);
-            splitContainerMain.Size = new System.Drawing.Size(1050, 756);
-            splitContainerMain.SplitterDistance = 360;
+            splitContainerMain.Size = new System.Drawing.Size(1388, 756);
+            splitContainerMain.SplitterDistance = 326;
             splitContainerMain.TabIndex = 0;
             // 
             // splitContainerLeft
@@ -148,100 +142,17 @@ namespace 永利系统.Views.Dashboard
             // splitContainerLeft.Panel2
             // 
             splitContainerLeft.Panel2.Controls.Add(groupCompleted);
-            splitContainerLeft.Size = new System.Drawing.Size(360, 756);
-            splitContainerLeft.SplitterDistance = 358;
+            splitContainerLeft.Panel2.Controls.Add(groupIssueInfo);
+            splitContainerLeft.Size = new System.Drawing.Size(326, 756);
+            splitContainerLeft.SplitterDistance = 131;
             splitContainerLeft.TabIndex = 0;
-            // 
-            // groupPending
-            // 
-            groupPending.Controls.Add(gridPending);
-            groupPending.Dock = System.Windows.Forms.DockStyle.Fill;
-            groupPending.Location = new System.Drawing.Point(0, 0);
-            groupPending.Name = "groupPending";
-            groupPending.Size = new System.Drawing.Size(360, 358);
-            groupPending.TabIndex = 0;
-            groupPending.Text = "待采集任务";
-            // 
-            // gridPending
-            // 
-            gridPending.Dock = System.Windows.Forms.DockStyle.Fill;
-            gridPending.Location = new System.Drawing.Point(2, 23);
-            gridPending.MainView = gridViewPending;
-            gridPending.Name = "gridPending";
-            gridPending.Size = new System.Drawing.Size(356, 333);
-            gridPending.TabIndex = 0;
-            gridPending.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewPending });
-            // 
-            // gridViewPending
-            // 
-            gridViewPending.Columns.AddRange(new DevExpress.XtraGrid.Columns.GridColumn[] { colPendingId, colPendingIssueId, colPendingOpenData, colPendingAttemptCount, colPendingCreatedTime });
-            gridViewPending.DetailHeight = 331;
-            gridViewPending.GridControl = gridPending;
-            gridViewPending.Name = "gridViewPending";
-            gridViewPending.OptionsBehavior.Editable = false;
-            gridViewPending.OptionsBehavior.ReadOnly = true;
-            gridViewPending.OptionsEditForm.PopupEditFormWidth = 700;
-            gridViewPending.OptionsView.ShowGroupPanel = false;
-            // 
-            // colPendingId
-            // 
-            colPendingId.Caption = "ID";
-            colPendingId.FieldName = "Id";
-            colPendingId.MinWidth = 26;
-            colPendingId.Name = "colPendingId";
-            colPendingId.Visible = true;
-            colPendingId.VisibleIndex = 0;
-            colPendingId.Width = 52;
-            // 
-            // colPendingIssueId
-            // 
-            colPendingIssueId.Caption = "期号";
-            colPendingIssueId.FieldName = "IssueId";
-            colPendingIssueId.MinWidth = 26;
-            colPendingIssueId.Name = "colPendingIssueId";
-            colPendingIssueId.Visible = true;
-            colPendingIssueId.VisibleIndex = 1;
-            colPendingIssueId.Width = 105;
-            // 
-            // colPendingOpenData
-            // 
-            colPendingOpenData.Caption = "开奖号码";
-            colPendingOpenData.FieldName = "OpenData";
-            colPendingOpenData.MinWidth = 26;
-            colPendingOpenData.Name = "colPendingOpenData";
-            colPendingOpenData.Visible = true;
-            colPendingOpenData.VisibleIndex = 2;
-            colPendingOpenData.Width = 131;
-            // 
-            // colPendingAttemptCount
-            // 
-            colPendingAttemptCount.Caption = "尝试次数";
-            colPendingAttemptCount.FieldName = "AttemptCount";
-            colPendingAttemptCount.MinWidth = 26;
-            colPendingAttemptCount.Name = "colPendingAttemptCount";
-            colPendingAttemptCount.Visible = true;
-            colPendingAttemptCount.VisibleIndex = 3;
-            colPendingAttemptCount.Width = 87;
-            // 
-            // colPendingCreatedTime
-            // 
-            colPendingCreatedTime.Caption = "创建时间";
-            colPendingCreatedTime.DisplayFormat.FormatString = "yyyy-MM-dd HH:mm:ss";
-            colPendingCreatedTime.DisplayFormat.FormatType = DevExpress.Utils.FormatType.DateTime;
-            colPendingCreatedTime.FieldName = "CreatedTime";
-            colPendingCreatedTime.MinWidth = 26;
-            colPendingCreatedTime.Name = "colPendingCreatedTime";
-            colPendingCreatedTime.Visible = true;
-            colPendingCreatedTime.VisibleIndex = 4;
-            colPendingCreatedTime.Width = 157;
             // 
             // groupCompleted
             // 
             groupCompleted.Controls.Add(gridCompleted);
-            groupCompleted.Dock = System.Windows.Forms.DockStyle.Fill;
-            groupCompleted.Location = new System.Drawing.Point(0, 0);
+            groupCompleted.Location = new System.Drawing.Point(3, 8);
             groupCompleted.Name = "groupCompleted";
-            groupCompleted.Size = new System.Drawing.Size(360, 394);
+            groupCompleted.Size = new System.Drawing.Size(321, 279);
             groupCompleted.TabIndex = 0;
             groupCompleted.Text = "已完成任务";
             // 
@@ -251,7 +162,7 @@ namespace 永利系统.Views.Dashboard
             gridCompleted.Location = new System.Drawing.Point(2, 23);
             gridCompleted.MainView = gridViewCompleted;
             gridCompleted.Name = "gridCompleted";
-            gridCompleted.Size = new System.Drawing.Size(356, 369);
+            gridCompleted.Size = new System.Drawing.Size(317, 254);
             gridCompleted.TabIndex = 0;
             gridCompleted.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewCompleted });
             // 
@@ -314,57 +225,26 @@ namespace 永利系统.Views.Dashboard
             xtraTabControl1.Location = new System.Drawing.Point(0, 0);
             xtraTabControl1.Name = "xtraTabControl1";
             xtraTabControl1.SelectedTabPage = xtraTabPageConfig;
-            xtraTabControl1.Size = new System.Drawing.Size(686, 756);
+            xtraTabControl1.Size = new System.Drawing.Size(1058, 756);
             xtraTabControl1.TabIndex = 0;
             xtraTabControl1.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] { xtraTabPageConfig, xtraTabPageMonitorA, xtraTabPageMonitorB, xtraTabPageMonitorC });
             // 
             // xtraTabPageConfig
             // 
             xtraTabPageConfig.Controls.Add(groupControl_Monitor_config);
-            xtraTabPageConfig.Controls.Add(groupActions);
             xtraTabPageConfig.Controls.Add(groupSubmitAddress);
             xtraTabPageConfig.Controls.Add(groupDataSource);
-            xtraTabPageConfig.Controls.Add(groupIssueInfo);
             xtraTabPageConfig.Name = "xtraTabPageConfig";
-            xtraTabPageConfig.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageConfig.Size = new System.Drawing.Size(1056, 730);
             xtraTabPageConfig.Text = "配置";
             // 
-            // groupActions
+            // groupControl_Monitor_config
             // 
-            groupActions.Controls.Add(btnExportData);
-            groupActions.Controls.Add(btnClearCompleted);
-            groupActions.Controls.Add(btnManualCollect);
-            groupActions.Controls.Add(btnStopAuto);
-            groupActions.Controls.Add(btnStartAuto);
-            groupActions.Location = new System.Drawing.Point(339, 484);
-            groupActions.Name = "groupActions";
-            groupActions.Size = new System.Drawing.Size(345, 244);
-            groupActions.TabIndex = 3;
-            groupActions.Text = "操作";
-            // 
-            // btnExportData
-            // 
-            btnExportData.Location = new System.Drawing.Point(175, 144);
-            btnExportData.Name = "btnExportData";
-            btnExportData.Size = new System.Drawing.Size(153, 26);
-            btnExportData.TabIndex = 4;
-            btnExportData.Text = "导出数据";
-            // 
-            // btnClearCompleted
-            // 
-            btnClearCompleted.Location = new System.Drawing.Point(13, 144);
-            btnClearCompleted.Name = "btnClearCompleted";
-            btnClearCompleted.Size = new System.Drawing.Size(153, 26);
-            btnClearCompleted.TabIndex = 3;
-            btnClearCompleted.Text = "清空已完成列表";
-            // 
-            // btnManualCollect
-            // 
-            btnManualCollect.Location = new System.Drawing.Point(13, 112);
-            btnManualCollect.Name = "btnManualCollect";
-            btnManualCollect.Size = new System.Drawing.Size(315, 26);
-            btnManualCollect.TabIndex = 2;
-            btnManualCollect.Text = "手动采集当前期号";
+            groupControl_Monitor_config.Location = new System.Drawing.Point(5, 3);
+            groupControl_Monitor_config.Name = "groupControl_Monitor_config";
+            groupControl_Monitor_config.Size = new System.Drawing.Size(330, 716);
+            groupControl_Monitor_config.TabIndex = 5;
+            groupControl_Monitor_config.Text = "监控配置";
             // 
             // btnStopAuto
             // 
@@ -372,11 +252,11 @@ namespace 永利系统.Views.Dashboard
             btnStopAuto.Appearance.Font = new System.Drawing.Font("Tahoma", 10F, System.Drawing.FontStyle.Bold);
             btnStopAuto.Appearance.Options.UseBackColor = true;
             btnStopAuto.Appearance.Options.UseFont = true;
-            btnStopAuto.Location = new System.Drawing.Point(13, 73);
+            btnStopAuto.Location = new System.Drawing.Point(226, 111);
             btnStopAuto.Name = "btnStopAuto";
-            btnStopAuto.Size = new System.Drawing.Size(315, 34);
+            btnStopAuto.Size = new System.Drawing.Size(94, 24);
             btnStopAuto.TabIndex = 1;
-            btnStopAuto.Text = "■ 停止自动采集";
+            btnStopAuto.Text = "■ 停止采集";
             // 
             // btnStartAuto
             // 
@@ -384,11 +264,11 @@ namespace 永利系统.Views.Dashboard
             btnStartAuto.Appearance.Font = new System.Drawing.Font("Tahoma", 10F, System.Drawing.FontStyle.Bold);
             btnStartAuto.Appearance.Options.UseBackColor = true;
             btnStartAuto.Appearance.Options.UseFont = true;
-            btnStartAuto.Location = new System.Drawing.Point(13, 33);
+            btnStartAuto.Location = new System.Drawing.Point(227, 86);
             btnStartAuto.Name = "btnStartAuto";
-            btnStartAuto.Size = new System.Drawing.Size(315, 34);
+            btnStartAuto.Size = new System.Drawing.Size(94, 21);
             btnStartAuto.TabIndex = 0;
-            btnStartAuto.Text = "▶ 开始自动采集";
+            btnStartAuto.Text = "▶ 开始采集";
             // 
             // groupSubmitAddress
             // 
@@ -463,7 +343,9 @@ namespace 永利系统.Views.Dashboard
             groupIssueInfo.Controls.Add(btnGetIssueInfo);
             groupIssueInfo.Controls.Add(txtCountdown);
             groupIssueInfo.Controls.Add(labelControl5);
+            groupIssueInfo.Controls.Add(btnStopAuto);
             groupIssueInfo.Controls.Add(txtNextTime);
+            groupIssueInfo.Controls.Add(btnStartAuto);
             groupIssueInfo.Controls.Add(labelControl4);
             groupIssueInfo.Controls.Add(txtNextIssue);
             groupIssueInfo.Controls.Add(labelControl3);
@@ -471,23 +353,23 @@ namespace 永利系统.Views.Dashboard
             groupIssueInfo.Controls.Add(labelControl2);
             groupIssueInfo.Controls.Add(txtCurrentIssue);
             groupIssueInfo.Controls.Add(labelControl1);
-            groupIssueInfo.Location = new System.Drawing.Point(339, 0);
+            groupIssueInfo.Location = new System.Drawing.Point(5, 293);
             groupIssueInfo.Name = "groupIssueInfo";
-            groupIssueInfo.Size = new System.Drawing.Size(345, 173);
+            groupIssueInfo.Size = new System.Drawing.Size(317, 325);
             groupIssueInfo.TabIndex = 0;
             groupIssueInfo.Text = "期号信息";
             // 
             // btnGetIssueInfo
             // 
-            btnGetIssueInfo.Location = new System.Drawing.Point(13, 144);
+            btnGetIssueInfo.Location = new System.Drawing.Point(241, 56);
             btnGetIssueInfo.Name = "btnGetIssueInfo";
-            btnGetIssueInfo.Size = new System.Drawing.Size(315, 22);
+            btnGetIssueInfo.Size = new System.Drawing.Size(77, 24);
             btnGetIssueInfo.TabIndex = 10;
             btnGetIssueInfo.Text = "获取期号信息";
             // 
             // txtCountdown
             // 
-            txtCountdown.Location = new System.Drawing.Point(260, 115);
+            txtCountdown.Location = new System.Drawing.Point(260, 30);
             txtCountdown.Name = "txtCountdown";
             txtCountdown.Properties.Appearance.Font = new System.Drawing.Font("Tahoma", 10F, System.Drawing.FontStyle.Bold);
             txtCountdown.Properties.Appearance.ForeColor = System.Drawing.Color.Red;
@@ -496,12 +378,12 @@ namespace 永利系统.Views.Dashboard
             txtCountdown.Properties.Appearance.Options.UseTextOptions = true;
             txtCountdown.Properties.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Center;
             txtCountdown.Properties.ReadOnly = true;
-            txtCountdown.Size = new System.Drawing.Size(68, 22);
+            txtCountdown.Size = new System.Drawing.Size(52, 22);
             txtCountdown.TabIndex = 9;
             // 
             // labelControl5
             // 
-            labelControl5.Location = new System.Drawing.Point(223, 118);
+            labelControl5.Location = new System.Drawing.Point(223, 33);
             labelControl5.Name = "labelControl5";
             labelControl5.Size = new System.Drawing.Size(36, 14);
             labelControl5.TabIndex = 8;
@@ -544,7 +426,7 @@ namespace 永利系统.Views.Dashboard
             txtCurrentTime.Location = new System.Drawing.Point(71, 59);
             txtCurrentTime.Name = "txtCurrentTime";
             txtCurrentTime.Properties.ReadOnly = true;
-            txtCurrentTime.Size = new System.Drawing.Size(257, 20);
+            txtCurrentTime.Size = new System.Drawing.Size(147, 20);
             txtCurrentTime.TabIndex = 3;
             // 
             // labelControl2
@@ -574,34 +456,109 @@ namespace 永利系统.Views.Dashboard
             // xtraTabPageMonitorA
             // 
             xtraTabPageMonitorA.Name = "xtraTabPageMonitorA";
-            xtraTabPageMonitorA.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageMonitorA.Size = new System.Drawing.Size(1056, 730);
             xtraTabPageMonitorA.Text = "监控A";
             // 
             // xtraTabPageMonitorB
             // 
             xtraTabPageMonitorB.Name = "xtraTabPageMonitorB";
-            xtraTabPageMonitorB.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageMonitorB.Size = new System.Drawing.Size(1056, 730);
             xtraTabPageMonitorB.Text = "监控B";
             // 
             // xtraTabPageMonitorC
             // 
             xtraTabPageMonitorC.Name = "xtraTabPageMonitorC";
-            xtraTabPageMonitorC.Size = new System.Drawing.Size(684, 730);
+            xtraTabPageMonitorC.Size = new System.Drawing.Size(1056, 730);
             xtraTabPageMonitorC.Text = "监控C";
             // 
-            // groupControl_Monitor_config
+            // groupPending
             // 
-            groupControl_Monitor_config.Location = new System.Drawing.Point(5, 3);
-            groupControl_Monitor_config.Name = "groupControl_Monitor_config";
-            groupControl_Monitor_config.Size = new System.Drawing.Size(330, 716);
-            groupControl_Monitor_config.TabIndex = 5;
-            groupControl_Monitor_config.Text = "监控配置";
+            groupPending.Controls.Add(gridPending);
+            groupPending.Dock = System.Windows.Forms.DockStyle.Fill;
+            groupPending.Location = new System.Drawing.Point(0, 0);
+            groupPending.Name = "groupPending";
+            groupPending.Size = new System.Drawing.Size(326, 131);
+            groupPending.TabIndex = 1;
+            groupPending.Text = "待采集任务";
+            // 
+            // gridPending
+            // 
+            gridPending.Dock = System.Windows.Forms.DockStyle.Fill;
+            gridPending.Location = new System.Drawing.Point(2, 23);
+            gridPending.MainView = gridViewPending;
+            gridPending.Name = "gridPending";
+            gridPending.Size = new System.Drawing.Size(322, 106);
+            gridPending.TabIndex = 0;
+            gridPending.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] { gridViewPending });
+            // 
+            // gridViewPending
+            // 
+            gridViewPending.Columns.AddRange(new DevExpress.XtraGrid.Columns.GridColumn[] { colPendingId, colPendingIssueId, colPendingOpenData, colPendingAttemptCount, colPendingCreatedTime });
+            gridViewPending.DetailHeight = 331;
+            gridViewPending.GridControl = gridPending;
+            gridViewPending.Name = "gridViewPending";
+            gridViewPending.OptionsBehavior.Editable = false;
+            gridViewPending.OptionsBehavior.ReadOnly = true;
+            gridViewPending.OptionsEditForm.PopupEditFormWidth = 700;
+            gridViewPending.OptionsView.ShowGroupPanel = false;
+            // 
+            // colPendingId
+            // 
+            colPendingId.Caption = "ID";
+            colPendingId.FieldName = "Id";
+            colPendingId.MinWidth = 26;
+            colPendingId.Name = "colPendingId";
+            colPendingId.Visible = true;
+            colPendingId.VisibleIndex = 0;
+            colPendingId.Width = 52;
+            // 
+            // colPendingIssueId
+            // 
+            colPendingIssueId.Caption = "期号";
+            colPendingIssueId.FieldName = "IssueId";
+            colPendingIssueId.MinWidth = 26;
+            colPendingIssueId.Name = "colPendingIssueId";
+            colPendingIssueId.Visible = true;
+            colPendingIssueId.VisibleIndex = 1;
+            colPendingIssueId.Width = 105;
+            // 
+            // colPendingOpenData
+            // 
+            colPendingOpenData.Caption = "开奖号码";
+            colPendingOpenData.FieldName = "OpenData";
+            colPendingOpenData.MinWidth = 26;
+            colPendingOpenData.Name = "colPendingOpenData";
+            colPendingOpenData.Visible = true;
+            colPendingOpenData.VisibleIndex = 2;
+            colPendingOpenData.Width = 131;
+            // 
+            // colPendingAttemptCount
+            // 
+            colPendingAttemptCount.Caption = "尝试次数";
+            colPendingAttemptCount.FieldName = "AttemptCount";
+            colPendingAttemptCount.MinWidth = 26;
+            colPendingAttemptCount.Name = "colPendingAttemptCount";
+            colPendingAttemptCount.Visible = true;
+            colPendingAttemptCount.VisibleIndex = 3;
+            colPendingAttemptCount.Width = 87;
+            // 
+            // colPendingCreatedTime
+            // 
+            colPendingCreatedTime.Caption = "创建时间";
+            colPendingCreatedTime.DisplayFormat.FormatString = "yyyy-MM-dd HH:mm:ss";
+            colPendingCreatedTime.DisplayFormat.FormatType = DevExpress.Utils.FormatType.DateTime;
+            colPendingCreatedTime.FieldName = "CreatedTime";
+            colPendingCreatedTime.MinWidth = 26;
+            colPendingCreatedTime.Name = "colPendingCreatedTime";
+            colPendingCreatedTime.Visible = true;
+            colPendingCreatedTime.VisibleIndex = 4;
+            colPendingCreatedTime.Width = 157;
             // 
             // DataCollectionPage
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(1050, 756);
+            ClientSize = new System.Drawing.Size(1388, 756);
             Controls.Add(splitContainerMain);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             Name = "DataCollectionPage";
@@ -614,10 +571,6 @@ namespace 永利系统.Views.Dashboard
             splitContainerLeft.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainerLeft).EndInit();
             splitContainerLeft.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)groupPending).EndInit();
-            groupPending.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)gridPending).EndInit();
-            ((System.ComponentModel.ISupportInitialize)gridViewPending).EndInit();
             ((System.ComponentModel.ISupportInitialize)groupCompleted).EndInit();
             groupCompleted.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridCompleted).EndInit();
@@ -625,8 +578,7 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)xtraTabControl1).EndInit();
             xtraTabControl1.ResumeLayout(false);
             xtraTabPageConfig.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)groupActions).EndInit();
-            groupActions.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).EndInit();
             ((System.ComponentModel.ISupportInitialize)groupSubmitAddress).EndInit();
             groupSubmitAddress.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)memoSubmitAddresses.Properties).EndInit();
@@ -644,7 +596,10 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).EndInit();
-            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).EndInit();
+            ((System.ComponentModel.ISupportInitialize)groupPending).EndInit();
+            groupPending.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)gridPending).EndInit();
+            ((System.ComponentModel.ISupportInitialize)gridViewPending).EndInit();
             ResumeLayout(false);
 
         }
@@ -653,14 +608,6 @@ namespace 永利系统.Views.Dashboard
 
         private System.Windows.Forms.SplitContainer splitContainerMain;
         private System.Windows.Forms.SplitContainer splitContainerLeft;
-        private DevExpress.XtraEditors.GroupControl groupPending;
-        private DevExpress.XtraGrid.GridControl gridPending;
-        private DevExpress.XtraGrid.Views.Grid.GridView gridViewPending;
-        private DevExpress.XtraGrid.Columns.GridColumn colPendingId;
-        private DevExpress.XtraGrid.Columns.GridColumn colPendingIssueId;
-        private DevExpress.XtraGrid.Columns.GridColumn colPendingOpenData;
-        private DevExpress.XtraGrid.Columns.GridColumn colPendingAttemptCount;
-        private DevExpress.XtraGrid.Columns.GridColumn colPendingCreatedTime;
         private DevExpress.XtraEditors.GroupControl groupCompleted;
         private DevExpress.XtraGrid.GridControl gridCompleted;
         private DevExpress.XtraGrid.Views.Grid.GridView gridViewCompleted;
@@ -670,10 +617,6 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedCollectionTime;
         private DevExpress.XtraTab.XtraTabControl xtraTabControl1;
         private DevExpress.XtraTab.XtraTabPage xtraTabPageConfig;
-        private DevExpress.XtraEditors.GroupControl groupActions;
-        private DevExpress.XtraEditors.SimpleButton btnExportData;
-        private DevExpress.XtraEditors.SimpleButton btnClearCompleted;
-        private DevExpress.XtraEditors.SimpleButton btnManualCollect;
         private DevExpress.XtraEditors.SimpleButton btnStopAuto;
         private DevExpress.XtraEditors.SimpleButton btnStartAuto;
         private DevExpress.XtraEditors.GroupControl groupSubmitAddress;
@@ -700,5 +643,13 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorB;
         private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorC;
         private DevExpress.XtraEditors.GroupControl groupControl_Monitor_config;
+        private DevExpress.XtraEditors.GroupControl groupPending;
+        private DevExpress.XtraGrid.GridControl gridPending;
+        private DevExpress.XtraGrid.Views.Grid.GridView gridViewPending;
+        private DevExpress.XtraGrid.Columns.GridColumn colPendingId;
+        private DevExpress.XtraGrid.Columns.GridColumn colPendingIssueId;
+        private DevExpress.XtraGrid.Columns.GridColumn colPendingOpenData;
+        private DevExpress.XtraGrid.Columns.GridColumn colPendingAttemptCount;
+        private DevExpress.XtraGrid.Columns.GridColumn colPendingCreatedTime;
     }
 }

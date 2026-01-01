@@ -2,10 +2,25 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup />
   <ItemGroup>
+    <Compile Update="Views\Dashboard\Controls\MonitorConfigContainerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Controls\MonitorConfigControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Views\Dashboard\DataCollectionPage.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Views\Dashboard\Monitors\MonitorAControl.cs">
+    <Compile Update="Views\Dashboard\Monitors\MonitorA_Control.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorB_Control.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorControlBase.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorC_Control.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Views\FloatingLogWindow.cs">

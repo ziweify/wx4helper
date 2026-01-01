@@ -1,6 +1,6 @@
 namespace 永利系统.Views.Dashboard.Monitors
 {
-    partial class MonitorAControl
+    partial class MonitorC_Control
     {
         private System.ComponentModel.IContainer components = null;
 

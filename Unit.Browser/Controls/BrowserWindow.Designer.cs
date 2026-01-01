@@ -193,6 +193,7 @@ namespace Unit.Browser.Controls
             Controls.Add(_splitContainer);
             Controls.Add(_pnlTop);
             Controls.Add(_statusStrip);
+            FormBorderStyle = FormBorderStyle.None; // 去掉标题栏和边框
             Name = "BrowserWindow";
             Text = "浏览器窗口";
             

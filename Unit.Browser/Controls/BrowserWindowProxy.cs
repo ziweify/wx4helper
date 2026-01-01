@@ -28,6 +28,11 @@ namespace Unit.Browser.Controls
 
         public bool IsInitialized => _isInitialized;
 
+        /// <summary>
+        /// 获取浏览器窗口句柄
+        /// </summary>
+        public IntPtr WindowHandle => _browserWindow?.Handle ?? IntPtr.Zero;
+
         public bool IsVisible
         {
             get => _browserWindow?.Visible ?? false;
@@ -65,9 +70,6 @@ namespace Unit.Browser.Controls
                 {
                     try
                     {
-                        // 设置为 STA 线程（WebView2 需要）
-                        Thread.CurrentThread.SetApartmentState(ApartmentState.STA);
-                        
                         // 创建浏览器窗口
                         _browserWindow = new BrowserWindow(windowTitle, initialUrl);
                         
@@ -96,6 +98,9 @@ namespace Unit.Browser.Controls
                     IsBackground = true,
                     Name = $"BrowserWindow-{windowTitle}"
                 };
+
+                // 在启动线程前设置为STA
+                _windowThread.SetApartmentState(ApartmentState.STA);
 
                 _windowThread.Start();
 
