@@ -214,6 +214,9 @@ namespace zhaocaimao.Services.Games.Binggo
             _logService.Info("LotteryService", "🚀 开奖服务启动");
             _isRunning = true;
             
+            // 🔥 清理数据库中的旧期号数据（期号 < 115000001）
+            CleanupOldLotteryData();
+            
             // 立即执行一次
             await OnTimerTickAsync();
             
@@ -229,6 +232,35 @@ namespace zhaocaimao.Services.Games.Binggo
             _queueCheckCts = new CancellationTokenSource();
             _queueCheckTask = Task.Run(() => CheckLotteryQueueAsync(_queueCheckCts.Token), _queueCheckCts.Token);
             _logService.Info("LotteryService", "✅ 开奖队列检查线程已启动");
+        }
+        
+        /// <summary>
+        /// 🔥 清理数据库中的旧基准期号数据
+        /// 只清理114开头的旧基准数据，不影响正常的历史数据
+        /// </summary>
+        private void CleanupOldLotteryData()
+        {
+            if (_db == null) return;
+            
+            try
+            {
+                // 🔥 只删除旧基准（114开头）的数据
+                // 新基准是115000001，所以删除 < 115000000 的数据
+                int deletedCount = _db.Execute(
+                    "DELETE FROM BinggoLotteryData WHERE IssueId < ?", 
+                    115000000);
+                
+                if (deletedCount > 0)
+                {
+                    _logService.Info("LotteryService", 
+                        $"🗑️ 清理了 {deletedCount} 条旧基准期号数据（< 115000000）");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("LotteryService", 
+                    $"清理旧数据失败: {ex.Message}");
+            }
         }
         
         public Task StopAsync()
@@ -814,25 +846,37 @@ namespace zhaocaimao.Services.Games.Binggo
                         $"❌ API 返回失败: Code={response.Code}, Msg={response.Msg}");
                 }
                 
-                // 如果网络失败，从本地读取
+                // 🔥 API失败时，通过计算期号来精准查询数据库
+                // 不再使用"查询最近N期"的模糊查询，而是精准查询指定期号
                 if (_db != null)
                 {
-                    // 🔥 修复：IsOpened 是计算属性，SQLite-net 无法转换为 SQL
-                    var local = _db.Table<BinggoLotteryData>()
-                        .Where(d => !string.IsNullOrEmpty(d.LotteryData))
-                        .OrderByDescending(d => d.IssueId)
-                        .Take(count * 2) // 多取一些，因为可能有些记录 LotteryData 不完整
-                        .ToList()
-                        .Where(d => d.IsOpened) // 在内存中过滤，确保已开奖
-                        .Take(count)
-                        .ToList();
+                    var result = new List<BinggoLotteryData>();
                     
-                    _logService.Info("LotteryService", $"📂 从本地缓存获取 {local.Count} 期数据");
+                    // 🔥 从当前期号往前推，精准查询每一期
+                    int currentIssueId = Helpers.BinggoHelper.GetCurrentIssueId();
+                    
+                    for (int i = 1; i <= count; i++)
+                    {
+                        int targetIssueId = Helpers.BinggoHelper.GetPreviousIssueId(currentIssueId, i);
+                        
+                        // 精准查询该期号的数据
+                        var data = _db.Table<BinggoLotteryData>()
+                            .Where(d => d.IssueId == targetIssueId)
+                            .FirstOrDefault();
+                        
+                        if (data != null && data.IsOpened)
+                        {
+                            result.Add(data);
+                        }
+                    }
+                    
+                    _logService.Info("LotteryService", 
+                        $"📂 从本地缓存精准查询 {result.Count}/{count} 期数据");
                     
                     // 🔥 同样检查上期数据
-                    CheckAndNotifyLastIssue(local);
+                    CheckAndNotifyLastIssue(result);
                     
-                    return local;
+                    return result;
                 }
                 
                 return new List<BinggoLotteryData>();

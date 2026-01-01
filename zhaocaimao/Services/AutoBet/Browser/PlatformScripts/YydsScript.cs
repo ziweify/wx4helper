@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Dynamic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Policy;
@@ -45,6 +46,168 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
         // 赔率更新控制
         private bool _oddsLoaded = false;  // 赔率是否已加载
         private bool _autoUpdateOdds = true;  // 是否允许自动更新赔率
+        
+        // 🔥 调试日志目录（必须先初始化）
+        private static readonly string _debugLogDirectory = GetDebugLogDirectory();
+        
+        // 🔥 调试日志路径（使用应用程序数据目录，按日期+启动时间命名）
+        private static readonly string _debugLogPath = GetDebugLogPath();
+        
+        /// <summary>
+        /// 获取调试日志目录
+        /// </summary>
+        private static string GetDebugLogDirectory()
+        {
+            try
+            {
+                var logDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "zhaocaimao",
+                    "Logs",
+                    "Debug");
+                Directory.CreateDirectory(logDir);
+                return logDir;
+            }
+            catch
+            {
+                // 如果创建目录失败，使用临时目录
+                var tempDir = Path.Combine(Path.GetTempPath(), "zhaocaimao_debug");
+                try
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
+                catch { }
+                return tempDir;
+            }
+        }
+        
+        /// <summary>
+        /// 获取调试日志路径（按日期+启动时间命名）
+        /// </summary>
+        private static string GetDebugLogPath()
+        {
+            try
+            {
+                // 🔥 清理24小时前的旧日志（在首次调用时执行）
+                CleanupOldDebugLogs();
+                
+                // 🔥 使用日期+启动时间命名：yyds_debug_2026-01-01_11-13-33.log
+                var now = DateTime.Now;
+                var fileName = $"yyds_debug_{now:yyyy-MM-dd}_{now:HH-mm-ss}.log";
+                return Path.Combine(_debugLogDirectory, fileName);
+            }
+            catch
+            {
+                // 如果创建目录失败，使用临时目录
+                var tempDir = Path.Combine(Path.GetTempPath(), "zhaocaimao_debug");
+                try
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
+                catch { }
+                var now = DateTime.Now;
+                var fileName = $"yyds_debug_{now:yyyy-MM-dd}_{now:HH-mm-ss}.log";
+                return Path.Combine(tempDir, fileName);
+            }
+        }
+        
+        /// <summary>
+        /// 清理24小时前的调试日志文件
+        /// </summary>
+        private static void CleanupOldDebugLogs()
+        {
+            try
+            {
+                if (!Directory.Exists(_debugLogDirectory))
+                    return;
+                
+                var cutoffTime = DateTime.Now.AddHours(-24);
+                var files = Directory.GetFiles(_debugLogDirectory, "yyds_debug_*.log");
+                int deletedCount = 0;
+                
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        var fileName = Path.GetFileNameWithoutExtension(file);
+                        // 🔥 从文件名解析日期时间：yyds_debug_2026-01-01_11-13-33
+                        // 格式：yyds_debug_yyyy-MM-dd_HH-mm-ss
+                        if (fileName.StartsWith("yyds_debug_") && fileName.Length >= 25)
+                        {
+                            var dateTimeStr = fileName.Substring(11); // 跳过 "yyds_debug_"
+                            if (DateTime.TryParseExact(dateTimeStr, "yyyy-MM-dd_HH-mm-ss", 
+                                System.Globalization.CultureInfo.InvariantCulture, 
+                                System.Globalization.DateTimeStyles.None, out var fileDateTime))
+                            {
+                                if (fileDateTime < cutoffTime)
+                                {
+                                    File.Delete(file);
+                                    deletedCount++;
+                                }
+                            }
+                            else
+                            {
+                                // 如果无法解析文件名，使用文件时间作为后备方案
+                                var fileInfo = new FileInfo(file);
+                                var fileTime = fileInfo.LastWriteTime < fileInfo.CreationTime 
+                                    ? fileInfo.LastWriteTime 
+                                    : fileInfo.CreationTime;
+                                
+                                if (fileTime < cutoffTime)
+                                {
+                                    File.Delete(file);
+                                    deletedCount++;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 文件名格式不正确，使用文件时间作为后备方案
+                            var fileInfo = new FileInfo(file);
+                            var fileTime = fileInfo.LastWriteTime < fileInfo.CreationTime 
+                                ? fileInfo.LastWriteTime 
+                                : fileInfo.CreationTime;
+                            
+                            if (fileTime < cutoffTime)
+                            {
+                                File.Delete(file);
+                                deletedCount++;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略单个文件删除失败
+                    }
+                }
+                
+                if (deletedCount > 0)
+                {
+                    // 使用静态方法写入日志，但这里可能还没有初始化，所以只记录到系统日志
+                    System.Diagnostics.Debug.WriteLine($"[YydsScript] 已清理 {deletedCount} 个24小时前的调试日志文件");
+                }
+            }
+            catch
+            {
+                // 忽略清理失败，避免影响主流程
+            }
+        }
+        
+        /// <summary>
+        /// 安全地写入调试日志（带异常处理）
+        /// </summary>
+        private static void WriteDebugLog(object logData)
+        {
+            try
+            {
+                var json = JsonConvert.SerializeObject(logData);
+                File.AppendAllText(_debugLogPath, json + "\n");
+            }
+            catch
+            {
+                // 忽略写入失败，避免影响主流程
+            }
+        }
         
         // 赔率ID映射表
         //private readonly Dictionary<string, string> _oddsMap = new Dictionary<string, string>();
@@ -993,6 +1156,44 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     return (false, "", "#未登录，无法下注");
                 }
 
+                // 🔥 检查 API 域名是否已设置
+                if (string.IsNullOrEmpty(_apiBaseUrl))
+                {
+                    // 如果未设置，尝试从登录域名推断（通常 API 域名和登录域名在同一域名下）
+                    // 例如：登录域名 https://client.06n.yyds666.me，API 域名可能是 https://admin-api.06n.yyds666.me
+                    if (!string.IsNullOrEmpty(_baseUrl))
+                    {
+                        try
+                        {
+                            var baseUri = new Uri(_baseUrl);
+                            // 尝试将 client 替换为 admin-api
+                            var host = baseUri.Host;
+                            if (host.Contains("client"))
+                            {
+                                _apiBaseUrl = baseUri.Scheme + "://" + host.Replace("client", "admin-api");
+                            }
+                            else
+                            {
+                                // 如果无法推断，使用默认的 API 域名格式
+                                _apiBaseUrl = "https://admin-api.06n.yyds666.me";
+                            }
+                            _logCallback($"⚠️ API域名未设置，已推断为: {_apiBaseUrl}");
+                        }
+                        catch
+                        {
+                            // 如果推断失败，使用默认值
+                            _apiBaseUrl = "https://admin-api.06n.yyds666.me";
+                            _logCallback($"⚠️ API域名未设置，已使用默认值: {_apiBaseUrl}");
+                        }
+                    }
+                    else
+                    {
+                        // 如果连登录域名都没有，使用默认值
+                        _apiBaseUrl = "https://admin-api.06n.yyds666.me";
+                        _logCallback($"⚠️ API域名未设置，已使用默认值: {_apiBaseUrl}");
+                    }
+                }
+
                 // 2. 检查余额
                 //var balance = await GetBalanceAsync();
                 //var totalAmount = orders.GetTotalAmount();
@@ -1031,7 +1232,28 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 foreach(var order in orders)
                 {
                     var oddsInfo = _OddsInfo.FirstOrDefault(o => o.Play == order.Play && o.Car == order.Car);
+                    
+                    // 🔥 检查赔率信息是否存在
+                    if (oddsInfo == null)
+                    {
+                        _logCallback($"❌ 未找到赔率信息: Play={order.Play}, Car={order.Car}");
+                        return (false, "", $"#未找到赔率信息: {order.Play}-{order.Car}");
+                    }
+                    
+                    // 🔥 检查 CarName 是否存在且格式正确
+                    if (string.IsNullOrEmpty(oddsInfo.CarName) || !oddsInfo.CarName.Contains("|"))
+                    {
+                        _logCallback($"❌ 赔率信息格式错误: CarName={oddsInfo.CarName}");
+                        return (false, "", $"#赔率信息格式错误: {oddsInfo.CarName}");
+                    }
+                    
                     string[] param = oddsInfo.CarName.Split('|');
+                    if (param.Length < 2)
+                    {
+                        _logCallback($"❌ 赔率信息格式错误: CarName={oddsInfo.CarName}，无法分割");
+                        return (false, "", $"#赔率信息格式错误: {oddsInfo.CarName}");
+                    }
+                    
                     // 根据订单信息构建投注项
                     var betItem = new
                     {
@@ -1529,7 +1751,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 if (response.Url.EndsWith("/info") && !response.Url.Contains("?"))
                 {
                     // #region agent log
-                    System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "YydsScript.cs:1025", message = "拦截到/info接口", data = new { url = response.Url, hasQueryString = response.Url.Contains("?") }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                    WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "YydsScript.cs:1025", message = "拦截到/info接口", data = new { url = response.Url, hasQueryString = response.Url.Contains("?") }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                     // #endregion
                     
                     try
@@ -1538,7 +1760,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         var code = json["code"]?.Value<int>() ?? 0;
                         
                         // #region agent log
-                        System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1032", message = "解析/info响应", data = new { code = code, hasData = json["data"] != null, hasUser = json["data"]?["user"] != null, availableCredit = json["data"]?["user"]?["availableCredit"]?.ToString(), betPlate = json["data"]?["user"]?["betPlate"]?.ToString() }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                        WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1032", message = "解析/info响应", data = new { code = code, hasData = json["data"] != null, hasUser = json["data"]?["user"] != null, availableCredit = json["data"]?["user"]?["availableCredit"]?.ToString(), betPlate = json["data"]?["user"]?["betPlate"]?.ToString() }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                         // #endregion
                         
                         if (code == 200)
@@ -1547,7 +1769,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                             var availableCredit = json["data"]?["user"]?["availableCredit"]?.ToString() ?? "";
                             
                             // #region agent log
-                            System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1040", message = "提取availableCredit", data = new { availableCredit = availableCredit, isEmpty = string.IsNullOrEmpty(availableCredit) }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                            WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1040", message = "提取availableCredit", data = new { availableCredit = availableCredit, isEmpty = string.IsNullOrEmpty(availableCredit) }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                             // #endregion
                             
                             if (!string.IsNullOrEmpty(availableCredit) && decimal.TryParse(availableCredit, out var balanceValue))
@@ -1556,7 +1778,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                                 _logCallback($"💰 余额更新: {_currentBalance}");
                                 
                                 // #region agent log
-                                System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1047", message = "余额解析成功", data = new { balanceValue = balanceValue, _currentBalance = _currentBalance }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                                WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1047", message = "余额解析成功", data = new { balanceValue = balanceValue, _currentBalance = _currentBalance }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                                 // #endregion
                             }
                             
@@ -1568,7 +1790,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                                 _logCallback($"📊 平台类型: {_betPlate}");
                                 
                                 // #region agent log
-                                System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "C", location = "YydsScript.cs:1058", message = "平台类型提取成功", data = new { betPlate = betPlate, _betPlate = _betPlate }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                                WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "C", location = "YydsScript.cs:1058", message = "平台类型提取成功", data = new { betPlate = betPlate, _betPlate = _betPlate }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                                 // #endregion
                             }
                             
@@ -1582,7 +1804,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                                     _logCallback($"✅ API投注域名已设置: {_apiBaseUrl}");
                                     
                                     // #region agent log
-                                    System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "D", location = "YydsScript.cs:1072", message = "API域名设置成功", data = new { responseUrl = response.Url, _apiBaseUrl = _apiBaseUrl }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                                    WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "D", location = "YydsScript.cs:1072", message = "API域名设置成功", data = new { responseUrl = response.Url, _apiBaseUrl = _apiBaseUrl }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                                     // #endregion
                                 }
                                 catch { }
@@ -1594,7 +1816,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         _logCallback($"⚠️ 解析/info响应失败: {ex.Message}");
                         
                         // #region agent log
-                        System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1082", message = "解析/info异常", data = new { error = ex.Message, responseContext = response.Context?.Substring(0, Math.Min(200, response.Context?.Length ?? 0)) }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                        WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "B", location = "YydsScript.cs:1082", message = "解析/info异常", data = new { error = ex.Message, responseContext = response.Context?.Substring(0, Math.Min(200, response.Context?.Length ?? 0)) }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                         // #endregion
                     }
                 }
@@ -1642,7 +1864,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 else if (response.Url.Contains("/info"))
                 {
                     // #region agent log
-                    System.IO.File.AppendAllText(@"e:\gitcode\wx4helper\.cursor\debug.log", Newtonsoft.Json.JsonConvert.SerializeObject(new { sessionId = "debug-session", runId = "run1", hypothesisId = "E", location = "YydsScript.cs:1089", message = "跳过带参数的/info接口", data = new { url = response.Url, hasQueryString = response.Url.Contains("?") }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n");
+                    WriteDebugLog(new { sessionId = "debug-session", runId = "run1", hypothesisId = "E", location = "YydsScript.cs:1089", message = "跳过带参数的/info接口", data = new { url = response.Url, hasQueryString = response.Url.Contains("?") }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
                     // #endregion
                 }
                 

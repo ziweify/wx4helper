@@ -168,6 +168,9 @@ namespace zhaocaimao.Views.AutoBet
         {
             try
             {
+                // 🔥 初始化平台下拉框（使用和主窗口相同的数据源）
+                InitializePlatformComboBox();
+                
                 // 加载配置列表
                 LoadConfigs();
                 
@@ -184,6 +187,30 @@ namespace zhaocaimao.Views.AutoBet
             {
                 _logService.Error("ConfigManager", "加载配置管理器失败", ex);
                 UIMessageBox.Show($"加载失败: {ex.Message}", "错误", UIStyle.Red, UIMessageBoxButtons.OK);
+            }
+        }
+        
+        /// <summary>
+        /// 初始化平台下拉框（使用统一数据源，和主窗口保持一致）
+        /// 🔥 过滤掉"太平洋"和"binggo168"平台，直接使用平台名称
+        /// </summary>
+        private void InitializePlatformComboBox()
+        {
+            try
+            {
+                var platformNames = BetPlatformHelper.GetAllPlatformNames();
+                cbxPlatform.Items.Clear();
+                
+                // 🔥 过滤掉"太平洋"和"binggo168"平台（和主窗口保持一致）
+                var filteredPlatforms = platformNames.Where(name => 
+                    name != "太平洋" && name != "binggo168").ToArray();
+                
+                cbxPlatform.Items.AddRange(filteredPlatforms);
+                _logService.Info("ConfigManager", $"✅ 平台下拉框已初始化，共 {filteredPlatforms.Length} 个平台（已过滤：太平洋、binggo168）");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("ConfigManager", "初始化平台下拉框失败", ex);
             }
         }
 
@@ -435,7 +462,41 @@ namespace zhaocaimao.Views.AutoBet
         private void LoadConfigDetails(BetConfig config)
         {
             txtConfigName.Text = config.ConfigName;
-            cbxPlatform.Text = config.Platform;
+            
+            // 🔥 正确设置平台下拉框（通过 SelectedItem 或 SelectedIndex，而不是 Text）
+            if (!string.IsNullOrEmpty(config.Platform))
+            {
+                // 查找平台在下拉框中的索引
+                int foundIndex = -1;
+                for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                {
+                    if (cbxPlatform.Items[i]?.ToString() == config.Platform)
+                    {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+                
+                if (foundIndex >= 0)
+                {
+                    cbxPlatform.SelectedIndex = foundIndex;
+                    _logService.Info("ConfigManager", $"✅ 已设置平台下拉框: {config.Platform} (索引={foundIndex})");
+                }
+                else
+                {
+                    _logService.Warning("ConfigManager", $"⚠️ 平台不在下拉框中: {config.Platform}，使用 Text 设置");
+                    cbxPlatform.Text = config.Platform;
+                }
+            }
+            else
+            {
+                // 如果 Platform 为空，设置为第一个选项
+                if (cbxPlatform.Items.Count > 0)
+                {
+                    cbxPlatform.SelectedIndex = 0;
+                }
+            }
+            
             txtPlatformUrl.Text = config.PlatformUrl;
             txtUsername.Text = config.Username;
             txtPassword.Text = config.Password;
@@ -629,7 +690,48 @@ namespace zhaocaimao.Views.AutoBet
                 
                 // 更新配置
                 _selectedConfig.ConfigName = txtConfigName.Text.Trim();
-                _selectedConfig.Platform = cbxPlatform.Text;
+                
+                // 🔥 确保 Platform 字段正确保存（优先使用 SelectedItem，确保获取到正确的选中值）
+                string platformToSave = "";
+                if (cbxPlatform.SelectedItem != null)
+                {
+                    platformToSave = cbxPlatform.SelectedItem.ToString() ?? "";
+                }
+                else if (cbxPlatform.SelectedIndex >= 0 && cbxPlatform.SelectedIndex < cbxPlatform.Items.Count)
+                {
+                    platformToSave = cbxPlatform.Items[cbxPlatform.SelectedIndex]?.ToString() ?? "";
+                }
+                else if (!string.IsNullOrWhiteSpace(cbxPlatform.Text))
+                {
+                    platformToSave = cbxPlatform.Text;
+                }
+                
+                // 🔥 如果是默认配置，确保 Platform 字段不为空（在保存之前检查）
+                if (_selectedConfig.IsDefault && string.IsNullOrWhiteSpace(platformToSave))
+                {
+                    _logService.Warning("ConfigManager", "⚠️ 默认配置的 Platform 为空，使用第一个有效平台");
+                    if (cbxPlatform.Items.Count > 0)
+                    {
+                        // 跳过"不使用盘口"，使用第一个有效平台
+                        for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                        {
+                            string? itemText = cbxPlatform.Items[i]?.ToString();
+                            if (!string.IsNullOrEmpty(itemText) && 
+                                itemText != "不使用盘口" && 
+                                itemText != "太平洋" && 
+                                itemText != "binggo168")
+                            {
+                                platformToSave = itemText;
+                                _logService.Info("ConfigManager", $"✅ 已选择第一个有效平台: {platformToSave}");
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                _selectedConfig.Platform = platformToSave;
+                _logService.Info("ConfigManager", $"💾 保存配置 Platform: {platformToSave} (SelectedIndex={cbxPlatform.SelectedIndex}, SelectedItem={cbxPlatform.SelectedItem}, IsDefault={_selectedConfig.IsDefault})");
+                
                 _selectedConfig.PlatformUrl = txtPlatformUrl.Text.Trim();
                 _selectedConfig.Username = txtUsername.Text.Trim();
                 _selectedConfig.Password = txtPassword.Text;
@@ -645,7 +747,7 @@ namespace zhaocaimao.Views.AutoBet
                 // 刷新列表显示
                 dgvConfigs.Refresh();
                 
-                _logService.Info("ConfigManager", $"已保存配置: {_selectedConfig.ConfigName}");
+                _logService.Info("ConfigManager", $"✅ 已保存配置: {_selectedConfig.ConfigName}, Platform={_selectedConfig.Platform}, Username={(_selectedConfig.Username ?? "(空)")}");
                 UIMessageBox.Show("配置已保存！", "成功", UIStyle.Green, UIMessageBoxButtons.OK);
             }
             catch (Exception ex)

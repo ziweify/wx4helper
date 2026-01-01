@@ -3925,8 +3925,21 @@ namespace zhaocaimao
                 _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 _logService.Info("VxMain", "🔄 开始加载自动投注设置");
                 
-                // 🔥 确保平台下拉框已正确初始化（必须有完整的19个平台）
-                var expectedPlatformCount = BetPlatformHelper.GetAllPlatforms().Length;
+                // 🔥 加载设置时，临时解绑事件，避免触发自动启动和保存（必须在重新初始化下拉框之前解绑）
+                _logService.Info("VxMain", "📋 临时解绑事件...");
+                swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
+                
+                // 🔥 临时解绑平台下拉框事件，避免加载时触发保存（必须在重新初始化之前解绑）
+                if (_platformSelectedIndexChangedHandler != null)
+                {
+                    cbxPlatform.SelectedIndexChanged -= _platformSelectedIndexChangedHandler;
+                    _logService.Info("VxMain", "✅ 平台下拉框事件已解绑");
+                }
+                
+                // 🔥 确保平台下拉框已正确初始化（过滤后应该有20个平台：总数21 - 过滤2个 = 19，但实际是20因为包含"不使用盘口"）
+                // 计算期望数量：所有平台名称 - 过滤的平台（太平洋、binggo168）
+                var allPlatformNames = BetPlatformHelper.GetAllPlatformNames();
+                var expectedPlatformCount = allPlatformNames.Count(name => name != "太平洋" && name != "binggo168");
                 if (cbxPlatform.Items.Count != expectedPlatformCount)
                 {
                     _logService.Warning("VxMain", $"⚠️ 平台下拉框数量不正确: {cbxPlatform.Items.Count}，期望: {expectedPlatformCount}，重新初始化...");
@@ -3937,21 +3950,19 @@ namespace zhaocaimao
                     _logService.Info("VxMain", $"✅ 平台下拉框已正确初始化: {cbxPlatform.Items.Count} 个平台");
                 }
                 
-                // 🔥 加载设置时，临时解绑事件，避免触发自动启动和保存
-                _logService.Info("VxMain", "📋 临时解绑事件...");
-                swiAutoOrdersBet.ValueChanged -= swiAutoOrdersBet_ValueChanged;
-                
-                // 🔥 临时解绑平台下拉框事件，避免加载时触发保存
-                if (_platformSelectedIndexChangedHandler != null)
-                {
-                    cbxPlatform.SelectedIndexChanged -= _platformSelectedIndexChangedHandler;
-                }
-                
                 var configList = _autoBetService.GetConfigsBindingList();
                 _logService.Info("VxMain", $"🔍 配置列表状态: {(configList != null ? $"{configList.Count} 个配置" : "null")}");
                 
                 var defaultConfig = configList?.FirstOrDefault(c => c.IsDefault);
                 _logService.Info("VxMain", $"🔍 默认配置: {(defaultConfig != null ? $"存在 (Platform={defaultConfig.Platform})" : "不存在")}");
+                
+                // 🔥 保存当前选择的平台（如果有效），用于在默认配置 Platform 无效时保留用户选择
+                string? currentSelectedPlatform = null;
+                if (cbxPlatform.SelectedIndex >= 0 && cbxPlatform.SelectedIndex < cbxPlatform.Items.Count)
+                {
+                    currentSelectedPlatform = cbxPlatform.SelectedItem?.ToString();
+                    _logService.Info("VxMain", $"🔍 当前主窗口选择的平台: {currentSelectedPlatform}");
+                }
                 
                 // 🔥 优先从默认配置读取（这是数据的唯一真实来源）
                 string? platformNameToSelect = null;
@@ -3961,7 +3972,10 @@ namespace zhaocaimao
                     _logService.Info("VxMain", $"📋 从默认配置读取盘口: {platformNameToSelect}");
                     
                     // 🔥 同步到 appsettings.json（仅用于记录，不影响加载）
-                    _configService.SetCurrentSelectedPlatform(platformNameToSelect);
+                    if (!string.IsNullOrEmpty(platformNameToSelect))
+                    {
+                        _configService.SetCurrentSelectedPlatform(platformNameToSelect);
+                    }
                 }
                 else
                 {
@@ -3975,6 +3989,7 @@ namespace zhaocaimao
                 
                 // 🔥 设置下拉框选择（使用 SelectedItem 或 SelectedIndex）
                 _logService.Info("VxMain", $"🔍 准备设置下拉框: 平台名称={platformNameToSelect ?? "(空)"}, Items.Count={cbxPlatform.Items.Count}");
+                bool platformSet = false;
                 if (!string.IsNullOrEmpty(platformNameToSelect) && 
                     platformNameToSelect != "太平洋" && 
                     platformNameToSelect != "binggo168")
@@ -3995,30 +4010,66 @@ namespace zhaocaimao
                         _logService.Info("VxMain", $"🔍 设置前: cbxPlatform.SelectedIndex={cbxPlatform.SelectedIndex}, Text=\"{cbxPlatform.Text}\"");
                         cbxPlatform.SelectedIndex = foundIndex; // 🔥 使用索引设置（DropDownList 模式）
                         _logService.Info("VxMain", $"✅ 设置后: cbxPlatform.SelectedIndex={cbxPlatform.SelectedIndex}, Text=\"{cbxPlatform.Text}\", SelectedItem=\"{cbxPlatform.SelectedItem}\"");
+                        platformSet = true;
                     }
                     else
                     {
                         _logService.Warning("VxMain", $"⚠️ 平台名称不在下拉框中: {platformNameToSelect}");
-                        if (cbxPlatform.Items.Count > 0)
-                        {
-                            cbxPlatform.SelectedIndex = 0;
-                        }
                     }
                 }
-                else
+                
+                // 🔥 如果默认配置的 Platform 无效或为空，保留主窗口当前的选择（避免被重置为"不使用盘口"）
+                if (!platformSet)
                 {
-                    // 如果都无效，使用第一个平台
-                    if (cbxPlatform.Items.Count > 0)
+                    if (!string.IsNullOrEmpty(currentSelectedPlatform) && 
+                        currentSelectedPlatform != "太平洋" && 
+                        currentSelectedPlatform != "binggo168")
                     {
-                        _logService.Warning("VxMain", $"⚠️ 平台名称无效或已被过滤: {platformNameToSelect ?? "(空)"}, 使用第一个平台");
-                        cbxPlatform.SelectedIndex = 0;
+                        // 🔥 尝试保留当前选择
+                        int currentIndex = -1;
+                        for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                        {
+                            if (cbxPlatform.Items[i]?.ToString() == currentSelectedPlatform)
+                            {
+                                currentIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        if (currentIndex >= 0)
+                        {
+                            _logService.Info("VxMain", $"✅ 保留当前平台选择: {currentSelectedPlatform} (索引={currentIndex})");
+                            cbxPlatform.SelectedIndex = currentIndex;
+                            platformSet = true;
+                        }
+                    }
+                    
+                    // 🔥 如果当前选择也无效，才使用第一个平台（但跳过"不使用盘口"）
+                    if (!platformSet && cbxPlatform.Items.Count > 0)
+                    {
+                        // 🔥 跳过"不使用盘口"，使用第一个有效平台
+                        int firstValidIndex = 0;
+                        for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                        {
+                            string? itemText = cbxPlatform.Items[i]?.ToString();
+                            if (!string.IsNullOrEmpty(itemText) && 
+                                itemText != "不使用盘口" && 
+                                itemText != "太平洋" && 
+                                itemText != "binggo168")
+                            {
+                                firstValidIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        _logService.Warning("VxMain", $"⚠️ 平台名称无效或已被过滤: {platformNameToSelect ?? "(空)"}, 使用第一个有效平台 (索引={firstValidIndex})");
+                        cbxPlatform.SelectedIndex = firstValidIndex;
                     }
                 }
                 
                 if (defaultConfig != null)
                 {
-
-                    // 加载账号密码（如果为空，显示空白是正常的）
+                    // 🔥 加载账号密码（如果为空，显示空白是正常的）
                     txtAutoBetUsername.Text = defaultConfig.Username ?? "";
                     txtAutoBetPassword.Text = defaultConfig.Password ?? "";
                     
