@@ -66,6 +66,7 @@ namespace BaiShengVx3Plus
             btnConfigManager = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
             tsmiClearBalance = new ToolStripMenuItem();
+            tsmiRenameDisplayName = new ToolStripMenuItem();
             tsmiDeleteMember = new ToolStripMenuItem();
             tsmiSetMemberType = new ToolStripMenuItem();
             tsmiSetAdmin = new ToolStripMenuItem();
@@ -396,9 +397,9 @@ namespace BaiShengVx3Plus
             cmsMembers.BackColor = Color.FromArgb(243, 249, 255);
             cmsMembers.Font = new Font("微软雅黑", 10F);
             cmsMembers.ImageScalingSize = new Size(20, 20);
-            cmsMembers.Items.AddRange(new ToolStripItem[] { tsmiClearBalance, tsmiDeleteMember, tsmiSetMemberType, toolStripSeparator1, tsmiViewBalanceChange });
+            cmsMembers.Items.AddRange(new ToolStripItem[] { tsmiClearBalance, tsmiRenameDisplayName, tsmiDeleteMember, tsmiSetMemberType, toolStripSeparator1, tsmiViewBalanceChange });
             cmsMembers.Name = "cmsMembers";
-            cmsMembers.Size = new Size(163, 106);
+            cmsMembers.Size = new Size(163, 130);
             // 
             // tsmiClearBalance
             // 
@@ -406,6 +407,13 @@ namespace BaiShengVx3Plus
             tsmiClearBalance.Size = new Size(162, 24);
             tsmiClearBalance.Text = "清分";
             tsmiClearBalance.Click += TsmiClearBalance_Click;
+            // 
+            // tsmiRenameDisplayName
+            // 
+            tsmiRenameDisplayName.Name = "tsmiRenameDisplayName";
+            tsmiRenameDisplayName.Size = new Size(162, 24);
+            tsmiRenameDisplayName.Text = "修改群昵称";
+            tsmiRenameDisplayName.Click += TsmiRenameDisplayName_Click;
             // 
             // tsmiDeleteMember
             // 
@@ -1131,6 +1139,7 @@ namespace BaiShengVx3Plus
         private Views.UcUserInfo ucUserInfo1;
         private Sunny.UI.UIContextMenuStrip cmsMembers;
         private ToolStripMenuItem tsmiClearBalance;       // 清分
+        private ToolStripMenuItem tsmiRenameDisplayName;  // 修改群昵称
         private ToolStripMenuItem tsmiDeleteMember;        // 删除
         private ToolStripMenuItem tsmiSetMemberType;       // 设置会员类型
         private ToolStripSeparator toolStripSeparator1;    // 分隔线

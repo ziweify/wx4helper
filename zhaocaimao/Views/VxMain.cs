@@ -3230,9 +3230,110 @@ namespace zhaocaimao
         #region 🔥 会员右键菜单事件处理
 
         /// <summary>
+        /// 🔥 菜单项：修改会员群昵称（系统昵称）
+        /// </summary>
+        private void TsmiRenameDisplayName_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要修改的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                // 🔥 显示输入对话框
+                string currentDisplayName = selectedMember.DisplayName ?? selectedMember.Nickname ?? "";
+                string? newDisplayName = Microsoft.VisualBasic.Interaction.InputBox(
+                    $"请输入会员的新群昵称（系统昵称）：\n\n" +
+                    $"当前微信昵称：{selectedMember.Nickname}\n" +
+                    $"当前群昵称：{currentDisplayName}\n\n" +
+                    $"注意：\n" +
+                    $"- 群昵称 = 本系统中使用的昵称\n" +
+                    $"- 所有名单（中奖、留分）都使用群昵称\n" +
+                    $"- 刷新会员时不会覆盖此昵称",
+                    "修改会员群昵称",
+                    currentDisplayName,
+                    -1, -1);
+
+                // 用户取消或输入为空
+                if (string.IsNullOrWhiteSpace(newDisplayName))
+                {
+                    return;
+                }
+
+                // 🔥 更新群昵称
+                string oldDisplayName = selectedMember.DisplayName ?? "";
+                selectedMember.DisplayName = newDisplayName.Trim();
+
+                // 🔥 更新数据库
+                if (_db != null)
+                {
+                    _db.Update(selectedMember);
+                }
+
+                // 记录日志
+                _logService.Info("会员管理",
+                    $"修改会员群昵称\n" +
+                    $"会员：{selectedMember.Nickname} ({selectedMember.Wxid})\n" +
+                    $"原群昵称：{oldDisplayName}\n" +
+                    $"新群昵称：{newDisplayName}");
+
+                // 刷新UI
+                dgvMembers.Refresh();
+                this.ShowSuccessTip($"已将会员群昵称修改为：{newDisplayName}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("会员管理", "修改会员群昵称失败", ex);
+                UIMessageBox.ShowError($"修改会员群昵称失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 清分 - 清空会员余额
         /// </summary>
         private void TsmiClearBalance_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要清分的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                // 确认对话框
+                if (!UIMessageBox.ShowAsk($"确定要清分会员【{selectedMember.Nickname}】吗？\n\n" +
+                    $"当前余额：{selectedMember.Balance:F2}\n" +
+                    $"清分后余额将变为：0.00\n\n" +
+                    $"此操作将记录到资金变动表"))
+                {
+                    return;
+                }
+
+                float balanceBefore = selectedMember.Balance;
+                float balanceAfter = 0f;
+                float changeAmount = -balanceBefore;
+
+                // 清空余额
+                selectedMember.Balance = 0f;
+
+                // 🔥 记录到资金变动表
+                if (_db != null)
+                {
+                    var balanceChange = new Models.V2BalanceChange
+                    {
+                        GroupWxId = selectedMember.GroupWxId,
+                        Wxid = selectedMember.Wxid,
+                        Nickname = selectedMember.Nickname,
+                        BalanceBefore = balanceBefore,
         {
             try
             {

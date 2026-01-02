@@ -3190,6 +3190,70 @@ namespace BaiShengVx3Plus
         }
 
         /// <summary>
+        /// 🔥 菜单项：修改会员群昵称（系统昵称）
+        /// </summary>
+        private void TsmiRenameDisplayName_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvMembers.SelectedRows.Count == 0)
+                {
+                    UIMessageBox.ShowWarning("请先选择要修改的会员");
+                    return;
+                }
+
+                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
+                if (selectedMember == null) return;
+
+                // 🔥 显示输入对话框
+                string currentDisplayName = selectedMember.DisplayName ?? selectedMember.Nickname ?? "";
+                string? newDisplayName = Microsoft.VisualBasic.Interaction.InputBox(
+                    $"请输入会员的新群昵称（系统昵称）：\n\n" +
+                    $"当前微信昵称：{selectedMember.Nickname}\n" +
+                    $"当前群昵称：{currentDisplayName}\n\n" +
+                    $"注意：\n" +
+                    $"- 群昵称 = 本系统中使用的昵称\n" +
+                    $"- 所有名单（中奖、留分）都使用群昵称\n" +
+                    $"- 刷新会员时不会覆盖此昵称",
+                    "修改会员群昵称",
+                    currentDisplayName,
+                    -1, -1);
+
+                // 用户取消或输入为空
+                if (string.IsNullOrWhiteSpace(newDisplayName))
+                {
+                    return;
+                }
+
+                // 🔥 更新群昵称
+                string oldDisplayName = selectedMember.DisplayName ?? "";
+                selectedMember.DisplayName = newDisplayName.Trim();
+
+                // 🔥 更新数据库
+                if (_db != null)
+                {
+                    _db.Update(selectedMember);
+                }
+
+                // 记录日志
+                _logService.Info("会员管理",
+                    $"修改会员群昵称\n" +
+                    $"会员：{selectedMember.Nickname} ({selectedMember.Wxid})\n" +
+                    $"原群昵称：{oldDisplayName}\n" +
+                    $"新群昵称：{newDisplayName}");
+
+                // 刷新UI
+                dgvMembers.Refresh();
+                this.ShowSuccessTip($"已将会员群昵称修改为：{newDisplayName}");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("会员管理", "修改会员群昵称失败", ex);
+                UIMessageBox.ShowError($"修改会员群昵称失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 🔥 菜单项：删除会员
         /// </summary>
         private void OnMenuDeleteMember_Click(object? sender, EventArgs e)

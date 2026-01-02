@@ -163,13 +163,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         
                         // 🔥 余额不足消息格式完全按照 F5BotV2 第2430行：@{m.nickname} {Reply_余额不足}
                         // Reply_余额不足 = "客官你的荷包是否不足!"（F5BotV2 第194行）
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayNameForError = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        
                         if (errorMessage == "余额不足")
                         {
-                            return (false, $"@{member.Nickname} 客官你的荷包是否不足!", null);
+                            return (false, $"@{displayNameForError} 客官你的荷包是否不足!", null);
                         }
                         
                         // 🔥 限额超限消息（参考 F5BotV2 第2458、2475行）
-                        return (false, $"@{member.Nickname} {errorMessage}", null);
+                        return (false, $"@{displayNameForError} {errorMessage}", null);
                     }
                     
                     // 2.3 验证通过，立即创建订单对象（在锁内，确保原子性）
@@ -184,7 +187,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 🔥 会员信息
                     Wxid = member.Wxid,
                     Account = member.Account,  // 🔥 修复：添加账号
-                    Nickname = member.Nickname,
+                    // 🔥 使用群昵称（DisplayName，系统昵称）存储到订单
+                    Nickname = member.DisplayName ?? member.Nickname ?? "未知",
                     GroupWxId = member.GroupWxId,
                     
                     // 🔥 订单基础信息
@@ -371,7 +375,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 8. 生成回复消息（🔥 完全参考 F5BotV2 格式）
                 // 格式：@昵称\r已进仓{注数}\r{投注内容}|扣:{金额}|留:{余额}
                 // 🔥 F5BotV2 第2413行：扣:{member_order.AmountTotal}（不使用 (int) 转换）
-                string replyMessage = $"@{member.Nickname}\r已进仓{order.Nums}\r{betContent.ToReplyString()}|扣:{order.AmountTotal}|留:{(int)member.Balance}";
+                // 🔥 使用群昵称（DisplayName，系统昵称）
+                string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                string replyMessage = $"@{displayName}\r已进仓{order.Nums}\r{betContent.ToReplyString()}|扣:{order.AmountTotal}|留:{(int)member.Balance}";
                 
                 return (true, replyMessage, order);
             }

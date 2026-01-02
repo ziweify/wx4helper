@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Helpers;  // 🔥 添加 StringHelper.UnEscape()
 using SQLite;
 
 namespace BaiShengVx3Plus.Services.Games.Binggo
@@ -123,7 +124,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                             {
                                 try
                                 {
-                                    string errorMsg = $"@{member.Nickname} 存储不足!";
+                                    // 🔥 使用群昵称（DisplayName，系统昵称）
+                                    string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                                    string errorMsg = $"@{displayName} 存储不足!";
                                     _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
                                 }
                                 catch (Exception ex)
@@ -222,7 +225,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 // 🔥 6. 发送微信通知（仅非加载模式）
                 if (!isLoading && _socketClient != null)
                 {
-                    string notifyMessage = $"@{member.Nickname}\r[{member.Id}]{actionName}{(int)request.Amount}完成|余:{(int)member.Balance}";
+                    // 🔥 使用群昵称（DisplayName，系统昵称）
+                    string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                    string notifyMessage = $"@{displayName}\r[{member.Id}]{actionName}{(int)request.Amount}完成|余:{(int)member.Balance}";
                     _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, notifyMessage);
                 }
 

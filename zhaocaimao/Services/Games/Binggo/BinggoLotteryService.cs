@@ -1007,8 +1007,9 @@ namespace zhaocaimao.Services.Games.Binggo
                         var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == order.Wxid);
                         if (member == null || string.IsNullOrEmpty(order.Wxid)) continue;
 
-                        // 🔥 使用订单中的昵称（参考 F5BotV2: order.nickname）
-                        string nickname = order.Nickname.UnEscape() ?? member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知";
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        // 群昵称 = 本系统中的昵称，由管理员维护，在所有名单中使用
+                        string nickname = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
 
                         // 🔥 注意：这里不缓存余额，因为余额在结算过程中会被更新
                         // 余额将在发送消息时重新获取最新值（参考 F5BotV2 第 1454 行）
@@ -1151,10 +1152,11 @@ namespace zhaocaimao.Services.Games.Binggo
                 {
                     foreach (var member in _membersBindingList)
                     {
-                        // 🔥 格式完全一致：{nickname} {(int)Balance}\r
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        // 群昵称 = 本系统中的昵称，由管理员维护
                         if ((int)member.Balance >= 1)  // 余额 >= 1 才显示
                         {
-                            balanceMessage.Append($"{member.Nickname.UnEscape() ?? member.DisplayName.UnEscape() ?? "未知"} {(int)member.Balance} \r");
+                            balanceMessage.Append($"{member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知"} {(int)member.Balance} \r");
                         }
                     }
                 }
@@ -1213,7 +1215,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     
                     // 🔥 格式完全按照 F5BotV2 第2177-2180行（字节级别一致）
                     // @{member.nickname}\r流~~记录\r今日/本轮进货:{BetToday}/{BetCur}\r今日上/下:{CreditToday}/{WithdrawToday}\r今日盈亏:{IncomeToday}\r
-                    string sendTxt = $"@{member.Nickname}\r流~~记录\r";
+                    // 🔥 使用群昵称（DisplayName，系统昵称）
+                    string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                    string sendTxt = $"@{displayName}\r流~~记录\r";
                     sendTxt += $"今日/本轮进货:{member.BetToday}/{member.BetCur}\r";
                     sendTxt += $"今日上/下:{member.CreditToday}/{member.WithdrawToday}\r";
                     // 🔥 F5BotV2 使用 Zsxs 配置决定是否显示整数，这里默认使用整数格式（与 F5BotV2 默认一致）
@@ -1264,7 +1268,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 🔥 下分需要检查余额 - 参考 F5BotV2 第2430行
                     if (!isCredit && member.Balance < money)
                     {
-                        string balanceReply = $"@{member.Nickname} 客官你的荷包是否不足!";
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayName2 = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        string balanceReply = $"@{displayName2} 客官你的荷包是否不足!";
                         return (true, balanceReply, null);
                     }
                     
@@ -1340,7 +1346,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     
                     // 🔥 回复格式 - 参考 F5BotV2 第2605行：@{m.nickname}\r[{m.id}]请等待
-                    string reply = $"@{member.Nickname}\r[{member.Id}]请等待";
+                    // 🔥 使用群昵称（DisplayName，系统昵称）
+                    string displayName3 = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                    string reply = $"@{displayName3}\r[{member.Id}]请等待";
                     return (true, reply, null);
                 }
                 
@@ -1359,7 +1367,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     if (_currentStatus != BinggoLotteryStatus.开盘中 && 
                         _currentStatus != BinggoLotteryStatus.即将封盘)
                     {
-                        return (true, $"@{member.Nickname} 时间到!不能取消!", null);
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayName4 = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        return (true, $"@{displayName4} 时间到!不能取消!", null);
                     }
                     
                     // 查找订单
@@ -1375,7 +1385,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     
                     if (orders == null || orders.Count == 0)
                     {
-                        return (true, $"@{member.Nickname}\r当前期号无待处理订单", null);
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayName5 = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        return (true, $"@{displayName5}\r当前期号无待处理订单", null);
                     }
                     
                     // 🔥 取消最新的一个订单（参考 F5BotV2 第2215行）
@@ -1389,7 +1401,9 @@ namespace zhaocaimao.Services.Games.Binggo
                             $"❌ 取消订单期号不匹配！订单期号={ods.IssueId} 当前期号={_currentIssueId} 会员={member.Nickname} 订单ID={ods.Id}");
                         // 🔥 简化回复：只显示期号后3位，不显示详细错误信息
                         int issueShort = _currentIssueId % 1000;
-                        return (true, $"@{member.Nickname}\r{issueShort}没有可取消的订单", null);
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayName7 = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        return (true, $"@{displayName7}\r{issueShort}没有可取消的订单", null);
                     }
                     
                     _logService.Info("LotteryService", 
@@ -1437,7 +1451,9 @@ namespace zhaocaimao.Services.Games.Binggo
                     }
                     
                     // 🔥 回复格式 - 参考 F5BotV2 第2221行：@{m.nickname} {BetContentOriginal}\r已取消!\r+{AmountTotal}|留:{(int)Balance}
-                    string cancelReply = $"@{member.Nickname} {ods.BetContentOriginal}\r已取消!\r+{ods.AmountTotal}|留:{(int)member.Balance}";
+                    // 🔥 使用群昵称（DisplayName，系统昵称）
+                    string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                    string cancelReply = $"@{displayName} {ods.BetContentOriginal}\r已取消!\r+{ods.AmountTotal}|留:{(int)member.Balance}";
                     return (true, cancelReply, ods);
                 }
                 
@@ -1469,12 +1485,16 @@ namespace zhaocaimao.Services.Games.Binggo
                     
                     if (orders == null || orders.Count == 0)
                     {
-                        return (true, $"@{member.Nickname}\r当前期号无待处理订单", null);
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayName5 = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        return (true, $"@{displayName5}\r当前期号无待处理订单", null);
                     }
                     
                     // 🔥 取消所有订单（参考 F5BotV2 第2248-2264行 & BaiShengVx3Plus）
                     StringBuilder sbTxt = new StringBuilder(32);
-                    sbTxt.Append($"@{member.Nickname} ");
+                    // 🔥 使用群昵称（DisplayName，系统昵称）
+                    string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                    sbTxt.Append($"@{displayName} ");
                     float totalMoney = 0f;
                     
                     foreach (var ods in orders)
@@ -2151,7 +2171,10 @@ namespace zhaocaimao.Services.Games.Binggo
                     // 🔥 格式：{nickname}[{(int)BetFronMoney}]:{BetContentStandar}|计:{AmountTotal}\r
                     foreach (var ods in orders)
                     {
-                        sbTxt.Append($"{ods.Nickname ?? "未知"}[{(int)ods.BetFronMoney}]:{ods.BetContentStandar ?? ""}|计:{ods.AmountTotal}\r ");
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        var member = _membersBindingList?.FirstOrDefault(m => m.Wxid == ods.Wxid);
+                        string displayName = member?.DisplayName?.UnEscape() ?? ods.Nickname?.UnEscape() ?? "未知";
+                        sbTxt.Append($"{displayName}[{(int)ods.BetFronMoney}]:{ods.BetContentStandar ?? ""}|计:{ods.AmountTotal}\r ");
                     }
                 }
 

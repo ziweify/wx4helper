@@ -7,6 +7,7 @@ using System.Text.Json;
 using zhaocaimao.Contracts;
 using zhaocaimao.Models;
 using zhaocaimao.Core;
+using zhaocaimao.Helpers;  // 🔥 添加 StringHelper.UnEscape()
 using SQLite;
 
 namespace zhaocaimao.Services.Messages.Handlers
@@ -510,7 +511,9 @@ namespace zhaocaimao.Services.Messages.Handlers
             if (success)
             {
                 // 🔥 回复格式 - 完全按照 F5BotV2 Line 2780
-                string replyMsg = $"@{member.Nickname}\r{member.Id}{s2}{money}|余:{member.Balance}";
+                // 🔥 使用群昵称（DisplayName，系统昵称）
+                string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                string replyMsg = $"@{displayName}\r{member.Id}{s2}{money}|余:{member.Balance}";
                 return (0, replyMsg, null);
             }
             else
@@ -581,7 +584,9 @@ namespace zhaocaimao.Services.Messages.Handlers
             if (success)
             {
                 // 🔥 回复格式 - 完全按照 F5BotV2 Line 2831
-                string replyMsg = $"@{member.Nickname}\r{member.Id}{s2}{money}|余:{member.Balance}";
+                // 🔥 使用群昵称（DisplayName，系统昵称）
+                string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                string replyMsg = $"@{displayName}\r{member.Id}{s2}{money}|余:{member.Balance}";
                 return (0, replyMsg, null);
             }
             else

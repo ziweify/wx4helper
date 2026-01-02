@@ -125,7 +125,8 @@ namespace zhaocaimao.Services.GroupBinding
                         {
                             // 更新现有会员的数据（保持引用不变）
                             existingMember.Nickname = newMember.Nickname;
-                            existingMember.DisplayName = newMember.DisplayName;
+                            // 🔥 DisplayName（群昵称）不更新，保留本地值
+                            // existingMember.DisplayName = newMember.DisplayName; // 不更新
                             existingMember.Account = newMember.Account;
                             // 注意：不更新统计数据（Balance, OrderCount, TotalBet 等），保留历史统计
                         }
@@ -211,12 +212,10 @@ namespace zhaocaimao.Services.GroupBinding
                     if (dbMember != null)
                     {
                         // 情况1: 数据库中存在 → 使用数据库数据（保留历史统计）
-                        // 🔥 检查并更新基本信息（昵称、群昵称可能变化）
+                        // 🔥 检查并更新基本信息
                         
                         bool nicknameChanged = false;
-                        bool displayNameChanged = false;
                         string oldNickname = dbMember.Nickname;
-                        string oldDisplayName = dbMember.DisplayName;
                         
                         // 🔥 检查昵称是否变化
                         if (!string.IsNullOrEmpty(serverMember.Nickname) && 
@@ -226,32 +225,19 @@ namespace zhaocaimao.Services.GroupBinding
                             nicknameChanged = true;
                         }
                         
-                        // 🔥 检查DisplayName（群昵称/备注）是否变化
-                        if (!string.IsNullOrEmpty(serverMember.DisplayName) && 
-                            serverMember.DisplayName != dbMember.DisplayName)
-                        {
-                            dbMember.DisplayName = serverMember.DisplayName;
-                            displayNameChanged = true;
-                        }
+                        // 🔥 群昵称（DisplayName）不更新，保留本地值
+                        // 群昵称现在表示"本系统中的昵称"，由管理员手动维护
+                        // 初始化时从服务器获取，之后不再自动更新
                         
                         // 🔥 记录变化日志
-                        if (nicknameChanged || displayNameChanged)
+                        if (nicknameChanged)
                         {
-                            _logService.Warning("GroupBindingService", 
-                                $"🔄 会员信息已更新 - ID={dbMember.Id}, 微信ID={dbMember.Wxid}");
-                            
-                            if (nicknameChanged)
-                            {
-                                _logService.Warning("GroupBindingService", 
-                                    $"   ✏️ 昵称变更: [{oldNickname}] → [{dbMember.Nickname}]");
-                            }
-                            
-                            if (displayNameChanged)
-                            {
-                                _logService.Warning("GroupBindingService", 
-                                    $"   ✏️ 群昵称变更: [{oldDisplayName}] → [{dbMember.DisplayName}]" +
-                                    $" （留分名单将使用新名称）");
-                            }
+                            _logService.Info("GroupBindingService", 
+                                $"📝 会员昵称变化: {dbMember.Wxid}");
+                            _logService.Info("GroupBindingService", 
+                                $"   昵称: {oldNickname} → {dbMember.Nickname}");
+                            _logService.Info("GroupBindingService", 
+                                $"   群昵称（系统昵称）: {dbMember.DisplayName}（保持不变）");
                         }
                         
                         // 如果之前是"已退群"，现在恢复为原状态或"会员"
