@@ -156,7 +156,7 @@ namespace zhaocaimao
             // 
             lblSealSeconds.Font = new Font("微软雅黑", 10F);
             lblSealSeconds.ForeColor = Color.FromArgb(90, 122, 138);
-            lblSealSeconds.Location = new Point(5, 25);
+            lblSealSeconds.Location = new Point(5, 21);
             lblSealSeconds.Name = "lblSealSeconds";
             lblSealSeconds.Size = new Size(90, 23);
             lblSealSeconds.TabIndex = 0;
@@ -169,7 +169,7 @@ namespace zhaocaimao
             txtSealSeconds.FillColor = Color.FromArgb(245, 247, 250);
             txtSealSeconds.Font = new Font("微软雅黑", 10F);
             txtSealSeconds.IntValue = 49;
-            txtSealSeconds.Location = new Point(100, 23);
+            txtSealSeconds.Location = new Point(100, 19);
             txtSealSeconds.Margin = new Padding(4, 5, 4, 5);
             txtSealSeconds.MinimumSize = new Size(1, 16);
             txtSealSeconds.Name = "txtSealSeconds";
@@ -187,7 +187,7 @@ namespace zhaocaimao
             // 
             lblMinBet.Font = new Font("微软雅黑", 10F);
             lblMinBet.ForeColor = Color.FromArgb(90, 122, 138);
-            lblMinBet.Location = new Point(5, 58);
+            lblMinBet.Location = new Point(5, 52);
             lblMinBet.Name = "lblMinBet";
             lblMinBet.Size = new Size(90, 23);
             lblMinBet.TabIndex = 2;
@@ -200,7 +200,7 @@ namespace zhaocaimao
             txtMinBet.FillColor = Color.FromArgb(245, 247, 250);
             txtMinBet.Font = new Font("微软雅黑", 10F);
             txtMinBet.IntValue = 1;
-            txtMinBet.Location = new Point(100, 56);
+            txtMinBet.Location = new Point(100, 50);
             txtMinBet.Margin = new Padding(4, 5, 4, 5);
             txtMinBet.MinimumSize = new Size(1, 16);
             txtMinBet.Name = "txtMinBet";
@@ -218,7 +218,7 @@ namespace zhaocaimao
             // 
             lblMaxBet.Font = new Font("微软雅黑", 10F);
             lblMaxBet.ForeColor = Color.FromArgb(90, 122, 138);
-            lblMaxBet.Location = new Point(5, 91);
+            lblMaxBet.Location = new Point(5, 83);
             lblMaxBet.Name = "lblMaxBet";
             lblMaxBet.Size = new Size(90, 23);
             lblMaxBet.TabIndex = 4;
@@ -231,7 +231,7 @@ namespace zhaocaimao
             txtMaxBet.FillColor = Color.FromArgb(245, 247, 250);
             txtMaxBet.Font = new Font("微软雅黑", 10F);
             txtMaxBet.IntValue = 10000;
-            txtMaxBet.Location = new Point(100, 89);
+            txtMaxBet.Location = new Point(100, 81);
             txtMaxBet.Margin = new Padding(4, 5, 4, 5);
             txtMaxBet.MinimumSize = new Size(1, 16);
             txtMaxBet.Name = "txtMaxBet";
@@ -249,7 +249,7 @@ namespace zhaocaimao
             // 
             lblPlatform.Font = new Font("微软雅黑", 9F);
             lblPlatform.ForeColor = Color.FromArgb(90, 122, 138);
-            lblPlatform.Location = new Point(5, 124);
+            lblPlatform.Location = new Point(5, 117);
             lblPlatform.Name = "lblPlatform";
             lblPlatform.Size = new Size(50, 20);
             lblPlatform.TabIndex = 7;
@@ -263,10 +263,8 @@ namespace zhaocaimao
             cbxPlatform.FillColor = Color.FromArgb(245, 247, 250);
             cbxPlatform.Font = new Font("微软雅黑", 9F);
             cbxPlatform.ItemHoverColor = Color.FromArgb(143, 168, 194);
-            // 🔥 不在设计器中添加平台，改为在代码中动态加载（确保和 BetPlatform 枚举一致）
-            // cbxPlatform.Items.AddRange(new object[] { "云顶", "海峡", "红海", "通宝" });
             cbxPlatform.ItemSelectForeColor = Color.FromArgb(245, 247, 250);
-            cbxPlatform.Location = new Point(60, 122);
+            cbxPlatform.Location = new Point(60, 115);
             cbxPlatform.Margin = new Padding(4, 5, 4, 5);
             cbxPlatform.MinimumSize = new Size(63, 0);
             cbxPlatform.Name = "cbxPlatform";
@@ -282,7 +280,7 @@ namespace zhaocaimao
             // 
             lblAutoBetUsername.Font = new Font("微软雅黑", 9F);
             lblAutoBetUsername.ForeColor = Color.FromArgb(90, 122, 138);
-            lblAutoBetUsername.Location = new Point(5, 154);
+            lblAutoBetUsername.Location = new Point(5, 146);
             lblAutoBetUsername.Name = "lblAutoBetUsername";
             lblAutoBetUsername.Size = new Size(50, 20);
             lblAutoBetUsername.TabIndex = 9;
@@ -293,7 +291,7 @@ namespace zhaocaimao
             // 
             txtAutoBetUsername.FillColor = Color.FromArgb(245, 247, 250);
             txtAutoBetUsername.Font = new Font("微软雅黑", 9F);
-            txtAutoBetUsername.Location = new Point(60, 152);
+            txtAutoBetUsername.Location = new Point(60, 143);
             txtAutoBetUsername.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetUsername.MinimumSize = new Size(1, 16);
             txtAutoBetUsername.Name = "txtAutoBetUsername";
@@ -309,7 +307,7 @@ namespace zhaocaimao
             // 
             lblAutoBetPassword.Font = new Font("微软雅黑", 9F);
             lblAutoBetPassword.ForeColor = Color.FromArgb(90, 122, 138);
-            lblAutoBetPassword.Location = new Point(5, 184);
+            lblAutoBetPassword.Location = new Point(5, 173);
             lblAutoBetPassword.Name = "lblAutoBetPassword";
             lblAutoBetPassword.Size = new Size(50, 20);
             lblAutoBetPassword.TabIndex = 11;
@@ -320,7 +318,7 @@ namespace zhaocaimao
             // 
             txtAutoBetPassword.FillColor = Color.FromArgb(245, 247, 250);
             txtAutoBetPassword.Font = new Font("微软雅黑", 9F);
-            txtAutoBetPassword.Location = new Point(60, 182);
+            txtAutoBetPassword.Location = new Point(60, 173);
             txtAutoBetPassword.Margin = new Padding(4, 5, 4, 5);
             txtAutoBetPassword.MinimumSize = new Size(1, 16);
             txtAutoBetPassword.Name = "txtAutoBetPassword";
@@ -336,7 +334,7 @@ namespace zhaocaimao
             // lblOdds
             // 
             lblOdds.Font = new Font("微软雅黑", 9F);
-            lblOdds.Location = new Point(5, 214);
+            lblOdds.Location = new Point(5, 205);
             lblOdds.Name = "lblOdds";
             lblOdds.Size = new Size(50, 20);
             lblOdds.TabIndex = 13;
@@ -347,7 +345,7 @@ namespace zhaocaimao
             // 
             txtOdds.DecimalPlaces = 2;
             txtOdds.Font = new Font("微软雅黑", 9F);
-            txtOdds.Location = new Point(60, 212);
+            txtOdds.Location = new Point(60, 203);
             txtOdds.Margin = new Padding(4, 5, 4, 5);
             txtOdds.Maximum = 2.5D;
             txtOdds.Minimum = 1D;
@@ -364,7 +362,7 @@ namespace zhaocaimao
             // lblSettlement
             // 
             lblSettlement.Font = new Font("微软雅黑", 9F);
-            lblSettlement.Location = new Point(5, 240);
+            lblSettlement.Location = new Point(5, 229);
             lblSettlement.Name = "lblSettlement";
             lblSettlement.Size = new Size(50, 20);
             lblSettlement.TabIndex = 15;
@@ -375,24 +373,24 @@ namespace zhaocaimao
             // 
             rdoSettlementDecimal.Checked = true;
             rdoSettlementDecimal.Font = new Font("微软雅黑", 9F);
-            rdoSettlementDecimal.Location = new Point(57, 240);
+            rdoSettlementDecimal.Location = new Point(57, 231);
             rdoSettlementDecimal.Name = "rdoSettlementDecimal";
-            rdoSettlementDecimal.Size = new Size(101, 21);
+            rdoSettlementDecimal.Size = new Size(73, 21);
             rdoSettlementDecimal.TabIndex = 16;
             rdoSettlementDecimal.TabStop = true;
-            rdoSettlementDecimal.Text = "小数2位(精确)";
+            rdoSettlementDecimal.Text = "小数2位";
             rdoSettlementDecimal.UseVisualStyleBackColor = true;
             // 
             // rdoSettlementInteger
             // 
             rdoSettlementInteger.AutoSize = true;
             rdoSettlementInteger.Font = new Font("微软雅黑", 9F);
-            rdoSettlementInteger.Location = new Point(160, 240);
+            rdoSettlementInteger.Location = new Point(160, 233);
             rdoSettlementInteger.Name = "rdoSettlementInteger";
-            rdoSettlementInteger.Size = new Size(82, 21);
+            rdoSettlementInteger.Size = new Size(50, 21);
             rdoSettlementInteger.TabIndex = 17;
             rdoSettlementInteger.TabStop = true;
-            rdoSettlementInteger.Text = "整数(赚点)";
+            rdoSettlementInteger.Text = "整数";
             rdoSettlementInteger.UseVisualStyleBackColor = true;
             // 
             // btnStartBrowser
@@ -401,13 +399,13 @@ namespace zhaocaimao
             btnStartBrowser.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnStartBrowser.FillPressColor = Color.FromArgb(91, 127, 166);
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
-            btnStartBrowser.Location = new Point(120, 265);
+            btnStartBrowser.Location = new Point(120, 256);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
             btnStartBrowser.RectColor = Color.FromArgb(107, 143, 166);
             btnStartBrowser.RectHoverColor = Color.FromArgb(143, 168, 194);
             btnStartBrowser.RectPressColor = Color.FromArgb(91, 127, 166);
-            btnStartBrowser.Size = new Size(110, 30);
+            btnStartBrowser.Size = new Size(110, 26);
             btnStartBrowser.TabIndex = 14;
             btnStartBrowser.Text = "启动浏览器";
             btnStartBrowser.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -419,13 +417,13 @@ namespace zhaocaimao
             btnConfigManager.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnConfigManager.FillPressColor = Color.FromArgb(91, 127, 166);
             btnConfigManager.Font = new Font("微软雅黑", 9F);
-            btnConfigManager.Location = new Point(120, 301);
+            btnConfigManager.Location = new Point(120, 284);
             btnConfigManager.MinimumSize = new Size(1, 1);
             btnConfigManager.Name = "btnConfigManager";
             btnConfigManager.RectColor = Color.FromArgb(107, 143, 166);
             btnConfigManager.RectHoverColor = Color.FromArgb(143, 168, 194);
             btnConfigManager.RectPressColor = Color.FromArgb(91, 127, 166);
-            btnConfigManager.Size = new Size(110, 30);
+            btnConfigManager.Size = new Size(110, 26);
             btnConfigManager.TabIndex = 15;
             btnConfigManager.Text = "配置管理";
             btnConfigManager.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -604,7 +602,7 @@ namespace zhaocaimao
             pnl_fastsetting.MinimumSize = new Size(1, 1);
             pnl_fastsetting.Name = "pnl_fastsetting";
             pnl_fastsetting.RectColor = Color.FromArgb(107, 143, 166);
-            pnl_fastsetting.Size = new Size(237, 345);
+            pnl_fastsetting.Size = new Size(237, 310);
             pnl_fastsetting.TabIndex = 3;
             pnl_fastsetting.Text = "快速设置";
             pnl_fastsetting.TextAlignment = ContentAlignment.TopCenter;
@@ -614,10 +612,10 @@ namespace zhaocaimao
             swi_OrdersTasking.ActiveText = "收单中";
             swi_OrdersTasking.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             swi_OrdersTasking.InActiveText = "收单停";
-            swi_OrdersTasking.Location = new Point(10, 243);
+            swi_OrdersTasking.Location = new Point(10, 256);
             swi_OrdersTasking.MinimumSize = new Size(1, 1);
             swi_OrdersTasking.Name = "swi_OrdersTasking";
-            swi_OrdersTasking.Size = new Size(85, 29);
+            swi_OrdersTasking.Size = new Size(85, 24);
             swi_OrdersTasking.TabIndex = 6;
             swi_OrdersTasking.Text = "关单中";
             swi_OrdersTasking.ValueChanged += swi_OrdersTasking_ValueChanged;
@@ -627,10 +625,10 @@ namespace zhaocaimao
             swiAutoOrdersBet.ActiveText = "飞单中";
             swiAutoOrdersBet.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
             swiAutoOrdersBet.InActiveText = "飞单停";
-            swiAutoOrdersBet.Location = new Point(10, 273);
+            swiAutoOrdersBet.Location = new Point(10, 286);
             swiAutoOrdersBet.MinimumSize = new Size(1, 1);
             swiAutoOrdersBet.Name = "swiAutoOrdersBet";
-            swiAutoOrdersBet.Size = new Size(85, 29);
+            swiAutoOrdersBet.Size = new Size(85, 24);
             swiAutoOrdersBet.TabIndex = 6;
             swiAutoOrdersBet.Text = "关单中";
             swiAutoOrdersBet.ValueChanged += swiAutoOrdersBet_ValueChanged;
@@ -692,7 +690,7 @@ namespace zhaocaimao
             dgvContacts.RowTemplate.Height = 29;
             dgvContacts.SelectedIndex = -1;
             dgvContacts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvContacts.Size = new Size(244, 147);
+            dgvContacts.Size = new Size(244, 130);
             dgvContacts.StripeOddColor = Color.FromArgb(248, 250, 252);
             dgvContacts.TabIndex = 1;
             dgvContacts.SelectionChanged += dgvContacts_SelectionChanged;
@@ -1169,6 +1167,7 @@ namespace zhaocaimao
             splitContainerMain.ResumeLayout(false);
             pnlLeft.ResumeLayout(false);
             pnl_fastsetting.ResumeLayout(false);
+            pnl_fastsetting.PerformLayout();
             pnl_opendata.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvContacts).EndInit();
             pnlLeftTop.ResumeLayout(false);
