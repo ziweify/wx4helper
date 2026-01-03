@@ -3334,43 +3334,6 @@ namespace zhaocaimao
                         Wxid = selectedMember.Wxid,
                         Nickname = selectedMember.Nickname,
                         BalanceBefore = balanceBefore,
-        {
-            try
-            {
-                if (dgvMembers.SelectedRows.Count == 0)
-                {
-                    UIMessageBox.ShowWarning("请先选择要清分的会员");
-                    return;
-                }
-
-                var selectedMember = dgvMembers.SelectedRows[0].DataBoundItem as Models.V2Member;
-                if (selectedMember == null) return;
-
-                // 确认对话框
-                if (!UIMessageBox.ShowAsk($"确定要清分会员【{selectedMember.Nickname}】吗？\n\n" +
-                    $"当前余额：{selectedMember.Balance:F2}\n" +
-                    $"清分后余额将变为：0.00\n\n" +
-                    $"此操作将记录到资金变动表"))
-                {
-                    return;
-                }
-
-                float balanceBefore = selectedMember.Balance;
-                float balanceAfter = 0f;
-                float changeAmount = -balanceBefore;
-
-                // 清空余额
-                selectedMember.Balance = 0f;
-
-                // 🔥 记录到资金变动表
-                if (_db != null)
-                {
-                    var balanceChange = new Models.V2BalanceChange
-                    {
-                        GroupWxId = selectedMember.GroupWxId,
-                        Wxid = selectedMember.Wxid,
-                        Nickname = selectedMember.Nickname,
-                        BalanceBefore = balanceBefore,
                         BalanceAfter = balanceAfter,
                         ChangeAmount = changeAmount,
                         Reason = Models.ChangeReason.手动调整,

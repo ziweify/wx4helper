@@ -1454,8 +1454,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 "平码三" => CarNumEnum.P3,
                 "平码四" => CarNumEnum.P4,
                 "特码" => CarNumEnum.P5,
-                "合值" => CarNumEnum.P5,  // 合值归类到 P5
-                "龙虎" => CarNumEnum.P5,  // 龙虎归类到 P5
+                "合值" => CarNumEnum.P总,  // 合值归类到 P5
+                "龙虎" => CarNumEnum.P总,  // 龙虎归类到 P5
                 _ => CarNumEnum.未知
             };
         }
