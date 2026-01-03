@@ -46,6 +46,11 @@ namespace zhaocaimao.Contracts
         float GetWechatOrderOdds();
         
         /// <summary>
+        /// 🔥 获取结算方式：true=整数结算，false=小数2位结算
+        /// </summary>
+        bool GetIsIntegerSettlement();
+        
+        /// <summary>
         /// 🔥 获取当前选择的盘口（界面状态，保存在 appsettings.json）
         /// </summary>
         string GetCurrentSelectedPlatform();
@@ -113,6 +118,11 @@ namespace zhaocaimao.Contracts
         /// 🔥 设置微信订单统一赔率（用于订单结算）
         /// </summary>
         void SetWechatOrderOdds(float value);
+        
+        /// <summary>
+        /// 🔥 设置结算方式：true=整数结算，false=小数2位结算
+        /// </summary>
+        void SetIsIntegerSettlement(bool value);
         
         /// <summary>
         /// 🔥 设置当前选择的盘口（界面状态，保存在 appsettings.json）

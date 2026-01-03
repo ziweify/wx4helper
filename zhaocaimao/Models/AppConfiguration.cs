@@ -72,6 +72,12 @@ namespace zhaocaimao.Models
         public float WechatOrderOdds { get; set; } = 1.97f;
         
         /// <summary>
+        /// 结算方式：true=整数结算（抹掉小数点），false=小数2位结算（精确）
+        /// 默认 false（小数2位精确结算）
+        /// </summary>
+        public bool IsIntegerSettlement { get; set; } = false;
+        
+        /// <summary>
         /// 🔥 赔率配置字典（用于 BinggoGameSettings 兼容）
         /// 注意：此属性主要用于向后兼容，实际使用中建议使用 WechatOrderOdds
         /// </summary>

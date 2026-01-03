@@ -544,26 +544,86 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 3. 获取赔率（参考 F5BotV2: _appSetting.wxOdds）
                 float odds = order.Odds > 0 ? order.Odds : 1.97f;
                 
-                // 4. 调用 OpenLottery 计算盈利（参考 F5BotV2: order.OpenLottery(data, odds, zsjs)）
-                float totalWin = 0f; // 总赢金额（包含本金）
+                // 4. 获取结算方式配置（true=整数结算，false=小数2位结算）
+                bool isIntegerSettlement = _configService.GetIsIntegerSettlement();
+                
+                // 5. 计算总赢金额（包含本金）和纯利（支持整数结算）
+                // 使用 BinggoHelper.CalculateTotalProfit 计算总盈利
+                // 注意：CalculateProfit 返回的是每个投注项的盈利：
+                //   - 中奖时：总投注额 × 赔率（总赢金额，包含本金）
+                //   - 未中奖时：-总投注额（损失）
+                decimal totalWin = 0m;  // 总赢金额（包含本金）
+                decimal totalWinBeforeFloor = 0m;  // 取整前的总赢金额（用于计算差额）
+                
                 foreach (var item in betContent.Items)
                 {
                     bool isWin = BinggoHelper.IsWin(item, lotteryData);
-                    if (isWin)
+                    if (isWin)  // 中奖了
                     {
-                        // 🔥 参考 F5BotV2: 赢了返回 金额 × 赔率
-                        totalWin += (float)item.TotalAmount * odds;
+                        // 计算该项的赢金额（包含本金）
+                        decimal profitBeforeFloor = item.TotalAmount * (decimal)odds;
+                        totalWinBeforeFloor += profitBeforeFloor;
+                        
+                        // 如果是整数结算，取整
+                        decimal profit = isIntegerSettlement 
+                            ? Math.Floor(profitBeforeFloor) 
+                            : profitBeforeFloor;
+                        
+                        totalWin += profit;  // 累加总赢金额（包含本金）
                     }
                 }
                 
-                // 5. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
-                order.Profit = totalWin;  // 总赢金额（包含本金）
-                order.NetProfit = totalWin - order.AmountTotal;  // 纯利 = 总赢 - 投注额
+                // 6. 计算纯利 = 总赢金额 - 投注额
+                decimal netProfit = totalWin - (decimal)order.AmountTotal;
+                
+                // 7. 计算赚取差额（仅整数结算时有差额）
+                decimal earnedDiff = isIntegerSettlement ? totalWinBeforeFloor - totalWin : 0m;
+                
+                // 8. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
+                order.Profit = (float)totalWin;  // 总赢金额（包含本金）
+                order.NetProfit = (float)netProfit;  // 纯利 = 总赢 - 投注额
                 order.OrderStatus = OrderStatus.已完成;
                 order.IsSettled = true;
                 
+                // 9. 更新备注：结算方式 + 赚取差额
+                // 如果备注中已经有结算相关的内容，替换它；否则追加
+                string settlementNote = isIntegerSettlement 
+                    ? $"结算:赚点({earnedDiff:F2})" 
+                    : "结算:精确";
+                
+                if (!string.IsNullOrEmpty(order.Notes))
+                {
+                    // 如果已有备注，检查是否包含旧的结算信息，替换或追加
+                    if (order.Notes.Contains("结算:"))
+                    {
+                        // 替换旧的结算信息
+                        order.Notes = System.Text.RegularExpressions.Regex.Replace(
+                            order.Notes, 
+                            @"结算:(精确|赚点\([0-9.]+\))", 
+                            settlementNote);
+                    }
+                    else
+                    {
+                        // 追加新的结算信息
+                        order.Notes = $"{order.Notes}; {settlementNote}";
+                    }
+                }
+                else
+                {
+                    order.Notes = settlementNote;
+                }
+                
                 _logService.Info("OrderService", 
-                    $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2}");
+                    $"📊 订单结算: {order.Wxid} - 期号 {order.IssueId} - 投注 {order.AmountTotal:F2} - 总赢 {order.Profit:F2} - 纯利 {order.NetProfit:F2} - 赚点 {earnedDiff:F2}");
+                
+                _logService.Info("OrderService", 
+                    $"📝 订单备注: OrderId={order.Id}, Notes=[{order.Notes}]");
+                
+                // 🔥 5.5 更新赚点统计（如果是整数结算）
+                if (isIntegerSettlement && earnedDiff > 0)
+                {
+                    _statisticsService?.OnEarnedDiffSettled((float)earnedDiff);
+                }
                 
                 // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
                 // 参考用户要求："锁要注意时机，不能锁定太长时间，只锁定写入数据库数据这里"

@@ -34,6 +34,8 @@ namespace zhaocaimao.Services.Games.Binggo
         private int _withdrawTotal;     // 总下分
         private int _withdrawToday;     // 今日下分
         private int _issueidCur;        // 当前期号
+        private float _earnedDiffToday; // 今日赚点（整数结算时的差额）
+        private float _earnedDiffTotal; // 总赚点（整数结算时的差额）
         
         public event PropertyChangedEventHandler? PropertyChanged;
         
@@ -106,13 +108,25 @@ namespace zhaocaimao.Services.Games.Binggo
             set => SetField(ref _issueidCur, value);
         }
         
+        public float EarnedDiffToday
+        {
+            get => _earnedDiffToday;
+            set => SetField(ref _earnedDiffToday, value);
+        }
+        
+        public float EarnedDiffTotal
+        {
+            get => _earnedDiffTotal;
+            set => SetField(ref _earnedDiffTotal, value);
+        }
+        
         /// <summary>
         /// 盘口描述字符串
         /// 🔥 完全参考 F5BotV2 第 805 行
         /// 🔥 所有金额显示小数点后 2 位
         /// </summary>
         public string PanDescribe => 
-            $"总注:{BetMoneyTotal:F2}|今投:{BetMoneyToday:F2}|当前:{IssueidCur}投注:{BetMoneyCur:F2} | 总/今盈利:{IncomeTotal:F2}/{IncomeToday:F2} | 总上/今上:{CreditTotal:F2}/{CreditToday:F2} 总下/今下:{WithdrawTotal:F2}/{WithdrawToday:F2}";
+            $"总注:{BetMoneyTotal:F2}|今投:{BetMoneyToday:F2}|当前:{IssueidCur}投注:{BetMoneyCur:F2} | 总/今盈利:{IncomeTotal:F2}/{IncomeToday:F2} | 总上/今上:{CreditTotal:F2}/{CreditToday:F2} 总下/今下:{WithdrawTotal:F2}/{WithdrawToday:F2} | 赚点:{EarnedDiffTotal:F2}/{EarnedDiffToday:F2}";
         
         // ========================================
         // 方法
@@ -149,6 +163,8 @@ namespace zhaocaimao.Services.Games.Binggo
                     WithdrawTotal = 0;
                     CreditToday = 0;
                     WithdrawToday = 0;
+                    EarnedDiffToday = 0f;
+                    EarnedDiffTotal = 0f;
                     
                     _logService.Info("Statistics", "统计数据已重置");
                     return;
@@ -209,6 +225,54 @@ namespace zhaocaimao.Services.Games.Binggo
                         if (orderDate == today)
                         {
                             todayIncome += order.NetProfit;
+                        }
+                        
+                        // 🔥 调试：输出所有已结算订单的备注
+                        _logService.Info("Statistics", 
+                            $"🔍 订单{order.Id} 已结算 - 备注: [{order.Notes ?? "null"}]");
+                        
+                        // 🔥 计算赚点总额：从备注中解析
+                        // 格式：结算:赚点(0.64) 或 结算:赚点(0.64); 补单:是
+                        if (!string.IsNullOrEmpty(order.Notes) && order.Notes.Contains("结算:赚点"))
+                        {
+                            try
+                            {
+                                // 使用正则表达式提取括号中的数字
+                                // 模式：结算:赚点(数字)，数字可以是整数或小数，支持负数
+                                var match = System.Text.RegularExpressions.Regex.Match(
+                                    order.Notes, 
+                                    @"结算:赚点\(([-+]?\d+(?:\.\d+)?)\)");
+                                
+                                if (match.Success)
+                                {
+                                    string diffStr = match.Groups[1].Value;
+                                    
+                                    if (float.TryParse(diffStr, out float diff))
+                                    {
+                                        // 更新总赚点
+                                        EarnedDiffTotal += diff;
+                                        
+                                        // 更新今日赚点（如果是今天的订单）
+                                        if (orderDate == today)
+                                        {
+                                            EarnedDiffToday += diff;
+                                        }
+                                        
+                                        _logService.Info("Statistics", 
+                                            $"✅ 订单{order.Id} 赚点: {diff:F2} - 总赚点: {EarnedDiffTotal:F2} 今日赚点: {EarnedDiffToday:F2}");
+                                    }
+                                    else
+                                    {
+                                        _logService.Warning("Statistics", 
+                                            $"⚠️ 订单{order.Id} 赚点解析失败: \"{diffStr}\"");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Error("Statistics", 
+                                    $"解析订单{order.Id}赚点失败: {ex.Message}");
+                            }
                         }
                     }
                 }
@@ -447,6 +511,33 @@ namespace zhaocaimao.Services.Games.Binggo
             catch (Exception ex)
             {
                 _logService.Error("Statistics", $"OnOrderSettled 失败: {ex.Message}", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 🔥 整数结算时更新赚点统计
+        /// 当订单结算时，如果是整数结算，调用此方法增加赚点
+        /// </summary>
+        public void OnEarnedDiffSettled(float earnedDiff)
+        {
+            try
+            {
+                if (earnedDiff <= 0)
+                    return;
+                
+                // 增加总赚点和今日赚点
+                EarnedDiffTotal += earnedDiff;
+                EarnedDiffToday += earnedDiff;
+                
+                _logService.Info("Statistics", 
+                    $"📊 赚点统计更新: 本次 {earnedDiff:F2} - 总赚点 {EarnedDiffTotal:F2} 今日赚点 {EarnedDiffToday:F2}");
+                
+                // 触发 UI 更新
+                OnPropertyChanged(nameof(PanDescribe));
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("Statistics", $"OnEarnedDiffSettled 失败: {ex.Message}", ex);
             }
         }
         

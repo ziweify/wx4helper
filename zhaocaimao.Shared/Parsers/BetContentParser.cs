@@ -192,7 +192,21 @@ namespace zhaocaimao.Shared.Parsers
                 // 🔥 其他玩法（参考 F5BotV2 第270-283行）
                 foreach (var c in cars)
                 {
-                    var item = items.FirstOrDefault(p => p.Car == c && p.Play == play);
+                    // 🔥 P总单双自动转换：YYDS平台P总只支持"合单/合双"，不支持"单/双"
+                    var actualPlay = play;
+                    if (c == CarNumEnum.P总)
+                    {
+                        if (play == BetPlayEnum.单)
+                        {
+                            actualPlay = BetPlayEnum.合单;
+                        }
+                        else if (play == BetPlayEnum.双)
+                        {
+                            actualPlay = BetPlayEnum.合双;
+                        }
+                    }
+                    
+                    var item = items.FirstOrDefault(p => p.Car == c && p.Play == actualPlay);
                     if (item != null)
                     {
                         // 🔥 已存在，累加金额（参考 F5BotV2 第274行：numberAdd）
@@ -201,7 +215,7 @@ namespace zhaocaimao.Shared.Parsers
                     }
                     else
                     {
-                        items.Add(new BetStandardOrder(issueId, c, play, money));
+                        items.Add(new BetStandardOrder(issueId, c, actualPlay, money));
                         reponse++;
                     }
                 }

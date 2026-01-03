@@ -194,6 +194,28 @@ namespace zhaocaimao.Services.Configuration
         }
         
         /// <summary>
+        /// 🔥 获取结算方式：true=整数结算，false=小数2位结算
+        /// </summary>
+        public bool GetIsIntegerSettlement() => _configuration.IsIntegerSettlement;
+        
+        /// <summary>
+        /// 🔥 设置结算方式：true=整数结算，false=小数2位结算
+        /// </summary>
+        public void SetIsIntegerSettlement(bool value)
+        {
+            if (_configuration.IsIntegerSettlement != value)
+            {
+                var oldValue = _configuration.IsIntegerSettlement;
+                _configuration.IsIntegerSettlement = value;
+                
+                _logService.Info("ConfigurationService", $"结算方式已更新: {(oldValue ? "整数结算" : "小数2位结算")} → {(value ? "整数结算" : "小数2位结算")}");
+                
+                // 自动保存
+                SaveConfiguration();
+            }
+        }
+        
+        /// <summary>
         /// 🔥 设置当前选择的盘口（界面状态，保存在 appsettings.json）
         /// </summary>
         public void SetCurrentSelectedPlatform(string value)

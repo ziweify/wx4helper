@@ -1231,7 +1231,23 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                 List<object> postitems = new List<object>();
                 foreach(var order in orders)
                 {
-                    var oddsInfo = _OddsInfo.FirstOrDefault(o => o.Play == order.Play && o.Car == order.Car);
+                    // 🔥 YYDS平台特殊处理：P总的单/双 需要转换为 合单/合双
+                    var actualPlay = order.Play;
+                    if (order.Car == CarNumEnum.P总)
+                    {
+                        if (order.Play == BetPlayEnum.单)
+                        {
+                            actualPlay = BetPlayEnum.合单;
+                            _logCallback($"🔄 自动转换: P总单 → P总合单");
+                        }
+                        else if (order.Play == BetPlayEnum.双)
+                        {
+                            actualPlay = BetPlayEnum.合双;
+                            _logCallback($"🔄 自动转换: P总双 → P总合双");
+                        }
+                    }
+                    
+                    var oddsInfo = _OddsInfo.FirstOrDefault(o => o.Play == actualPlay && o.Car == order.Car);
                     
                     // 🔥 检查赔率信息是否存在
                     if (oddsInfo == null)
@@ -1257,7 +1273,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     
                     // 🔥 调试日志：显示投注项详细信息（同时写入调试日志文件）
                     var debugInfo = $"📋 构建投注项:\n" +
-                                   $"   - 订单: Car={order.Car}, Play={order.Play}, Amount={order.MoneySum}\n" +
+                                   $"   - 原始订单: Car={order.Car}, Play={order.Play}, Amount={order.MoneySum}\n" +
+                                   $"   - 实际玩法: Play={actualPlay}" + (actualPlay != order.Play ? " (已转换)" : "") + "\n" +
                                    $"   - 赔率: CarName={oddsInfo.CarName}, OddsId={oddsInfo.OddsId}\n" +
                                    $"   - 分割: dictLabel={param[0]}, dictValue={param[1]}";
                     _logCallback(debugInfo);
@@ -1266,7 +1283,8 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         message = "构建投注项", 
                         data = new { 
                             car = order.Car.ToString(), 
-                            play = order.Play.ToString(), 
+                            originalPlay = order.Play.ToString(),
+                            actualPlay = actualPlay.ToString(),
                             amount = order.MoneySum,
                             carName = oddsInfo.CarName,
                             oddsId = oddsInfo.OddsId,

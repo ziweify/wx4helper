@@ -59,6 +59,9 @@ namespace zhaocaimao
             txtAutoBetPassword = new Sunny.UI.UITextBox();
             lblOdds = new Label();
             txtOdds = new Sunny.UI.UIDoubleUpDown();
+            lblSettlement = new Label();
+            rdoSettlementDecimal = new RadioButton();
+            rdoSettlementInteger = new RadioButton();
             btnStartBrowser = new Sunny.UI.UIButton();
             btnConfigManager = new Sunny.UI.UIButton();
             cmsMembers = new Sunny.UI.UIContextMenuStrip();
@@ -358,13 +361,47 @@ namespace zhaocaimao
             txtOdds.TextAlignment = ContentAlignment.MiddleLeft;
             txtOdds.Value = 1.97D;
             // 
+            // lblSettlement
+            // 
+            lblSettlement.Font = new Font("微软雅黑", 9F);
+            lblSettlement.Location = new Point(5, 240);
+            lblSettlement.Name = "lblSettlement";
+            lblSettlement.Size = new Size(50, 20);
+            lblSettlement.TabIndex = 15;
+            lblSettlement.Text = "结算:";
+            lblSettlement.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // rdoSettlementDecimal
+            // 
+            rdoSettlementDecimal.Checked = true;
+            rdoSettlementDecimal.Font = new Font("微软雅黑", 9F);
+            rdoSettlementDecimal.Location = new Point(57, 240);
+            rdoSettlementDecimal.Name = "rdoSettlementDecimal";
+            rdoSettlementDecimal.Size = new Size(101, 21);
+            rdoSettlementDecimal.TabIndex = 16;
+            rdoSettlementDecimal.TabStop = true;
+            rdoSettlementDecimal.Text = "小数2位(精确)";
+            rdoSettlementDecimal.UseVisualStyleBackColor = true;
+            // 
+            // rdoSettlementInteger
+            // 
+            rdoSettlementInteger.AutoSize = true;
+            rdoSettlementInteger.Font = new Font("微软雅黑", 9F);
+            rdoSettlementInteger.Location = new Point(160, 240);
+            rdoSettlementInteger.Name = "rdoSettlementInteger";
+            rdoSettlementInteger.Size = new Size(82, 21);
+            rdoSettlementInteger.TabIndex = 17;
+            rdoSettlementInteger.TabStop = true;
+            rdoSettlementInteger.Text = "整数(赚点)";
+            rdoSettlementInteger.UseVisualStyleBackColor = true;
+            // 
             // btnStartBrowser
             // 
             btnStartBrowser.FillColor = Color.FromArgb(107, 143, 166);
             btnStartBrowser.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnStartBrowser.FillPressColor = Color.FromArgb(91, 127, 166);
             btnStartBrowser.Font = new Font("微软雅黑", 9F);
-            btnStartBrowser.Location = new Point(120, 243);
+            btnStartBrowser.Location = new Point(120, 265);
             btnStartBrowser.MinimumSize = new Size(1, 1);
             btnStartBrowser.Name = "btnStartBrowser";
             btnStartBrowser.RectColor = Color.FromArgb(107, 143, 166);
@@ -382,7 +419,7 @@ namespace zhaocaimao
             btnConfigManager.FillHoverColor = Color.FromArgb(143, 168, 194);
             btnConfigManager.FillPressColor = Color.FromArgb(91, 127, 166);
             btnConfigManager.Font = new Font("微软雅黑", 9F);
-            btnConfigManager.Location = new Point(120, 279);
+            btnConfigManager.Location = new Point(120, 301);
             btnConfigManager.MinimumSize = new Size(1, 1);
             btnConfigManager.Name = "btnConfigManager";
             btnConfigManager.RectColor = Color.FromArgb(107, 143, 166);
@@ -555,6 +592,9 @@ namespace zhaocaimao
             pnl_fastsetting.Controls.Add(txtAutoBetPassword);
             pnl_fastsetting.Controls.Add(lblOdds);
             pnl_fastsetting.Controls.Add(txtOdds);
+            pnl_fastsetting.Controls.Add(lblSettlement);
+            pnl_fastsetting.Controls.Add(rdoSettlementDecimal);
+            pnl_fastsetting.Controls.Add(rdoSettlementInteger);
             pnl_fastsetting.Controls.Add(btnStartBrowser);
             pnl_fastsetting.Controls.Add(btnConfigManager);
             pnl_fastsetting.FillColor = Color.FromArgb(245, 247, 250);
@@ -1214,6 +1254,9 @@ namespace zhaocaimao
         private Sunny.UI.UITextBox txtAutoBetPassword;
         private System.Windows.Forms.Label lblOdds;
         private Sunny.UI.UIDoubleUpDown txtOdds;
+        private System.Windows.Forms.Label lblSettlement;
+        private System.Windows.Forms.RadioButton rdoSettlementDecimal;
+        private System.Windows.Forms.RadioButton rdoSettlementInteger;
         private Sunny.UI.UIButton btnStartBrowser;
         private Sunny.UI.UIButton btnConfigManager;
         private Sunny.UI.UISwitch swi_OrdersTasking;
