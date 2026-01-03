@@ -1237,6 +1237,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     if (oddsInfo == null)
                     {
                         _logCallback($"❌ 未找到赔率信息: Play={order.Play}, Car={order.Car}");
+                        _logCallback($"   可用赔率列表: {string.Join(", ", _OddsInfo.Select(o => $"{o.Car}-{o.Play}"))}");
                         return (false, "", $"#未找到赔率信息: {order.Play}-{order.Car}");
                     }
                     
@@ -1254,14 +1255,64 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         return (false, "", $"#赔率信息格式错误: {oddsInfo.CarName}");
                     }
                     
+                    // 🔥 调试日志：显示投注项详细信息（同时写入调试日志文件）
+                    var debugInfo = $"📋 构建投注项:\n" +
+                                   $"   - 订单: Car={order.Car}, Play={order.Play}, Amount={order.MoneySum}\n" +
+                                   $"   - 赔率: CarName={oddsInfo.CarName}, OddsId={oddsInfo.OddsId}\n" +
+                                   $"   - 分割: dictLabel={param[0]}, dictValue={param[1]}";
+                    _logCallback(debugInfo);
+                    WriteDebugLog(new { 
+                        location = "PlaceBetAsync", 
+                        message = "构建投注项", 
+                        data = new { 
+                            car = order.Car.ToString(), 
+                            play = order.Play.ToString(), 
+                            amount = order.MoneySum,
+                            carName = oddsInfo.CarName,
+                            oddsId = oddsInfo.OddsId,
+                            dictLabel = param[0],
+                            dictValue = param[1]
+                        },
+                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    });
+                    
+                    // 🔥 检查 betTypeId 是否为数字（OddsId 是字符串，需要转换为 int）
+                    if (!int.TryParse(oddsInfo.OddsId, out var betTypeIdInt))
+                    {
+                        var errorMsg = $"❌ betTypeId 格式错误: {oddsInfo.OddsId}，无法转换为整数";
+                        _logCallback(errorMsg);
+                        WriteDebugLog(new { 
+                            location = "PlaceBetAsync", 
+                            message = "betTypeId格式错误", 
+                            error = errorMsg,
+                            oddsId = oddsInfo.OddsId,
+                            timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        });
+                        return (false, "", $"#betTypeId 格式错误: {oddsInfo.OddsId}");
+                    }
+                    
                     // 根据订单信息构建投注项
                     var betItem = new
                     {
-                        betTypeId = oddsInfo.OddsId,  // 需要根据实际映射调整
-                        dictValue = param[1],  // 需要根据实际映射调整
-                        dictLabel = param[0],  // 需要根据实际映射调整
+                        betTypeId = betTypeIdInt,  // 🔥 转换为整数
+                        dictValue = param[1],      // 例如: "DA"
+                        dictLabel = param[0],      // 例如: "大"
                         amount = order.MoneySum
                     };
+                    
+                    var finalInfo = $"   - 最终投注项: betTypeId={betItem.betTypeId}, dictLabel={betItem.dictLabel}, dictValue={betItem.dictValue}, amount={betItem.amount}";
+                    _logCallback(finalInfo);
+                    WriteDebugLog(new { 
+                        location = "PlaceBetAsync", 
+                        message = "最终投注项", 
+                        data = new { 
+                            betTypeId = betItem.betTypeId,
+                            dictLabel = betItem.dictLabel,
+                            dictValue = betItem.dictValue,
+                            amount = betItem.amount
+                        },
+                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    });
 
                     postitems.Add(betItem);
                 }
@@ -1512,7 +1563,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     {
                         Car = car,
                         Play = BetPlayEnum.尾大,
-                        CarName = "尾大|WEI-DA",
+                        CarName = "尾大|WEI_DA",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1520,7 +1571,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     {
                         Car = car,
                         Play = BetPlayEnum.尾小,
-                        CarName = "尾小|WEI-XIAO",
+                        CarName = "尾小|WEI_XIAO",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1531,7 +1582,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     {
                         Car = car,
                         Play = BetPlayEnum.合单,
-                        CarName = "合单|HE-DAN",
+                        CarName = "合单|HE_DAN",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1539,7 +1590,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     {
                         Car = car,
                         Play = BetPlayEnum.合双,
-                        CarName = "合双|HE-SHUANG",
+                        CarName = "合双|HE_SHUANG",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1547,11 +1598,12 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     
                 case "合值大合值小":
                     // 合值大合值小：使用大小枚举（因为枚举中没有单独的合值大小）
+                    // 🔥 注意：对于 betTypeGroupName = "合值" 的类型，dictValue 格式应该是 "HEZHI_DA" 而不是 "HE-ZHI-DA"
                     result.Add(new BrowserOddsInfo
                     {
                         Car = car,
                         Play = BetPlayEnum.大,  // 暂时映射到大
-                        CarName = "合值大|HE-ZHI-DA",
+                        CarName = "合值大|HEZHI_DA",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1559,7 +1611,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     {
                         Car = car,
                         Play = BetPlayEnum.小,  // 暂时映射到小
-                        CarName = "合值小|HE-ZHI-XIAO",
+                        CarName = "合值小|HEZHI_XIAO",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1567,11 +1619,12 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     
                 case "合值单合值双":
                     // 合值单合值双：使用合单合双枚举
+                    // 🔥 注意：对于 betTypeGroupName = "合值" 的类型，dictValue 格式应该是 "HEZHI_DAN" 而不是 "HE-ZHI-DAN"
                     result.Add(new BrowserOddsInfo
                     {
                         Car = car,
                         Play = BetPlayEnum.合单,
-                        CarName = "合值单|HE-ZHI-DAN",
+                        CarName = "合值单|HEZHI_DAN",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });
@@ -1579,7 +1632,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                     {
                         Car = car,
                         Play = BetPlayEnum.合双,
-                        CarName = "合值双|HE-ZHI-SHUANG",
+                        CarName = "合值双|HEZHI_SHUANG",
                         OddsId = betTypeId.ToString(),
                         Odds = 1.97f
                     });

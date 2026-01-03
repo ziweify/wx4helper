@@ -11,7 +11,7 @@ namespace zhaocaimao.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "6.8.3";  
+        public const string Version = "6.8.5";  
 
         /// <summary>
         /// 版本名称
@@ -45,6 +45,8 @@ v3.1.0.1114 (2025-11-14)
     }
 
     /*
+     * 6.8.5
+     *  修正yyds赔率, 投注
      * 5.7.6
      *   增加黄金海岸游戏支持、
      *   
