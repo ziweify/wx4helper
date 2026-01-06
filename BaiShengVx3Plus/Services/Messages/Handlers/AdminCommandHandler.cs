@@ -262,9 +262,7 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                         existingMemberCount++;
                         
                         bool nicknameChanged = false;
-                        bool displayNameChanged = false;
                         string oldNickname = existingMember.Nickname;
-                        string oldDisplayName = existingMember.DisplayName;
                         
                         // 🔥 检查昵称是否变化
                         if (!string.IsNullOrEmpty(serverMember.Nickname) && 
@@ -274,32 +272,20 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                             nicknameChanged = true;
                         }
                         
-                        // 🔥 检查DisplayName（群昵称/备注）是否变化
-                        if (!string.IsNullOrEmpty(serverMember.DisplayName) && 
-                            serverMember.DisplayName != existingMember.DisplayName)
-                        {
-                            existingMember.DisplayName = serverMember.DisplayName;
-                            displayNameChanged = true;
-                        }
+                        // 🔥 群昵称（DisplayName）不更新，保留本地值
+                        // 群昵称现在表示"本系统中的昵称"，由管理员手动维护
+                        // 初始化时从服务器获取，之后不再自动更新
+                        // 与 GroupBindingService 保持一致，刷新时不会覆盖群昵称
                         
                         // 🔥 如果有变化，记录详细的变化日志
-                        if (nicknameChanged || displayNameChanged)
+                        if (nicknameChanged)
                         {
-                            _logService.Warning("AdminCommand", 
-                                $"🔄 会员信息已更新 - ID={existingMember.Id}, 微信ID={existingMember.Wxid}");
-                            
-                            if (nicknameChanged)
-                            {
-                                _logService.Warning("AdminCommand", 
-                                    $"   ✏️ 昵称变更: [{oldNickname}] → [{existingMember.Nickname}]");
-                            }
-                            
-                            if (displayNameChanged)
-                            {
-                            _logService.Warning("AdminCommand", 
-                                $"   ✏️ 群昵称变更: [{oldDisplayName}] → [{existingMember.DisplayName}]" +
-                                $" （留分名单将使用新名称）");
-                            }
+                            _logService.Info("AdminCommand", 
+                                $"📝 会员昵称变化: {existingMember.Wxid}");
+                            _logService.Info("AdminCommand", 
+                                $"   昵称: {oldNickname} → {existingMember.Nickname}");
+                            _logService.Info("AdminCommand", 
+                                $"   群昵称（系统昵称）: {existingMember.DisplayName}（保持不变）");
                             
                             // 🔥 V2MemberBindingList 会通过监听 PropertyChanged 事件自动保存到数据库
                             // 由于 V2Member 实现了 INotifyPropertyChanged，上面的属性修改会自动触发保存

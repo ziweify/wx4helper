@@ -75,6 +75,15 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  
+  <!-- 🔥 修复资源文件冲突：为 VxMain_DevMenu.resx 指定唯一的资源名称 -->
+  <!-- 原因：VxMain.cs 和 VxMain_DevMenu.cs 是同一个 partial class，但各自有 resx 文件 -->
+  <!-- 如果不指定唯一的 ManifestResourceName，MSBuild 会生成相同的资源文件名导致冲突 -->
+  <ItemGroup>
+    <EmbeddedResource Update="Views\VxMain_DevMenu.resx">
+      <ManifestResourceName>BaiShengVx3Plus.VxMain_DevMenu</ManifestResourceName>
+    </EmbeddedResource>
+  </ItemGroup>
 
   <!-- 编译后自动复制 BsBrowserClient 的输出文件 -->
   <Target Name="CopyBrowserClient" AfterTargets="Build">

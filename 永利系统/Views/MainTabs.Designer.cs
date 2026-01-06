@@ -41,6 +41,9 @@ namespace 永利系统.Views
             toolStripMenuItemTools = new ToolStripMenuItem();
             toolStripMenuItemViewLog = new ToolStripMenuItem();
             toolStripMenuItemOptions = new ToolStripMenuItem();
+            toolStripSeparator2 = new ToolStripSeparator();
+            toolStripMenuItemConfigManagement = new ToolStripMenuItem();
+            toolStripMenuItemStartBrowser = new ToolStripMenuItem();
             toolStripMenuItemHelp = new ToolStripMenuItem();
             toolStripMenuItemAbout = new ToolStripMenuItem();
             statusStrip1 = new StatusStrip();
@@ -130,7 +133,10 @@ namespace 永利系统.Views
             // 
             toolStripMenuItemTools.DropDownItems.AddRange(new ToolStripItem[] {
             toolStripMenuItemViewLog,
-            toolStripMenuItemOptions});
+            toolStripMenuItemOptions,
+            toolStripSeparator2,
+            toolStripMenuItemConfigManagement,
+            toolStripMenuItemStartBrowser});
             toolStripMenuItemTools.Name = "toolStripMenuItemTools";
             toolStripMenuItemTools.Size = new System.Drawing.Size(44, 20);
             toolStripMenuItemTools.Text = "工具";
@@ -139,16 +145,38 @@ namespace 永利系统.Views
             // 
             toolStripMenuItemViewLog.CheckOnClick = true;
             toolStripMenuItemViewLog.Name = "toolStripMenuItemViewLog";
-            toolStripMenuItemViewLog.Size = new System.Drawing.Size(124, 22);
+            toolStripMenuItemViewLog.Size = new System.Drawing.Size(180, 22);
             toolStripMenuItemViewLog.Text = "查看日志";
             toolStripMenuItemViewLog.Click += ToolStripMenuItemViewLog_Click;
             // 
             // toolStripMenuItemOptions
             // 
+            // toolStripMenuItemOptions.Image = Properties.Resources.settings_16x16;
             toolStripMenuItemOptions.Name = "toolStripMenuItemOptions";
-            toolStripMenuItemOptions.Size = new System.Drawing.Size(100, 22);
-            toolStripMenuItemOptions.Text = "选项";
+            toolStripMenuItemOptions.Size = new System.Drawing.Size(180, 22);
+            toolStripMenuItemOptions.Text = "设置";
             toolStripMenuItemOptions.Click += ToolStripMenuItemOptions_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
+            // 
+            // toolStripMenuItemConfigManagement
+            // 
+            // toolStripMenuItemConfigManagement.Image = Properties.Resources.edit_16x16;
+            toolStripMenuItemConfigManagement.Name = "toolStripMenuItemConfigManagement";
+            toolStripMenuItemConfigManagement.Size = new System.Drawing.Size(180, 22);
+            toolStripMenuItemConfigManagement.Text = "配置管理";
+            toolStripMenuItemConfigManagement.Click += ToolStripMenuItemConfigManagement_Click;
+            // 
+            // toolStripMenuItemStartBrowser
+            // 
+            // toolStripMenuItemStartBrowser.Image = Properties.Resources.browser_16x16;
+            toolStripMenuItemStartBrowser.Name = "toolStripMenuItemStartBrowser";
+            toolStripMenuItemStartBrowser.Size = new System.Drawing.Size(180, 22);
+            toolStripMenuItemStartBrowser.Text = "启动浏览器";
+            toolStripMenuItemStartBrowser.Click += ToolStripMenuItemStartBrowser_Click;
             // 
             // toolStripMenuItemHelp
             // 
@@ -278,6 +306,9 @@ namespace 永利系统.Views
         private ToolStripMenuItem toolStripMenuItemTools;
         private ToolStripMenuItem toolStripMenuItemViewLog;
         private ToolStripMenuItem toolStripMenuItemOptions;
+        private ToolStripSeparator toolStripSeparator2;
+        private ToolStripMenuItem toolStripMenuItemConfigManagement;
+        private ToolStripMenuItem toolStripMenuItemStartBrowser;
         private ToolStripMenuItem toolStripMenuItemHelp;
         private ToolStripMenuItem toolStripMenuItemAbout;
         private StatusStrip statusStrip1;

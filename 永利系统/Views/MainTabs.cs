@@ -476,6 +476,32 @@ namespace 永利系统.Views
             MessageBox.Show("打开选项对话框", "选项", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        private void ToolStripMenuItemConfigManagement_Click(object sender, EventArgs e)
+        {
+            // 🔥 防破解：关键操作前验证
+            if (_authGuard != null && !_authGuard.VerifyOperation("配置管理"))
+            {
+                return;
+            }
+
+            // TODO: 打开配置管理界面
+            _loggingService.Info("系统", "打开配置管理界面");
+            MessageBox.Show("配置管理功能正在开发中...", "配置管理", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void ToolStripMenuItemStartBrowser_Click(object sender, EventArgs e)
+        {
+            // 🔥 防破解：关键操作前验证
+            if (_authGuard != null && !_authGuard.VerifyOperation("启动浏览器"))
+            {
+                return;
+            }
+
+            // TODO: 启动浏览器窗口
+            _loggingService.Info("系统", "启动浏览器");
+            MessageBox.Show("浏览器启动功能正在开发中...", "启动浏览器", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private void ToolStripMenuItemAbout_Click(object sender, EventArgs e)
         {
             MessageBox.Show("永利系统 v1.0\n数据管理平台", "关于", MessageBoxButtons.OK, MessageBoxIcon.Information);
