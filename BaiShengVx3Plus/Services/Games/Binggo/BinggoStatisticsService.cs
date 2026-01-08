@@ -163,9 +163,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 从订单列表重新计算所有统计（参考 F5BotV2 第 548-570 行）
+                // 🔥 修复：当订单列表为空时，不清零统计，保持现有值（避免统计被意外清零）
                 if (_ordersBindingList == null || _ordersBindingList.Count == 0)
                 {
-                    UpdateStatistics(setZero: true);
+                    _logService.Warning("BinggoStatistics", 
+                        $"⚠️ 订单列表为空，跳过统计更新（保持现有值）。IncomeTotal={IncomeTotal:F2}, EarnedDiffTotal={EarnedDiffTotal:F2}");
+                    // 🔥 不清零统计，保持现有值，只触发UI更新
+                    OnPropertyChanged(nameof(PanDescribe));
                     return;
                 }
                 

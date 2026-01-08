@@ -637,7 +637,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 decimal netProfit = totalWin - (decimal)order.AmountTotal;
                 
                 // 7. 计算赚取差额（仅整数结算时有差额）
-                decimal earnedDiff = isIntegerSettlement ? totalWinBeforeFloor - totalWin : 0m;
+                // 🔥 修复：一个订单只赚取小数部分，超过1时只保留小数部分
+                // 因为一个订单（数据库中的一行）作为一个赚点依据，所有订单信息反馈都是依照这一条整个订单反馈的
+                decimal earnedDiff = 0m;
+                if (isIntegerSettlement)
+                {
+                    decimal rawEarnedDiff = totalWinBeforeFloor - totalWin;
+                    // 只保留小数部分（取模1）
+                    earnedDiff = rawEarnedDiff - Math.Floor(rawEarnedDiff);
+                }
                 
                 // 8. 更新订单状态（参考 F5BotV2: V2MemberOrder.OpenLottery 第 172-174 行）
                 order.Profit = (float)totalWin;  // 总赢金额（包含本金）
@@ -680,11 +688,18 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     $"📝 订单备注: OrderId={order.Id}, Notes=[{order.Notes}]");
                 
                 // 🔥 5.5 更新赚点统计（如果是整数结算）
-                if (isIntegerSettlement && earnedDiff > 0)
+                // 🔥 修复：移除 earnedDiff > 0 的限制，确保所有赚点都被计入（earnedDiff 应该总是 >= 0）
+                if (isIntegerSettlement && earnedDiff >= 0)
                 {
                     _statisticsService?.OnEarnedDiffSettled((float)earnedDiff);
                     _logService.Info("BinggoOrderService", 
                         $"📊 赚点已累加到统计: {earnedDiff:F2}");
+                }
+                else if (isIntegerSettlement && earnedDiff < 0)
+                {
+                    // 🔥 异常情况：earnedDiff 不应该为负数，记录警告
+                    _logService.Warning("BinggoOrderService", 
+                        $"⚠️ 异常：订单 {order.Id} 的赚点为负数 {earnedDiff:F2}，跳过累加");
                 }
                 
                 // 🔥 6. 使用应用级别的锁保护会员余额和订单的同步更新
