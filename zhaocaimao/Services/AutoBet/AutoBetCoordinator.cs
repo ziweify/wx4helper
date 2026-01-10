@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using zhaocaimao.Contracts;
 using zhaocaimao.Contracts.Games;
+using zhaocaimao.Helpers;
 using zhaocaimao.Models;
 using zhaocaimao.Models.AutoBet;
 using zhaocaimao.Models.Games.Binggo;
@@ -142,6 +143,11 @@ namespace zhaocaimao.Services.AutoBet
             _hasProcessedCurrentIssue = false;
             _log.Info("AutoBet", $"🔓 已重置状态和投注标记，允许新期号投注");
             
+            // 🔥 无需额外处理：
+            // 1. 查询待投注订单时，GetPendingOrdersForIssue 会按期号过滤，自然只查询当前期号的订单
+            // 2. 投注命令执行时，会验证期号是否仍然有效（EnqueueBet回调中）
+            // 3. 开奖结算时，会处理所有未结算订单（包括"待处理"状态），无论 OrderType
+            
             // TODO: 可以在这里做一些准备工作
             // 例如：检查浏览器状态、刷新余额等
         }
@@ -273,14 +279,48 @@ namespace zhaocaimao.Services.AutoBet
                     _log.Info("AutoBet", $"   期号: {e.IssueId}");
                     _log.Info("AutoBet", $"   内容: {mergeResult.BetContentStandard}");
                     
+                    // 🔥 保存期号和订单列表的副本（用于投注命令执行时验证）
+                    int targetIssueId = e.IssueId;
+                    var pendingOrdersList = pendingOrders.ToList();  // 转换为列表，避免闭包问题
+                    
                     _betQueueManager.EnqueueBet(betRecord.Id, async () =>
                     {
-                        _log.Info("AutoBet", $"🚀 开始执行投注...");
+                        _log.Info("AutoBet", $"🚀 开始执行投注: 期号={targetIssueId}");
+                        
+                        // 🔥 修复BUG：投注命令执行前，验证期号是否仍然有效
+                        // 问题：如果投注命令在队列中等待执行，期间期号可能已经变更
+                        // 如果期号已经变更，不应该再投注上一期的订单
+                        var (currentStatus, currentIssueId, canBet) = _lotteryService.GetStatusSnapshot();
+                        
+                    if (currentIssueId != targetIssueId)
+                    {
+                        _log.Warning("AutoBet", $"❌ 期号已变更，拒绝投注过期订单: 目标期号={targetIssueId}, 当前期号={currentIssueId}");
+                        
+                        // 🔥 不需要更新订单状态：
+                        // 1. 订单保持"待处理"状态
+                        // 2. 开奖结算时会自动处理所有未结算订单（包括"待处理"）
+                        // 3. 避免并发更新订单状态导致的问题
+                        
+                        _log.Info("AutoBet", $"✅ {mergeResult.OrderIds.Count}个订单保持【待处理】状态，等待开奖结算");
+                        
+                        // 返回失败结果
+                        return new BetResult
+                        {
+                            Success = false,
+                            ErrorMessage = $"期号已变更，无法投注过期订单（目标期号={targetIssueId}, 当前期号={currentIssueId}）"
+                        };
+                    }
+                        
+                        _log.Info("AutoBet", $"✅ 期号验证通过: 目标期号={targetIssueId}, 当前期号={currentIssueId}");
+                        
+                        // 🔥 注意：有效投注时间检查在浏览器端已实现（开奖前20秒停止投注）
+                        // 浏览器端会在每次重试前检查是否超过封盘时间，如果超过会立即停止
+                        // 主程序端不需要重复检查，只需要验证期号是否仍然有效即可
                         
                         // 这里调用 Socket 发送"投注"命令
                         var result = await _autoBetService.SendBetCommandAsync(
                             _currentConfigId,
-                            e.IssueId.ToString(),
+                            targetIssueId.ToString(),
                             mergeResult.BetContentStandard
                         );
                         
@@ -291,6 +331,10 @@ namespace zhaocaimao.Services.AutoBet
                         }
                         
                         // 🔥 根据POST结果更新订单状态（参考F5BotV2逻辑）
+                        // 🔥 修复BUG：更新订单状态时，验证订单期号是否仍然匹配
+                        int updatedCount = 0;
+                        int skippedCount = 0;
+                        
                         if (result.Success)
                         {
                             _log.Info("AutoBet", $"✅ POST成功，更新订单状态为【盘内+待结算】");
@@ -298,15 +342,24 @@ namespace zhaocaimao.Services.AutoBet
                             // POST成功 → 盘内 + 待结算（等待开奖后计算盈利）
                             foreach (var orderId in mergeResult.OrderIds)
                             {
-                                var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
+                                var order = pendingOrdersList.FirstOrDefault(o => o.Id == orderId);
                                 if (order != null)
                                 {
+                                    // 🔥 验证订单期号是否仍然匹配（防止订单期号被错误更新）
+                                    if (order.IssueId != targetIssueId)
+                                    {
+                                        _log.Warning("AutoBet", $"⚠️ 订单期号已过期，跳过更新: 订单ID={order.Id}, 订单期号={order.IssueId}, 目标期号={targetIssueId}");
+                                        skippedCount++;
+                                        continue;
+                                    }
+                                    
                                     order.OrderStatus = OrderStatus.待结算;  // 等待开奖结算
                                     order.OrderType = OrderType.盘内;      // 成功进入网盘
                                     _orderService.UpdateOrder(order);
+                                    updatedCount++;
                                 }
                             }
-                            _log.Info("AutoBet", $"✅ 已更新{mergeResult.OrderIds.Count}个订单为【盘内+待结算】");
+                            _log.Info("AutoBet", $"✅ 已更新{updatedCount}个订单为【盘内+待结算】, 跳过{skippedCount}个过期订单");
                         }
                         else
                         {
@@ -315,15 +368,24 @@ namespace zhaocaimao.Services.AutoBet
                             // POST失败 → 盘外 + 待结算（开奖后仍需处理，如退款）
                             foreach (var orderId in mergeResult.OrderIds)
                             {
-                                var order = pendingOrders.FirstOrDefault(o => o.Id == orderId);
+                                var order = pendingOrdersList.FirstOrDefault(o => o.Id == orderId);
                                 if (order != null)
                                 {
+                                    // 🔥 验证订单期号是否仍然匹配（防止订单期号被错误更新）
+                                    if (order.IssueId != targetIssueId)
+                                    {
+                                        _log.Warning("AutoBet", $"⚠️ 订单期号已过期，跳过更新: 订单ID={order.Id}, 订单期号={order.IssueId}, 目标期号={targetIssueId}");
+                                        skippedCount++;
+                                        continue;
+                                    }
+                                    
                                     order.OrderStatus = OrderStatus.待结算;  // 仍需开奖后处理
                                     order.OrderType = OrderType.盘外;      // 未进入网盘
                                     _orderService.UpdateOrder(order);
+                                    updatedCount++;
                                 }
                             }
-                            _log.Info("AutoBet", $"✅ 已更新{mergeResult.OrderIds.Count}个订单为【盘外+待结算】");
+                            _log.Info("AutoBet", $"✅ 已更新{updatedCount}个订单为【盘外+待结算】, 跳过{skippedCount}个过期订单");
                         }
                         
                         return result;
