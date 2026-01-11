@@ -336,7 +336,7 @@ namespace Unit.Shared.Models.Games.Binggo
         /// </summary>
         private static int CalculateDayIndex(int issueId)
         {
-            const int FIRST_ISSUE_ID = 114000001;  // 基准期号 (2025-01-01 第1期)
+            const int FIRST_ISSUE_ID = 115000001;  // 基准期号 (2026-01-01 第1期)
             const int ISSUES_PER_DAY = 203;        // 每天203期
             
             int value = issueId - FIRST_ISSUE_ID;

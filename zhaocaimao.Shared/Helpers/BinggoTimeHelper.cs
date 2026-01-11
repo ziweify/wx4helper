@@ -12,8 +12,8 @@ namespace zhaocaimao.Shared.Helpers
     {
         // 核心常量
         private const int ISSUES_PER_DAY = 203;           // 每天期数
-        private const int FIRST_ISSUE_ID = 114000001;     // 基准期号 (2025-01-01 第1期)
-        private const long FIRST_TIMESTAMP = 1735686300;  // 基准时间戳 (2025-01-01 07:05:00)
+        private const int FIRST_ISSUE_ID = 115000001;     // 基准期号 (2026-01-01 第1期)
+        private const long FIRST_TIMESTAMP = 1767222300;  // 基准时间戳 (2026-01-01 07:05:00)
         private const int MINUTES_PER_ISSUE = 5;          // 每期间隔（分钟）
         
         /// <summary>
