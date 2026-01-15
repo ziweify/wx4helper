@@ -70,6 +70,9 @@ namespace zhaocaimao.Services.Games.Binggo
         // 🔥 上一期结算完成标志（确保"线下开始"消息在"留~名单"消息之后发送）
         private int _lastSettledIssueId = 0;
         
+        // 🔥 上一期是否已开奖标志（用于状态判断，不管是否结算完成）
+        private int _lastOpenedIssueId = 0;
+        
         // 🔥 开奖队列（参考 F5BotV2 的 itemUpdata）
         // 期号变更时，上期要开奖的期号进入队列，后台线程永远拿最新一条消息来开奖（处理卡奖情况）
         private readonly ConcurrentDictionary<int, BinggoLotteryData> _lotteryQueue = new ConcurrentDictionary<int, BinggoLotteryData>();
@@ -324,12 +327,33 @@ namespace zhaocaimao.Services.Games.Binggo
                         if (_currentIssueId == 0)
                         {
                             // 🔥 首次初始化：计算上一期
+                            // ⚠️ 重要：如果程序在整点打开，当前期号已经是新期号了
+                            // 所以上一期应该是 localIssueId - 1
                             previousIssueId = BinggoHelper.GetPreviousIssueId(localIssueId);
                             _logService.Info("LotteryService", $"✅ 首次初始化: 当前期号={localIssueId}, 上期期号={previousIssueId}");
+                            
+                            // 🔥 验证：上一期应该是当前期号 - 1
+                            if (previousIssueId != localIssueId - 1)
+                            {
+                                _logService.Warning("LotteryService", $"⚠️ 期号计算异常！当前期号={localIssueId}, 计算的上一期={previousIssueId}, 期望的上一期={localIssueId - 1}");
+                                // 强制修正为正确的上一期
+                                previousIssueId = localIssueId - 1;
+                                _logService.Info("LotteryService", $"🔧 已修正上一期期号为: {previousIssueId}");
+                            }
                         }
                         else
                         {
+                            // 🔥 期号变更：上一期就是之前的当前期号
                             _logService.Info("LotteryService", $"🔄 期号变更: {previousIssueId} → {localIssueId}");
+                            
+                            // 🔥 验证：上一期应该是当前期号 - 1
+                            if (previousIssueId != localIssueId - 1)
+                            {
+                                _logService.Warning("LotteryService", $"⚠️ 期号变更异常！当前期号={localIssueId}, 上一期={previousIssueId}, 期望的上一期={localIssueId - 1}");
+                                // 强制修正为正确的上一期
+                                previousIssueId = localIssueId - 1;
+                                _logService.Info("LotteryService", $"🔧 已修正上一期期号为: {previousIssueId}");
+                            }
                         }
                         
                         // 🔥 统一的期号切换流程（首次初始化和期号变更都走这里）
@@ -399,25 +423,76 @@ namespace zhaocaimao.Services.Games.Binggo
                 // 🔥 期号变更时，如果上一期还没开奖，状态设置为"开奖中"（参考 F5BotV2 第983行 On开奖中）
                 // 检查上一期是否已开奖
                 var lastData = await GetLotteryDataAsync(oldIssueId, forceRefresh: false);
-                if (lastData == null || !lastData.IsOpened)
+                
+                // 🔥 使用锁保护状态设置，确保原子性
+                lock (_statusLock)
                 {
-                    // 上一期还没开奖，状态设置为"开奖中"
-                    var oldStatus = _currentStatus;
-                    _currentStatus = BinggoLotteryStatus.开奖中;
-                    _logService.Info("LotteryService", $"🎲 上一期({oldIssueId})尚未开奖，状态设置为: 开奖中");
-                    
-                    StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                    if (lastData == null || !lastData.IsOpened)
                     {
-                        OldStatus = oldStatus,
-                        NewStatus = BinggoLotteryStatus.开奖中,
-                        IssueId = oldIssueId,
-                        Message = "等待上期开奖"
-                    });
+                        // 🔥 上一期还没开奖，状态必须设置为"开奖中"（参考 F5BotV2）
+                        var oldStatus = _currentStatus;
+                        _currentStatus = BinggoLotteryStatus.开奖中;
+                        _lastOpenedIssueId = 0; // 上一期未开奖
+                        _logService.Info("LotteryService", $"🎲 上一期({oldIssueId})尚未开奖，状态设置为: 开奖中");
+                        
+                        StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
+                        {
+                            OldStatus = oldStatus,
+                            NewStatus = BinggoLotteryStatus.开奖中,
+                            IssueId = oldIssueId,
+                            Message = "等待上期开奖"
+                        });
+                    }
+                    else
+                    {
+                        // 🔥 上一期已开奖，记录开奖期号（用于状态判断）
+                        _lastOpenedIssueId = oldIssueId;
+                        _logService.Info("LotteryService", $"✅ 上一期({oldIssueId})已开奖，记录 _lastOpenedIssueId = {oldIssueId}");
+                    }
+                    // 🔥 如果上一期已开奖，不在这里设置状态
+                    // 状态会由 UpdateStatus 根据倒计时和上一期是否已开奖来设置（不管是否结算完成）
                 }
                 
                 // 🔥 异步加载上期开奖数据（作为备用方案）
                 // 当数据到达时，会触发 LotteryOpened 事件，UI 会再次更新
                 await LoadPreviousLotteryDataAsync(oldIssueId);
+                
+                // 🔥 如果上一期已经开奖，立即触发开奖事件更新 UI
+                // 这样可以确保程序在整点打开时，能正确显示上一期的开奖数据
+                var lastDataCheck = await GetLotteryDataAsync(oldIssueId, forceRefresh: false);
+                if (lastDataCheck != null && lastDataCheck.IsOpened)
+                {
+                    _logService.Info("LotteryService", $"✅ 上一期({oldIssueId})已开奖，立即更新 UI");
+                    
+                    // 🔥 关键修复：程序启动时，如果上一期已开奖，更新 _lastOpenedIssueId
+                    // 这样状态判断就能正确检查上一期是否已开奖（不管是否结算完成）
+                    lock (_statusLock)
+                    {
+                        if (_lastOpenedIssueId < oldIssueId)
+                        {
+                            // 🔥 程序启动时，如果上一期已开奖，更新 _lastOpenedIssueId
+                            // 这样状态判断就能正确更新为"开盘中"（如果倒计时 <= 300秒）
+                            _lastOpenedIssueId = oldIssueId;
+                            _logService.Info("LotteryService", 
+                                $"🔧 程序启动：上一期({oldIssueId})已开奖，更新 _lastOpenedIssueId = {oldIssueId}，确保状态能正确更新");
+                        }
+                    }
+                    
+                    // 🔥 触发开奖事件，更新 UI 显示
+                    LotteryOpened?.Invoke(this, new BinggoLotteryOpenedEventArgs
+                    {
+                        LotteryData = lastDataCheck
+                    });
+                    
+                    // 🔥 关键修复：如果更新了 _lastOpenedIssueId，需要重新检查状态
+                    // 因为 UpdateStatus 可能在 HandleIssueChangeAsync 完成之前就执行了
+                    // 所以在这里再次调用 UpdateStatus，确保状态能正确更新
+                    lock (_statusLock)
+                    {
+                        int secondsToSeal = _secondsToSeal;
+                        UpdateStatus(secondsToSeal);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -643,13 +718,43 @@ namespace zhaocaimao.Services.Games.Binggo
             // 如果剩余时间 > 300秒，保持"等待中"状态
             if (secondsToSeal > 30 && secondsToSeal <= 300)
             {
-                // 开盘中（距离封盘超过 30 秒，但不超过 5 分钟）
-                newStatus = BinggoLotteryStatus.开盘中;
-                
-                // 🔥 只在第一次进入"开盘中"状态时执行 On开盘中 逻辑（参考 F5BotV2 第1139-1178行）
-                if (oldStatus != BinggoLotteryStatus.开盘中)
+                // 🔥 关键：只有在"等待中"状态时，才能根据倒计时和上一期是否已开奖变为"开盘中"
+                // 如果当前状态不是"等待中"，不应该改变状态（保持原状态）
+                if (oldStatus != BinggoLotteryStatus.等待中)
                 {
-                    _ = Task.Run(async () => await OnOpeningAsync(_currentIssueId));
+                    // 当前状态不是"等待中"，不改变状态（保持原状态）
+                    return;
+                }
+                
+                // 🔥 关键修复：在状态变为"开盘中"之前，只检查上一期是否已开奖（不管是否结算完成）
+                // 参考用户要求：我们只管上一期是否开奖，不管是否结算。结算可以补单。
+                int previousIssueId = BinggoHelper.GetPreviousIssueId(_currentIssueId);
+                if (_lastOpenedIssueId < previousIssueId)
+                {
+                    // 🔥 上一期未开奖，保持"等待中"状态，不允许投注
+                    newStatus = BinggoLotteryStatus.等待中;
+                    
+                    // 🔥 只在第一次检测到上一期未开奖时记录日志（避免重复日志）
+                    if (oldStatus != BinggoLotteryStatus.等待中)
+                    {
+                        _logService.Warning("LotteryService", 
+                            $"⚠️ 上一期 {previousIssueId} 尚未开奖（已开奖期号：{_lastOpenedIssueId}），保持'等待中'状态，不允许投注");
+                    }
+                }
+                else
+                {
+                    // 🔥 上一期已开奖，可以进入"开盘中"状态并发送开盘消息（不管是否结算完成）
+                    // 参考 F5BotV2：状态变为"开盘中"时，会发送开盘消息，然后状态就是"开盘中"了
+                    newStatus = BinggoLotteryStatus.开盘中;
+                    
+                    // 🔥 只在第一次进入"开盘中"状态时执行 On开盘中 逻辑（参考 F5BotV2 第1139-1178行）
+                    // OnOpeningAsync 会检查结算状态来决定是否发送开盘消息，但不影响状态
+                    if (oldStatus != BinggoLotteryStatus.开盘中)
+                    {
+                        _logService.Info("LotteryService", 
+                            $"✅ 上一期已开奖，状态从'等待中'变为'开盘中'，允许投注");
+                        _ = Task.Run(async () => await OnOpeningAsync(_currentIssueId));
+                    }
                 }
             }
             else if (secondsToSeal > 300)
