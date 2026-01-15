@@ -58,7 +58,6 @@ namespace zhaocaimao.Services.Games.Binggo
         private volatile BinggoLotteryStatus _currentStatus = BinggoLotteryStatus.等待中;  // 🔥 volatile 确保多线程可见性
         private int _secondsToSeal;
         private volatile bool _isRunning;  // 🔥 volatile 确保多线程可见性
-        private readonly object _lock = new object();  // 🔥 通用锁
         private readonly object _statusLock = new object();  // 🔥 状态更新锁（防止竞态条件）
         
         // 🔥 时间提醒标志（防止重复触发，参考 F5BotV2）
@@ -311,7 +310,11 @@ namespace zhaocaimao.Services.Games.Binggo
                 int secondsToOpen = BinggoHelper.GetSecondsToOpen(localIssueId);
                 int secondsToSeal = secondsToOpen - _configService.GetSealSecondsAhead();
                 
-                lock (_lock)
+                // 🔥 修复 Bug: 0116-6.8.7-封盘还能进单并且算数
+                // 关键问题：这里必须使用 _statusLock（而不是 _lock）
+                // 原因：GetStatusSnapshot() 中也会读取 _currentIssueId，必须使用同一把锁保护
+                // 否则会导致期号读取和状态读取不同步的竞态条件
+                lock (_statusLock)
                 {
                     // 🔥 检查期号变更（首次初始化也走统一流程）
                     if (localIssueId != _currentIssueId)
