@@ -61,7 +61,13 @@ namespace BaiShengVx3Plus.Contracts.Games
         /// <summary>
         /// 结算单个订单（用于开奖处理）
         /// </summary>
-        Task SettleSingleOrderAsync(V2MemberOrder order, BinggoLotteryData lotteryData);
+        /// <param name="order">要结算的订单</param>
+        /// <param name="lotteryData">开奖数据</param>
+        /// <param name="isManualSettle">是否是手动补单（默认false）</param>
+        Task SettleSingleOrderAsync(
+            V2MemberOrder order, 
+            BinggoLotteryData lotteryData,
+            bool isManualSettle = false);
         
         /// <summary>
         /// 获取指定期号的待投注订单（用于自动投注）

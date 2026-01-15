@@ -428,25 +428,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 🔥 3. 在原订单上结算（参考 F5BotV2 第 622-624 行）
-                await SettleSingleOrderAsync(order, lotteryData);
-                
-                // 🔥 4. 更新备注：添加补单标记
-                // 格式：结算:xxx; 补单:是
-                // 如果原备注有结算信息，保留并添加补单标记
-                string settlementPart = "";
-                if (!string.IsNullOrEmpty(order.Notes))
-                {
-                    // 检查是否已有结算信息
-                    if (order.Notes.Contains("结算:"))
-                    {
-                        settlementPart = order.Notes;
-                    }
-                }
-                
-                // 添加补单标记
-                order.Notes = string.IsNullOrEmpty(settlementPart) 
-                    ? "补单:是" 
-                    : $"{settlementPart}; 补单:是";
+                // 🔥 统一流程：传入 isManualSettle=true 标记为补单
+                await SettleSingleOrderAsync(order, lotteryData, isManualSettle: true);
                 
                 // 🔥 5. 更新订单到数据库（备注已更新）
                 // 🔥 使用全局锁：虽然这里只更新订单，但保持一致性
@@ -568,7 +551,13 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         /// <summary>
         /// 结算单个订单（🔥 完全参考 F5BotV2 的 OnMemberOrderFinish 逻辑）
         /// </summary>
-        public async Task SettleSingleOrderAsync(V2MemberOrder order, BinggoLotteryData lotteryData)
+        /// <param name="order">要结算的订单</param>
+        /// <param name="lotteryData">开奖数据</param>
+        /// <param name="isManualSettle">是否是手动补单（默认false）</param>
+        public async Task SettleSingleOrderAsync(
+            V2MemberOrder order, 
+            BinggoLotteryData lotteryData,
+            bool isManualSettle = false)
         {
             try
             {
@@ -653,11 +642,17 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 order.OrderStatus = OrderStatus.已完成;
                 order.IsSettled = true;
                 
-                // 9. 更新备注：结算方式 + 赚取差额
+                // 9. 更新备注：结算方式 + 赚取差额 + 补单标记
                 // 如果备注中已经有结算相关的内容，替换它；否则追加
                 string settlementNote = isIntegerSettlement 
                     ? $"结算:赚点({earnedDiff:F2})" 
                     : "结算:精确";
+                
+                // 🔥 如果是补单，追加补单标记
+                if (isManualSettle)
+                {
+                    settlementNote += "; 补单:是";
+                }
                 
                 if (!string.IsNullOrEmpty(order.Notes))
                 {
@@ -667,7 +662,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         // 替换旧的结算信息
                         order.Notes = System.Text.RegularExpressions.Regex.Replace(
                             order.Notes, 
-                            @"结算:(精确|赚点\([0-9.]+\))", 
+                            @"结算:(精确|赚点\([0-9.]+\))(; 补单:是)?", 
                             settlementNote);
                     }
                     else
