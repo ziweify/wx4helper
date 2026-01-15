@@ -566,7 +566,10 @@ namespace zhaocaimao.Services.Games.Binggo
                     {
                         var oldStatus = _currentStatus;
                         _currentStatus = BinggoLotteryStatus.等待中;
-                        _logService.Info("LotteryService", $"✅ 开奖完成，状态从'开奖中'变为'等待中'");
+                        
+                        // 🔥 记录上一期已开奖（用于状态判断，不管是否结算完成）
+                        _lastOpenedIssueId = openedData.IssueId;
+                        _logService.Info("LotteryService", $"✅ 开奖完成，状态从'开奖中'变为'等待中'，记录 _lastOpenedIssueId = {openedData.IssueId}");
                         
                         StatusChanged?.Invoke(this, new BinggoStatusChangedEventArgs
                         {

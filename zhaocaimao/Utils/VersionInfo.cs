@@ -11,7 +11,7 @@ namespace zhaocaimao.Utils
         /// 当前版本号
         /// 格式：主版本.次版本.修订号.构建号
         /// </summary>
-        public const string Version = "6.8.7";  
+        public const string Version = "6.8.9";  
 
         /// <summary>
         /// 版本名称
