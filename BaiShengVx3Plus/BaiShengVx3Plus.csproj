@@ -9,6 +9,7 @@
     <ApplicationIcon>libs\1165z-ivqi2-001.ico</ApplicationIcon>
     <!-- 以管理员权限运行（需要在C:\images\创建文件夹） -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <!-- 排除文档文件夹，防止被编译 -->
@@ -20,6 +21,10 @@
     <Compile Remove="Notes\**" />
     <EmbeddedResource Remove="Notes\**" />
     <None Include="Notes\**" />
+    <!-- 🔥 排除 Problem 文件夹，避免编译冲突 -->
+    <Compile Remove="Problem\**" />
+    <EmbeddedResource Remove="Problem\**" />
+    <None Include="Problem\**" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="libs\1165z-ivqi2-001.ico" />

@@ -453,7 +453,59 @@ namespace BaiShengVx3Plus.Views.AutoBet
         private void LoadConfigDetails(BetConfig config)
         {
             txtConfigName.Text = config.ConfigName;
-            cbxPlatform.Text = config.Platform;
+            
+            // 🔥 修复：使用 BetPlatformHelper 解析平台名称，然后设置索引
+            try
+            {
+                _logService.Info("ConfigManager", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("ConfigManager", $"📋 加载配置详情: ID={config.Id}, 名称={config.ConfigName}");
+                _logService.Info("ConfigManager", $"   数据库中的 Platform = {config.Platform}");
+                
+                // 使用 BetPlatformHelper 解析平台
+                var platform = BetPlatformHelper.Parse(config.Platform);
+                _logService.Info("ConfigManager", $"   解析后的平台枚举 = {platform} ({(int)platform})");
+                
+                // 获取平台索引（跳过 yyds 平台）
+                var platformName = platform.ToString();
+                _logService.Info("ConfigManager", $"   平台名称（ToString） = {platformName}");
+                
+                // 在下拉框中查找匹配项
+                int index = -1;
+                for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                {
+                    if (cbxPlatform.Items[i].ToString() == platformName)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                
+                _logService.Info("ConfigManager", $"   在下拉框中查找 '{platformName}' 的索引 = {index}");
+                _logService.Info("ConfigManager", $"   下拉框总数 = {cbxPlatform.Items.Count}");
+                
+                if (index >= 0)
+                {
+                    cbxPlatform.SelectedIndex = index;
+                    _logService.Info("ConfigManager", $"✅ 已设置下拉框索引 = {index}");
+                    _logService.Info("ConfigManager", $"   验证: cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
+                    _logService.Info("ConfigManager", $"   验证: cbxPlatform.Text = {cbxPlatform.Text}");
+                }
+                else
+                {
+                    // 如果找不到，直接设置文本（向后兼容）
+                    _logService.Warning("ConfigManager", $"⚠️ 在下拉框中未找到平台 '{platformName}'，使用直接设置Text的方式");
+                    cbxPlatform.Text = platformName;
+                }
+                
+                _logService.Info("ConfigManager", $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            }
+            catch (Exception ex)
+            {
+                _logService.Error("ConfigManager", $"设置平台下拉框失败: {ex.Message}", ex);
+                // 回退到直接设置文本
+                cbxPlatform.Text = config.Platform;
+            }
+            
             txtPlatformUrl.Text = config.PlatformUrl;
             txtUsername.Text = config.Username;
             txtPassword.Text = config.Password;

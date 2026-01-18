@@ -10,4 +10,9 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <!-- 🔥 引用 Unit.Shared，统一使用 BetPlatform 定义 -->
+  <ItemGroup>
+    <ProjectReference Include="..\Unit.Shared\Unit.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

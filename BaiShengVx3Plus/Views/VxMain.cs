@@ -4237,8 +4237,11 @@ namespace BaiShengVx3Plus
                     _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
                     _logService.Info("VxMain", $"🔍 cbxPlatform.Items.Count = {cbxPlatform.Items.Count}");
                     _logService.Info("VxMain", $"🔍 cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
+                    _logService.Info("VxMain", $"🔍 cbxPlatform.Text = {cbxPlatform.Text}");
                     
-                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex >= 0 ? cbxPlatform.SelectedIndex : 0);
+                    // 🔥 修复：使用下拉框的实际文本，而不是索引
+                    var platformText = !string.IsNullOrEmpty(cbxPlatform.Text) ? cbxPlatform.Text : "不使用盘口";
+                    var platform = BetPlatformHelper.Parse(platformText);
                     _logService.Info("VxMain", $"🔍 默认平台: {platform} ({(int)platform})");
                     
                     var newConfig = new Models.AutoBet.BetConfig
@@ -4314,13 +4317,25 @@ namespace BaiShengVx3Plus
             
             try
             {
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                _logService.Info("VxMain", "💾 [快速设置] 开始保存到数据库...");
+                _logService.Info("VxMain", $"   cbxPlatform.SelectedIndex = {cbxPlatform.SelectedIndex}");
+                
+                // 🔥 修复：使用下拉框的实际文本，而不是索引
+                // 问题：下拉框过滤了 yyds，所以索引和 GetByIndex 不匹配
+                var platformText = cbxPlatform.Text;
+                _logService.Info("VxMain", $"   cbxPlatform.Text = {platformText}");
+                
+                var platform = BetPlatformHelper.Parse(platformText);
+                _logService.Info("VxMain", $"   解析后平台 = {platform} ({(int)platform})");
+                
                 var defaultConfig = _autoBetService.GetConfigsBindingList()?.FirstOrDefault(c => c.IsDefault);
+                
                 if (defaultConfig == null)
                 {
                     // 🔥 如果默认配置不存在，创建一个新的
                     _logService.Warning("VxMain", "⚠️ 未找到默认配置，将创建新的默认配置");
                     
-                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
                     defaultConfig = new Models.AutoBet.BetConfig
                     {
                         ConfigName = "默认配置",
@@ -4338,9 +4353,12 @@ namespace BaiShengVx3Plus
                 }
                 else
                 {
+                    _logService.Info("VxMain", $"   找到默认配置: ID={defaultConfig.Id}, 名称={defaultConfig.ConfigName}");
+                    _logService.Info("VxMain", $"   修改前: Platform = {defaultConfig.Platform}");
+                    
                     // 保存平台（使用共享库统一转换）
-                    var platform = BetPlatformHelper.GetByIndex(cbxPlatform.SelectedIndex);
                     defaultConfig.Platform = platform.ToString();
+                    _logService.Info("VxMain", $"   修改后: Platform = {defaultConfig.Platform}");
                     
                     // 🔥 不再自动覆盖平台URL，保留用户手动修改的值
                     // 如果用户需要修改URL，应该在配置管理器中手动修改
@@ -4360,12 +4378,15 @@ namespace BaiShengVx3Plus
                     var password = txtAutoBetPassword.Text;
                     
                     // 🔥 检查是否有变化（避免不必要的保存）
+                    bool platformChanged = defaultConfig.Platform != platform.ToString();
                     bool usernameChanged = defaultConfig.Username != username;
                     bool passwordChanged = defaultConfig.Password != password;
                     
-                    if (usernameChanged || passwordChanged)
+                    if (platformChanged || usernameChanged || passwordChanged)
                     {
-                        _logService.Info("VxMain", $"📝 检测到账号/密码变化:");
+                        _logService.Info("VxMain", $"📝 检测到配置变化:");
+                        if (platformChanged)
+                            _logService.Info("VxMain", $"   平台: {defaultConfig.Platform} → {platform}");
                         if (usernameChanged)
                             _logService.Info("VxMain", $"   账号: {defaultConfig.Username ?? "(空)"} → {username ?? "(空)"}");
                         if (passwordChanged)
@@ -4377,14 +4398,39 @@ namespace BaiShengVx3Plus
                     defaultConfig.LastUpdateTime = DateTime.Now;  // 🔥 强制触发更新
 
                     // 保存到数据库
+                    _logService.Info("VxMain", $"   调用 SaveConfig 保存到数据库...");
                     _autoBetService.SaveConfig(defaultConfig);
 
                     _logService.Info("VxMain", "✅ 自动投注设置已保存到数据库");
+                    _logService.Info("VxMain", $"   - 配置ID: {defaultConfig.Id}");
                     _logService.Info("VxMain", $"   - 平台: {defaultConfig.Platform}");
                     _logService.Info("VxMain", $"   - URL: {defaultConfig.PlatformUrl}");
                     _logService.Info("VxMain", $"   - 账号: {(string.IsNullOrEmpty(username) ? "(空)" : username)}");
                     _logService.Info("VxMain", $"   - 密码: {(string.IsNullOrEmpty(password) ? "(空)" : "已设置")}");
+                    _logService.Info("VxMain", $"   - 更新时间: {defaultConfig.LastUpdateTime:yyyy-MM-dd HH:mm:ss}");
+                    
+                    // 🔥 验证保存：重新读取配置
+                    _logService.Info("VxMain", "🔍 验证保存结果（重新读取数据库）...");
+                    var verifyConfig = _autoBetService.GetConfig(defaultConfig.Id);
+                    if (verifyConfig != null)
+                    {
+                        _logService.Info("VxMain", $"   读取到的Platform = {verifyConfig.Platform}");
+                        if (verifyConfig.Platform == platform.ToString())
+                        {
+                            _logService.Info("VxMain", "✅ 验证成功：数据库中的平台已更新");
+                        }
+                        else
+                        {
+                            _logService.Error("VxMain", $"❌ 验证失败：数据库中的平台仍是 {verifyConfig.Platform}");
+                        }
+                    }
+                    else
+                    {
+                        _logService.Error("VxMain", "❌ 验证失败：无法重新读取配置");
+                    }
                 }
+                
+                _logService.Info("VxMain", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             catch (Exception ex)
             {

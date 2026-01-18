@@ -29,7 +29,8 @@ namespace Unit.Shared.Platform
         bingo168 = 20,
         云顶 = 21,  // 🔥 保留云顶（现有项目使用）
         yyds = 22,  // 🔥 YYDS 平台：https://client.06n.yyds666.me
-        黄金海岸 = 23   // 🔥 黄金海岸平台
+        黄金海岸 = 23,  // 🔥 黄金海岸平台
+        测试平台 = 24   // 🔥 测试平台：用于开发测试，所有操作都是模拟的（修改为24，保持连续）
     }
     
     /// <summary>
@@ -221,6 +222,14 @@ namespace Unit.Shared.Platform
                     Platform = BetPlatform.黄金海岸,
                     DefaultUrl = "https://tbfowenb.fr.cvv66.top/",  // 🔥 黄金海岸平台（复用通宝URL，后续可修改）
                     LegacyNames = new[] { "HuangJinHaiAn", "HJHA", "GoldCoast" }
+                }
+            },
+            {
+                BetPlatform.测试平台, new PlatformInfo
+                {
+                    Platform = BetPlatform.测试平台,
+                    DefaultUrl = "https://www.baidu.com/",  // 🔥 测试平台：用于开发测试
+                    LegacyNames = new[] { "Test", "TestPlatform", "TestSite" }
                 }
             }
         };

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,12 @@ namespace BsBrowserClient;
 
 public partial class Form1 : Form
 {
+    // 🔥 版本号（从程序集读取）
+    private static readonly string VERSION = Assembly.GetExecutingAssembly()
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion 
+        ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString() 
+        ?? "1.0.0.0";
+    
     private readonly string _configId;
     private readonly string _configName;  // 🔥 新增配置名
     private readonly int _port;
@@ -48,8 +55,8 @@ public partial class Form1 : Form
         _platform = platform;
         _platformUrl = string.IsNullOrEmpty(platformUrl) ? GetDefaultUrl(platform) : platformUrl;
 
-        // 🔥 设置窗口标题（显示配置名，用于观察）
-        this.Text = $"BsBrowser-{configName}";
+        // 🔥 设置窗口标题：标题内容 - 版本号
+        this.Text = $"{configName} [{platform}] - v{VERSION}";
         
         // 🔥 初始化日志文件夹路径
         _logFolder = Path.Combine(
@@ -67,7 +74,7 @@ public partial class Form1 : Form
         );
 
         // 更新状态栏
-        lblPort.Text = $"配置: {configName} (ID:{configId}) | 平台: {platform}";
+        lblPort.Text = $"v{VERSION} | 配置: {configName} (ID:{configId}) | 平台: {platform}";
         txtUrl.Text = _platformUrl;
     }
     
@@ -87,7 +94,20 @@ public partial class Form1 : Form
             // 初始化日志系统（优先初始化，以便记录后续日志）
             InitializeLogSystem();
 
-            OnLogMessage("🚀 正在初始化 BrowserClient...");
+            // 🔥 输出版本信息和启动参数
+            OnLogMessage("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            OnLogMessage($"🚀 BsBrowserClient 启动");
+            OnLogMessage($"📌 版本号: {VERSION}");
+            OnLogMessage($"📌 启动时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            OnLogMessage($"📌 进程ID: {System.Diagnostics.Process.GetCurrentProcess().Id}");
+            OnLogMessage("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            OnLogMessage("📋 配置参数:");
+            OnLogMessage($"   配置ID: {_configId}");
+            OnLogMessage($"   配置名称: {_configName}");
+            OnLogMessage($"   Socket端口: {_port}");
+            OnLogMessage($"   投注平台: {_platform}");
+            OnLogMessage($"   平台URL: {_platformUrl}");
+            OnLogMessage("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
             // 初始化 WebView2
             await InitializeWebView2Async();
@@ -96,18 +116,21 @@ public partial class Form1 : Form
             // 初始化平台脚本
             InitializePlatformScript();
             OnLogMessage($"✅ 平台脚本初始化完成: {_platform}");
+            OnLogMessage($"   脚本类型: {_platformScript?.GetType().Name ?? "null"}");
 
             // 初始化 Socket 服务器
             InitializeSocketServer();
             OnLogMessage($"✅ Socket服务器启动: 端口{_port}", LogType.Socket);
 
             lblStatus.Text = "✅ 初始化成功";
+            OnLogMessage("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             OnLogMessage("🎉 BrowserClient 初始化成功");
+            OnLogMessage("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         }
         catch (Exception ex)
         {
             lblStatus.Text = $"❌ 初始化失败: {ex.Message}";
-            OnLogMessage($"❌ 初始化失败: {ex.Message}");
+            OnLogMessage($"❌ 初���化失败: {ex.Message}");
             MessageBox.Show($"初始化失败: {ex.Message}", "错误",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -219,6 +242,7 @@ public partial class Form1 : Form
             BetPlatform.蓝A => new LanAScript(_webView!, betLogCallback),
             BetPlatform.元宇宙2 => new YYZ2Script(_webView!, betLogCallback),
             BetPlatform.不使用盘口 => new NoneSiteScript(_webView!, betLogCallback),
+            BetPlatform.测试平台 => new TestPlatformScript(_webView!, betLogCallback),  // 🔥 测试平台
             _ => new YunDing28Script(_webView!, betLogCallback) // 默认使用云顶脚本
         };
     }
@@ -620,6 +644,26 @@ public partial class Form1 : Form
 
                 case "获取Cookie":
                     // 获取Cookie命令
+                    // 🔥 测试平台：返回模拟Cookie
+                    if (_platform == "测试平台" || _platform == "Test" || _platform == "TestPlatform")
+                    {
+                        response.Success = true;
+                        response.Data = new
+                        {
+                            url = "https://www.baidu.com/",
+                            cookies = new Dictionary<string, string>
+                            {
+                                { "BAIDUID", "TEST_COOKIE_12345" },
+                                { "SESSIONID", "TEST_SESSION_67890" },
+                                { "TOKEN", "TEST_TOKEN_ABCDE" }
+                            },
+                            count = 3
+                        };
+                        response.Message = "获取成功,共3个Cookie";
+                        OnLogMessage($"📤 [测试平台] 获取Cookie完成:共3个（模拟数据）");
+                        break;
+                    }
+                    
                     // 🔥 WebView2 操作必须在 UI 线程执行
                     try
                     {
