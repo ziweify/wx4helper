@@ -6,13 +6,14 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BsBrowserClient.PlatformScripts
 {
     /// <summary>
-    /// 测试平台脚本 - 用于开发测试
-    /// 所有操作都模拟成功，不发送真实请求
+    /// 测试平台脚本 - 完全模拟通宝的投注逻辑
+    /// 用于测试超时处理、订单查询、重试机制等
     /// </summary>
     public class TestPlatformScript : IPlatformScript
     {
@@ -26,6 +27,9 @@ namespace BsBrowserClient.PlatformScripts
         
         // 模拟订单号计数器
         private int _orderCounter = 1;
+        
+        // 🔥 模拟订单存储（用于查询订单）
+        private readonly List<JObject> _mockOrders = new List<JObject>();
         
         // 模拟赔率数据
         private readonly Dictionary<string, float> _oddsValues = new Dictionary<string, float>();
@@ -124,7 +128,8 @@ namespace BsBrowserClient.PlatformScripts
         }
         
         /// <summary>
-        /// 下注 - 直接返回投注成功（假投注）
+        /// 下注 - 完全模拟通宝的投注重试逻辑
+        /// 包括：重试循环、超时处理、订单查询、封盘检查
         /// </summary>
         public async Task<(bool success, string orderId, string platformResponse)> PlaceBetAsync(BetStandardOrderList orders)
         {
@@ -156,32 +161,122 @@ namespace BsBrowserClient.PlatformScripts
                     return (false, "", "{\"status\":false,\"msg\":\"余额不足\"}");
                 }
                 
-                // 模拟投注延迟
-                await Task.Delay(300);
+                // 🎯 计算封盘时间（开奖时间 - 20秒）
+                var openTime = BinggoTimeHelper.GetIssueOpenTime(issueId);
+                var sealTime = openTime.AddSeconds(-20);  // 封盘时间
+                _logCallback($"⏰ 期号{issueId} 开奖时间: {openTime:HH:mm:ss}, 封盘时间: {sealTime:HH:mm:ss}");
                 
-                // 扣除余额
-                _currentBalance -= totalAmount;
+                // 🔥 重试机制：直到成功或超过封盘时间（完全模拟通宝）
+                int retryCount = 0;
+                const int maxRetries = 100;  // 最大重试次数（防止死循环）
                 
-                // 生成模拟订单号
-                var orderId = $"TEST{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{_orderCounter++}";
-                
-                _logCallback($"✅ [测试平台] 投注成功: {orderId}");
-                _logCallback($"💰 [测试平台] 剩余余额: {_currentBalance:F2} 元");
-                
-                // 返回模拟响应（参考通宝格式）
-                var response = new
+                while (retryCount < maxRetries)
                 {
-                    status = true,
-                    BettingNumber = orderId,
-                    msg = "投注成功",
-                    balance = _currentBalance
-                };
+                    var now = DateTime.Now;
+                    
+                    // 🔥 检查是否超过封盘时间
+                    if (now > sealTime)
+                    {
+                        _logCallback($"⏰ 已超过封盘时间({sealTime:HH:mm:ss})，停止投注");
+                        return (false, "", $"#已超过封盘时间，无法投注");
+                    }
+                    
+                    retryCount++;
+                    var remainingSeconds = (int)(sealTime - now).TotalSeconds;
+                    _logCallback($"🔄 第{retryCount}次投注尝试 (距封盘还有{remainingSeconds}秒)");
+                    
+                    // 🎯 模拟投注请求（2秒超时）
+                    _logCallback($"⏳ [测试平台] 模拟投注请求...");
+                    await Task.Delay(2000);  // 2秒超时
+                    
+                    // ⏰ 情况：请求超时（模拟通宝的超时场景）
+                    _logCallback($"⏰ [测试平台] 投注请求超时，开始验证订单...");
+                    
+                    // 🔍 先生成模拟订单（模拟服务器实际已经处理成功）
+                    var orderId = $"TEST{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{_orderCounter++}";
+                    var mockOrder = CreateMockOrder(orderId, issueId, (int)totalAmount, orders);
+                    _mockOrders.Add(mockOrder);
+                    
+                    // 扣除余额
+                    _currentBalance -= totalAmount;
+                    
+                    _logCallback($"🎲 [测试平台] 实际已生成订单: {orderId}（模拟服务器已处理）");
+                    
+                    // 🔍 查询未结算订单，检查是否已投注成功（模拟通宝的验证逻辑）
+                    try
+                    {
+                        _logCallback($"🔍 查询未结算订单 (金额:{totalAmount}元)...");
+                        var (success, orderList, _, _, errorMsg) = await GetLotMainOrderInfosAsync(
+                            state: 0,           // 未结算
+                            pageNum: 1,
+                            pageCount: 20,
+                            timeout: 3          // 查询订单超时3秒
+                        );
+                        
+                        if (success && orderList != null && orderList.Count > 0)
+                        {
+                            _logCallback($"📋 查询到 {orderList.Count} 条未结算订单，开始匹配...");
+                            
+                            // 🔍 遍历订单，查找匹配的金额
+                            foreach (var order in orderList)
+                            {
+                                var orderAmount = order["amount"]?.Value<int>() ?? 0;
+                                var orderExpect = order["expect"]?.ToString() ?? "";
+                                var orderUserData = order["userdata"]?.ToString() ?? "";
+                                var foundOrderId = order["orderid"]?.ToString() ?? "";
+                                
+                                // 🎯 匹配条件：金额相同 && 期号相同
+                                if (orderAmount == (int)totalAmount && orderExpect == issueId.ToString())
+                                {
+                                    _logCallback($"✅ 找到匹配订单: {foundOrderId}");
+                                    _logCallback($"   期号: {orderExpect}");
+                                    _logCallback($"   金额: {orderAmount}元");
+                                    _logCallback($"   内容: {orderUserData}");
+                                    _logCallback($"✅ 投注成功: {foundOrderId} (第{retryCount}次尝试)");
+                                    _logCallback($"💰 剩余余额: {_currentBalance:F2} 元");
+                                    
+                                    // 返回成功（模拟通宝格式）
+                                    var response = new
+                                    {
+                                        status = true,
+                                        BettingNumber = foundOrderId,
+                                        msg = "投注成功（超时后验证成功）",
+                                        balance = _currentBalance
+                                    };
+                                    
+                                    return (true, foundOrderId, JsonConvert.SerializeObject(response));
+                                }
+                            }
+                            
+                            _logCallback($"⚠️ 未找到匹配订单（可能还未同步）");
+                        }
+                        else
+                        {
+                            _logCallback($"⚠️ 查询订单失败或无订单: {errorMsg}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logCallback($"❌ 查询订单异常: {ex.Message}");
+                    }
+                    
+                    // 🔥 未找到订单，等待1秒后重试
+                    _logCallback($"⏳ 等待1秒后重试...");
+                    await Task.Delay(1000);
+                }
                 
-                return (true, orderId, JsonConvert.SerializeObject(response));
+                // 🔥 超过最大重试次数
+                _logCallback($"❌ 投注失败：超过最大重试次数");
+                return (false, "", $"#投注失败：超过最大重试次数");
+            }
+            catch (TimeoutException ex)
+            {
+                _logCallback($"❌ 网络超时: {ex.Message}");
+                return (false, "", "{\"status\":false,\"msg\":\"网络请求超时，远程服务器无响应\"}");
             }
             catch (Exception ex)
             {
-                _logCallback($"❌ [测试平台] 投注异常: {ex.Message}");
+                _logCallback($"❌ 投注异常: {ex.Message}");
                 return (false, "", $"{{\"status\":false,\"msg\":\"投注异常: {ex.Message}\"}}");
             }
         }
@@ -256,7 +351,7 @@ namespace BsBrowserClient.PlatformScripts
         }
         
         /// <summary>
-        /// 获取未结算的订单信息 - 返回模拟订单
+        /// 获取未结算的订单信息 - 模拟查不到订单，触发系统重试投注
         /// </summary>
         public async Task<(bool success, List<JObject>? orders, int maxRecordNum, int maxPageNum, string errorMsg)> GetLotMainOrderInfosAsync(
             int state = 0, 
@@ -274,23 +369,90 @@ namespace BsBrowserClient.PlatformScripts
                     return (false, null, 0, 0, "未登录");
                 }
                 
-                _logCallback($"📋 [测试平台] 获取订单列表: state={state}, page={pageNum}");
+                _logCallback($"📤 [测试平台] 获取订单列表: state={state}, page={pageNum}/{pageCount}, timeout={timeout}秒");
                 
-                // 模拟查询延迟
-                await Task.Delay(200);
+                // 模拟网络延迟
+                await Task.Delay(100);
                 
-                // 返回空订单列表（测试平台没有真实订单）
-                var orders = new List<JObject>();
+                // 🔥 测试场景：故意返回空订单列表，让外部继续走投注流程
+                // 这样可以测试系统的重试投注逻辑
+                _logCallback($"📋 [测试平台] 实际已生成 {_mockOrders.Count} 个订单，但故意返回空列表（测试重试逻辑）");
+                _logCallback($"✅ [测试平台] 获取订单成功: 0条记录 (实际订单数={_mockOrders.Count})");
                 
-                _logCallback($"✅ [测试平台] 获取订单成功: 0条记录");
+                // 返回空订单列表（模拟查不到订单的场景）
+                return (true, new List<JObject>(), 0, 0, "");
                 
-                return (true, orders, 0, 0, "");
+                #region 原始逻辑（已禁用，保留供后续测试使用）
+                
+                // // 🔥 过滤订单（按状态）
+                // var filteredOrders = _mockOrders
+                //     .Where(o => (o["state"]?.Value<int>() ?? 0) == state)
+                //     .ToList();
+                // 
+                // // 🔥 分页
+                // int totalRecords = filteredOrders.Count;
+                // int totalPages = (int)Math.Ceiling((double)totalRecords / pageCount);
+                // 
+                // var pagedOrders = filteredOrders
+                //     .Skip((pageNum - 1) * pageCount)
+                //     .Take(pageCount)
+                //     .ToList();
+                // 
+                // _logCallback($"✅ [测试平台] 获取订单成功: {pagedOrders.Count}条记录 (总记录={totalRecords}, 总页数={totalPages})");
+                // 
+                // // 🔥 打印订单信息（用于调试）
+                // for (int i = 0; i < pagedOrders.Count; i++)
+                // {
+                //     var order = pagedOrders[i];
+                //     var orderId = order["orderid"]?.ToString() ?? "";
+                //     var expect = order["expect"]?.ToString() ?? "";
+                //     var amount = order["amount"]?.Value<int>() ?? 0;
+                //     var userData = order["userdata"]?.ToString() ?? "";
+                //     var orderState = order["state"]?.Value<int>() ?? -1;
+                //     
+                //     _logCallback($"   [{i + 1}] {orderId} | 期号:{expect} | 金额:{amount}元 | 内容:{userData.Trim()} | 状态:{orderState}");
+                // }
+                // 
+                // return (true, pagedOrders, totalRecords, totalPages, "");
+                
+                #endregion
             }
             catch (Exception ex)
             {
                 _logCallback($"❌ [测试平台] 获取订单异常: {ex.Message}");
                 return (false, null, 0, 0, $"异常: {ex.Message}");
             }
+        }
+        
+        /// <summary>
+        /// 创建模拟订单 - 完全模拟通宝的订单格式
+        /// </summary>
+        private JObject CreateMockOrder(string orderId, int issueId, int amount, BetStandardOrderList orders)
+        {
+            // 构建投注内容（模拟 userdata 格式）
+            var userData = string.Join(",", orders.Select(o => 
+            {
+                var carName = o.Car.ToString().Replace("P", "");  // P1 → 1
+                var playType = o.Play.ToString();  // 大/小/单/双
+                var money = o.MoneySum;
+                return $"{carName}{playType}{money}";  // 例如：1大100
+            }));
+            
+            // 创建订单对象（模拟通宝的订单结构）
+            var order = new JObject
+            {
+                ["orderid"] = orderId,
+                ["expect"] = issueId.ToString(),
+                ["amount"] = amount,
+                ["userdata"] = userData,
+                ["state"] = 0,  // 0=未结算, 1=已结算
+                ["createtime"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                ["updatetime"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+            
+            _logCallback($"📝 [测试平台] 创建模拟订单: {orderId} | 期号:{issueId} | 金额:{amount}元 | 内容:{userData}");
+            
+            return order;
         }
     }
 }

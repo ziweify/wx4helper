@@ -4156,7 +4156,7 @@ namespace BaiShengVx3Plus
                 
                 if (defaultConfig != null)
                 {
-                    // 加载平台（使用共享库统一转换）
+                    // 🔥 加载平台（使用平台名称查找，避免索引偏移问题）
                     _logService.Info("VxMain", $"🔍 [诊断] 开始加载平台配置");
                     _logService.Info("VxMain", $"🔍 [诊断] defaultConfig.Platform = \"{defaultConfig.Platform}\"");
                     _logService.Info("VxMain", $"🔍 [诊断] cbxPlatform.Items.Count = {cbxPlatform.Items.Count}");
@@ -4170,10 +4170,21 @@ namespace BaiShengVx3Plus
                     }
                     
                     var platform = BetPlatformHelper.Parse(defaultConfig.Platform);
+                    var platformName = platform.ToString();
                     _logService.Info("VxMain", $"🔍 [诊断] 解析后的平台枚举: {platform} ({(int)platform})");
+                    _logService.Info("VxMain", $"🔍 [诊断] 平台名称: {platformName}");
                     
-                    var index = BetPlatformHelper.GetIndex(platform);
-                    _logService.Info("VxMain", $"🔍 [诊断] 计算的索引: {index}");
+                    // 🔥 在下拉框的Items中查找平台名称（避免索引偏移问题）
+                    int index = -1;
+                    for (int i = 0; i < cbxPlatform.Items.Count; i++)
+                    {
+                        if (cbxPlatform.Items[i].ToString() == platformName)
+                        {
+                            index = i;
+                            break;
+                        }
+                    }
+                    _logService.Info("VxMain", $"🔍 [诊断] 在下拉框中查找到的索引: {index}");
                     
                     if (index >= 0 && index < cbxPlatform.Items.Count)
                     {
@@ -4211,7 +4222,8 @@ namespace BaiShengVx3Plus
                     }
                     else
                     {
-                        _logService.Warning("VxMain", $"⚠️ [诊断] 索引超出范围: index={index}, Items.Count={cbxPlatform.Items.Count}");
+                        _logService.Warning("VxMain", $"⚠️ [诊断] 平台 \"{platformName}\" 未在下拉框中找到！");
+                        _logService.Warning("VxMain", $"⚠️ [诊断] 可能原因：平台已被过滤或数据错误");
                     }
 
                     // 加载账号密码（如果为空，显示空白是正常的）
