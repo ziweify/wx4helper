@@ -32,9 +32,6 @@
     <Compile Update="Views\LogWindow.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Views\Main.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="Views\MainTabs.cs">
       <SubType>Form</SubType>
     </Compile>

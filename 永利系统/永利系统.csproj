@@ -107,12 +107,6 @@
     <!-- 浏览器控件库引用 -->
     <ProjectReference Include="..\Unit.Browser\Unit.Browser.csproj" />
     <!-- 确保所有页面都被编译 -->
-    <Compile Update="Views\Main.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Update="Views\Main.Designer.cs">
-      <DependentUpon>Main.cs</DependentUpon>
-    </Compile>
     <Compile Update="Views\Pages\DashboardPage.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -125,13 +119,6 @@
     <Compile Update="Views\Pages\DataManagementPage.Designer.cs">
       <DependentUpon>DataManagementPage.cs</DependentUpon>
     </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- 嵌入资源文件 -->
-    <EmbeddedResource Update="Views\Main.resx">
-      <DependentUpon>Main.cs</DependentUpon>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
