@@ -103,6 +103,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
+    <PackageReference Include="sunnyui" Version="3.6.9" />
     
     <!-- 浏览器控件库引用 -->
     <ProjectReference Include="..\Unit.Browser\Unit.Browser.csproj" />

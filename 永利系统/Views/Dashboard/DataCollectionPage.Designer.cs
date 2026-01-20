@@ -60,20 +60,9 @@ namespace 永利系统.Views.Dashboard
             labelControl2 = new DevExpress.XtraEditors.LabelControl();
             txtCurrentIssue = new DevExpress.XtraEditors.TextEdit();
             labelControl1 = new DevExpress.XtraEditors.LabelControl();
-            xtraTabControl1 = new DevExpress.XtraTab.XtraTabControl();
-            xtraTabPageConfig = new DevExpress.XtraTab.XtraTabPage();
-            groupControl_Monitor_config = new DevExpress.XtraEditors.GroupControl();
-            groupSubmitAddress = new DevExpress.XtraEditors.GroupControl();
-            memoSubmitAddresses = new DevExpress.XtraEditors.MemoEdit();
-            groupDataSource = new DevExpress.XtraEditors.GroupControl();
-            btnTestConnection = new DevExpress.XtraEditors.SimpleButton();
-            txtProxyAddress = new DevExpress.XtraEditors.TextEdit();
-            chkUseProxy = new DevExpress.XtraEditors.CheckEdit();
-            txtDataSourceUrl = new DevExpress.XtraEditors.TextEdit();
-            labelControl6 = new DevExpress.XtraEditors.LabelControl();
-            xtraTabPageMonitorA = new DevExpress.XtraTab.XtraTabPage();
-            xtraTabPageMonitorB = new DevExpress.XtraTab.XtraTabPage();
-            xtraTabPageMonitorC = new DevExpress.XtraTab.XtraTabPage();
+            groupOpenOrderPostAddr = new DevExpress.XtraEditors.GroupControl();
+            groupCustTask = new DevExpress.XtraEditors.GroupControl();
+            buttonAddScriptTask = new DevExpress.XtraEditors.SimpleButton();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -98,18 +87,9 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)xtraTabControl1).BeginInit();
-            xtraTabControl1.SuspendLayout();
-            xtraTabPageConfig.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)groupSubmitAddress).BeginInit();
-            groupSubmitAddress.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)memoSubmitAddresses.Properties).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)groupDataSource).BeginInit();
-            groupDataSource.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)txtProxyAddress.Properties).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)chkUseProxy.Properties).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)txtDataSourceUrl.Properties).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)groupOpenOrderPostAddr).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)groupCustTask).BeginInit();
+            groupCustTask.SuspendLayout();
             SuspendLayout();
             // 
             // splitContainerMain
@@ -125,7 +105,7 @@ namespace 永利系统.Views.Dashboard
             // 
             // splitContainerMain.Panel2
             // 
-            splitContainerMain.Panel2.Controls.Add(xtraTabControl1);
+            splitContainerMain.Panel2.Controls.Add(groupCustTask);
             splitContainerMain.Size = new System.Drawing.Size(1388, 756);
             splitContainerMain.SplitterDistance = 326;
             splitContainerMain.TabIndex = 0;
@@ -143,6 +123,7 @@ namespace 永利系统.Views.Dashboard
             // 
             // splitContainerLeft.Panel2
             // 
+            splitContainerLeft.Panel2.Controls.Add(groupOpenOrderPostAddr);
             splitContainerLeft.Panel2.Controls.Add(groupCompleted);
             splitContainerLeft.Panel2.Controls.Add(groupIssueInfo);
             splitContainerLeft.Size = new System.Drawing.Size(326, 756);
@@ -157,7 +138,7 @@ namespace 永利系统.Views.Dashboard
             groupPending.Name = "groupPending";
             groupPending.Size = new System.Drawing.Size(326, 131);
             groupPending.TabIndex = 1;
-            groupPending.Text = "待采集任务";
+            groupPending.Text = "[自动]待采集任务";
             // 
             // gridPending
             // 
@@ -326,7 +307,7 @@ namespace 永利系统.Views.Dashboard
             groupIssueInfo.Controls.Add(labelControl1);
             groupIssueInfo.Location = new System.Drawing.Point(5, 293);
             groupIssueInfo.Name = "groupIssueInfo";
-            groupIssueInfo.Size = new System.Drawing.Size(317, 325);
+            groupIssueInfo.Size = new System.Drawing.Size(317, 143);
             groupIssueInfo.TabIndex = 0;
             groupIssueInfo.Text = "期号信息";
             // 
@@ -448,118 +429,31 @@ namespace 永利系统.Views.Dashboard
             labelControl1.TabIndex = 0;
             labelControl1.Text = "当期期号:";
             // 
-            // xtraTabControl1
+            // groupOpenOrderPostAddr
             // 
-            xtraTabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            xtraTabControl1.Location = new System.Drawing.Point(0, 0);
-            xtraTabControl1.Name = "xtraTabControl1";
-            xtraTabControl1.SelectedTabPage = xtraTabPageConfig;
-            xtraTabControl1.Size = new System.Drawing.Size(1058, 756);
-            xtraTabControl1.TabIndex = 0;
-            xtraTabControl1.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] { xtraTabPageConfig, xtraTabPageMonitorA, xtraTabPageMonitorB, xtraTabPageMonitorC });
+            groupOpenOrderPostAddr.Location = new System.Drawing.Point(5, 442);
+            groupOpenOrderPostAddr.Name = "groupOpenOrderPostAddr";
+            groupOpenOrderPostAddr.Size = new System.Drawing.Size(320, 176);
+            groupOpenOrderPostAddr.TabIndex = 1;
+            groupOpenOrderPostAddr.Text = "提交地址";
             // 
-            // xtraTabPageConfig
+            // groupCustTask
             // 
-            xtraTabPageConfig.Controls.Add(groupControl_Monitor_config);
-            xtraTabPageConfig.Controls.Add(groupSubmitAddress);
-            xtraTabPageConfig.Controls.Add(groupDataSource);
-            xtraTabPageConfig.Name = "xtraTabPageConfig";
-            xtraTabPageConfig.Size = new System.Drawing.Size(1056, 730);
-            xtraTabPageConfig.Text = "配置";
+            groupCustTask.Controls.Add(buttonAddScriptTask);
+            groupCustTask.Dock = System.Windows.Forms.DockStyle.Fill;
+            groupCustTask.Location = new System.Drawing.Point(0, 0);
+            groupCustTask.Name = "groupCustTask";
+            groupCustTask.Size = new System.Drawing.Size(1058, 756);
+            groupCustTask.TabIndex = 0;
+            groupCustTask.Text = "[半自动]定制采集任务";
             // 
-            // groupControl_Monitor_config
+            // buttonAddScriptTask
             // 
-            groupControl_Monitor_config.Location = new System.Drawing.Point(5, 3);
-            groupControl_Monitor_config.Name = "groupControl_Monitor_config";
-            groupControl_Monitor_config.Size = new System.Drawing.Size(330, 716);
-            groupControl_Monitor_config.TabIndex = 5;
-            groupControl_Monitor_config.Text = "监控配置";
-            // 
-            // groupSubmitAddress
-            // 
-            groupSubmitAddress.Controls.Add(memoSubmitAddresses);
-            groupSubmitAddress.Location = new System.Drawing.Point(339, 296);
-            groupSubmitAddress.Name = "groupSubmitAddress";
-            groupSubmitAddress.Size = new System.Drawing.Size(345, 189);
-            groupSubmitAddress.TabIndex = 2;
-            groupSubmitAddress.Text = "提交地址 (多行, 格式: [标识]URL)";
-            // 
-            // memoSubmitAddresses
-            // 
-            memoSubmitAddresses.Dock = System.Windows.Forms.DockStyle.Fill;
-            memoSubmitAddresses.Location = new System.Drawing.Point(2, 23);
-            memoSubmitAddresses.Name = "memoSubmitAddresses";
-            memoSubmitAddresses.Size = new System.Drawing.Size(341, 164);
-            memoSubmitAddresses.TabIndex = 0;
-            // 
-            // groupDataSource
-            // 
-            groupDataSource.Controls.Add(btnTestConnection);
-            groupDataSource.Controls.Add(txtProxyAddress);
-            groupDataSource.Controls.Add(chkUseProxy);
-            groupDataSource.Controls.Add(txtDataSourceUrl);
-            groupDataSource.Controls.Add(labelControl6);
-            groupDataSource.Location = new System.Drawing.Point(339, 173);
-            groupDataSource.Name = "groupDataSource";
-            groupDataSource.Size = new System.Drawing.Size(345, 123);
-            groupDataSource.TabIndex = 1;
-            groupDataSource.Text = "数据源";
-            // 
-            // btnTestConnection
-            // 
-            btnTestConnection.Location = new System.Drawing.Point(260, 84);
-            btnTestConnection.Name = "btnTestConnection";
-            btnTestConnection.Size = new System.Drawing.Size(68, 22);
-            btnTestConnection.TabIndex = 4;
-            btnTestConnection.Text = "测试连接";
-            // 
-            // txtProxyAddress
-            // 
-            txtProxyAddress.Location = new System.Drawing.Point(123, 84);
-            txtProxyAddress.Name = "txtProxyAddress";
-            txtProxyAddress.Size = new System.Drawing.Size(131, 20);
-            txtProxyAddress.TabIndex = 3;
-            // 
-            // chkUseProxy
-            // 
-            chkUseProxy.Location = new System.Drawing.Point(13, 84);
-            chkUseProxy.Name = "chkUseProxy";
-            chkUseProxy.Properties.Caption = "使用代理 (HTTP)";
-            chkUseProxy.Size = new System.Drawing.Size(105, 20);
-            chkUseProxy.TabIndex = 2;
-            // 
-            // txtDataSourceUrl
-            // 
-            txtDataSourceUrl.Location = new System.Drawing.Point(13, 56);
-            txtDataSourceUrl.Name = "txtDataSourceUrl";
-            txtDataSourceUrl.Size = new System.Drawing.Size(315, 20);
-            txtDataSourceUrl.TabIndex = 1;
-            // 
-            // labelControl6
-            // 
-            labelControl6.Location = new System.Drawing.Point(13, 33);
-            labelControl6.Name = "labelControl6";
-            labelControl6.Size = new System.Drawing.Size(40, 14);
-            labelControl6.TabIndex = 0;
-            labelControl6.Text = "数据源:";
-            // 
-            // xtraTabPageMonitorA
-            // 
-            xtraTabPageMonitorA.Name = "xtraTabPageMonitorA";
-            xtraTabPageMonitorA.Size = new System.Drawing.Size(1056, 730);
-            xtraTabPageMonitorA.Text = "监控A";
-            // 
-            // xtraTabPageMonitorB
-            // 
-            xtraTabPageMonitorB.Name = "xtraTabPageMonitorB";
-            xtraTabPageMonitorB.Size = new System.Drawing.Size(1056, 730);
-            xtraTabPageMonitorB.Text = "监控B";
-            // 
-            // xtraTabPageMonitorC
-            // 
-            xtraTabPageMonitorC.Name = "xtraTabPageMonitorC";
-            xtraTabPageMonitorC.Size = new System.Drawing.Size(1056, 730);
-            xtraTabPageMonitorC.Text = "监控C";
+            buttonAddScriptTask.Location = new System.Drawing.Point(145, 0);
+            buttonAddScriptTask.Name = "buttonAddScriptTask";
+            buttonAddScriptTask.Size = new System.Drawing.Size(46, 23);
+            buttonAddScriptTask.TabIndex = 0;
+            buttonAddScriptTask.Text = "增加";
             // 
             // DataCollectionPage
             // 
@@ -595,19 +489,9 @@ namespace 永利系统.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).EndInit();
-            ((System.ComponentModel.ISupportInitialize)xtraTabControl1).EndInit();
-            xtraTabControl1.ResumeLayout(false);
-            xtraTabPageConfig.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)groupControl_Monitor_config).EndInit();
-            ((System.ComponentModel.ISupportInitialize)groupSubmitAddress).EndInit();
-            groupSubmitAddress.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)memoSubmitAddresses.Properties).EndInit();
-            ((System.ComponentModel.ISupportInitialize)groupDataSource).EndInit();
-            groupDataSource.ResumeLayout(false);
-            groupDataSource.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)txtProxyAddress.Properties).EndInit();
-            ((System.ComponentModel.ISupportInitialize)chkUseProxy.Properties).EndInit();
-            ((System.ComponentModel.ISupportInitialize)txtDataSourceUrl.Properties).EndInit();
+            ((System.ComponentModel.ISupportInitialize)groupOpenOrderPostAddr).EndInit();
+            ((System.ComponentModel.ISupportInitialize)groupCustTask).EndInit();
+            groupCustTask.ResumeLayout(false);
             ResumeLayout(false);
 
         }
@@ -623,18 +507,8 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedIssueId;
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedOpenData;
         private DevExpress.XtraGrid.Columns.GridColumn colCompletedCollectionTime;
-        private DevExpress.XtraTab.XtraTabControl xtraTabControl1;
-        private DevExpress.XtraTab.XtraTabPage xtraTabPageConfig;
         private DevExpress.XtraEditors.SimpleButton btnStopAuto;
         private DevExpress.XtraEditors.SimpleButton btnStartAuto;
-        private DevExpress.XtraEditors.GroupControl groupSubmitAddress;
-        private DevExpress.XtraEditors.MemoEdit memoSubmitAddresses;
-        private DevExpress.XtraEditors.GroupControl groupDataSource;
-        private DevExpress.XtraEditors.SimpleButton btnTestConnection;
-        private DevExpress.XtraEditors.TextEdit txtProxyAddress;
-        private DevExpress.XtraEditors.CheckEdit chkUseProxy;
-        private DevExpress.XtraEditors.TextEdit txtDataSourceUrl;
-        private DevExpress.XtraEditors.LabelControl labelControl6;
         private DevExpress.XtraEditors.GroupControl groupIssueInfo;
         private DevExpress.XtraEditors.SimpleButton btnGetIssueInfo;
         private DevExpress.XtraEditors.TextEdit txtCountdown;
@@ -647,10 +521,6 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraEditors.LabelControl labelControl2;
         private DevExpress.XtraEditors.TextEdit txtCurrentIssue;
         private DevExpress.XtraEditors.LabelControl labelControl1;
-        private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorA;
-        private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorB;
-        private DevExpress.XtraTab.XtraTabPage xtraTabPageMonitorC;
-        private DevExpress.XtraEditors.GroupControl groupControl_Monitor_config;
         private DevExpress.XtraEditors.GroupControl groupPending;
         private DevExpress.XtraGrid.GridControl gridPending;
         private DevExpress.XtraGrid.Views.Grid.GridView gridViewPending;
@@ -660,5 +530,8 @@ namespace 永利系统.Views.Dashboard
         private DevExpress.XtraGrid.Columns.GridColumn colPendingAttemptCount;
         private DevExpress.XtraGrid.Columns.GridColumn colPendingCreatedTime;
         private DevExpress.XtraGrid.Views.Grid.GridView gridView1;
+        private DevExpress.XtraEditors.GroupControl groupOpenOrderPostAddr;
+        private DevExpress.XtraEditors.GroupControl groupCustTask;
+        private DevExpress.XtraEditors.SimpleButton buttonAddScriptTask;
     }
 }
