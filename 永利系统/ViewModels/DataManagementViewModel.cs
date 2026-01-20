@@ -89,18 +89,7 @@ namespace 永利系统.ViewModels
         {
             // TODO: 从数据库加载实际数据
             DataItems.Clear();
-            for (int i = 1; i <= 50; i++)
-            {
-                DataItems.Add(new DataItem
-                {
-                    Id = i,
-                    Name = $"数据项 {i}",
-                    Description = $"这是第 {i} 条数据的描述",
-                    Amount = (decimal)(i * 100.5),
-                    CreateTime = DateTime.Now.AddDays(-i),
-                    IsActive = i % 3 != 0
-                });
-            }
+            // 测试数据已删除，等待实际数据源对接
         }
 
         private void AddItem()
