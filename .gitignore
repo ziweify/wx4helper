@@ -122,3 +122,8 @@ BaiShengVx3Plus/MyLog/logs.db
 /Unit.Browser/obj
 /BaiShengVx3Plus/Problem/0108-赚点统计不正确
 /zhaocaimao/BugReport/0116-6.8.7-封盘还能进单并且算数
+/Unit.la/obj/Debug/net8.0-windows
+/Unit.la/obj
+/Unit.la/bin/Debug/net8.0-windows
+/YongLiSystem/bin/Debug/net8.0-windows
+/YongLiSystem/obj
