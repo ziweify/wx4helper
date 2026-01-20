@@ -2,15 +2,15 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using DevExpress.XtraTab;
-using 永利系统.Models;
-using 永利系统.Services;
-using 永利系统.Services.Auth;
-using 永利系统.ViewModels;
-using 永利系统.Views.Pages;
-using 永利系统.Views.Wechat;
-using 永利系统.Views.Dashboard;
+using YongLiSystem.Models;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Auth;
+using YongLiSystem.ViewModels;
+using YongLiSystem.Views.Pages;
+using YongLiSystem.Views.Wechat;
+using YongLiSystem.Views.Dashboard;
 
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     /// <summary>
     /// 使用传统工具栏和 TabControl 的主窗口

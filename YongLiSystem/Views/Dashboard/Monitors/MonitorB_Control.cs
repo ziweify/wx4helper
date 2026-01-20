@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace 永利系统.Views.Dashboard.Monitors
+namespace YongLiSystem.Views.Dashboard.Monitors
 {
     /// <summary>
     /// 监控B控件

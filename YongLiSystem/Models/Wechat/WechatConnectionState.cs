@@ -1,4 +1,4 @@
-namespace 永利系统.Models.Wechat
+namespace YongLiSystem.Models.Wechat
 {
     /// <summary>
     /// 微信连接状态枚举

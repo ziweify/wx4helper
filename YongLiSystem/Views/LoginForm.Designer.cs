@@ -1,4 +1,4 @@
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     partial class LoginForm
     {

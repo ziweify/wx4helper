@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     /// <summary>
     /// 浮动日志窗口 - 可以从主窗口分离的独立日志窗口

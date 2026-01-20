@@ -2,11 +2,11 @@ using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 using DevExpress.XtraEditors;  // ✅ 添加 DevExpress 命名空间
-using 永利系统.Services;
-using 永利系统.Services.Wechat;
-using 永利系统.Views.Wechat.Controls;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Wechat;
+using YongLiSystem.Views.Wechat.Controls;
 
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     /// <summary>
     /// 微信助手页面 - 使用 XtraForm 实现，支持后台自动刷新

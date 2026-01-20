@@ -4,11 +4,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
-using 永利系统.Models.Config;
-using 永利系统.Services;
-using 永利系统.Infrastructure.Paths;
+using YongLiSystem.Models.Config;
+using YongLiSystem.Services;
+using YongLiSystem.Infrastructure.Paths;
 
-namespace 永利系统.Services.Config
+namespace YongLiSystem.Services.Config
 {
     /// <summary>
     /// 配置管理器（单例模式）

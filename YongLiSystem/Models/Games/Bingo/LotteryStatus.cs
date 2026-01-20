@@ -1,4 +1,4 @@
-namespace 永利系统.Models.Games.Bingo
+namespace YongLiSystem.Models.Games.Bingo
 {
     /// <summary>
     /// 开奖状态枚举

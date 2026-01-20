@@ -1,14 +1,14 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Contracts.Wechat;
-using 永利系统.Models.Games.Bingo;
-using 永利系统.Models.Games.Bingo.Events;
-using 永利系统.Services;
-using 永利系统.Services.Auth;
-using 永利系统.Services.Games.Bingo;
+using YongLiSystem.Contracts.Wechat;
+using YongLiSystem.Models.Games.Bingo;
+using YongLiSystem.Models.Games.Bingo.Events;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Auth;
+using YongLiSystem.Services.Games.Bingo;
 
-namespace 永利系统.Services.Wechat
+namespace YongLiSystem.Services.Wechat
 {
     /// <summary>
     /// 微信模块的 Bingo 游戏服务实现

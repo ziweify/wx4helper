@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace 永利系统.Models.Wechat
+namespace YongLiSystem.Models.Wechat
 {
     /// <summary>
     /// 微信联系人数据模型（用于数据绑定）

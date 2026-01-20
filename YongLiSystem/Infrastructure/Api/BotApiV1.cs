@@ -1,11 +1,11 @@
 using System;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using 永利系统.Models.BotApi.V1;  // 使用 BotApi V1 版本的模型
-using 永利系统.Services;
-using 永利系统.Infrastructure.Helpers;
+using YongLiSystem.Models.BotApi.V1;  // 使用 BotApi V1 版本的模型
+using YongLiSystem.Services;
+using YongLiSystem.Infrastructure.Helpers;
 
-namespace 永利系统.Infrastructure.Api
+namespace YongLiSystem.Infrastructure.Api
 {
     /// <summary>
     /// BotApi V1 版本客户端

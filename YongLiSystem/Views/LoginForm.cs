@@ -1,11 +1,11 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using 永利系统.Services;
-using 永利系统.Services.Auth;
-using 永利系统.ViewModels;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Auth;
+using YongLiSystem.ViewModels;
 
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     /// <summary>
     /// 登录窗口

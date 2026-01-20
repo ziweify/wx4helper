@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Models.Wechat;
-using 永利系统.Models.Wechat.Events;
+using YongLiSystem.Models.Wechat;
+using YongLiSystem.Models.Wechat.Events;
 
-namespace 永利系统.Contracts.Wechat
+namespace YongLiSystem.Contracts.Wechat
 {
     /// <summary>
     /// 微信服务契约

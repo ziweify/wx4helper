@@ -1,4 +1,4 @@
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     partial class WechatPage
     {
@@ -856,8 +856,8 @@ namespace 永利系统.Views.Wechat
         private DevExpress.XtraEditors.SimpleButton simpleButton_StartBrowser;
         private DevExpress.XtraEditors.SimpleButton simpleButton_ConfigManager;
         private DevExpress.XtraEditors.PanelControl panelControl_OpenData;
-        private 永利系统.Views.Wechat.Controls.UcBingoDataCur ucBingoDataCur;
-        private 永利系统.Views.Wechat.Controls.UcBingoDataLast ucBingoDataLast;
+        private YongLiSystem.Views.Wechat.Controls.UcBingoDataCur ucBingoDataCur;
+        private YongLiSystem.Views.Wechat.Controls.UcBingoDataLast ucBingoDataLast;
         private DevExpress.XtraGrid.GridControl gridControl_Contacts;
         private DevExpress.XtraGrid.Views.Grid.GridView gridView_Contacts;
         private DevExpress.XtraEditors.PanelControl panelControl_LeftTop;

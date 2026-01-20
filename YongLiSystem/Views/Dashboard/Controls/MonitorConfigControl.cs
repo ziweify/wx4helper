@@ -2,7 +2,7 @@ using System;
 using System.Windows.Forms;
 using DevExpress.XtraEditors;
 
-namespace 永利系统.Views.Dashboard.Controls
+namespace YongLiSystem.Views.Dashboard.Controls
 {
     /// <summary>
     /// 监控配置用户控件

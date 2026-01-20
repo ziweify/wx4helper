@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Models
+namespace YongLiSystem.Models
 {
     /// <summary>
     /// 数据项模型

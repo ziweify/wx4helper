@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Models.Wechat.Events
+namespace YongLiSystem.Models.Wechat.Events
 {
     /// <summary>
     /// 微信连接状态变更事件参数

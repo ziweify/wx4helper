@@ -1,8 +1,8 @@
 using System;
 using System.Windows.Forms;
-using 永利系统.ViewModels;
+using YongLiSystem.ViewModels;
 
-namespace 永利系统.Views.Pages
+namespace YongLiSystem.Views.Pages
 {
     /// <summary>
     /// 数据管理页面 - 使用 Form 实现，支持后台自动刷新
@@ -82,7 +82,7 @@ namespace 永利系统.Views.Pages
             var view = sender as DevExpress.XtraGrid.Views.Grid.GridView;
             if (view != null && view.FocusedRowHandle >= 0)
             {
-                _viewModel.SelectedItem = view.GetRow(view.FocusedRowHandle) as 永利系统.Models.DataItem;
+                _viewModel.SelectedItem = view.GetRow(view.FocusedRowHandle) as YongLiSystem.Models.DataItem;
             }
         }
     }

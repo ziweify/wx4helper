@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Contracts.Wechat;
-using 永利系统.Models.Wechat;
-using 永利系统.Models.Wechat.Events;
-using 永利系统.Services;
+using YongLiSystem.Contracts.Wechat;
+using YongLiSystem.Models.Wechat;
+using YongLiSystem.Models.Wechat.Events;
+using YongLiSystem.Services;
 
-namespace 永利系统.Services.Wechat
+namespace YongLiSystem.Services.Wechat
 {
     /// <summary>
     /// 微信服务实现（框架，不含业务逻辑）

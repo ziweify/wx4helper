@@ -1,9 +1,9 @@
 using System;
 using System.Windows.Forms;
 using DevExpress.XtraEditors;
-using 永利系统.Services;
+using YongLiSystem.Services;
 
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     /// <summary>
     /// 上下分管理窗口 - 现代化设计

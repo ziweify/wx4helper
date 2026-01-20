@@ -44,7 +44,7 @@ ribbonPageWechat (微信助手) → "Dashboard" (暂时，可以改为专门的�
 创建新的 UserControl，例如 `WechatPage.cs`：
 
 ```csharp
-namespace 永利系统.Views.Pages
+namespace YongLiSystem.Views.Pages
 {
     public partial class WechatPage : UserControl
     {
@@ -93,7 +93,7 @@ case "ribbonPageWechat":
 
 ```csharp
 // LotteryPage.cs
-namespace 永利系统.Views.Pages
+namespace YongLiSystem.Views.Pages
 {
     public partial class LotteryPage : UserControl
     {

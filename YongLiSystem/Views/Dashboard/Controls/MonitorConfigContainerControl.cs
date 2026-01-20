@@ -2,9 +2,9 @@ using System;
 using System.Windows.Forms;
 using DevExpress.XtraEditors;
 using DevExpress.XtraTab;
-using 永利系统.Models.Dashboard;
+using YongLiSystem.Models.Dashboard;
 
-namespace 永利系统.Views.Dashboard.Controls
+namespace YongLiSystem.Views.Dashboard.Controls
 {
     /// <summary>
     /// 监控配置容器控件 - 包含ABC三个监控的配置

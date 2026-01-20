@@ -2,9 +2,9 @@ using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using DevExpress.Mvvm;
-using 永利系统.Models;
+using YongLiSystem.Models;
 
-namespace 永利系统.ViewModels
+namespace YongLiSystem.ViewModels
 {
     /// <summary>
     /// 数据管理页面 ViewModel

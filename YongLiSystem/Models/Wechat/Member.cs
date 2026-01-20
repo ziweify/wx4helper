@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using SQLite;
 
-namespace 永利系统.Models.Wechat
+namespace YongLiSystem.Models.Wechat
 {
     /// <summary>
     /// 会员数据模型（用于数据绑定）

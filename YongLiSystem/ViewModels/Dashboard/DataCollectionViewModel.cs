@@ -5,11 +5,11 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Input;
 using DevExpress.Mvvm;
-using 永利系统.Models.Dashboard;
-using 永利系统.Services;
-using 永利系统.Services.Dashboard;
+using YongLiSystem.Models.Dashboard;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Dashboard;
 
-namespace 永利系统.ViewModels.Dashboard
+namespace YongLiSystem.ViewModels.Dashboard
 {
     /// <summary>
     /// 数据采集页面 ViewModel

@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-namespace 永利系统.Helpers
+namespace YongLiSystem.Helpers
 {
     /// <summary>
     /// 工具栏图标辅助类 - 动态生成工具栏图标

@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace 永利系统.Infrastructure.Helpers
+namespace YongLiSystem.Infrastructure.Helpers
 {
     /// <summary>
     /// 现代化的 HTTP 辅助类（基于 HttpClient）

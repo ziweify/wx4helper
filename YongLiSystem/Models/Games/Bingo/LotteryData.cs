@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using SQLite;
 
-namespace 永利系统.Models.Games.Bingo
+namespace YongLiSystem.Models.Games.Bingo
 {
     /// <summary>
     /// 开奖数据模型（用于数据绑定）

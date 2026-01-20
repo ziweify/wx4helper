@@ -2,7 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using DevExpress.Mvvm;
 
-namespace 永利系统.ViewModels
+namespace YongLiSystem.ViewModels
 {
     /// <summary>
     /// Dashboard 页面 ViewModel

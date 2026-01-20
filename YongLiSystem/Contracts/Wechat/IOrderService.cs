@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using 永利系统.Models.Wechat;
-using 永利系统.Models.Games.Bingo;
+using YongLiSystem.Models.Wechat;
+using YongLiSystem.Models.Games.Bingo;
 
-namespace 永利系统.Contracts.Wechat
+namespace YongLiSystem.Contracts.Wechat
 {
     /// <summary>
     /// 订单服务契约

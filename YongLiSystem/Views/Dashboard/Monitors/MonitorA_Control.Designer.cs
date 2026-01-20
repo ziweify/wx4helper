@@ -1,4 +1,4 @@
-namespace 永利系统.Views.Dashboard.Monitors
+namespace YongLiSystem.Views.Dashboard.Monitors
 {
     partial class MonitorA_Control
     {

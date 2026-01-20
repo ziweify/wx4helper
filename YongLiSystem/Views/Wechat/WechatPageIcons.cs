@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     /// <summary>
     /// 微信助手工具栏图标资源类

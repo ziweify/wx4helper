@@ -7,10 +7,10 @@ using System.Windows.Forms;
 using DevExpress.XtraEditors;
 using DevExpress.XtraGrid;
 using DevExpress.XtraGrid.Views.Grid;
-using 永利系统.Models;
-using 永利系统.Services;
+using YongLiSystem.Models;
+using YongLiSystem.Services;
 
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     /// <summary>
     /// 日志窗口 - 使用 UserControl 实现

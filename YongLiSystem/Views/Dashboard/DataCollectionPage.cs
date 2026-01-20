@@ -1,11 +1,11 @@
 using System;
 using System.Windows.Forms;
-using 永利系统.ViewModels.Dashboard;
-using 永利系统.Views.Dashboard.Monitors;
-using 永利系统.Views.Dashboard.Controls;
-using static 永利系统.Views.Dashboard.Controls.MonitorConfigContainerControl;
+using YongLiSystem.ViewModels.Dashboard;
+using YongLiSystem.Views.Dashboard.Monitors;
+using YongLiSystem.Views.Dashboard.Controls;
+using static YongLiSystem.Views.Dashboard.Controls.MonitorConfigContainerControl;
 
-namespace 永利系统.Views.Dashboard
+namespace YongLiSystem.Views.Dashboard
 {
     /// <summary>
     /// 数据采集页面

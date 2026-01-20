@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Models.Dashboard
+namespace YongLiSystem.Models.Dashboard
 {
     /// <summary>
     /// 数据采集任务项

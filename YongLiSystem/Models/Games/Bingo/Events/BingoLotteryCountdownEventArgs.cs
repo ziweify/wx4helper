@@ -1,7 +1,7 @@
 using System;
-using 永利系统.Models.Games.Bingo;
+using YongLiSystem.Models.Games.Bingo;
 
-namespace 永利系统.Models.Games.Bingo.Events
+namespace YongLiSystem.Models.Games.Bingo.Events
 {
     /// <summary>
     /// Bingo 开奖倒计时事件参数

@@ -49,7 +49,7 @@ using DevExpress.XtraBars.Docking;        // DockPanel
 using DevExpress.XtraBars.Helpers.Docking; // DockingManager
 using DevExpress.XtraBars.Ribbon;
 
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     public partial class Main : RibbonForm
     {
@@ -73,7 +73,7 @@ using DevExpress.XtraBars.Docking;        // DockPanel（基类）
 using DevExpress.XtraBars.Helpers.Docking; // DockingManager（构造函数参数）
 using DevExpress.XtraEditors;
 
-namespace 永利系统.Views
+namespace YongLiSystem.Views
 {
     public partial class LogWindow : DockPanel // 来自 Docking
     {

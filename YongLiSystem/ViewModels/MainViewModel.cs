@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using DevExpress.Mvvm;
 
-namespace 永利系统.ViewModels
+namespace YongLiSystem.ViewModels
 {
     /// <summary>
     /// 主窗口 ViewModel

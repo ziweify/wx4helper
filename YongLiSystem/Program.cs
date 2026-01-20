@@ -1,11 +1,11 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using 永利系统.Services;
-using 永利系统.Services.Auth;
-using 永利系统.Views;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Auth;
+using YongLiSystem.Views;
 
-namespace 永利系统
+namespace YongLiSystem
 {
     static class Program
     {

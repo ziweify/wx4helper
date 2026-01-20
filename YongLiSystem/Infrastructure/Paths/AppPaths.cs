@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace 永利系统.Infrastructure.Paths
+namespace YongLiSystem.Infrastructure.Paths
 {
     /// <summary>
     /// 应用程序路径管理器

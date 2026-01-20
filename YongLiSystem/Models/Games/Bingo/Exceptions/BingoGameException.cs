@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Models.Games.Bingo.Exceptions
+namespace YongLiSystem.Models.Games.Bingo.Exceptions
 {
     /// <summary>
     /// Bingo 游戏服务异常类

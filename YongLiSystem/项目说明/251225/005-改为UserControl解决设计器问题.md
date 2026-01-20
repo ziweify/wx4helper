@@ -20,11 +20,11 @@
 using System;
 using System.ComponentModel;
 using System.Windows.Forms;
-using 永利系统.Services;
-using 永利系统.Services.Wechat;
-using 永利系统.Views.Wechat.Controls;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Wechat;
+using YongLiSystem.Views.Wechat.Controls;
 
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     /// <summary>
     /// 微信助手页面 - 改为 UserControl
@@ -61,7 +61,7 @@ namespace 永利系统.Views.Wechat
 ### 步骤2：修改 WechatPage.Designer.cs
 
 ```csharp
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     partial class WechatPage
     {

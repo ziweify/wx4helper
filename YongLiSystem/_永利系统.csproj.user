@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Update="Views\Dashboard\Controls\MonitorConfigContainerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Controls\MonitorConfigControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\DataCollectionPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorA_Control.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorB_Control.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorControlBase.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Dashboard\Monitors\MonitorC_Control.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\FloatingLogWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\LoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\LogWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\MainTabs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\DashboardPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\DataManagementPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\ReportsPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\SettingsPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Wechat\Controls\UcBingoDataCur.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Wechat\Controls\UcBingoDataLast.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Wechat\CreditManageForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Wechat\WechatPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\Wechat\WechatSettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Views\Wechat\WechatPage.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

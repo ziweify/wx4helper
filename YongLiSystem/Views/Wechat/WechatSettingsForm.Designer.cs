@@ -1,4 +1,4 @@
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     partial class WechatSettingsForm
     {

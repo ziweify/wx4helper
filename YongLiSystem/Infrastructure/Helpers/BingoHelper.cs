@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Infrastructure.Helpers
+namespace YongLiSystem.Infrastructure.Helpers
 {
     /// <summary>
     /// Bingo游戏辅助类

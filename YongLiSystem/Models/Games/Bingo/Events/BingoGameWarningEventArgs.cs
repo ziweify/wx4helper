@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Models.Games.Bingo.Events
+namespace YongLiSystem.Models.Games.Bingo.Events
 {
     /// <summary>
     /// Bingo 游戏警告事件参数（用于30秒/15秒提醒）

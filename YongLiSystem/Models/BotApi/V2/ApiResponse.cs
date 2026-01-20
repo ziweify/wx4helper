@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace 永利系统.Models.BotApi.V2
+namespace YongLiSystem.Models.BotApi.V2
 {
     /// <summary>
     /// BotApi V2 版本 - API 响应基类

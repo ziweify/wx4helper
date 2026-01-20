@@ -1,0 +1,127 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ✅ DevExpress 核心库 -->
+    <Reference Include="DevExpress.Data.Desktop.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Data.Desktop.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Data.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Data.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Drawing.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Drawing.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Mvvm.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Mvvm.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Printing.v23.2.Core">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Printing.v23.2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Utils.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Utils.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Xpf.Docking.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Xpf.Docking.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraBars.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraBars.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraEditors.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraGrid.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraGrid.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraLayout.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraLayout.v23.2.dll</HintPath>
+    </Reference>
+    
+    <!-- ✅ DevExpress 设计器支持 DLL（关键！） -->
+    <Reference Include="DevExpress.Design.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.Design.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraEditors.v23.2.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraGrid.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraGrid.v23.2.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraLayout.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraLayout.v23.2.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraBars.v23.2.Design">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\Design\DevExpress.XtraBars.v23.2.Design.dll</HintPath>
+    </Reference>
+    
+    <!-- ✅ 其他可能需要的库 -->
+    <Reference Include="DevExpress.Utils.v23.2.UI">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Utils.v23.2.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Sparkline.v23.2.Core">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Sparkline.v23.2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Images.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Images.v23.2.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ⚠️ DevExpress 引用需要手动添加 -->
+  <!-- 请在 Visual Studio 中执行以下操作：
+       1. 右键点击项目 -> 添加 -> 引用
+       2. 浏览到 DevExpress 安装目录（通常在 C:\Program Files (x86)\DevExpress XX.X\Components\Bin\Framework\）
+       3. 添加以下 DLL：
+          - DevExpress.Data.vXX.X.dll
+          - DevExpress.Utils.vXX.X.dll
+          - DevExpress.XtraBars.vXX.X.dll
+          - DevExpress.XtraEditors.vXX.X.dll
+          - DevExpress.XtraGrid.vXX.X.dll
+          - DevExpress.XtraLayout.vXX.X.dll
+       
+       或者直接在设计器中使用 DevExpress 控件，Visual Studio 会自动添加引用
+  -->
+  
+  <ItemGroup>
+    <None Update="Dashboards\dashboard1.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\Sales.xlsx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 排除 RenameFiles.cs，避免多个入口点 -->
+    <Compile Remove="RenameFiles.cs" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
+    <PackageReference Include="sunnyui" Version="3.6.9" />
+    
+    <!-- 浏览器控件库引用 -->
+    <ProjectReference Include="..\Unit.Browser\Unit.Browser.csproj" />
+    <!-- 脚本编辑器库引用 -->
+    <ProjectReference Include="..\Unit.la\Unit.la.csproj" />
+    <!-- 确保所有页面都被编译 -->
+    <Compile Update="Views\Pages\DashboardPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\DashboardPage.Designer.cs">
+      <DependentUpon>DashboardPage.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Views\Pages\DataManagementPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\DataManagementPage.Designer.cs">
+      <DependentUpon>DataManagementPage.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+</Project>

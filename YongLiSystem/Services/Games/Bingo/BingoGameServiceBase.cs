@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Models.Games.Bingo;
-using 永利系统.Models.Games.Bingo.Events;
-using 永利系统.Models.Games.Bingo.Exceptions;
-using 永利系统.Services;
+using YongLiSystem.Models.Games.Bingo;
+using YongLiSystem.Models.Games.Bingo.Events;
+using YongLiSystem.Models.Games.Bingo.Exceptions;
+using YongLiSystem.Services;
 
-namespace 永利系统.Services.Games.Bingo
+namespace YongLiSystem.Services.Games.Bingo
 {
     /// <summary>
     /// Bingo 游戏服务抽象基类（契约式编程）

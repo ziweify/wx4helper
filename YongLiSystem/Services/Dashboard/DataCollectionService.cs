@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using 永利系统.Models.Dashboard;
-using 永利系统.Services;
+using YongLiSystem.Models.Dashboard;
+using YongLiSystem.Services;
 
-namespace 永利系统.Services.Dashboard
+namespace YongLiSystem.Services.Dashboard
 {
     /// <summary>
     /// 数据采集服务

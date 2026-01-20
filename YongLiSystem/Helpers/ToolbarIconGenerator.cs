@@ -3,7 +3,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 
-namespace 永利系统.Helpers
+namespace YongLiSystem.Helpers
 {
     /// <summary>
     /// 工具栏图标生成器 - 将图标保存为PNG文件，供设计器使用

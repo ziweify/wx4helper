@@ -1,12 +1,12 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using 永利系统.Infrastructure.Api;
-using 永利系统.Models.BotApi.V1;  // 使用 BotApi V1 版本
-using 永利系统.Services;
-using 永利系统.Views;
+using YongLiSystem.Infrastructure.Api;
+using YongLiSystem.Models.BotApi.V1;  // 使用 BotApi V1 版本
+using YongLiSystem.Services;
+using YongLiSystem.Views;
 
-namespace 永利系统.Services.Auth
+namespace YongLiSystem.Services.Auth
 {
     /// <summary>
     /// 认证服务

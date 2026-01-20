@@ -1,6 +1,6 @@
 using System;
 
-namespace 永利系统.Models.Games.Bingo.Events
+namespace YongLiSystem.Models.Games.Bingo.Events
 {
     /// <summary>
     /// Bingo 期号变更事件参数

@@ -1,8 +1,8 @@
 using System;
 using System.Windows.Forms;
-using 永利系统.Services;
+using YongLiSystem.Services;
 
-namespace 永利系统.Views.Pages
+namespace YongLiSystem.Views.Pages
 {
     /// <summary>
     /// 报表分析页面 - 使用 Form 实现，支持后台自动刷新

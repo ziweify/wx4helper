@@ -1,4 +1,4 @@
-namespace 永利系统.Models
+namespace YongLiSystem.Models
 {
     /// <summary>
     /// 日志级别枚举

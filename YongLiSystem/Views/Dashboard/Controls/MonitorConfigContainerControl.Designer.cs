@@ -1,6 +1,6 @@
 using DevExpress.XtraTab;
 
-namespace 永利系统.Views.Dashboard.Controls
+namespace YongLiSystem.Views.Dashboard.Controls
 {
     partial class MonitorConfigContainerControl
     {

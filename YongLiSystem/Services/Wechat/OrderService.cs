@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-using 永利系统.Contracts.Wechat;
-using 永利系统.Models.Wechat;
-using 永利系统.Models.Games.Bingo;
-using 永利系统.Services;
-using 永利系统.Services.Games.Bingo;
+using YongLiSystem.Contracts.Wechat;
+using YongLiSystem.Models.Wechat;
+using YongLiSystem.Models.Games.Bingo;
+using YongLiSystem.Services;
+using YongLiSystem.Services.Games.Bingo;
 
-namespace 永利系统.Services.Wechat
+namespace YongLiSystem.Services.Wechat
 {
     /// <summary>
     /// 订单服务实现（框架，不含业务逻辑）

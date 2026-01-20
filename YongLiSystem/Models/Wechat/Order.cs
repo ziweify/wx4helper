@@ -2,9 +2,9 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using SQLite;
-using 永利系统.Models.Games.Bingo;
+using YongLiSystem.Models.Games.Bingo;
 
-namespace 永利系统.Models.Wechat
+namespace YongLiSystem.Models.Wechat
 {
     /// <summary>
     /// 订单数据模型（用于数据绑定）

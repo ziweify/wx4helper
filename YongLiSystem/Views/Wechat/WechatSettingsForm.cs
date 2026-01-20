@@ -1,6 +1,6 @@
 using DevExpress.XtraEditors;
 
-namespace 永利系统.Views.Wechat
+namespace YongLiSystem.Views.Wechat
 {
     /// <summary>
     /// 微信助手设置窗口

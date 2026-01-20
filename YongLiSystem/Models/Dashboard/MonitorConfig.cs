@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace 永利系统.Models.Dashboard
+namespace YongLiSystem.Models.Dashboard
 {
     /// <summary>
     /// 监控配置模型

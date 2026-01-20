@@ -34,7 +34,7 @@
 
 **V1 版本**：
 ```csharp
-using 永利系统.Models.BotApi.V1;
+using YongLiSystem.Models.BotApi.V1;
 
 var user = new ApiUser();
 var response = new ApiResponse<ApiUser>();
@@ -42,7 +42,7 @@ var response = new ApiResponse<ApiUser>();
 
 **V2 版本**：
 ```csharp
-using 永利系统.Models.BotApi.V2;
+using YongLiSystem.Models.BotApi.V2;
 
 var user = new ApiUser();  // 这是 V2 版本的 ApiUser
 var response = new ApiResponse<ApiUser>();  // 这是 V2 版本的 ApiResponse
@@ -86,7 +86,7 @@ var v2User = new V2.ApiUser();
 
 **旧代码**：
 ```csharp
-using 永利系统.Models.Api;
+using YongLiSystem.Models.Api;
 
 var user = new ApiUser();
 var response = new ApiResponse<ApiUser>();
@@ -94,7 +94,7 @@ var response = new ApiResponse<ApiUser>();
 
 **新代码（V1）**：
 ```csharp
-using 永利系统.Models.BotApi.V1;
+using YongLiSystem.Models.BotApi.V1;
 
 var user = new ApiUser();
 var response = new ApiResponse<ApiUser>();
@@ -115,7 +115,7 @@ var response = new ApiResponse<ApiUser>();
 
 2. **设置命名空间**：
    ```csharp
-   namespace 永利系统.Models.BotApi.V3
+   namespace YongLiSystem.Models.BotApi.V3
    {
        public class ApiUser { ... }
        public class ApiResponse<T> { ... }

@@ -1,6 +1,6 @@
 using DevExpress.XtraEditors;
 
-namespace 永利系统.Views.Dashboard.Controls
+namespace YongLiSystem.Views.Dashboard.Controls
 {
     partial class MonitorConfigControl
     {

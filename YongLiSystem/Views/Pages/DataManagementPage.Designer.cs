@@ -1,4 +1,4 @@
-namespace 永利系统.Views.Pages
+namespace YongLiSystem.Views.Pages
 {
     partial class DataManagementPage
     {

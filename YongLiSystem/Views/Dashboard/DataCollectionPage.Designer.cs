@@ -1,4 +1,4 @@
-namespace 永利系统.Views.Dashboard
+namespace YongLiSystem.Views.Dashboard
 {
     partial class DataCollectionPage
     {

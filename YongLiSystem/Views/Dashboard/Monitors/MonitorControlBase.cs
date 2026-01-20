@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using DevExpress.XtraEditors;
 using Unit.Browser.Controls;
-using 永利系统.Services;
-using 永利系统.Models.Dashboard;
+using YongLiSystem.Services;
+using YongLiSystem.Models.Dashboard;
 
-namespace 永利系统.Views.Dashboard.Monitors
+namespace YongLiSystem.Views.Dashboard.Monitors
 {
     /// <summary>
     /// 监控控件基类 - 使用独立BrowserWindow并嵌入到控件中

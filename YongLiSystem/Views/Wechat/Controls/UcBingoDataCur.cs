@@ -1,12 +1,12 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using 永利系统.Services.Games.Bingo;
-using 永利系统.Models.Games.Bingo;
-using 永利系统.Models.Games.Bingo.Events;
-using 永利系统.Infrastructure.Helpers;
+using YongLiSystem.Services.Games.Bingo;
+using YongLiSystem.Models.Games.Bingo;
+using YongLiSystem.Models.Games.Bingo.Events;
+using YongLiSystem.Infrastructure.Helpers;
 
-namespace 永利系统.Views.Wechat.Controls
+namespace YongLiSystem.Views.Wechat.Controls
 {
     /// <summary>
     /// 当前期开奖数据显示控件

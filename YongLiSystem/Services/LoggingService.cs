@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using 永利系统.Models;
+using YongLiSystem.Models;
 
-namespace 永利系统.Services
+namespace YongLiSystem.Services
 {
     /// <summary>
     /// 日志服务 - 单例模式

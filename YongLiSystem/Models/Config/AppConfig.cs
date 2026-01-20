@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace 永利系统.Models.Config
+namespace YongLiSystem.Models.Config
 {
     /// <summary>
     /// 应用程序配置类（根配置）
