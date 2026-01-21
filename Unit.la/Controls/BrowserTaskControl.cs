@@ -240,7 +240,51 @@ namespace Unit.La.Controls
             };
             tabPageLog.Controls.Add(_logTextBox);
 
-            // 脚本编辑器
+            // 🔧 脚本编辑器 + 脚本管理器（左右分割布局）
+            var splitContainerScript = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                SplitterDistance = 300, // 左侧脚本管理器宽度
+                BorderStyle = BorderStyle.Fixed3D
+            };
+            
+            // 左侧：脚本管理器
+            var scriptManager = new ScriptManagerControl
+            {
+                Dock = DockStyle.Fill
+            };
+            
+            // 从配置初始化脚本管理器（默认本地模式）
+            scriptManager.SourceConfig = new ScriptSourceConfig
+            {
+                Mode = ScriptSourceMode.Local,
+                LocalDirectory = _config.ScriptDirectory ?? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts", _config.Name ?? "Default")
+            };
+            
+            // 订阅脚本选中事件
+            scriptManager.ScriptSelected += (s, scriptInfo) =>
+            {
+                if (scriptInfo != null && _scriptEditor != null)
+                {
+                    _scriptEditor.ScriptText = scriptInfo.Content;
+                    LogMessage($"📄 已加载脚本: {scriptInfo.DisplayName}");
+                }
+            };
+            
+            // 订阅配置变更事件
+            scriptManager.ConfigChanged += (s, sourceConfig) =>
+            {
+                _config.ScriptDirectory = sourceConfig.LocalDirectory;
+                _config.ScriptSourceMode = sourceConfig.Mode;
+                LogMessage($"⚙️ 脚本源模式已切换为: {sourceConfig.Mode}");
+            };
+            
+            splitContainerScript.Panel1.Controls.Add(scriptManager);
+            
+            // 右侧：脚本编辑器
+            var panelEditor = new Panel { Dock = DockStyle.Fill };
+            
             _scriptEditor = new ScriptEditorControl
             {
                 Dock = DockStyle.Fill,
@@ -281,8 +325,12 @@ namespace Unit.La.Controls
             scriptToolBar.Items.Add(new ToolStripSeparator());
             scriptToolBar.Items.Add(btnHelp);
             
-            tabPageScript.Controls.Add(_scriptEditor);
-            tabPageScript.Controls.Add(scriptToolBar);
+            panelEditor.Controls.Add(_scriptEditor);
+            panelEditor.Controls.Add(scriptToolBar);
+            
+            splitContainerScript.Panel2.Controls.Add(panelEditor);
+            
+            tabPageScript.Controls.Add(splitContainerScript);
         }
 
         /// <summary>

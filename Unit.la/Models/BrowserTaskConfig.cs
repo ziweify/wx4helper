@@ -16,6 +16,8 @@ namespace Unit.La.Models
         private string _password = "";
         private string _script = "";
         private bool _autoLogin;
+        private string? _scriptDirectory;
+        private ScriptSourceMode _scriptSourceMode = ScriptSourceMode.Local;
 
         /// <summary>
         /// 任务名称
@@ -114,6 +116,38 @@ namespace Unit.La.Models
         }
 
         /// <summary>
+        /// 脚本目录（本地模式）
+        /// </summary>
+        public string? ScriptDirectory
+        {
+            get => _scriptDirectory;
+            set
+            {
+                if (_scriptDirectory != value)
+                {
+                    _scriptDirectory = value;
+                    OnPropertyChanged(nameof(ScriptDirectory));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 脚本源模式（本地/远程）
+        /// </summary>
+        public ScriptSourceMode ScriptSourceMode
+        {
+            get => _scriptSourceMode;
+            set
+            {
+                if (_scriptSourceMode != value)
+                {
+                    _scriptSourceMode = value;
+                    OnPropertyChanged(nameof(ScriptSourceMode));
+                }
+            }
+        }
+
+        /// <summary>
         /// 自定义数据（扩展字段）
         /// 允许项目添加额外的配置项
         /// </summary>
@@ -150,6 +184,8 @@ namespace Unit.La.Models
                 Password = Password,
                 Script = Script,
                 AutoLogin = AutoLogin,
+                ScriptDirectory = ScriptDirectory,
+                ScriptSourceMode = ScriptSourceMode,
                 CustomData = new Dictionary<string, string>(CustomData),
                 CreatedTime = CreatedTime,
                 LastModifiedTime = LastModifiedTime

@@ -16,11 +16,6 @@ namespace Unit.La.Controls
         private Image? _defaultThumbnail;
 
         /// <summary>
-        /// 编辑按钮点击事件
-        /// </summary>
-        public event EventHandler? EditClicked;
-
-        /// <summary>
         /// 删除按钮点击事件
         /// </summary>
         public event EventHandler? DeleteClicked;
@@ -145,11 +140,6 @@ namespace Unit.La.Controls
                     ResetThumbnail(); // 停止时重置缩略图
                 }
             }
-        }
-
-        private void OnEditButtonClick(object? sender, EventArgs e)
-        {
-            EditClicked?.Invoke(this, EventArgs.Empty);
         }
 
         private void OnDeleteButtonClick(object? sender, EventArgs e)

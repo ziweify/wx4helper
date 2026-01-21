@@ -14,5 +14,8 @@
     <Compile Update="Controls\ScriptEditorControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Controls\ScriptManagerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

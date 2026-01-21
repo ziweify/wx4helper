@@ -135,7 +135,6 @@ namespace YongLiSystem.Views.Dashboard
             };
 
             // 订阅事件
-            card.EditClicked += (s, e) => OnEditTask(task);
             card.DeleteClicked += (s, e) => OnDeleteTask(task, card);
             card.StartStopClicked += (s, e) => OnStartStopTask(task, card);
             card.CloseClicked += (s, e) => OnCloseTask(task, card);
@@ -146,35 +145,6 @@ namespace YongLiSystem.Views.Dashboard
             // 保存到字典
             _taskControls[task.Id] = (card, null);
             _scriptTasks.Add(task);
-        }
-
-        /// <summary>
-        /// 编辑任务 - 直接打开任务窗口（包含配置Tab）
-        /// </summary>
-        private void OnEditTask(ScriptTask task)
-        {
-            try
-            {
-                if (_taskControls.TryGetValue(task.Id, out var control))
-                {
-                    // 如果窗口已经打开，就激活它
-                    if (control.window != null && !control.window.IsDisposed)
-                    {
-                        control.window.Activate();
-                        control.window.BringToFront();
-                    }
-                    else
-                    {
-                        // 打开新窗口
-                        OpenTaskWindow(task, control.card);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"打开任务窗口失败: {ex.Message}", "错误", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
         }
 
         /// <summary>
