@@ -39,6 +39,7 @@ namespace YongLiSystem.Views.Dashboard
             colPendingAttemptCount = new DevExpress.XtraGrid.Columns.GridColumn();
             colPendingCreatedTime = new DevExpress.XtraGrid.Columns.GridColumn();
             gridView1 = new DevExpress.XtraGrid.Views.Grid.GridView();
+            groupOpenOrderPostAddr = new DevExpress.XtraEditors.GroupControl();
             groupCompleted = new DevExpress.XtraEditors.GroupControl();
             gridCompleted = new DevExpress.XtraGrid.GridControl();
             gridViewCompleted = new DevExpress.XtraGrid.Views.Grid.GridView();
@@ -60,8 +61,8 @@ namespace YongLiSystem.Views.Dashboard
             labelControl2 = new DevExpress.XtraEditors.LabelControl();
             txtCurrentIssue = new DevExpress.XtraEditors.TextEdit();
             labelControl1 = new DevExpress.XtraEditors.LabelControl();
-            groupOpenOrderPostAddr = new DevExpress.XtraEditors.GroupControl();
             groupCustTask = new DevExpress.XtraEditors.GroupControl();
+            flowLayoutTasks = new System.Windows.Forms.FlowLayoutPanel();
             buttonAddScriptTask = new DevExpress.XtraEditors.SimpleButton();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
@@ -76,6 +77,7 @@ namespace YongLiSystem.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)gridPending).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridViewPending).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridView1).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)groupOpenOrderPostAddr).BeginInit();
             ((System.ComponentModel.ISupportInitialize)groupCompleted).BeginInit();
             groupCompleted.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridCompleted).BeginInit();
@@ -87,7 +89,6 @@ namespace YongLiSystem.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)groupOpenOrderPostAddr).BeginInit();
             ((System.ComponentModel.ISupportInitialize)groupCustTask).BeginInit();
             groupCustTask.SuspendLayout();
             SuspendLayout();
@@ -217,6 +218,14 @@ namespace YongLiSystem.Views.Dashboard
             // 
             gridView1.GridControl = gridPending;
             gridView1.Name = "gridView1";
+            // 
+            // groupOpenOrderPostAddr
+            // 
+            groupOpenOrderPostAddr.Location = new System.Drawing.Point(5, 442);
+            groupOpenOrderPostAddr.Name = "groupOpenOrderPostAddr";
+            groupOpenOrderPostAddr.Size = new System.Drawing.Size(320, 176);
+            groupOpenOrderPostAddr.TabIndex = 1;
+            groupOpenOrderPostAddr.Text = "提交地址";
             // 
             // groupCompleted
             // 
@@ -429,16 +438,9 @@ namespace YongLiSystem.Views.Dashboard
             labelControl1.TabIndex = 0;
             labelControl1.Text = "当期期号:";
             // 
-            // groupOpenOrderPostAddr
-            // 
-            groupOpenOrderPostAddr.Location = new System.Drawing.Point(5, 442);
-            groupOpenOrderPostAddr.Name = "groupOpenOrderPostAddr";
-            groupOpenOrderPostAddr.Size = new System.Drawing.Size(320, 176);
-            groupOpenOrderPostAddr.TabIndex = 1;
-            groupOpenOrderPostAddr.Text = "提交地址";
-            // 
             // groupCustTask
             // 
+            groupCustTask.Controls.Add(flowLayoutTasks);
             groupCustTask.Controls.Add(buttonAddScriptTask);
             groupCustTask.Dock = System.Windows.Forms.DockStyle.Fill;
             groupCustTask.Location = new System.Drawing.Point(0, 0);
@@ -447,13 +449,24 @@ namespace YongLiSystem.Views.Dashboard
             groupCustTask.TabIndex = 0;
             groupCustTask.Text = "[半自动]定制采集任务";
             // 
+            // flowLayoutTasks
+            // 
+            flowLayoutTasks.AutoScroll = true;
+            flowLayoutTasks.Dock = System.Windows.Forms.DockStyle.Fill;
+            flowLayoutTasks.Location = new System.Drawing.Point(2, 23);
+            flowLayoutTasks.Name = "flowLayoutTasks";
+            flowLayoutTasks.Padding = new System.Windows.Forms.Padding(5);
+            flowLayoutTasks.Size = new System.Drawing.Size(1054, 731);
+            flowLayoutTasks.TabIndex = 1;
+            // 
             // buttonAddScriptTask
             // 
-            buttonAddScriptTask.Location = new System.Drawing.Point(145, 0);
+            buttonAddScriptTask.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            buttonAddScriptTask.Location = new System.Drawing.Point(953, -1);
             buttonAddScriptTask.Name = "buttonAddScriptTask";
-            buttonAddScriptTask.Size = new System.Drawing.Size(46, 23);
+            buttonAddScriptTask.Size = new System.Drawing.Size(105, 26);
             buttonAddScriptTask.TabIndex = 0;
-            buttonAddScriptTask.Text = "增加";
+            buttonAddScriptTask.Text = "➕ 增加脚本任务";
             // 
             // DataCollectionPage
             // 
@@ -477,6 +490,7 @@ namespace YongLiSystem.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)gridPending).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridViewPending).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridView1).EndInit();
+            ((System.ComponentModel.ISupportInitialize)groupOpenOrderPostAddr).EndInit();
             ((System.ComponentModel.ISupportInitialize)groupCompleted).EndInit();
             groupCompleted.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridCompleted).EndInit();
@@ -489,7 +503,6 @@ namespace YongLiSystem.Views.Dashboard
             ((System.ComponentModel.ISupportInitialize)txtNextIssue.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentTime.Properties).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtCurrentIssue.Properties).EndInit();
-            ((System.ComponentModel.ISupportInitialize)groupOpenOrderPostAddr).EndInit();
             ((System.ComponentModel.ISupportInitialize)groupCustTask).EndInit();
             groupCustTask.ResumeLayout(false);
             ResumeLayout(false);
@@ -532,6 +545,7 @@ namespace YongLiSystem.Views.Dashboard
         private DevExpress.XtraGrid.Views.Grid.GridView gridView1;
         private DevExpress.XtraEditors.GroupControl groupOpenOrderPostAddr;
         private DevExpress.XtraEditors.GroupControl groupCustTask;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutTasks;
         private DevExpress.XtraEditors.SimpleButton buttonAddScriptTask;
     }
 }

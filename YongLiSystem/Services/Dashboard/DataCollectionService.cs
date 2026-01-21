@@ -1,25 +1,32 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SQLite;
 using YongLiSystem.Models.Dashboard;
 using YongLiSystem.Services;
+using YongLiSystem.Infrastructure.Paths;
 
 namespace YongLiSystem.Services.Dashboard
 {
     /// <summary>
-    /// 数据采集服务
+    /// 数据采集服务 - 包含脚本任务的数据库操作
     /// </summary>
     public class DataCollectionService
     {
         private readonly LoggingService _loggingService;
         private CancellationTokenSource? _cancellationTokenSource;
         private Task? _collectionTask;
+        private SQLiteConnection? _db;
+        private readonly string _dbPath;
 
         public DataCollectionService()
         {
             _loggingService = LoggingService.Instance;
+            _dbPath = Path.Combine(AppPaths.DataDirectory, "app.db");
+            InitializeDatabase();
         }
 
         /// <summary>
@@ -212,6 +219,143 @@ namespace YongLiSystem.Services.Dashboard
                 return false;
             }
         }
+
+        #region 脚本任务数据库操作
+
+        /// <summary>
+        /// 初始化数据库
+        /// </summary>
+        private void InitializeDatabase()
+        {
+            try
+            {
+                // 确保数据目录存在
+                var dataDir = Path.GetDirectoryName(_dbPath);
+                if (!string.IsNullOrEmpty(dataDir) && !Directory.Exists(dataDir))
+                {
+                    Directory.CreateDirectory(dataDir);
+                }
+
+                _db = new SQLiteConnection(_dbPath);
+                
+                // 创建脚本任务表
+                _db.CreateTable<ScriptTask>();
+                
+                _loggingService.Info("DataCollectionService", $"数据库初始化成功: {_dbPath}");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("DataCollectionService", $"数据库初始化失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 加载所有脚本任务
+        /// </summary>
+        public List<ScriptTask> LoadAllScriptTasks()
+        {
+            try
+            {
+                if (_db == null)
+                {
+                    _loggingService.Warn("DataCollectionService", "数据库未初始化");
+                    return new List<ScriptTask>();
+                }
+
+                var tasks = _db.Table<ScriptTask>().ToList();
+                _loggingService.Info("DataCollectionService", $"加载了 {tasks.Count} 个脚本任务");
+                return tasks;
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("DataCollectionService", $"加载脚本任务失败: {ex.Message}", ex);
+                return new List<ScriptTask>();
+            }
+        }
+
+        /// <summary>
+        /// 保存脚本任务
+        /// </summary>
+        public bool SaveScriptTask(ScriptTask task)
+        {
+            try
+            {
+                if (_db == null)
+                {
+                    _loggingService.Warn("DataCollectionService", "数据库未初始化");
+                    return false;
+                }
+
+                if (task.Id == 0)
+                {
+                    // 新增
+                    task.CreatedTime = DateTime.Now;
+                    _db.Insert(task);
+                    _loggingService.Info("DataCollectionService", $"新增脚本任务: {task.Name} (ID: {task.Id})");
+                }
+                else
+                {
+                    // 更新
+                    _db.Update(task);
+                    _loggingService.Info("DataCollectionService", $"更新脚本任务: {task.Name} (ID: {task.Id})");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("DataCollectionService", $"保存脚本任务失败: {ex.Message}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 删除脚本任务
+        /// </summary>
+        public bool DeleteScriptTask(int taskId)
+        {
+            try
+            {
+                if (_db == null)
+                {
+                    _loggingService.Warn("DataCollectionService", "数据库未初始化");
+                    return false;
+                }
+
+                _db.Delete<ScriptTask>(taskId);
+                _loggingService.Info("DataCollectionService", $"删除脚本任务 ID: {taskId}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("DataCollectionService", $"删除脚本任务失败: {ex.Message}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 根据ID获取脚本任务
+        /// </summary>
+        public ScriptTask? GetScriptTask(int taskId)
+        {
+            try
+            {
+                if (_db == null)
+                {
+                    _loggingService.Warn("DataCollectionService", "数据库未初始化");
+                    return null;
+                }
+
+                return _db.Find<ScriptTask>(taskId);
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error("DataCollectionService", $"获取脚本任务失败: {ex.Message}", ex);
+                return null;
+            }
+        }
+
+        #endregion
     }
 }
 
