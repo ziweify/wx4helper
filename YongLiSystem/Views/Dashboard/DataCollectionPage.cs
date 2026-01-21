@@ -8,6 +8,8 @@ using YongLiSystem.Services.Dashboard;
 using YongLiSystem.ViewModels.Dashboard;
 using YongLiSystem.Views.Dashboard.Monitors;
 using YongLiSystem.Views.Dashboard.Controls;
+using YongLiSystem.Helpers;
+using Unit.La.Controls;
 using static YongLiSystem.Views.Dashboard.Controls.MonitorConfigContainerControl;
 
 namespace YongLiSystem.Views.Dashboard
@@ -21,8 +23,8 @@ namespace YongLiSystem.Views.Dashboard
         private readonly DataCollectionService _dataCollectionService;
         private MonitorConfigContainerControl? _monitorConfigContainer;
         private readonly List<ScriptTask> _scriptTasks = new List<ScriptTask>();
-        private readonly Dictionary<int, (ScriptTaskCardControl card, BrowserTaskWindow? window)> _taskControls 
-            = new Dictionary<int, (ScriptTaskCardControl, BrowserTaskWindow?)>();
+        private readonly Dictionary<int, (ScriptTaskCardControl card, BrowserTaskControl? window)> _taskControls 
+            = new Dictionary<int, (ScriptTaskCardControl, BrowserTaskControl?)>();
 
         public DataCollectionPage()
         {
@@ -285,15 +287,19 @@ namespace YongLiSystem.Views.Dashboard
                 }
             }
 
-            // 创建新窗口
-            var window = new BrowserTaskWindow(task);
+            // 创建新窗口，使用 Unit.la 的 BrowserTaskControl
+            var config = task.ToBrowserTaskConfig();
+            var window = new BrowserTaskControl(config);
             
             // 订阅配置变更事件
-            window.TaskConfigChanged += (s, updatedTask) =>
+            window.ConfigChanged += (s, updatedConfig) =>
             {
+                // 将配置更新回 ScriptTask
+                task.UpdateFromConfig(updatedConfig);
+                
                 // 自动保存配置
-                _dataCollectionService.SaveScriptTask(updatedTask);
-                card.Task = updatedTask; // 更新卡片显示
+                _dataCollectionService.SaveScriptTask(task);
+                card.Task = task; // 更新卡片显示
             };
 
             // 窗口关闭时更新状态

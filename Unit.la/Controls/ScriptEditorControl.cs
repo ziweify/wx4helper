@@ -538,6 +538,21 @@ namespace Unit.La.Controls
             _scriptEngine.OnBreakpoint += (s, e) => OnBreakpointHit?.Invoke(e);
         }
 
+        /// <summary>
+        /// 获取当前脚本引擎
+        /// </summary>
+        public IScriptEngine ScriptEngine
+        {
+            get
+            {
+                if (_scriptEngine == null)
+                {
+                    CreateDefaultScriptEngine();
+                }
+                return _scriptEngine!;
+            }
+        }
+
         #endregion
 
         #region 私有方法（内部实现）
@@ -553,12 +568,8 @@ namespace Unit.La.Controls
             _scriptEngine.OnError += (s, e) => OnError?.Invoke(e.Error);
             _scriptEngine.OnBreakpoint += (s, e) => OnBreakpointHit?.Invoke(e);
 
-            // 绑定默认功能（如果已注册）
-            var registry = ScriptFunctionRegistry.Instance;
-            if (registry != null)
-            {
-                registry.BindToEngine(_scriptEngine);
-            }
+            // 注意: 默认函数现在由 BrowserTaskControl 在创建时通过 ScriptFunctionRegistry 注册
+            // 这里不再自动绑定，而是由使用者调用 RegisterScriptFunction 或 RegisterScriptObject
         }
 
         /// <summary>
