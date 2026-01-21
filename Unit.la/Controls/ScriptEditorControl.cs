@@ -88,9 +88,17 @@ namespace Unit.La.Controls
             if (scintilla == null) return;
 
             // 配置 ScintillaNET
-            // 注意：ScintillaNET可能没有Lua Lexer，使用通用配置
-            // 如果需要Lua语法高亮，可以后续扩展或使用自定义配置
-            scintilla.LexerName = "container"; // 使用容器模式，后续可以自定义语法高亮
+            // 使用 lua 词法分析器
+            try
+            {
+                scintilla.LexerName = "lua";
+            }
+            catch
+            {
+                // 如果 lua 不可用，不设置词法分析器（使用纯文本模式）
+                // ScintillaNET 5.x 应该支持 lua，但为了兼容性添加 try-catch
+            }
+            
             scintilla.StyleClearAll();
             
             // 设置基础样式
@@ -107,12 +115,28 @@ namespace Unit.La.Controls
         {
             if (scintilla == null) return;
 
-            // Lua 关键字（用于后续自定义语法高亮）
-            scintilla.SetKeywords(0, "function end if then else elseif while do repeat until for in return break local and or not");
-            
-            // 注意：由于ScintillaNET可能没有内置Lua语法高亮，
-            // 这里先配置基础样式，语法高亮功能可以在后续版本中通过自定义实现
-            // 或者使用支持Lua的第三方编辑器控件
+            try
+            {
+                // Lua 关键字
+                scintilla.SetKeywords(0, "and break do else elseif end false for function if in local nil not or repeat return then true until while");
+                scintilla.SetKeywords(1, "string table math io file os debug coroutine"); // Lua标准库
+                
+                // 配置 Lua 语法样式
+                scintilla.Styles[ScintillaNET.Style.Lua.Default].ForeColor = Color.Black;
+                scintilla.Styles[ScintillaNET.Style.Lua.Comment].ForeColor = Color.Green;
+                scintilla.Styles[ScintillaNET.Style.Lua.CommentLine].ForeColor = Color.Green;
+                scintilla.Styles[ScintillaNET.Style.Lua.Number].ForeColor = Color.DarkOrange;
+                scintilla.Styles[ScintillaNET.Style.Lua.Word].ForeColor = Color.Blue;
+                scintilla.Styles[ScintillaNET.Style.Lua.Word].Bold = true;
+                scintilla.Styles[ScintillaNET.Style.Lua.String].ForeColor = Color.Brown;
+                scintilla.Styles[ScintillaNET.Style.Lua.Character].ForeColor = Color.Brown;
+                scintilla.Styles[ScintillaNET.Style.Lua.LiteralString].ForeColor = Color.Brown;
+                scintilla.Styles[ScintillaNET.Style.Lua.Operator].ForeColor = Color.Purple;
+            }
+            catch
+            {
+                // 如果样式配置失败，忽略（使用默认样式）
+            }
         }
 
         /// <summary>

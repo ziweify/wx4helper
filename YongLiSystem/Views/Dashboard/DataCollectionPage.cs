@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
-using Unit.Browser.Controls;
 using YongLiSystem.Models.Dashboard;
 using YongLiSystem.Services.Dashboard;
 using YongLiSystem.ViewModels.Dashboard;
@@ -22,8 +21,8 @@ namespace YongLiSystem.Views.Dashboard
         private readonly DataCollectionService _dataCollectionService;
         private MonitorConfigContainerControl? _monitorConfigContainer;
         private readonly List<ScriptTask> _scriptTasks = new List<ScriptTask>();
-        private readonly Dictionary<int, (ScriptTaskCardControl card, BrowserWindowProxy? proxy)> _taskControls 
-            = new Dictionary<int, (ScriptTaskCardControl, BrowserWindowProxy?)>();
+        private readonly Dictionary<int, (ScriptTaskCardControl card, BrowserTaskWindow? window)> _taskControls 
+            = new Dictionary<int, (ScriptTaskCardControl, BrowserTaskWindow?)>();
 
         public DataCollectionPage()
         {
@@ -81,84 +80,35 @@ namespace YongLiSystem.Views.Dashboard
         {
             try
             {
-                // 创建MonitorConfigControl作为配置对话框
-                using var configDialog = new Form
+                // 创建新任务（使用默认值）
+                var task = new ScriptTask
                 {
-                    Text = "添加脚本任务",
-                    Width = 800,
-                    Height = 600,
-                    StartPosition = FormStartPosition.CenterParent,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
-                    MaximizeBox = false,
-                    MinimizeBox = false
+                    Name = $"新任务 {DateTime.Now:HHmmss}",
+                    Url = "https://www.baidu.com",
+                    Username = "",
+                    Password = "",
+                    AutoLogin = false,
+                    Script = "-- Lua 脚本\nprint('Hello World')",
+                    CreatedTime = DateTime.Now,
+                    Status = "待启动"
                 };
 
-                var configControl = new MonitorConfigControl
+                // 保存到数据库
+                if (_dataCollectionService.SaveScriptTask(task))
                 {
-                    Dock = DockStyle.Fill
-                };
-
-                var btnPanel = new Panel
+                    // 添加到界面
+                    AddScriptTaskCard(task);
+                    
+                    // 立即打开编辑窗口（这样用户可以修改配置）
+                    OpenTaskWindow(task, _taskControls[task.Id].card);
+                    
+                    MessageBox.Show("脚本任务已创建，请在窗口中配置！", "成功", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
                 {
-                    Dock = DockStyle.Bottom,
-                    Height = 50
-                };
-
-                var btnOK = new DevExpress.XtraEditors.SimpleButton
-                {
-                    Text = "确定",
-                    DialogResult = DialogResult.OK,
-                    Width = 100,
-                    Height = 30,
-                    Location = new System.Drawing.Point(580, 10)
-                };
-
-                var btnCancel = new DevExpress.XtraEditors.SimpleButton
-                {
-                    Text = "取消",
-                    DialogResult = DialogResult.Cancel,
-                    Width = 100,
-                    Height = 30,
-                    Location = new System.Drawing.Point(690, 10)
-                };
-
-                btnPanel.Controls.Add(btnOK);
-                btnPanel.Controls.Add(btnCancel);
-                configDialog.Controls.Add(configControl);
-                configDialog.Controls.Add(btnPanel);
-                configDialog.AcceptButton = btnOK;
-                configDialog.CancelButton = btnCancel;
-
-                if (configDialog.ShowDialog(this) == DialogResult.OK)
-                {
-                    // 创建新任务
-                    var task = new ScriptTask
-                    {
-                        Name = string.IsNullOrWhiteSpace(configControl.Url) 
-                            ? $"任务 {DateTime.Now:HHmmss}" 
-                            : $"任务 - {new Uri(configControl.Url).Host}",
-                        Url = configControl.Url,
-                        Username = configControl.Username,
-                        Password = configControl.Password,
-                        AutoLogin = configControl.AutoLogin,
-                        Script = configControl.Script,
-                        CreatedTime = DateTime.Now,
-                        Status = "待启动"
-                    };
-
-                    // 保存到数据库
-                    if (_dataCollectionService.SaveScriptTask(task))
-                    {
-                        // 添加到界面
-                        AddScriptTaskCard(task);
-                        MessageBox.Show("脚本任务添加成功！", "成功", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show("保存脚本任务失败！", "错误", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    MessageBox.Show("保存脚本任务失败！", "错误", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
@@ -177,7 +127,7 @@ namespace YongLiSystem.Views.Dashboard
             {
                 Task = task,
                 Width = 280,
-                Height = 220,
+                Height = 120,  // 简化版高度更小
                 Margin = new Padding(5)
             };
 
@@ -194,87 +144,30 @@ namespace YongLiSystem.Views.Dashboard
         }
 
         /// <summary>
-        /// 编辑任务
+        /// 编辑任务 - 直接打开任务窗口（包含配置Tab）
         /// </summary>
         private void OnEditTask(ScriptTask task)
         {
             try
             {
-                using var configDialog = new Form
+                if (_taskControls.TryGetValue(task.Id, out var control))
                 {
-                    Text = "编辑脚本任务",
-                    Width = 800,
-                    Height = 600,
-                    StartPosition = FormStartPosition.CenterParent,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
-                    MaximizeBox = false,
-                    MinimizeBox = false
-                };
-
-                var configControl = new MonitorConfigControl
-                {
-                    Dock = DockStyle.Fill,
-                    Url = task.Url,
-                    Username = task.Username,
-                    Password = task.Password,
-                    AutoLogin = task.AutoLogin,
-                    Script = task.Script
-                };
-
-                var btnPanel = new Panel
-                {
-                    Dock = DockStyle.Bottom,
-                    Height = 50
-                };
-
-                var btnOK = new DevExpress.XtraEditors.SimpleButton
-                {
-                    Text = "确定",
-                    DialogResult = DialogResult.OK,
-                    Width = 100,
-                    Height = 30,
-                    Location = new System.Drawing.Point(580, 10)
-                };
-
-                var btnCancel = new DevExpress.XtraEditors.SimpleButton
-                {
-                    Text = "取消",
-                    DialogResult = DialogResult.Cancel,
-                    Width = 100,
-                    Height = 30,
-                    Location = new System.Drawing.Point(690, 10)
-                };
-
-                btnPanel.Controls.Add(btnOK);
-                btnPanel.Controls.Add(btnCancel);
-                configDialog.Controls.Add(configControl);
-                configDialog.Controls.Add(btnPanel);
-
-                if (configDialog.ShowDialog(this) == DialogResult.OK)
-                {
-                    // 更新任务
-                    task.Url = configControl.Url;
-                    task.Username = configControl.Username;
-                    task.Password = configControl.Password;
-                    task.AutoLogin = configControl.AutoLogin;
-                    task.Script = configControl.Script;
-
-                    // 保存到数据库
-                    if (_dataCollectionService.SaveScriptTask(task))
+                    // 如果窗口已经打开，就激活它
+                    if (control.window != null && !control.window.IsDisposed)
                     {
-                        // 更新UI
-                        if (_taskControls.TryGetValue(task.Id, out var control))
-                        {
-                            control.card.Task = task;
-                        }
-                        MessageBox.Show("脚本任务更新成功！", "成功", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        control.window.Activate();
+                        control.window.BringToFront();
+                    }
+                    else
+                    {
+                        // 打开新窗口
+                        OpenTaskWindow(task, control.card);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"编辑脚本任务失败: {ex.Message}", "错误", 
+                MessageBox.Show($"打开任务窗口失败: {ex.Message}", "错误", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -321,7 +214,7 @@ namespace YongLiSystem.Views.Dashboard
         /// <summary>
         /// 启动/停止任务
         /// </summary>
-        private async void OnStartStopTask(ScriptTask task, ScriptTaskCardControl card)
+        private void OnStartStopTask(ScriptTask task, ScriptTaskCardControl card)
         {
             try
             {
@@ -331,7 +224,6 @@ namespace YongLiSystem.Views.Dashboard
                 }
                 else
                 {
-                    // 使用 async void 可以直接调用 async 方法
                     StartTask(task, card);
                 }
 
@@ -346,30 +238,23 @@ namespace YongLiSystem.Views.Dashboard
         }
 
         /// <summary>
-        /// 启动任务
+        /// 启动任务 - 直接打开任务窗口
         /// </summary>
-        private async void StartTask(ScriptTask task, ScriptTaskCardControl card)
+        private void StartTask(ScriptTask task, ScriptTaskCardControl card)
         {
             try
             {
-                // 创建浏览器窗口
-                var proxy = new BrowserWindowProxy();
+                // 直接打开集成窗口
+                OpenTaskWindow(task, card);
                 
-                // 初始化浏览器窗口
-                var windowTitle = $"{task.Name} - {task.Id}";
-                await proxy.InitializeAsync(windowTitle, task.Url);
-
-                // 设置到卡片控件
-                card.SetBrowserProxy(proxy);
-
                 // 更新状态
                 task.IsRunning = true;
                 task.Status = "运行中";
                 task.LastRunTime = DateTime.Now;
-                card.Task = task; // 触发UI更新
-
-                // 保存浏览器代理
-                _taskControls[task.Id] = (card, proxy);
+                card.Task = task;
+                
+                // 保存状态
+                _dataCollectionService.SaveScriptTask(task);
             }
             catch (Exception ex)
             {
@@ -384,6 +269,53 @@ namespace YongLiSystem.Views.Dashboard
         }
 
         /// <summary>
+        /// 打开任务窗口（统一方法）
+        /// </summary>
+        private void OpenTaskWindow(ScriptTask task, ScriptTaskCardControl card)
+        {
+            // 检查窗口是否已存在
+            if (_taskControls.TryGetValue(task.Id, out var existing))
+            {
+                if (existing.window != null && !existing.window.IsDisposed)
+                {
+                    // 窗口已存在，激活它
+                    existing.window.Activate();
+                    existing.window.BringToFront();
+                    return;
+                }
+            }
+
+            // 创建新窗口
+            var window = new BrowserTaskWindow(task);
+            
+            // 订阅配置变更事件
+            window.TaskConfigChanged += (s, updatedTask) =>
+            {
+                // 自动保存配置
+                _dataCollectionService.SaveScriptTask(updatedTask);
+                card.Task = updatedTask; // 更新卡片显示
+            };
+
+            // 窗口关闭时更新状态
+            window.FormClosed += (s, e) =>
+            {
+                task.IsRunning = false;
+                task.Status = "已停止";
+                card.Task = task;
+                _dataCollectionService.SaveScriptTask(task);
+                
+                // 更新字典
+                _taskControls[task.Id] = (card, null);
+            };
+
+            // 显示窗口
+            window.Show();
+
+            // 保存到字典
+            _taskControls[task.Id] = (card, window);
+        }
+
+        /// <summary>
         /// 停止任务
         /// </summary>
         private void StopTask(ScriptTask task)
@@ -391,8 +323,7 @@ namespace YongLiSystem.Views.Dashboard
             if (_taskControls.TryGetValue(task.Id, out var control))
             {
                 // 关闭浏览器窗口
-                control.proxy?.CloseWindow();
-                control.proxy?.Dispose();
+                control.window?.Close();
 
                 // 更新状态
                 task.IsRunning = false;

@@ -16,8 +16,8 @@ namespace YongLiSystem.Views.Dashboard.Controls
         private void InitializeComponent()
         {
             groupControl = new DevExpress.XtraEditors.GroupControl();
-            pictureBoxThumbnail = new System.Windows.Forms.PictureBox();
             panelInfo = new DevExpress.XtraEditors.PanelControl();
+            labelLastRunTime = new DevExpress.XtraEditors.LabelControl();
             labelStatus = new DevExpress.XtraEditors.LabelControl();
             labelUrl = new DevExpress.XtraEditors.LabelControl();
             labelTaskName = new DevExpress.XtraEditors.LabelControl();
@@ -27,7 +27,6 @@ namespace YongLiSystem.Views.Dashboard.Controls
             btnStartStop = new DevExpress.XtraEditors.SimpleButton();
             ((System.ComponentModel.ISupportInitialize)groupControl).BeginInit();
             groupControl.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxThumbnail).BeginInit();
             ((System.ComponentModel.ISupportInitialize)panelInfo).BeginInit();
             panelInfo.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)panelButtons).BeginInit();
@@ -36,37 +35,36 @@ namespace YongLiSystem.Views.Dashboard.Controls
             // 
             // groupControl
             // 
-            groupControl.Controls.Add(pictureBoxThumbnail);
             groupControl.Controls.Add(panelInfo);
             groupControl.Controls.Add(panelButtons);
             groupControl.Dock = System.Windows.Forms.DockStyle.Fill;
             groupControl.Location = new System.Drawing.Point(0, 0);
             groupControl.Name = "groupControl";
-            groupControl.Size = new System.Drawing.Size(280, 220);
+            groupControl.Size = new System.Drawing.Size(280, 120);
             groupControl.TabIndex = 0;
             groupControl.Text = "脚本任务";
             // 
-            // pictureBoxThumbnail
-            // 
-            pictureBoxThumbnail.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            pictureBoxThumbnail.Dock = System.Windows.Forms.DockStyle.Fill;
-            pictureBoxThumbnail.Location = new System.Drawing.Point(2, 63);
-            pictureBoxThumbnail.Name = "pictureBoxThumbnail";
-            pictureBoxThumbnail.Size = new System.Drawing.Size(276, 125);
-            pictureBoxThumbnail.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-            pictureBoxThumbnail.TabIndex = 0;
-            pictureBoxThumbnail.TabStop = false;
-            // 
             // panelInfo
             // 
+            panelInfo.Controls.Add(labelLastRunTime);
             panelInfo.Controls.Add(labelStatus);
             panelInfo.Controls.Add(labelUrl);
             panelInfo.Controls.Add(labelTaskName);
-            panelInfo.Dock = System.Windows.Forms.DockStyle.Top;
+            panelInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             panelInfo.Location = new System.Drawing.Point(2, 23);
             panelInfo.Name = "panelInfo";
-            panelInfo.Size = new System.Drawing.Size(276, 40);
+            panelInfo.Size = new System.Drawing.Size(276, 65);
             panelInfo.TabIndex = 1;
+            // 
+            // labelLastRunTime
+            // 
+            labelLastRunTime.Appearance.ForeColor = System.Drawing.Color.Gray;
+            labelLastRunTime.Appearance.Options.UseForeColor = true;
+            labelLastRunTime.Location = new System.Drawing.Point(10, 45);
+            labelLastRunTime.Name = "labelLastRunTime";
+            labelLastRunTime.Size = new System.Drawing.Size(48, 14);
+            labelLastRunTime.TabIndex = 3;
+            labelLastRunTime.Text = "未运行";
             // 
             // labelStatus
             // 
@@ -74,7 +72,7 @@ namespace YongLiSystem.Views.Dashboard.Controls
             labelStatus.Appearance.ForeColor = System.Drawing.Color.Green;
             labelStatus.Appearance.Options.UseFont = true;
             labelStatus.Appearance.Options.UseForeColor = true;
-            labelStatus.Location = new System.Drawing.Point(220, 12);
+            labelStatus.Location = new System.Drawing.Point(220, 7);
             labelStatus.Name = "labelStatus";
             labelStatus.Size = new System.Drawing.Size(44, 13);
             labelStatus.TabIndex = 2;
@@ -84,7 +82,7 @@ namespace YongLiSystem.Views.Dashboard.Controls
             // 
             labelUrl.Appearance.ForeColor = System.Drawing.Color.Gray;
             labelUrl.Appearance.Options.UseForeColor = true;
-            labelUrl.Location = new System.Drawing.Point(10, 23);
+            labelUrl.Location = new System.Drawing.Point(10, 28);
             labelUrl.Name = "labelUrl";
             labelUrl.Size = new System.Drawing.Size(80, 14);
             labelUrl.TabIndex = 1;
@@ -94,7 +92,7 @@ namespace YongLiSystem.Views.Dashboard.Controls
             // 
             labelTaskName.Appearance.Font = new System.Drawing.Font("Tahoma", 9F, System.Drawing.FontStyle.Bold);
             labelTaskName.Appearance.Options.UseFont = true;
-            labelTaskName.Location = new System.Drawing.Point(10, 5);
+            labelTaskName.Location = new System.Drawing.Point(10, 7);
             labelTaskName.Name = "labelTaskName";
             labelTaskName.Size = new System.Drawing.Size(52, 14);
             labelTaskName.TabIndex = 0;
@@ -106,7 +104,7 @@ namespace YongLiSystem.Views.Dashboard.Controls
             panelButtons.Controls.Add(btnEdit);
             panelButtons.Controls.Add(btnStartStop);
             panelButtons.Dock = System.Windows.Forms.DockStyle.Bottom;
-            panelButtons.Location = new System.Drawing.Point(2, 188);
+            panelButtons.Location = new System.Drawing.Point(2, 88);
             panelButtons.Name = "panelButtons";
             panelButtons.Size = new System.Drawing.Size(276, 30);
             panelButtons.TabIndex = 2;
@@ -148,10 +146,9 @@ namespace YongLiSystem.Views.Dashboard.Controls
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             Controls.Add(groupControl);
             Name = "ScriptTaskCardControl";
-            Size = new System.Drawing.Size(280, 220);
+            Size = new System.Drawing.Size(280, 120);
             ((System.ComponentModel.ISupportInitialize)groupControl).EndInit();
             groupControl.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)pictureBoxThumbnail).EndInit();
             ((System.ComponentModel.ISupportInitialize)panelInfo).EndInit();
             panelInfo.ResumeLayout(false);
             panelInfo.PerformLayout();
@@ -163,8 +160,8 @@ namespace YongLiSystem.Views.Dashboard.Controls
         #endregion
 
         private DevExpress.XtraEditors.GroupControl groupControl;
-        private System.Windows.Forms.PictureBox pictureBoxThumbnail;
         private DevExpress.XtraEditors.PanelControl panelInfo;
+        private DevExpress.XtraEditors.LabelControl labelLastRunTime;
         private DevExpress.XtraEditors.LabelControl labelStatus;
         private DevExpress.XtraEditors.LabelControl labelUrl;
         private DevExpress.XtraEditors.LabelControl labelTaskName;

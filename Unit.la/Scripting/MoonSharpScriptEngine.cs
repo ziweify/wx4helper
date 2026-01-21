@@ -17,8 +17,9 @@ namespace Unit.La.Scripting
         {
             _script = new Script();
             
-            // 允许CLR类型访问
-            UserData.RegisterAssembly();
+            // .NET 8 不支持 Assembly.GetCallingAssembly()，所以不调用 RegisterAssembly
+            // 类型将按需自动注册
+            // 如果需要注册特定类型，使用: UserData.RegisterType<YourType>();
         }
 
         public ScriptResult Execute(string scriptCode, Dictionary<string, object>? context = null)
