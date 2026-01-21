@@ -577,6 +577,30 @@ namespace YongLiSystem.Views.Dashboard
         }
 
         /// <summary>
+        /// 停靠在右侧
+        /// </summary>
+        private void OnDockRight(object? sender, EventArgs e)
+        {
+            SetDockPosition(DockPosition.Right);
+        }
+
+        /// <summary>
+        /// 停靠在底部
+        /// </summary>
+        private void OnDockBottom(object? sender, EventArgs e)
+        {
+            SetDockPosition(DockPosition.Bottom);
+        }
+
+        /// <summary>
+        /// 停靠在左侧
+        /// </summary>
+        private void OnDockLeft(object? sender, EventArgs e)
+        {
+            SetDockPosition(DockPosition.Left);
+        }
+
+        /// <summary>
         /// 设置面板停靠位置
         /// </summary>
         private void SetDockPosition(DockPosition position)

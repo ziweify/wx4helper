@@ -258,21 +258,21 @@ namespace YongLiSystem.Views.Dashboard
             toolStripMenuItemDockRight.Name = "toolStripMenuItemDockRight";
             toolStripMenuItemDockRight.Size = new System.Drawing.Size(180, 22);
             toolStripMenuItemDockRight.Text = "➡️ 停靠在右侧";
-            toolStripMenuItemDockRight.Click += (s, e) => SetDockPosition(DockPosition.Right);
+            toolStripMenuItemDockRight.Click += OnDockRight;
             // 
             // toolStripMenuItemDockBottom
             // 
             toolStripMenuItemDockBottom.Name = "toolStripMenuItemDockBottom";
             toolStripMenuItemDockBottom.Size = new System.Drawing.Size(180, 22);
             toolStripMenuItemDockBottom.Text = "⬇️ 停靠在底部";
-            toolStripMenuItemDockBottom.Click += (s, e) => SetDockPosition(DockPosition.Bottom);
+            toolStripMenuItemDockBottom.Click += OnDockBottom;
             // 
             // toolStripMenuItemDockLeft
             // 
             toolStripMenuItemDockLeft.Name = "toolStripMenuItemDockLeft";
             toolStripMenuItemDockLeft.Size = new System.Drawing.Size(180, 22);
             toolStripMenuItemDockLeft.Text = "⬅️ 停靠在左侧";
-            toolStripMenuItemDockLeft.Click += (s, e) => SetDockPosition(DockPosition.Left);
+            toolStripMenuItemDockLeft.Click += OnDockLeft;
             // 
             // toolStripButtonTogglePanel
             // 
