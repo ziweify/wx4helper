@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -26,6 +27,7 @@ namespace Unit.La.Controls
         private readonly List<string> _navigationHistory = new();
         private int _historyIndex = -1;
         private Action<string>? _customLogHandler;
+        private System.Windows.Forms.Timer? _thumbnailTimer; // 缩略图更新定时器
 
         /// <summary>
         /// 配置变更事件
@@ -41,6 +43,11 @@ namespace Unit.La.Controls
         /// 脚本执行完成事件
         /// </summary>
         public event EventHandler<object>? ScriptExecuted;
+
+        /// <summary>
+        /// 缩略图更新事件
+        /// </summary>
+        public event EventHandler<Image>? ThumbnailUpdated;
 
         /// <summary>
         /// 获取当前配置
@@ -59,6 +66,17 @@ namespace Unit.La.Controls
             
             // 初始化WebView2
             InitializeWebView();
+            
+            // 🔧 修改关闭行为：关闭时隐藏而不是真正关闭
+            FormClosing += BrowserTaskControl_FormClosing;
+            
+            // 🔧 初始化缩略图定时器（每2秒更新一次）
+            _thumbnailTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 2000 // 2秒
+            };
+            _thumbnailTimer.Tick += ThumbnailTimer_Tick;
+            _thumbnailTimer.Start();
         }
 
         /// <summary>
@@ -208,11 +226,7 @@ namespace Unit.La.Controls
                 Dock = DockStyle.Fill,
                 Config = _config
             };
-            _configPanel.ConfigChanged += (s, newConfig) =>
-            {
-                _config = newConfig;
-                ConfigChanged?.Invoke(this, _config);
-            };
+            // 不再订阅 ConfigChanged 自动事件，改为在点击"保存"时手动触发
             tabPageConfig.Controls.Add(_configPanel);
 
             // 日志面板
@@ -521,12 +535,22 @@ namespace Unit.La.Controls
             {
                 _config = _configPanel.Config!;
                 _config.Script = _scriptEditor?.ScriptText ?? "";
+                
+                // 🔍 添加详细日志
+                LogMessage($"💾 准备保存配置:");
+                LogMessage($"  - 名称: {_config.Name}");
+                LogMessage($"  - URL: {_config.Url}");
+                LogMessage($"  - 用户名: {_config.Username}");
+                LogMessage($"  - 自动登录: {_config.AutoLogin}");
+                LogMessage($"  - 脚本长度: {_config.Script?.Length ?? 0} 字符");
+                
                 ConfigChanged?.Invoke(this, _config);
-                LogMessage("✅ 配置已保存");
+                LogMessage("✅ 配置已保存（ConfigChanged 事件已触发）");
             }
             else
             {
                 MessageBox.Show(error, "配置验证失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                LogMessage($"❌ 配置验证失败: {error}");
             }
         }
 
@@ -542,6 +566,117 @@ namespace Unit.La.Controls
         {
             splitContainerMain.Panel2Collapsed = !splitContainerMain.Panel2Collapsed;
             btnTogglePanel.Text = splitContainerMain.Panel2Collapsed ? "👁️ 显示" : "👁️ 隐藏";
+        }
+
+        #endregion
+
+        #region 窗口生命周期管理
+
+        /// <summary>
+        /// 窗口关闭时：隐藏而不是真正关闭
+        /// </summary>
+        private void BrowserTaskControl_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // 如果是用户点击关闭按钮（不是程序调用 Close()）
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true; // 取消关闭
+                Hide(); // 隐藏窗口
+                LogMessage("ℹ️ 窗口已隐藏到后台运行");
+            }
+            // 如果是程序调用 Close()，正常关闭
+        }
+
+        /// <summary>
+        /// 真正关闭窗口并释放资源
+        /// </summary>
+        public void CloseAndDispose()
+        {
+            _thumbnailTimer?.Stop();
+            _thumbnailTimer?.Dispose();
+            
+            // 不取消关闭事件，允许真正关闭
+            FormClosing -= BrowserTaskControl_FormClosing;
+            
+            LogMessage("🔴 窗口正在关闭并释放资源");
+            Close();
+            Dispose();
+        }
+
+        #endregion
+
+        #region 缩略图生成
+
+        /// <summary>
+        /// 定时器触发：更新缩略图
+        /// </summary>
+        private async void ThumbnailTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_webView?.CoreWebView2 == null || !Visible) return;
+
+            try
+            {
+                var thumbnail = await CaptureThumbnailAsync();
+                if (thumbnail != null)
+                {
+                    ThumbnailUpdated?.Invoke(this, thumbnail);
+                }
+            }
+            catch (Exception ex)
+            {
+                // 静默失败，不影响主流程
+                System.Diagnostics.Debug.WriteLine($"缩略图更新失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 捕获浏览器缩略图
+        /// </summary>
+        public async Task<Image?> CaptureThumbnailAsync()
+        {
+            if (_webView?.CoreWebView2 == null) return null;
+
+            try
+            {
+                // 使用 WebView2 的截图 API
+                using (var stream = new System.IO.MemoryStream())
+                {
+                    await _webView.CoreWebView2.CapturePreviewAsync(
+                        CoreWebView2CapturePreviewImageFormat.Png,
+                        stream);
+                    
+                    stream.Position = 0;
+                    var fullImage = Image.FromStream(stream);
+                    
+                    // 生成缩略图（280x150，与卡片大小匹配）
+                    var thumbnail = new Bitmap(280, 150);
+                    using (var g = Graphics.FromImage(thumbnail))
+                    {
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g.DrawImage(fullImage, 0, 0, 280, 150);
+                    }
+                    
+                    fullImage.Dispose();
+                    return thumbnail;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"截图失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 手动更新缩略图（立即触发）
+        /// </summary>
+        public async Task RefreshThumbnailAsync()
+        {
+            var thumbnail = await CaptureThumbnailAsync();
+            if (thumbnail != null)
+            {
+                ThumbnailUpdated?.Invoke(this, thumbnail);
+            }
         }
 
         #endregion

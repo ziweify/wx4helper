@@ -5,6 +5,9 @@
     <Compile Update="Controls\BrowserConfigPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Controls\BrowserTaskCardControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Controls\BrowserTaskControl.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -11,9 +11,6 @@
     <Compile Update="Views\Dashboard\Controls\MonitorConfigControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Views\Dashboard\Controls\ScriptTaskCardControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Update="Views\Dashboard\DataCollectionPage.cs">
       <SubType>Form</SubType>
     </Compile>

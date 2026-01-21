@@ -7,10 +7,11 @@ using YongLiSystem.Models.Dashboard;
 using YongLiSystem.Services.Dashboard;
 using YongLiSystem.ViewModels.Dashboard;
 using YongLiSystem.Views.Dashboard.Monitors;
-using YongLiSystem.Views.Dashboard.Controls;
+using YongLiSystem.Views.Dashboard.Controls; // For MonitorConfigContainerControl
 using YongLiSystem.Helpers;
 using Unit.La.Controls;
-using static YongLiSystem.Views.Dashboard.Controls.MonitorConfigContainerControl;
+using Unit.La.Models;
+using Unit.La.Scripting;
 
 namespace YongLiSystem.Views.Dashboard
 {
@@ -23,8 +24,8 @@ namespace YongLiSystem.Views.Dashboard
         private readonly DataCollectionService _dataCollectionService;
         private MonitorConfigContainerControl? _monitorConfigContainer;
         private readonly List<ScriptTask> _scriptTasks = new List<ScriptTask>();
-        private readonly Dictionary<int, (ScriptTaskCardControl card, BrowserTaskControl? window)> _taskControls 
-            = new Dictionary<int, (ScriptTaskCardControl, BrowserTaskControl?)>();
+        private readonly Dictionary<int, (BrowserTaskCardControl card, BrowserTaskControl? window)> _taskControls
+            = new Dictionary<int, (BrowserTaskCardControl, BrowserTaskControl?)>();
 
         public DataCollectionPage()
         {
@@ -125,11 +126,11 @@ namespace YongLiSystem.Views.Dashboard
         /// </summary>
         private void AddScriptTaskCard(ScriptTask task)
         {
-            var card = new ScriptTaskCardControl
+            var card = new BrowserTaskCardControl
             {
-                Task = task,
+                TaskInfo = task.ToBrowserTaskInfo(), // 使用扩展方法转换
                 Width = 280,
-                Height = 120,  // 简化版高度更小
+                Height = 240,  // 增加高度以容纳缩略图
                 Margin = new Padding(5)
             };
 
@@ -137,9 +138,11 @@ namespace YongLiSystem.Views.Dashboard
             card.EditClicked += (s, e) => OnEditTask(task);
             card.DeleteClicked += (s, e) => OnDeleteTask(task, card);
             card.StartStopClicked += (s, e) => OnStartStopTask(task, card);
+            card.CloseClicked += (s, e) => OnCloseTask(task, card);
+            card.ThumbnailClicked += (s, e) => OnThumbnailClicked(task);
 
             flowLayoutTasks.Controls.Add(card);
-            
+
             // 保存到字典
             _taskControls[task.Id] = (card, null);
             _scriptTasks.Add(task);
@@ -177,7 +180,7 @@ namespace YongLiSystem.Views.Dashboard
         /// <summary>
         /// 删除任务
         /// </summary>
-        private void OnDeleteTask(ScriptTask task, ScriptTaskCardControl card)
+        private void OnDeleteTask(ScriptTask task, BrowserTaskCardControl card)
         {
             try
             {
@@ -216,7 +219,7 @@ namespace YongLiSystem.Views.Dashboard
         /// <summary>
         /// 启动/停止任务
         /// </summary>
-        private void OnStartStopTask(ScriptTask task, ScriptTaskCardControl card)
+        private void OnStartStopTask(ScriptTask task, BrowserTaskCardControl card)
         {
             try
             {
@@ -242,7 +245,7 @@ namespace YongLiSystem.Views.Dashboard
         /// <summary>
         /// 启动任务 - 直接打开任务窗口
         /// </summary>
-        private void StartTask(ScriptTask task, ScriptTaskCardControl card)
+        private void StartTask(ScriptTask task, BrowserTaskCardControl card)
         {
             try
             {
@@ -253,7 +256,7 @@ namespace YongLiSystem.Views.Dashboard
                 task.IsRunning = true;
                 task.Status = "运行中";
                 task.LastRunTime = DateTime.Now;
-                card.Task = task;
+                card.TaskInfo = task.ToBrowserTaskInfo();
                 
                 // 保存状态
                 _dataCollectionService.SaveScriptTask(task);
@@ -266,14 +269,14 @@ namespace YongLiSystem.Views.Dashboard
                 // 回滚状态
                 task.IsRunning = false;
                 task.Status = "启动失败";
-                card.Task = task;
+                card.TaskInfo = task.ToBrowserTaskInfo();
             }
         }
 
         /// <summary>
         /// 打开任务窗口（统一方法）
         /// </summary>
-        private void OpenTaskWindow(ScriptTask task, ScriptTaskCardControl card)
+        private void OpenTaskWindow(ScriptTask task, BrowserTaskCardControl card)
         {
             // 检查窗口是否已存在
             if (_taskControls.TryGetValue(task.Id, out var existing))
@@ -287,6 +290,35 @@ namespace YongLiSystem.Views.Dashboard
                 }
             }
 
+            // 🔧 修复：从数据库重新加载最新数据
+            var latestTask = _dataCollectionService.GetScriptTask(task.Id);
+            if (latestTask == null)
+            {
+                MessageBox.Show("无法加载任务数据！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            
+            // 🔍 添加日志：显示从数据库加载的数据
+            System.Diagnostics.Debug.WriteLine($"=== 从数据库加载任务 ID:{task.Id} ===");
+            System.Diagnostics.Debug.WriteLine($"  名称: {latestTask.Name}");
+            System.Diagnostics.Debug.WriteLine($"  URL: {latestTask.Url}");
+            System.Diagnostics.Debug.WriteLine($"  用户名: {latestTask.Username}");
+            System.Diagnostics.Debug.WriteLine($"  自动登录: {latestTask.AutoLogin}");
+            System.Diagnostics.Debug.WriteLine($"  脚本长度: {latestTask.Script?.Length ?? 0}");
+            
+            // 更新内存中的 task 对象
+            task.Name = latestTask.Name;
+            task.Url = latestTask.Url;
+            task.Username = latestTask.Username;
+            task.Password = latestTask.Password;
+            task.Script = latestTask.Script;
+            task.AutoLogin = latestTask.AutoLogin;
+            task.CreatedTime = latestTask.CreatedTime;
+            task.LastRunTime = latestTask.LastRunTime;
+            
+            // 更新卡片显示
+            card.TaskInfo = task.ToBrowserTaskInfo();
+
             // 创建新窗口，使用 Unit.la 的 BrowserTaskControl
             var config = task.ToBrowserTaskConfig();
             var window = new BrowserTaskControl(config);
@@ -294,12 +326,29 @@ namespace YongLiSystem.Views.Dashboard
             // 订阅配置变更事件
             window.ConfigChanged += (s, updatedConfig) =>
             {
+                // 🔍 添加日志：显示要保存的配置
+                System.Diagnostics.Debug.WriteLine($"=== ConfigChanged 事件触发 ===");
+                System.Diagnostics.Debug.WriteLine($"  任务ID: {task.Id}");
+                System.Diagnostics.Debug.WriteLine($"  名称: {updatedConfig.Name}");
+                System.Diagnostics.Debug.WriteLine($"  URL: {updatedConfig.Url}");
+                System.Diagnostics.Debug.WriteLine($"  用户名: {updatedConfig.Username}");
+                System.Diagnostics.Debug.WriteLine($"  自动登录: {updatedConfig.AutoLogin}");
+                System.Diagnostics.Debug.WriteLine($"  脚本长度: {updatedConfig.Script?.Length ?? 0}");
+                
                 // 将配置更新回 ScriptTask
                 task.UpdateFromConfig(updatedConfig);
                 
+                // 🔍 添加日志：显示更新后的 task
+                System.Diagnostics.Debug.WriteLine($"=== 更新后的 ScriptTask ===");
+                System.Diagnostics.Debug.WriteLine($"  任务ID: {task.Id}");
+                System.Diagnostics.Debug.WriteLine($"  URL: {task.Url}");
+                System.Diagnostics.Debug.WriteLine($"  用户名: {task.Username}");
+                
                 // 自动保存配置
-                _dataCollectionService.SaveScriptTask(task);
-                card.Task = task; // 更新卡片显示
+                var saveResult = _dataCollectionService.SaveScriptTask(task);
+                System.Diagnostics.Debug.WriteLine($"  保存结果: {(saveResult ? "成功" : "失败")}");
+                
+                card.TaskInfo = task.ToBrowserTaskInfo(); // 更新卡片显示
             };
 
             // 窗口关闭时更新状态
@@ -307,7 +356,7 @@ namespace YongLiSystem.Views.Dashboard
             {
                 task.IsRunning = false;
                 task.Status = "已停止";
-                card.Task = task;
+                card.TaskInfo = task.ToBrowserTaskInfo();
                 _dataCollectionService.SaveScriptTask(task);
                 
                 // 更新字典
@@ -316,6 +365,15 @@ namespace YongLiSystem.Views.Dashboard
 
             // 显示窗口
             window.Show();
+
+            // 订阅缩略图更新事件
+            window.ThumbnailUpdated += (s, thumbnail) =>
+            {
+                if (_taskControls.TryGetValue(task.Id, out var control))
+                {
+                    control.card.UpdateThumbnail(thumbnail);
+                }
+            };
 
             // 保存到字典
             _taskControls[task.Id] = (card, window);
@@ -328,16 +386,80 @@ namespace YongLiSystem.Views.Dashboard
         {
             if (_taskControls.TryGetValue(task.Id, out var control))
             {
-                // 关闭浏览器窗口
-                control.window?.Close();
+                // 关闭浏览器窗口（隐藏，不释放）
+                control.window?.Hide();
 
                 // 更新状态
                 task.IsRunning = false;
                 task.Status = "已停止";
-                control.card.Task = task; // 触发UI更新
+                control.card.TaskInfo = task.ToBrowserTaskInfo(); // 触发UI更新
 
                 // 更新字典
-                _taskControls[task.Id] = (control.card, null);
+                _taskControls[task.Id] = (control.card, control.window);
+            }
+        }
+
+        /// <summary>
+        /// 关闭任务（真正释放资源）
+        /// </summary>
+        private void OnCloseTask(ScriptTask task, BrowserTaskCardControl card)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    $"确定要关闭任务 \"{task.Name}\" 吗？\n\n关闭后将释放浏览器资源，需要重新启动。", 
+                    "确认关闭",
+                    MessageBoxButtons.YesNo, 
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    if (_taskControls.TryGetValue(task.Id, out var control))
+                    {
+                        // 真正关闭并释放资源
+                        control.window?.CloseAndDispose();
+
+                        // 更新状态
+                        task.IsRunning = false;
+                        task.Status = "已关闭";
+                        card.TaskInfo = task.ToBrowserTaskInfo();
+                        _dataCollectionService.SaveScriptTask(task);
+
+                        // 更新字典
+                        _taskControls[task.Id] = (control.card, null);
+
+                        MessageBox.Show("任务已关闭并释放资源！", "成功",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"关闭任务失败: {ex.Message}", "错误",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// 缩略图点击 - 显示隐藏的窗口
+        /// </summary>
+        private void OnThumbnailClicked(ScriptTask task)
+        {
+            if (_taskControls.TryGetValue(task.Id, out var control))
+            {
+                if (control.window != null && !control.window.IsDisposed)
+                {
+                    if (control.window.Visible)
+                    {
+                        control.window.Activate();
+                        control.window.BringToFront();
+                    }
+                    else
+                    {
+                        control.window.Show();
+                        control.window.Activate();
+                    }
+                }
             }
         }
 

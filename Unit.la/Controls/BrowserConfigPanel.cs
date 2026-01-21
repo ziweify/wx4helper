@@ -11,6 +11,7 @@ namespace Unit.La.Controls
     public partial class BrowserConfigPanel : UserControl
     {
         private BrowserTaskConfig? _config;
+        private bool _isUpdatingFromConfig = false; // 标记是否正在从配置更新控件
 
         /// <summary>
         /// 配置变更事件
@@ -70,11 +71,19 @@ namespace Unit.La.Controls
         {
             if (_config == null) return;
 
-            txtName.Text = _config.Name;
-            txtUrl.Text = _config.Url;
-            txtUsername.Text = _config.Username;
-            txtPassword.Text = _config.Password;
-            chkAutoLogin.Checked = _config.AutoLogin;
+            _isUpdatingFromConfig = true; // 防止触发 ConfigChanged 事件
+            try
+            {
+                txtName.Text = _config.Name;
+                txtUrl.Text = _config.Url;
+                txtUsername.Text = _config.Username;
+                txtPassword.Text = _config.Password;
+                chkAutoLogin.Checked = _config.AutoLogin;
+            }
+            finally
+            {
+                _isUpdatingFromConfig = false;
+            }
         }
 
         /// <summary>
@@ -82,8 +91,12 @@ namespace Unit.La.Controls
         /// </summary>
         private void OnConfigPropertyChanged()
         {
+            // 如果正在从配置更新控件，不触发事件（避免循环）
+            if (_isUpdatingFromConfig) return;
+            
             UpdateConfigFromControls();
-            ConfigChanged?.Invoke(this, _config!);
+            // 注释掉自动触发事件，改为只在用户点击"保存"时触发
+            // ConfigChanged?.Invoke(this, _config!);
         }
 
         /// <summary>
@@ -98,6 +111,9 @@ namespace Unit.La.Controls
                 errorMessage = "配置对象为空";
                 return false;
             }
+
+            // 🔧 重要：在验证之前，确保从控件更新到配置对象
+            UpdateConfigFromControls();
 
             if (string.IsNullOrWhiteSpace(_config.Url))
             {

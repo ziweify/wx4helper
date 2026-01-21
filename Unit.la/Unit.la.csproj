@@ -5,13 +5,26 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Description>可复用的脚本编辑器控件库，支持Lua脚本编辑、调试和功能绑定</Description>
+    <Description>可复用的浏览器任务管理控件库，包含脚本编辑器、浏览器窗口和任务卡片</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MoonSharp" Version="2.0.0" />
     <PackageReference Include="Scintilla.NET" Version="5.3.2.9" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+  </ItemGroup>
+
+  <!-- DevExpress 引用 - 用于 BrowserTaskCardControl -->
+  <ItemGroup>
+    <Reference Include="DevExpress.Data.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Data.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Utils.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.Utils.v23.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v23.2">
+      <HintPath>C:\Program Files\DevExpress 23.2\Components\Bin\NetCore\DevExpress.XtraEditors.v23.2.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
