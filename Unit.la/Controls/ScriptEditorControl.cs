@@ -38,6 +38,7 @@ namespace Unit.La.Controls
         private bool _isDebugging = false;
         private bool _isPaused = false;
         private int _currentDebugLine = -1;
+        
 
         /// <summary>
         /// 构造函数 - 自动初始化所有功能
@@ -179,6 +180,7 @@ namespace Unit.La.Controls
             scintilla.Markers[1].SetBackColor(Color.Red);
         }
 
+
         /// <summary>
         /// 配置自动完成
         /// </summary>
@@ -277,6 +279,7 @@ namespace Unit.La.Controls
                     break;
             }
         }
+
 
         /// <summary>
         /// 断点点击事件
@@ -669,6 +672,7 @@ namespace Unit.La.Controls
             // 初始化函数列表
             if (listBoxFunctions != null)
             {
+                listBoxFunctions.SelectedIndexChanged += ListBoxFunctions_SelectedIndexChanged;
                 listBoxFunctions.DoubleClick += ListBoxFunctions_DoubleClick;
                 listBoxFunctions.MouseDown += ListBoxFunctions_MouseDown;
             }
@@ -838,6 +842,33 @@ namespace Unit.La.Controls
             public override string ToString()
             {
                 return FunctionInfo.FullSignature;
+            }
+        }
+
+        /// <summary>
+        /// 函数列表选择事件 - 定位到函数代码
+        /// </summary>
+        private void ListBoxFunctions_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (listBoxFunctions?.SelectedItem is FunctionListItem item && scintilla != null)
+            {
+                // 跳转到函数所在行
+                var lineNumber = item.FunctionInfo.LineNumber;
+                if (lineNumber > 0 && lineNumber <= scintilla.Lines.Count)
+                {
+                    // 转换为0基索引
+                    var lineIndex = lineNumber - 1;
+                    var line = scintilla.Lines[lineIndex];
+                    
+                    // 跳转到该行
+                    line.Goto();
+                    
+                    // 确保该行可见（滚动到视图）
+                    line.EnsureVisible();
+                    
+                    // 将焦点设置到编辑器
+                    scintilla.Focus();
+                }
             }
         }
 
