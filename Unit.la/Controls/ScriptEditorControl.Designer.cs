@@ -168,8 +168,8 @@ namespace Unit.La.Controls
             // 
             scintilla.AutoCMaxHeight = 9;
             scintilla.BiDirectionality = ScintillaNET.BiDirectionalDisplayType.Disabled;
-            scintilla.CaretLineBackColor = Color.Black;
-            scintilla.CaretLineVisible = true;
+            scintilla.CaretLineBackColor = Color.White; // 改为白色，不显示黑色背景
+            scintilla.CaretLineVisible = false; // 禁用光标行高亮
             scintilla.Dock = DockStyle.Fill;
             scintilla.LexerName = null;
             scintilla.Location = new Point(0, 0);

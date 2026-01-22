@@ -118,6 +118,21 @@ namespace Unit.La.Controls
             scintilla.Styles[Style.Default].BackColor = Color.White;
             scintilla.Styles[Style.Default].Size = FontSize;
             scintilla.Styles[Style.Default].Font = "Consolas";
+            
+            // 设置选中文本的背景色为浅蓝色（避免黑色背景）
+            try
+            {
+                // 尝试设置选中背景色（如果 API 支持）
+                var selectionBackColorProp = scintilla.GetType().GetProperty("SelectionBackColor");
+                if (selectionBackColorProp != null)
+                {
+                    selectionBackColorProp.SetValue(scintilla, Color.FromArgb(200, 200, 255)); // 浅蓝色
+                }
+            }
+            catch
+            {
+                // 如果 API 不支持，忽略
+            }
         }
 
         /// <summary>
