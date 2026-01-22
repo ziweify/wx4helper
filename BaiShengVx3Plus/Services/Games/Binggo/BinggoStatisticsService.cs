@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Core;
 using BaiShengVx3Plus.Models;
@@ -19,6 +20,18 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         private readonly ILogService _logService;
         private V2MemberBindingList? _membersBindingList;
         private V2OrderBindingList? _ordersBindingList;
+        
+        // ========================================
+        // 🔥 批量更新和节流机制（防止UI假死）
+        // ========================================
+        
+        private bool _batchUpdateMode = false;
+        private readonly object _batchLock = new object();
+        
+        // 节流机制
+        private DateTime _lastUpdateTime = DateTime.MinValue;
+        private readonly TimeSpan _throttleInterval = TimeSpan.FromMilliseconds(200);
+        private System.Threading.Timer? _pendingUpdateTimer;
         
         // ========================================
         // 🔥 统计字段（参考 F5BotV2 第 266-360 行）
@@ -132,6 +145,42 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             _membersBindingList = membersBindingList;
             _ordersBindingList = ordersBindingList;
+        }
+        
+        // ========================================
+        // 🔥 批量更新模式（防止UI假死）
+        // ========================================
+        
+        /// <summary>
+        /// 进入批量更新模式，暂停UI刷新
+        /// 🎯 用于批量结算订单时，避免频繁更新UI导致假死
+        /// </summary>
+        public void BeginBatchUpdate()
+        {
+            lock (_batchLock)
+            {
+                _batchUpdateMode = true;
+                _logService.Info("BinggoStatistics", "🔄 进入批量更新模式，暂停UI刷新");
+            }
+        }
+        
+        /// <summary>
+        /// 结束批量更新模式，触发一次UI刷新
+        /// 🎯 批量结算完成后，统一更新UI
+        /// </summary>
+        public void EndBatchUpdate()
+        {
+            lock (_batchLock)
+            {
+                _batchUpdateMode = false;
+                _logService.Info("BinggoStatistics", "✅ 退出批量更新模式，触发UI刷新");
+                
+                // 🔥 触发统一更新（立即更新，不经过节流）
+                OnPropertyChanged(nameof(IncomeTotal));
+                OnPropertyChanged(nameof(IncomeToday));
+                OnPropertyChanged(nameof(EarnedDiffTotal));
+                OnPropertyChanged(nameof(PanDescribe));
+            }
         }
         
         /// <summary>
@@ -513,8 +562,15 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Debug("BinggoStatistics", 
                     $"📊 盈利统计更新: 订单 {order.Id} - 纯利 {netProfit:F2} - 总盈 {IncomeTotal:F2} 今盈 {IncomeToday:F2}");
                 
-                // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
-                OnPropertyChanged(nameof(PanDescribe));
+                // 🔥 只在非批量模式下触发UI更新（防止UI假死）
+                if (!_batchUpdateMode)
+                {
+                    ThrottledPropertyChanged(nameof(PanDescribe));
+                }
+                else
+                {
+                    _logService.Debug("BinggoStatistics", $"  （批量模式，跳过UI更新）");
+                }
             }
             catch (Exception ex)
             {
@@ -535,9 +591,16 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 _logService.Info("BinggoStatistics", 
                     $"📊 赚点统计更新: 本次赚点 {earnedDiff:F2} - 累计赚点 {EarnedDiffTotal:F2}");
                 
-                // 🔥 触发 PanDescribe 属性变化通知，让 UI 更新显示
-                OnPropertyChanged(nameof(PanDescribe));
-                OnPropertyChanged(nameof(EarnedDiffTotal));
+                // 🔥 只在非批量模式下触发UI更新（防止UI假死）
+                if (!_batchUpdateMode)
+                {
+                    ThrottledPropertyChanged(nameof(PanDescribe));
+                    ThrottledPropertyChanged(nameof(EarnedDiffTotal));
+                }
+                else
+                {
+                    _logService.Debug("BinggoStatistics", $"  （批量模式，跳过UI更新）");
+                }
             }
             catch (Exception ex)
             {
@@ -562,6 +625,43 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         // INotifyPropertyChanged 实现
         // ========================================
         
+        /// <summary>
+        /// 节流的PropertyChanged通知
+        /// 🎯 限制UI更新频率，最多每200ms更新一次，但确保最后一次更新不会丢失
+        /// </summary>
+        private void ThrottledPropertyChanged(string propertyName)
+        {
+            var now = DateTime.Now;
+            
+            // 如果距离上次更新已经超过节流间隔，立即更新
+            if (now - _lastUpdateTime >= _throttleInterval)
+            {
+                OnPropertyChanged(propertyName);
+                _lastUpdateTime = now;
+                
+                // 取消待处理的定时器（如果有）
+                _pendingUpdateTimer?.Dispose();
+                _pendingUpdateTimer = null;
+            }
+            else
+            {
+                // 距离上次更新还不到节流间隔，延迟更新
+                // 使用定时器确保最后一次更新不会丢失
+                _pendingUpdateTimer?.Dispose();
+                
+                var delay = (int)(_throttleInterval - (now - _lastUpdateTime)).TotalMilliseconds;
+                if (delay < 0) delay = 0;
+                
+                _pendingUpdateTimer = new System.Threading.Timer(_ =>
+                {
+                    OnPropertyChanged(propertyName);
+                    _lastUpdateTime = DateTime.Now;
+                    _pendingUpdateTimer?.Dispose();
+                    _pendingUpdateTimer = null;
+                }, null, delay, System.Threading.Timeout.Infinite);
+            }
+        }
+        
         protected void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (!Equals(field, value))
@@ -580,6 +680,12 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        
+        // 清理资源
+        public void Dispose()
+        {
+            _pendingUpdateTimer?.Dispose();
         }
     }
 }

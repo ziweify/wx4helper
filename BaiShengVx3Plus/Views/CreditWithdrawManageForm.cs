@@ -49,6 +49,13 @@ namespace BaiShengVx3Plus.Views
                 DataSource = _creditWithdrawsBindingList  // 🔥 直接绑定到 BindingList，自动更新
             };
             
+            // 🔥 防御性检查：确保没有循环引用
+            if (_bindingSource.DataSource == _bindingSource)
+            {
+                _logService.Error("上下分管理", "❌ 检测到BindingSource循环引用，已修正");
+                _bindingSource.DataSource = _creditWithdrawsBindingList;
+            }
+            
             // 初始化下拉框
             InitializeComboBox();
             

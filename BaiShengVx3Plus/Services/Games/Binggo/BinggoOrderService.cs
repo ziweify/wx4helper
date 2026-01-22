@@ -515,22 +515,33 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     return (0, "没有待结算订单");
                 }
                 
-                // 3. 逐个结算
+                // 3. 🔥 进入批量更新模式（防止UI假死）
+                _statisticsService?.BeginBatchUpdate();
+                
                 int settledCount = 0;
                 decimal totalProfit = 0;
                 
-                foreach (var order in unsetledOrders)
+                try
                 {
-                    await SettleSingleOrderAsync(order, lotteryData);
-                    settledCount++;
-                    totalProfit += (decimal)order.Profit;
+                    // 逐个结算（统计更新暂停）
+                    foreach (var order in unsetledOrders)
+                    {
+                        await SettleSingleOrderAsync(order, lotteryData);
+                        settledCount++;
+                        totalProfit += (decimal)order.Profit;
+                    }
+                    
+                    _logService.Info("BinggoOrderService", 
+                        $"✅ 结算完成: 期号 {issueId}，共 {settledCount} 单，总盈利: {totalProfit:F2}");
                 }
-                
-                _logService.Info("BinggoOrderService", 
-                    $"✅ 结算完成: 期号 {issueId}，共 {settledCount} 单，总盈利: {totalProfit:F2}");
-                
-                // 🔥 4. 更新统计（参考 F5BotV2 第 635 行）
-                _statisticsService?.UpdateStatistics();
+                finally
+                {
+                    // 🔥 退出批量更新模式，触发一次UI刷新
+                    _statisticsService?.EndBatchUpdate();
+                    
+                    // 🔥 4. 更新统计（参考 F5BotV2 第 635 行）
+                    _statisticsService?.UpdateStatistics();
+                }
                 
                 // 🔥 5. 返回结算后的订单列表（用于生成中奖名单）
                 string summary = $"期号: {issueId}\n" +
