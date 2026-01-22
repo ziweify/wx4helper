@@ -99,7 +99,7 @@ namespace zhaocaimao.Services.AutoBet.Browser.PlatformScripts
                         }
                     })();
                 ";
-                
+      
                 var checkResult = await _webView.CoreWebView2.ExecuteScriptAsync(checkLoginPageScript);
                 var checkJson = JObject.Parse(checkResult);
                 var isLoginPage = checkJson["isLoginPage"]?.Value<bool>() ?? false;

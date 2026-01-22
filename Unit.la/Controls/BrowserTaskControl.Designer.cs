@@ -77,8 +77,8 @@ namespace Unit.La.Controls
             // splitContainerMain.Panel2
             // 
             splitContainerMain.Panel2.Controls.Add(tabControlTools);
-            splitContainerMain.Size = new Size(1533, 980);
-            splitContainerMain.SplitterDistance = 918;
+            splitContainerMain.Size = new Size(1687, 980);
+            splitContainerMain.SplitterDistance = 896;
             splitContainerMain.TabIndex = 0;
             // 
             // panelBrowser
@@ -88,7 +88,7 @@ namespace Unit.La.Controls
             panelBrowser.Dock = DockStyle.Fill;
             panelBrowser.Location = new Point(0, 25);
             panelBrowser.Name = "panelBrowser";
-            panelBrowser.Size = new Size(918, 955);
+            panelBrowser.Size = new Size(896, 955);
             panelBrowser.TabIndex = 1;
             // 
             // panelBrowserContent
@@ -96,7 +96,7 @@ namespace Unit.La.Controls
             panelBrowserContent.Dock = DockStyle.Fill;
             panelBrowserContent.Location = new Point(0, 25);
             panelBrowserContent.Name = "panelBrowserContent";
-            panelBrowserContent.Size = new Size(918, 930);
+            panelBrowserContent.Size = new Size(896, 930);
             panelBrowserContent.TabIndex = 1;
             // 
             // toolStripBrowser
@@ -104,7 +104,7 @@ namespace Unit.La.Controls
             toolStripBrowser.Items.AddRange(new ToolStripItem[] { btnBack, btnForward, btnRefresh, btnHome, txtUrl, btnNavigate, btnHistory });
             toolStripBrowser.Location = new Point(0, 0);
             toolStripBrowser.Name = "toolStripBrowser";
-            toolStripBrowser.Size = new Size(918, 25);
+            toolStripBrowser.Size = new Size(896, 25);
             toolStripBrowser.TabIndex = 0;
             // 
             // btnBack
@@ -170,7 +170,7 @@ namespace Unit.La.Controls
             toolStripMain.Items.AddRange(new ToolStripItem[] { btnSaveConfig, toolStripSeparator1, btnClearLog, toolStripSeparator2, btnDockPosition, btnTogglePanel });
             toolStripMain.Location = new Point(0, 0);
             toolStripMain.Name = "toolStripMain";
-            toolStripMain.Size = new Size(918, 25);
+            toolStripMain.Size = new Size(896, 25);
             toolStripMain.TabIndex = 0;
             // 
             // btnSaveConfig
@@ -245,7 +245,7 @@ namespace Unit.La.Controls
             tabControlTools.Location = new Point(0, 0);
             tabControlTools.Name = "tabControlTools";
             tabControlTools.SelectedIndex = 0;
-            tabControlTools.Size = new Size(611, 980);
+            tabControlTools.Size = new Size(787, 980);
             tabControlTools.TabIndex = 0;
             // 
             // tabPageConfig
@@ -253,7 +253,7 @@ namespace Unit.La.Controls
             tabPageConfig.Location = new Point(4, 26);
             tabPageConfig.Name = "tabPageConfig";
             tabPageConfig.Padding = new Padding(3);
-            tabPageConfig.Size = new Size(603, 950);
+            tabPageConfig.Size = new Size(779, 950);
             tabPageConfig.TabIndex = 0;
             tabPageConfig.Text = "⚙️ 配置";
             tabPageConfig.UseVisualStyleBackColor = true;
@@ -263,7 +263,7 @@ namespace Unit.La.Controls
             tabPageLog.Location = new Point(4, 26);
             tabPageLog.Name = "tabPageLog";
             tabPageLog.Padding = new Padding(3);
-            tabPageLog.Size = new Size(565, 950);
+            tabPageLog.Size = new Size(766, 950);
             tabPageLog.TabIndex = 1;
             tabPageLog.Text = "📋 日志";
             tabPageLog.UseVisualStyleBackColor = true;
@@ -272,14 +272,14 @@ namespace Unit.La.Controls
             // 
             tabPageScript.Location = new Point(4, 26);
             tabPageScript.Name = "tabPageScript";
-            tabPageScript.Size = new Size(565, 950);
+            tabPageScript.Size = new Size(766, 950);
             tabPageScript.TabIndex = 2;
             tabPageScript.Text = "📝 脚本";
             tabPageScript.UseVisualStyleBackColor = true;
             // 
             // BrowserTaskControl
             // 
-            ClientSize = new Size(1533, 980);
+            ClientSize = new Size(1687, 980);
             Controls.Add(splitContainerMain);
             Name = "BrowserTaskControl";
             StartPosition = FormStartPosition.CenterScreen;

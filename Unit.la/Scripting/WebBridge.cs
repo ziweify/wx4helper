@@ -751,6 +751,48 @@ namespace Unit.La.Scripting
         }
 
         /// <summary>
+        /// 触发 DOM 事件
+        /// 用法: 
+        ///   web.TriggerEvent("#username", "input")  -- 触发 input 事件（默认 bubbles=true）
+        ///   web.TriggerEvent("#username", "input", true)  -- 触发 input 事件，bubbles=true
+        ///   web.TriggerEvent("#username", "change", false)  -- 触发 change 事件，bubbles=false
+        ///   web.TriggerEvent("#username", "input", true, true)  -- 触发 input 事件，bubbles=true, cancelable=true
+        /// </summary>
+        /// <param name="selector">元素选择器</param>
+        /// <param name="eventType">事件类型（如 "input", "change", "click" 等）</param>
+        /// <param name="bubbles">是否冒泡，默认 true</param>
+        /// <param name="cancelable">是否可取消，默认 true</param>
+        public void TriggerEvent(string selector, string eventType, bool bubbles = true, bool cancelable = true)
+        {
+            _logger($"🎯 触发事件: {selector} -> {eventType} (bubbles={bubbles}, cancelable={cancelable})");
+            var escapedSelector = selector.Replace("'", "\\'");
+            var escapedEventType = eventType.Replace("'", "\\'");
+            Execute($@"
+                (function() {{
+                    var el = document.querySelector('{escapedSelector}');
+                    if (el) {{
+                        var event = new Event('{escapedEventType}', {{ 
+                            bubbles: {bubbles.ToString().ToLower()}, 
+                            cancelable: {cancelable.ToString().ToLower()} 
+                        }});
+                        el.dispatchEvent(event);
+                    }}
+                }})()
+            ");
+        }
+
+        /// <summary>
+        /// 输入文本并触发 input 事件（常用组合操作）
+        /// 用法: web.InputAndTrigger("#username", "admin")
+        /// 等同于: web.Input("#username", "admin"); web.TriggerEvent("#username", "input")
+        /// </summary>
+        public void InputAndTrigger(string selector, string text)
+        {
+            Input(selector, text);
+            TriggerEvent(selector, "input");
+        }
+
+        /// <summary>
         /// 获取元素文本
         /// 用法: local text = web.GetText("#title")
         /// </summary>
