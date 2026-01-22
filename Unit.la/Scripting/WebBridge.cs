@@ -196,6 +196,7 @@ namespace Unit.La.Scripting
         
         /// <summary>
         /// 内部执行方法（假定已在 UI 线程，同步执行）
+        /// 🔥 使用自旋等待 + DoEvents 保持 UI 响应
         /// </summary>
         private string ExecuteInternal(string script)
         {
@@ -206,9 +207,23 @@ namespace Unit.La.Scripting
 
             try
             {
-                // 🔥 使用 GetAwaiter().GetResult() 同步等待
-                var result = WebView.CoreWebView2.ExecuteScriptAsync(script).GetAwaiter().GetResult();
-                return result;
+                // 🔥 启动异步操作
+                var task = WebView.CoreWebView2.ExecuteScriptAsync(script);
+                
+                // 🔥 使用自旋等待 + DoEvents 保持 UI 响应，避免死锁
+                while (!task.IsCompleted)
+                {
+                    System.Windows.Forms.Application.DoEvents();
+                    System.Threading.Thread.Sleep(10); // 短暂休眠，避免 CPU 100%
+                }
+                
+                // 获取结果
+                if (task.IsFaulted)
+                {
+                    throw task.Exception?.GetBaseException() ?? new Exception("JavaScript 执行失败");
+                }
+                
+                return task.Result;
             }
             catch (Exception ex)
             {

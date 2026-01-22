@@ -248,7 +248,25 @@ namespace YongLiSystem.Views.Dashboard
                 }
 
                 // 🔥 后台执行脚本（不显示窗口）
-                _ = browserControl.ExecuteScriptAsync(browserControl.Config.Script);
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        // 在独立线程启动，避免阻塞 UI
+                        browserControl.Invoke(new Action(() =>
+                        {
+                            browserControl.ExecuteScript(browserControl.Config.Script);
+                        }));
+                    }
+                    catch (Exception ex)
+                    {
+                        browserControl.Invoke(new Action(() =>
+                        {
+                            MessageBox.Show($"脚本执行失败: {ex.Message}", "错误",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }));
+                    }
+                });
                 
                 // 更新状态
                 task.IsRunning = true;

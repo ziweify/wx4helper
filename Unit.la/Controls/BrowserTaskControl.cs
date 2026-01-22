@@ -119,25 +119,29 @@ namespace Unit.La.Controls
         }
 
         /// <summary>
-        /// 执行脚本
+        /// 执行脚本（同步方法，在 UI 线程执行）
         /// </summary>
-        public async Task<object> ExecuteScriptAsync(string script)
+        public object ExecuteScript(string script)
         {
             if (_scriptEditor == null)
             {
                 throw new InvalidOperationException("脚本编辑器未初始化");
             }
 
-            // 🔥 检查 WebView2 初始化状态（不要 await，会死锁）
+            // 🔥 检查 WebView2 初始化状态
             if (_webViewInitTcs != null && !_webViewInitTcs.Task.IsCompleted)
             {
                 LogMessage("⏳ WebView2 正在初始化，请稍候...");
-                throw new InvalidOperationException("WebView2 正在初始化中，请稍后再试");
+                MessageBox.Show("WebView2 正在初始化中，请稍后再试", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return "WebView2 初始化中";
             }
             
             if (_webViewInitTcs != null && _webViewInitTcs.Task.IsFaulted)
             {
-                throw new InvalidOperationException($"WebView2 初始化失败: {_webViewInitTcs.Task.Exception?.GetBaseException().Message}");
+                var error = $"WebView2 初始化失败: {_webViewInitTcs.Task.Exception?.GetBaseException().Message}";
+                LogMessage($"❌ {error}");
+                MessageBox.Show(error, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return error;
             }
 
             try
@@ -183,13 +187,14 @@ namespace Unit.La.Controls
                         }
                     }
                     
-                    throw new Exception(result.Error);
+                    return result.Error ?? "执行失败";
                 }
             }
             catch (Exception ex)
             {
                 LogMessage($"❌ 脚本执行异常: {ex.Message}");
-                throw;
+                Views.ErrorDialog.ShowScriptError(ex.Message, 0, ex.StackTrace ?? "");
+                return ex.Message;
             }
         }
 
@@ -952,12 +957,20 @@ log('脚本结束')
             btnRefreshPath.Click += (s, e) => LoadScriptsFromDirectory(txtScriptPath.Text, listBoxScripts);
             
             // 执行脚本
-            btnExecute.Click += async (s, e) =>
+            btnExecute.Click += (s, e) =>
             {
-                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
-                if (currentEditor != null)
+                try
                 {
-                    await ExecuteScriptAsync(currentEditor.ScriptText);
+                    var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                    if (currentEditor != null)
+                    {
+                        ExecuteScript(currentEditor.ScriptText);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"❌ 执行脚本时发生错误: {ex.Message}");
+                    Views.ErrorDialog.ShowScriptError(ex.Message, 0, ex.StackTrace ?? "");
                 }
             };
             
@@ -1115,8 +1128,17 @@ log('脚本结束')
             // 这样即使 _webView 被重新创建，web 对象仍然能获取最新的 WebView 实例
             _functionRegistry.RegisterDefaults(LogMessage, () => _webView);
             
-            // 🔥 注册 config 对象，让脚本可以访问配置
-            // 使用 Dictionary 而不是匿名类型，因为 MoonSharp 不支持匿名类型
+            // 🔥 注册 config 对象
+            UpdateLuaConfigObject();
+        }
+
+        /// <summary>
+        /// 更新 Lua 中的 config 对象
+        /// 🔥 配置修改后调用此方法，确保脚本中的 config 对象是最新的
+        /// </summary>
+        private void UpdateLuaConfigObject()
+        {
+            // 🔥 创建新的 config 字典
             var configObject = new Dictionary<string, object>
             {
                 ["url"] = _config.Url ?? "",
@@ -1125,7 +1147,17 @@ log('脚本结束')
                 ["autoLogin"] = _config.AutoLogin,
                 ["name"] = _config.Name ?? ""
             };
+            
+            // 🔥 重新注册（会覆盖旧的）
             _functionRegistry.RegisterObject("config", configObject);
+            
+            // 🔥 如果脚本引擎已初始化，立即绑定
+            if (_scriptEditor?.ScriptEngine != null)
+            {
+                _scriptEditor.ScriptEngine.BindObject("config", configObject);
+            }
+            
+            LogMessage($"🔄 已更新 Lua config 对象: URL={_config.Url}");
         }
 
         /// <summary>
@@ -1328,6 +1360,9 @@ log('脚本结束')
                 LogMessage($"  - 用户名: {_config.Username}");
                 LogMessage($"  - 自动登录: {_config.AutoLogin}");
                 LogMessage($"  - 脚本长度: {_config.Script?.Length ?? 0} 字符");
+                
+                // 🔥 更新 Lua 中的 config 对象
+                UpdateLuaConfigObject();
                 
                 ConfigChanged?.Invoke(this, _config);
                 LogMessage("✅ 配置已保存（ConfigChanged 事件已触发）");

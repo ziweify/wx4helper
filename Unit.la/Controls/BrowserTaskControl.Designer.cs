@@ -28,31 +28,31 @@ namespace Unit.La.Controls
         /// </summary>
         private void InitializeComponent()
         {
-            splitContainerMain = new System.Windows.Forms.SplitContainer();
-            panelBrowser = new System.Windows.Forms.Panel();
-            panelBrowserContent = new System.Windows.Forms.Panel();
-            toolStripBrowser = new System.Windows.Forms.ToolStrip();
-            btnBack = new System.Windows.Forms.ToolStripButton();
-            btnForward = new System.Windows.Forms.ToolStripButton();
-            btnRefresh = new System.Windows.Forms.ToolStripButton();
-            btnHome = new System.Windows.Forms.ToolStripButton();
-            txtUrl = new System.Windows.Forms.ToolStripTextBox();
-            btnNavigate = new System.Windows.Forms.ToolStripButton();
-            btnHistory = new System.Windows.Forms.ToolStripDropDownButton();
-            toolStripMain = new System.Windows.Forms.ToolStrip();
-            btnSaveConfig = new System.Windows.Forms.ToolStripButton();
-            toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            btnClearLog = new System.Windows.Forms.ToolStripButton();
-            toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-            btnDockPosition = new System.Windows.Forms.ToolStripDropDownButton();
-            menuDockRight = new System.Windows.Forms.ToolStripMenuItem();
-            menuDockBottom = new System.Windows.Forms.ToolStripMenuItem();
-            menuDockLeft = new System.Windows.Forms.ToolStripMenuItem();
-            btnTogglePanel = new System.Windows.Forms.ToolStripButton();
-            tabControlTools = new System.Windows.Forms.TabControl();
-            tabPageConfig = new System.Windows.Forms.TabPage();
-            tabPageLog = new System.Windows.Forms.TabPage();
-            tabPageScript = new System.Windows.Forms.TabPage();
+            splitContainerMain = new SplitContainer();
+            panelBrowser = new Panel();
+            panelBrowserContent = new Panel();
+            toolStripBrowser = new ToolStrip();
+            btnBack = new ToolStripButton();
+            btnForward = new ToolStripButton();
+            btnRefresh = new ToolStripButton();
+            btnHome = new ToolStripButton();
+            txtUrl = new ToolStripTextBox();
+            btnNavigate = new ToolStripButton();
+            btnHistory = new ToolStripDropDownButton();
+            toolStripMain = new ToolStrip();
+            btnSaveConfig = new ToolStripButton();
+            toolStripSeparator1 = new ToolStripSeparator();
+            btnClearLog = new ToolStripButton();
+            toolStripSeparator2 = new ToolStripSeparator();
+            btnDockPosition = new ToolStripDropDownButton();
+            menuDockRight = new ToolStripMenuItem();
+            menuDockBottom = new ToolStripMenuItem();
+            menuDockLeft = new ToolStripMenuItem();
+            btnTogglePanel = new ToolStripButton();
+            tabControlTools = new TabControl();
+            tabPageConfig = new TabPage();
+            tabPageLog = new TabPage();
+            tabPageScript = new TabPage();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -65,8 +65,8 @@ namespace Unit.La.Controls
             // 
             // splitContainerMain
             // 
-            splitContainerMain.Dock = System.Windows.Forms.DockStyle.Fill;
-            splitContainerMain.Location = new System.Drawing.Point(0, 0);
+            splitContainerMain.Dock = DockStyle.Fill;
+            splitContainerMain.Location = new Point(0, 0);
             splitContainerMain.Name = "splitContainerMain";
             // 
             // splitContainerMain.Panel1
@@ -77,68 +77,68 @@ namespace Unit.La.Controls
             // splitContainerMain.Panel2
             // 
             splitContainerMain.Panel2.Controls.Add(tabControlTools);
-            splitContainerMain.Size = new System.Drawing.Size(1440, 980);
-            splitContainerMain.SplitterDistance = 960;
+            splitContainerMain.Size = new Size(1533, 980);
+            splitContainerMain.SplitterDistance = 918;
             splitContainerMain.TabIndex = 0;
             // 
             // panelBrowser
             // 
             panelBrowser.Controls.Add(panelBrowserContent);
             panelBrowser.Controls.Add(toolStripBrowser);
-            panelBrowser.Dock = System.Windows.Forms.DockStyle.Fill;
-            panelBrowser.Location = new System.Drawing.Point(0, 25);
+            panelBrowser.Dock = DockStyle.Fill;
+            panelBrowser.Location = new Point(0, 25);
             panelBrowser.Name = "panelBrowser";
-            panelBrowser.Size = new System.Drawing.Size(960, 955);
+            panelBrowser.Size = new Size(918, 955);
             panelBrowser.TabIndex = 1;
             // 
             // panelBrowserContent
             // 
-            panelBrowserContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            panelBrowserContent.Location = new System.Drawing.Point(0, 25);
+            panelBrowserContent.Dock = DockStyle.Fill;
+            panelBrowserContent.Location = new Point(0, 25);
             panelBrowserContent.Name = "panelBrowserContent";
-            panelBrowserContent.Size = new System.Drawing.Size(960, 930);
+            panelBrowserContent.Size = new Size(918, 930);
             panelBrowserContent.TabIndex = 1;
             // 
             // toolStripBrowser
             // 
-            toolStripBrowser.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { btnBack, btnForward, btnRefresh, btnHome, txtUrl, btnNavigate, btnHistory });
-            toolStripBrowser.Location = new System.Drawing.Point(0, 0);
+            toolStripBrowser.Items.AddRange(new ToolStripItem[] { btnBack, btnForward, btnRefresh, btnHome, txtUrl, btnNavigate, btnHistory });
+            toolStripBrowser.Location = new Point(0, 0);
             toolStripBrowser.Name = "toolStripBrowser";
-            toolStripBrowser.Size = new System.Drawing.Size(960, 25);
+            toolStripBrowser.Size = new Size(918, 25);
             toolStripBrowser.TabIndex = 0;
             // 
             // btnBack
             // 
-            btnBack.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnBack.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnBack.Name = "btnBack";
-            btnBack.Size = new System.Drawing.Size(23, 22);
+            btnBack.Size = new Size(23, 22);
             btnBack.Text = "◀";
             btnBack.ToolTipText = "后退";
             btnBack.Click += OnGoBack;
             // 
             // btnForward
             // 
-            btnForward.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnForward.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnForward.Name = "btnForward";
-            btnForward.Size = new System.Drawing.Size(23, 22);
+            btnForward.Size = new Size(23, 22);
             btnForward.Text = "▶";
             btnForward.ToolTipText = "前进";
             btnForward.Click += OnGoForward;
             // 
             // btnRefresh
             // 
-            btnRefresh.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnRefresh.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Size = new System.Drawing.Size(23, 22);
+            btnRefresh.Size = new Size(28, 22);
             btnRefresh.Text = "🔄";
             btnRefresh.ToolTipText = "刷新";
             btnRefresh.Click += OnRefresh;
             // 
             // btnHome
             // 
-            btnHome.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnHome.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnHome.Name = "btnHome";
-            btnHome.Size = new System.Drawing.Size(23, 22);
+            btnHome.Size = new Size(28, 22);
             btnHome.Text = "🏠";
             btnHome.ToolTipText = "主页";
             btnHome.Click += OnGoHome;
@@ -146,93 +146,93 @@ namespace Unit.La.Controls
             // txtUrl
             // 
             txtUrl.Name = "txtUrl";
-            txtUrl.Size = new System.Drawing.Size(400, 25);
+            txtUrl.Size = new Size(400, 25);
             txtUrl.KeyDown += OnUrlKeyDown;
             // 
             // btnNavigate
             // 
-            btnNavigate.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnNavigate.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnNavigate.Name = "btnNavigate";
-            btnNavigate.Size = new System.Drawing.Size(36, 22);
+            btnNavigate.Size = new Size(36, 22);
             btnNavigate.Text = "转到";
             btnNavigate.Click += OnNavigate;
             // 
             // btnHistory
             // 
-            btnHistory.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnHistory.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnHistory.Name = "btnHistory";
-            btnHistory.Size = new System.Drawing.Size(48, 22);
+            btnHistory.Size = new Size(37, 22);
             btnHistory.Text = "📜";
             btnHistory.ToolTipText = "历史记录";
             // 
             // toolStripMain
             // 
-            toolStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { btnSaveConfig, toolStripSeparator1, btnClearLog, toolStripSeparator2, btnDockPosition, btnTogglePanel });
-            toolStripMain.Location = new System.Drawing.Point(0, 0);
+            toolStripMain.Items.AddRange(new ToolStripItem[] { btnSaveConfig, toolStripSeparator1, btnClearLog, toolStripSeparator2, btnDockPosition, btnTogglePanel });
+            toolStripMain.Location = new Point(0, 0);
             toolStripMain.Name = "toolStripMain";
-            toolStripMain.Size = new System.Drawing.Size(960, 25);
+            toolStripMain.Size = new Size(918, 25);
             toolStripMain.TabIndex = 0;
             // 
             // btnSaveConfig
             // 
-            btnSaveConfig.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnSaveConfig.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnSaveConfig.Name = "btnSaveConfig";
-            btnSaveConfig.Size = new System.Drawing.Size(60, 22);
+            btnSaveConfig.Size = new Size(56, 22);
             btnSaveConfig.Text = "💾 保存";
             btnSaveConfig.Click += OnSaveConfig;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new System.Drawing.Size(6, 25);
+            toolStripSeparator1.Size = new Size(6, 25);
             // 
             // btnClearLog
             // 
-            btnClearLog.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnClearLog.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnClearLog.Name = "btnClearLog";
-            btnClearLog.Size = new System.Drawing.Size(72, 22);
+            btnClearLog.Size = new Size(80, 22);
             btnClearLog.Text = "🗑️ 清空日志";
             btnClearLog.Click += OnClearLog;
             // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new System.Drawing.Size(6, 25);
+            toolStripSeparator2.Size = new Size(6, 25);
             // 
             // btnDockPosition
             // 
-            btnDockPosition.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            btnDockPosition.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { menuDockRight, menuDockBottom, menuDockLeft });
+            btnDockPosition.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            btnDockPosition.DropDownItems.AddRange(new ToolStripItem[] { menuDockRight, menuDockBottom, menuDockLeft });
             btnDockPosition.Name = "btnDockPosition";
-            btnDockPosition.Size = new System.Drawing.Size(90, 22);
+            btnDockPosition.Size = new Size(105, 22);
             btnDockPosition.Text = "📐 面板位置 ▼";
             // 
             // menuDockRight
             // 
             menuDockRight.Name = "menuDockRight";
-            menuDockRight.Size = new System.Drawing.Size(180, 22);
+            menuDockRight.Size = new Size(156, 22);
             menuDockRight.Text = "➡️ 停靠在右侧";
             menuDockRight.Click += OnDockRight;
             // 
             // menuDockBottom
             // 
             menuDockBottom.Name = "menuDockBottom";
-            menuDockBottom.Size = new System.Drawing.Size(180, 22);
+            menuDockBottom.Size = new Size(156, 22);
             menuDockBottom.Text = "⬇️ 停靠在底部";
             menuDockBottom.Click += OnDockBottom;
             // 
             // menuDockLeft
             // 
             menuDockLeft.Name = "menuDockLeft";
-            menuDockLeft.Size = new System.Drawing.Size(180, 22);
+            menuDockLeft.Size = new Size(156, 22);
             menuDockLeft.Text = "⬅️ 停靠在左侧";
             menuDockLeft.Click += OnDockLeft;
             // 
             // btnTogglePanel
             // 
-            btnTogglePanel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            btnTogglePanel.DisplayStyle = ToolStripItemDisplayStyle.Text;
             btnTogglePanel.Name = "btnTogglePanel";
-            btnTogglePanel.Size = new System.Drawing.Size(60, 22);
+            btnTogglePanel.Size = new Size(56, 22);
             btnTogglePanel.Text = "👁️ 隐藏";
             btnTogglePanel.Click += OnTogglePanel;
             // 
@@ -241,48 +241,48 @@ namespace Unit.La.Controls
             tabControlTools.Controls.Add(tabPageConfig);
             tabControlTools.Controls.Add(tabPageLog);
             tabControlTools.Controls.Add(tabPageScript);
-            tabControlTools.Dock = System.Windows.Forms.DockStyle.Fill;
-            tabControlTools.Location = new System.Drawing.Point(0, 0);
+            tabControlTools.Dock = DockStyle.Fill;
+            tabControlTools.Location = new Point(0, 0);
             tabControlTools.Name = "tabControlTools";
             tabControlTools.SelectedIndex = 0;
-            tabControlTools.Size = new System.Drawing.Size(476, 980);
+            tabControlTools.Size = new Size(611, 980);
             tabControlTools.TabIndex = 0;
             // 
             // tabPageConfig
             // 
-            tabPageConfig.Location = new System.Drawing.Point(4, 24);
+            tabPageConfig.Location = new Point(4, 26);
             tabPageConfig.Name = "tabPageConfig";
-            tabPageConfig.Padding = new System.Windows.Forms.Padding(3);
-            tabPageConfig.Size = new System.Drawing.Size(468, 952);
+            tabPageConfig.Padding = new Padding(3);
+            tabPageConfig.Size = new Size(603, 950);
             tabPageConfig.TabIndex = 0;
             tabPageConfig.Text = "⚙️ 配置";
             tabPageConfig.UseVisualStyleBackColor = true;
             // 
             // tabPageLog
             // 
-            tabPageLog.Location = new System.Drawing.Point(4, 24);
+            tabPageLog.Location = new Point(4, 26);
             tabPageLog.Name = "tabPageLog";
-            tabPageLog.Padding = new System.Windows.Forms.Padding(3);
-            tabPageLog.Size = new System.Drawing.Size(468, 952);
+            tabPageLog.Padding = new Padding(3);
+            tabPageLog.Size = new Size(565, 950);
             tabPageLog.TabIndex = 1;
             tabPageLog.Text = "📋 日志";
             tabPageLog.UseVisualStyleBackColor = true;
             // 
             // tabPageScript
             // 
-            tabPageScript.Location = new System.Drawing.Point(4, 24);
+            tabPageScript.Location = new Point(4, 26);
             tabPageScript.Name = "tabPageScript";
-            tabPageScript.Size = new System.Drawing.Size(468, 952);
+            tabPageScript.Size = new Size(565, 950);
             tabPageScript.TabIndex = 2;
             tabPageScript.Text = "📝 脚本";
             tabPageScript.UseVisualStyleBackColor = true;
             // 
             // BrowserTaskControl
             // 
-            ClientSize = new System.Drawing.Size(1440, 980);
+            ClientSize = new Size(1533, 980);
             Controls.Add(splitContainerMain);
             Name = "BrowserTaskControl";
-            StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "浏览器任务";
             splitContainerMain.Panel1.ResumeLayout(false);
             splitContainerMain.Panel1.PerformLayout();
