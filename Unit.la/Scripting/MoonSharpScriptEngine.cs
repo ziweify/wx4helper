@@ -35,52 +35,45 @@ namespace Unit.La.Scripting
                     }
                 }
 
-                // 执行脚本
-                var result = _script.DoString(scriptCode);
-
-                return new ScriptResult
-                {
-                    Success = true,
-                    Data = result.ToObject(),
-                    Output = result.ToString()
-                };
+                // 🔥 使用新的生命周期执行方式
+                return ExecuteWithLifecycle(scriptCode);
             }
             catch (ScriptRuntimeException ex)
             {
-                // MoonSharp 2.0 中的行号获取
-                int lineNumber = 0;
-                // 简化实现：直接使用异常信息，不依赖可能不存在的 API
+                // 运行时错误 - 提取详细信息
+                var errorInfo = ExtractErrorInfo(ex);
                 
                 OnError?.Invoke(this, new ScriptErrorEventArgs
                 {
-                    Error = ex.DecoratedMessage ?? ex.Message,
-                    LineNumber = lineNumber
+                    Error = errorInfo.Message,
+                    LineNumber = errorInfo.LineNumber
                 });
 
                 return new ScriptResult
                 {
                     Success = false,
-                    Error = ex.DecoratedMessage ?? ex.Message,
-                    LineNumber = lineNumber
+                    Error = errorInfo.Message,
+                    LineNumber = errorInfo.LineNumber,
+                    Output = errorInfo.FullMessage
                 };
             }
             catch (SyntaxErrorException ex)
             {
-                // MoonSharp 2.0 中的行号获取
-                int lineNumber = 0;
-                // 简化实现：从异常消息中解析行号或使用0
+                // 语法错误 - 提取详细信息
+                var errorInfo = ExtractErrorInfo(ex);
                 
                 OnError?.Invoke(this, new ScriptErrorEventArgs
                 {
-                    Error = ex.DecoratedMessage ?? ex.Message,
-                    LineNumber = lineNumber
+                    Error = errorInfo.Message,
+                    LineNumber = errorInfo.LineNumber
                 });
 
                 return new ScriptResult
                 {
                     Success = false,
-                    Error = ex.DecoratedMessage ?? ex.Message,
-                    LineNumber = lineNumber
+                    Error = errorInfo.Message,
+                    LineNumber = errorInfo.LineNumber,
+                    Output = errorInfo.FullMessage
                 };
             }
             catch (Exception ex)
@@ -94,9 +87,220 @@ namespace Unit.La.Scripting
                 return new ScriptResult
                 {
                     Success = false,
-                    Error = ex.Message
+                    Error = ex.Message,
+                    Output = ex.ToString()
                 };
             }
+        }
+
+        /// <summary>
+        /// 使用完整生命周期执行脚本：main() -> error() -> exit()
+        /// 强制要求脚本必须包含3个函数：main, error, exit
+        /// </summary>
+        private ScriptResult ExecuteWithLifecycle(string scriptCode)
+        {
+            bool hasError = false;
+            string? errorMessage = null;
+            int errorLineNumber = 0;
+            string? errorTrace = null;
+            object? result = null;
+            DynValue? exitFunc = null;  // 在外层声明，供 finally 使用
+
+            try
+            {
+                // 1. 先加载脚本，定义所有函数
+                _script.DoString(scriptCode);
+
+                // 2. 🔥 验证3个必须函数是否都存在
+                var mainFunc = _script.Globals.Get("main");
+                var errorFunc = _script.Globals.Get("error");
+                exitFunc = _script.Globals.Get("exit");  // 赋值给外层变量
+
+                var missingFunctions = new System.Text.StringBuilder();
+                
+                if (mainFunc.IsNil() || mainFunc.Type != DataType.Function)
+                {
+                    missingFunctions.AppendLine("  - function main()");
+                }
+                
+                if (errorFunc.IsNil() || errorFunc.Type != DataType.Function)
+                {
+                    missingFunctions.AppendLine("  - function error(errorInfo)");
+                }
+                
+                if (exitFunc.IsNil() || exitFunc.Type != DataType.Function)
+                {
+                    missingFunctions.AppendLine("  - function exit()");
+                }
+
+                // 如果有缺失的函数，返回错误
+                if (missingFunctions.Length > 0)
+                {
+                    var errorMsg = $"❌ 脚本不符合规范！必须包含以下3个函数：\n{missingFunctions}\n" +
+                                   "标准脚本结构：\n" +
+                                   "function main()\n" +
+                                   "    -- 主业务逻辑\n" +
+                                   "end\n\n" +
+                                   "function error(errorInfo)\n" +
+                                   "    -- 异常处理\n" +
+                                   "    return true  -- 或 false\n" +
+                                   "end\n\n" +
+                                   "function exit()\n" +
+                                   "    -- 清理工作\n" +
+                                   "end";
+                    
+                    return new ScriptResult
+                    {
+                        Success = false,
+                        Error = errorMsg,
+                        LineNumber = 0,
+                        Output = errorMsg
+                    };
+                }
+
+                // 3. 执行 main() 函数
+                try
+                {
+                    var mainResult = _script.Call(mainFunc);
+                    result = mainResult.ToObject();
+                }
+                catch (ScriptRuntimeException ex)
+                {
+                    // main() 执行时发生异常
+                    hasError = true;
+                    var errorInfo = ExtractErrorInfo(ex);
+                    errorMessage = errorInfo.Message;
+                    errorLineNumber = errorInfo.LineNumber;
+                    errorTrace = errorInfo.FullMessage;
+
+                    // 4. 调用 error() 回调（已强制要求，必定存在）
+                    try
+                    {
+                        // 创建错误信息表
+                        var errorInfoTable = new Dictionary<string, object>
+                        {
+                            { "message", errorMessage },
+                            { "lineNumber", errorLineNumber },
+                            { "trace", errorTrace ?? "" }
+                        };
+
+                        // 调用 error() 函数
+                        var errorResult = _script.Call(errorFunc, errorInfoTable);
+                        
+                        // 检查返回值
+                        if (errorResult.Type == DataType.Boolean && errorResult.Boolean)
+                        {
+                            // 返回 true，忽略异常，继续执行
+                            hasError = false;
+                            errorMessage = null;
+                        }
+                        // 返回 false 或其他值，停止执行（保持 hasError = true）
+                    }
+                    catch (Exception errorHandlerEx)
+                    {
+                        // error() 函数本身出错，记录但不影响原始错误
+                        errorMessage = $"原始错误: {errorMessage}\nerror() 函数执行失败: {errorHandlerEx.Message}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 脚本加载或其他阶段的错误
+                hasError = true;
+                errorMessage = ex.Message;
+                errorTrace = ex.ToString();
+            }
+            finally
+            {
+                // 5. 无论如何，调用 exit() 函数（已强制要求，必定存在）
+                try
+                {
+                    _script.Call(exitFunc);
+                }
+                catch (Exception exitEx)
+                {
+                    // exit() 函数出错，记录但不影响最终结果
+                    if (hasError)
+                    {
+                        errorMessage = $"{errorMessage}\nexit() 函数执行失败: {exitEx.Message}";
+                    }
+                    else
+                    {
+                        hasError = true;
+                        errorMessage = $"exit() 函数执行失败: {exitEx.Message}";
+                    }
+                }
+            }
+
+            // 6. 返回最终结果
+            if (hasError)
+            {
+                return new ScriptResult
+                {
+                    Success = false,
+                    Error = errorMessage,
+                    LineNumber = errorLineNumber,
+                    Output = errorTrace
+                };
+            }
+            else
+            {
+                return new ScriptResult
+                {
+                    Success = true,
+                    Data = result,
+                    Output = result?.ToString() ?? "null"
+                };
+            }
+        }
+
+        /// <summary>
+        /// 从异常中提取详细的错误信息
+        /// </summary>
+        private (string Message, int LineNumber, int ColumnNumber, string FullMessage) ExtractErrorInfo(Exception ex)
+        {
+            string fullMessage = ex.ToString();
+            string message = ex.Message;
+            int lineNumber = 0;
+            int columnNumber = 0;
+
+            // MoonSharp 异常通常包含 DecoratedMessage
+            if (ex is ScriptRuntimeException runtimeEx)
+            {
+                message = runtimeEx.DecoratedMessage ?? runtimeEx.Message;
+                fullMessage = runtimeEx.ToString();
+                
+                // 尝试从堆栈中获取行号
+                if (runtimeEx.CallStack != null && runtimeEx.CallStack.Count > 0)
+                {
+                    var frame = runtimeEx.CallStack[0];
+                    lineNumber = frame.Location?.FromLine ?? 0;
+                    columnNumber = frame.Location?.FromChar ?? 0;
+                }
+            }
+            else if (ex is SyntaxErrorException syntaxEx)
+            {
+                message = syntaxEx.DecoratedMessage ?? syntaxEx.Message;
+                fullMessage = syntaxEx.ToString();
+                
+                // 尝试从消息中解析行号（格式通常是 "...:line X:..."）
+                var match = System.Text.RegularExpressions.Regex.Match(message, @"line\s+(\d+)", 
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int parsedLine))
+                {
+                    lineNumber = parsedLine;
+                }
+                
+                // 尝试解析列号
+                match = System.Text.RegularExpressions.Regex.Match(message, @"column\s+(\d+)", 
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int parsedCol))
+                {
+                    columnNumber = parsedCol;
+                }
+            }
+
+            return (message, lineNumber, columnNumber, fullMessage);
         }
 
         public ScriptValidationResult Validate(string scriptCode)
@@ -104,22 +308,59 @@ namespace Unit.La.Scripting
             try
             {
                 // 尝试解析脚本
-                _script.LoadString(scriptCode);
+                var tempScript = new Script();
+                tempScript.DoString(scriptCode);
+                
+                // 🔥 验证3个必须函数是否都存在
+                var mainFunc = tempScript.Globals.Get("main");
+                var errorFunc = tempScript.Globals.Get("error");
+                var exitFunc = tempScript.Globals.Get("exit");
+
+                var missingFunctions = new System.Text.StringBuilder();
+                
+                if (mainFunc.IsNil() || mainFunc.Type != DataType.Function)
+                {
+                    missingFunctions.AppendLine("  - function main()");
+                }
+                
+                if (errorFunc.IsNil() || errorFunc.Type != DataType.Function)
+                {
+                    missingFunctions.AppendLine("  - function error(errorInfo)");
+                }
+                
+                if (exitFunc.IsNil() || exitFunc.Type != DataType.Function)
+                {
+                    missingFunctions.AppendLine("  - function exit()");
+                }
+
+                // 如果有缺失的函数，返回验证失败
+                if (missingFunctions.Length > 0)
+                {
+                    var errorMsg = $"脚本不符合规范！必须包含以下3个函数：\n{missingFunctions}";
+                    
+                    return new ScriptValidationResult
+                    {
+                        IsValid = false,
+                        Error = errorMsg,
+                        LineNumber = 0,
+                        ColumnNumber = 0
+                    };
+                }
+                
+                // 语法正确且3个函数都存在
                 return new ScriptValidationResult { IsValid = true };
             }
             catch (SyntaxErrorException ex)
             {
-                // MoonSharp 2.0 中的行号获取
-                int lineNumber = 0;
-                int columnNumber = 0;
-                // 简化实现：使用异常的装饰消息
+                // 语法错误 - 提取详细信息
+                var errorInfo = ExtractErrorInfo(ex);
                 
                 return new ScriptValidationResult
                 {
                     IsValid = false,
-                    Error = ex.DecoratedMessage ?? ex.Message,
-                    LineNumber = lineNumber,
-                    ColumnNumber = columnNumber
+                    Error = errorInfo.Message,
+                    LineNumber = errorInfo.LineNumber,
+                    ColumnNumber = errorInfo.ColumnNumber
                 };
             }
             catch (Exception ex)

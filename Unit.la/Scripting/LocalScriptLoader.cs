@@ -179,36 +179,91 @@ namespace Unit.La.Scripting
         {
             return @"-- ====================================
 -- 主脚本 (main.lua)
--- 控制业务逻辑流程
+-- 完整的脚本生命周期: main() -> error() -> exit()
 -- ====================================
 
-log('主脚本开始执行')
+log('脚本开始加载')
 
--- 主要业务逻辑
+-- ==============================
+-- 主业务逻辑函数
+-- ==============================
 function main()
-    -- 1. 登录
-    log('步骤1: 登录')
-    local loginSuccess = login(config.username or 'test', config.password or 'pass')
-    if not loginSuccess then
-        log('登录失败，终止执行')
-        return false
-    end
-
-    -- 2. 执行业务逻辑
-    log('步骤2: 执行业务')
-    -- 在这里调用 functions.lua 中定义的功能函数
-
-    log('执行完成')
+    log('✨ main() 开始执行')
+    
+    -- 示例1: 获取当前页面信息
+    local url = web.GetUrl()
+    log('当前URL: ' .. url)
+    
+    local title = web.GetTitle()
+    log('页面标题: ' .. title)
+    
+    -- 示例2: 调用业务功能（需要在 functions.lua 中定义）
+    -- local loginSuccess = login('username', 'password')
+    -- if not loginSuccess then
+    --     error('登录失败')  -- 这将触发 error() 回调
+    -- end
+    
+    -- 示例3: 条件分支
+    -- if someCondition then
+    --     doSomething()
+    -- else
+    --     doSomethingElse()
+    -- end
+    
+    log('✅ main() 执行完成')
     return true
 end
 
--- 执行主逻辑
-local success = main()
-if success then
-    log('✅ 主脚本执行成功')
-else
-    log('❌ 主脚本执行失败')
+-- ==============================
+-- 异常处理回调函数（可选）
+-- ==============================
+function error(errorInfo)
+    log('⚠️ error() 异常处理回调')
+    log('   错误信息: ' .. errorInfo.message)
+    log('   错误行号: ' .. tostring(errorInfo.lineNumber))
+    
+    -- 在这里可以执行异常处理逻辑：
+    -- - 记录错误日志
+    -- - 发送通知
+    -- - 尝试恢复
+    -- - 清理资源
+    
+    -- 示例：根据错误类型决定是否继续
+    if string.find(errorInfo.message, '404') then
+        log('   页面未找到，尝试重新导航')
+        -- web.Navigate('https://backup-url.com')
+        return true  -- 返回 true = 忽略异常，继续执行
+    end
+    
+    -- 其他错误，停止执行
+    log('   严重错误，停止执行')
+    return false  -- 返回 false = 停止执行脚本
 end
+
+-- ==============================
+-- 清理函数（可选）
+-- ==============================
+function exit()
+    log('🔚 exit() 清理函数')
+    
+    -- 无论脚本是正常完成还是异常终止，都会执行这里
+    -- 在这里可以执行清理工作：
+    -- - 关闭连接
+    -- - 保存状态
+    -- - 释放资源
+    -- - 发送完成通知
+    
+    log('   清理完成')
+end
+
+-- ==============================
+-- 注意事项
+-- ==============================
+-- 1. main() 必须存在，这是脚本的入口点
+-- 2. error() 可选，用于处理 main() 中的异常
+-- 3. exit() 可选，无论如何都会执行，用于清理工作
+-- 4. 如果不定义 error()，异常会直接导致脚本停止
+-- 5. 如果不定义 exit()，脚本结束后不会执行清理
 ";
         }
 

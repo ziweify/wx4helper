@@ -27,4 +27,11 @@
     </Reference>
   </ItemGroup>
 
+  <!-- 用户文档 - 随编译复制到输出目录（仅快速参考文档） -->
+  <ItemGroup>
+    <None Include="UserDocment\**\*.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

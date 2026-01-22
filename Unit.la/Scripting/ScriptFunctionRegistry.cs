@@ -68,8 +68,14 @@ namespace Unit.La.Scripting
         /// <summary>
         /// 注册默认函数库
         /// </summary>
-        public void RegisterDefaults(Action<string>? logCallback = null)
+        public void RegisterDefaults(Action<string>? logCallback = null, Microsoft.Web.WebView2.WinForms.WebView2? webView = null)
         {
+            // 🔧 设置日志回调到 DefaultScriptFunctions
+            if (logCallback != null)
+            {
+                DefaultScriptFunctions.SetLogCallback(logCallback);
+            }
+            
             // 日志函数
             RegisterFunction("log", new Action<string>(DefaultScriptFunctions.Log), 
                 "输出日志", "log('Hello World')", "日志");
@@ -119,6 +125,13 @@ namespace Unit.La.Scripting
                 "替换字符串", "local s = string_replace('hello', 'l', 'L')", "字符串");
             RegisterFunction("string_split", new Func<string, string, string[]>(DefaultScriptFunctions.StringSplit), 
                 "分割字符串", "local arr = string_split('a,b,c', ',')", "字符串");
+            
+            // 🌐 注册 WebView2 桥接对象
+            if (webView != null)
+            {
+                var webBridge = new WebBridge(webView, logCallback);
+                RegisterObject("web", webBridge);
+            }
         }
 
         /// <summary>

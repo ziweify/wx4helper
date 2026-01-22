@@ -127,14 +127,47 @@ namespace Unit.La.Controls
 
             try
             {
+                LogMessage("▶️ 开始执行脚本...");
                 var result = await Task.Run(() => _scriptEditor.ExecuteScript());
-                LogMessage($"✅ 脚本执行成功");
-                ScriptExecuted?.Invoke(this, result);
-                return result;
+                
+                if (result.Success)
+                {
+                    LogMessage($"✅ 脚本执行成功");
+                    if (!string.IsNullOrEmpty(result.Output))
+                    {
+                        LogMessage($"📤 输出: {result.Output}");
+                    }
+                    ScriptExecuted?.Invoke(this, result.Data ?? "null");
+                    return result.Data ?? "null";
+                }
+                else
+                {
+                    // 显示详细的错误信息
+                    LogMessage($"❌ 脚本执行失败");
+                    LogMessage($"   💬 错误: {result.Error}");
+                    
+                    if (result.LineNumber > 0)
+                    {
+                        LogMessage($"   📍 位置: 第 {result.LineNumber} 行");
+                    }
+                    
+                    if (!string.IsNullOrEmpty(result.Output) && result.Output != result.Error)
+                    {
+                        LogMessage($"   📋 详细信息:");
+                        // 将详细信息分行显示
+                        var lines = result.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in lines)
+                        {
+                            LogMessage($"      {line}");
+                        }
+                    }
+                    
+                    throw new Exception(result.Error);
+                }
             }
             catch (Exception ex)
             {
-                LogMessage($"❌ 脚本执行失败: {ex.Message}");
+                LogMessage($"❌ 脚本执行异常: {ex.Message}");
                 throw;
             }
         }
@@ -496,40 +529,115 @@ namespace Unit.La.Controls
         {
             return type switch
             {
-                ScriptType.Main => @"-- 主脚本
-log('主脚本开始执行')
+                ScriptType.Main => @"-- ====================================
+-- 主脚本 (main.lua)
+-- ====================================
+
+log('🚀 主脚本开始执行')
 
 function main()
-    -- 在这里编写主要业务逻辑
-    log('执行业务逻辑')
+    -- 1. 导航到目标网站
+    log('📍 步骤1: 导航到目标网站')
+    web.Navigate(config.url or 'https://example.com')
+    web.WaitForLoad(10000)  -- 等待页面加载完成
+    
+    -- 2. 登录示例
+    log('🔐 步骤2: 登录')
+    if web.Exists('#username') then
+        web.Input('#username', config.username or 'admin')
+        web.Input('#password', config.password or 'password')
+        web.Click('#loginBtn')
+        web.Wait(2000)
+    end
+    
+    -- 3. 执行业务逻辑
+    log('💼 步骤3: 执行业务逻辑')
+    
+    -- 4. 获取数据示例
+    local title = web.GetTitle()
+    log('📄 页面标题: ' .. title)
+    
+    local url = web.GetUrl()
+    log('🔗 当前URL: ' .. url)
+    
+    log('✅ 主脚本执行完成')
     return true
 end
 
-main()
+-- 执行主逻辑
+local success = main()
+if success then
+    log('✅ 执行成功')
+else
+    log('❌ 执行失败')
+end
 ",
-                ScriptType.Functions => @"-- 功能库
-log('功能库加载中...')
+                ScriptType.Functions => @"-- ====================================
+-- 功能库 (functions.lua)
+-- ====================================
+
+log('📚 功能库加载中...')
 
 function login(username, password)
-    log('登录: ' .. username)
-    -- 实现登录逻辑
+    log('🔐 登录: ' .. username)
+    web.Navigate(config.url or 'https://example.com/login')
+    web.WaitForLoad()
+    web.Input('#username', username)
+    web.Input('#password', password)
+    web.Click('#loginBtn')
+    web.Wait(2000)
     return true
 end
 
 function getData()
-    log('获取数据')
-    -- 实现数据获取逻辑
-    return 'data'
+    log('📊 获取数据')
+    if not web.WaitFor('.data-table', 5000) then
+        log('⚠️ 数据表格未找到')
+        return nil
+    end
+    local texts = web.GetAllText('.data-row .title')
+    return texts
 end
 
-log('功能库加载完成')
+function queryOrder(orderId)
+    log('🔍 查询订单: ' .. orderId)
+    web.Input('#orderId', orderId)
+    web.Click('#searchBtn')
+    web.Wait(1000)
+    if web.WaitFor('.order-result', 3000) then
+        return web.GetElementText('.order-result')
+    end
+    return nil
+end
+
+function placeBet(betData)
+    log('💰 投注')
+    web.Input('#betAmount', tostring(betData.amount))
+    web.Select('#betType', betData.type)
+    web.Click('#betBtn')
+    web.Wait(1000)
+    return web.Exists('.bet-success')
+end
+
+log('✅ 功能库加载完成')
 ",
                 ScriptType.Test => @"-- 测试脚本
-log('测试脚本开始')
+log('🧪 测试脚本开始')
 
--- 在这里编写测试代码
+-- 测试 web 库功能
+log('测试1: 导航')
+web.Navigate('https://www.baidu.com')
+web.WaitForLoad()
 
-log('测试完成')
+log('测试2: 获取页面信息')
+local title = web.GetTitle()
+log('页面标题: ' .. title)
+
+if web.Exists('#kw') then
+    log('✅ 找到搜索框')
+end
+
+log('🎉 测试完成')
 ",
                 _ => @"-- 自定义脚本
 log('脚本开始')
@@ -838,14 +946,24 @@ log('脚本结束')
                 var currentEditor = GetCurrentScriptEditor(tabControlScripts);
                 if (currentEditor != null)
                 {
+                    LogMessage("🔍 开始验证脚本...");
                     var result = currentEditor.ValidateScript();
                     if (result.IsValid)
                     {
-                        LogMessage("✅ 脚本验证通过");
+                        LogMessage("✅ 脚本验证通过 - 语法正确");
                     }
                     else
                     {
-                        LogMessage($"❌ 脚本验证失败: {result.Error}");
+                        LogMessage($"❌ 脚本验证失败");
+                        LogMessage($"   💬 错误: {result.Error}");
+                        if (result.LineNumber > 0)
+                        {
+                            LogMessage($"   📍 位置: 第 {result.LineNumber} 行");
+                            if (result.ColumnNumber > 0)
+                            {
+                                LogMessage($"           第 {result.ColumnNumber} 列");
+                            }
+                        }
                     }
                 }
             };
@@ -962,7 +1080,7 @@ log('脚本结束')
         /// </summary>
         private void RegisterDefaultFunctions()
         {
-            _functionRegistry.RegisterDefaults(LogMessage);
+            _functionRegistry.RegisterDefaults(LogMessage, _webView);
         }
 
         /// <summary>

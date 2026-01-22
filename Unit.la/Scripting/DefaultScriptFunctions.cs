@@ -18,6 +18,14 @@ namespace Unit.La.Scripting
         private static readonly HttpClient _httpClient = new HttpClient();
 
         /// <summary>
+        /// 设置日志回调函数
+        /// </summary>
+        public static void SetLogCallback(Action<string> logCallback)
+        {
+            _logCallback = logCallback;
+        }
+
+        /// <summary>
         /// 注册所有默认函数到脚本引擎
         /// </summary>
         public static void RegisterAll(IScriptEngine engine, Action<string>? logCallback = null)

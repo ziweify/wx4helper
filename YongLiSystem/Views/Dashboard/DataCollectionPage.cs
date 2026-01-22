@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
@@ -83,15 +84,27 @@ namespace YongLiSystem.Views.Dashboard
         {
             try
             {
+                // 🔥 生成唯一的任务ID和脚本目录
+                var taskId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                var taskName = $"任务_{DateTime.Now:HHmmss}";
+                var scriptDirectory = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "Scripts",
+                    $"Task_{taskId}"
+                );
+
+                // 🔥 自动创建脚本目录和模板文件
+                Unit.La.Scripting.LocalScriptLoader.CreateDefaultScripts(scriptDirectory);
+
                 // 创建新任务（使用默认值）
                 var task = new ScriptTask
                 {
-                    Name = $"新任务 {DateTime.Now:HHmmss}",
+                    Name = taskName,
                     Url = "https://www.baidu.com",
                     Username = "",
                     Password = "",
                     AutoLogin = false,
-                    Script = "-- Lua 脚本\nprint('Hello World')",
+                    Script = scriptDirectory, // 🔥 存储脚本目录路径
                     CreatedTime = DateTime.Now,
                     Status = "待启动"
                 };
@@ -105,8 +118,8 @@ namespace YongLiSystem.Views.Dashboard
                     // 立即打开编辑窗口（这样用户可以修改配置）
                     OpenTaskWindow(task, _taskControls[task.Id].card);
                     
-                    MessageBox.Show("脚本任务已创建，请在窗口中配置！", "成功", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"脚本任务已创建！\n脚本目录: {scriptDirectory}\n已自动生成 main.lua 和 functions.lua 模板。", 
+                        "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
