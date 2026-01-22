@@ -8,10 +8,15 @@ namespace Unit.La.Scripting
     /// <summary>
     /// MoonSharp Lua 脚本引擎实现
     /// </summary>
-    public class MoonSharpScriptEngine : IScriptEngine
+    public class MoonSharpScriptEngine : IScriptDebugEngine
     {
         private readonly Script _script;
         private readonly HashSet<int> _breakpoints = new();
+        private bool _isDebugging = false;
+        private bool _isPaused = false;
+        private int _currentLine = -1;
+        private Dictionary<string, object>? _currentVariables = null;
+        private List<string>? _currentCallStack = null;
 
         public MoonSharpScriptEngine()
         {
@@ -403,6 +408,107 @@ namespace Unit.La.Scripting
         {
             _breakpoints.Remove(lineNumber);
         }
+
+        #region IScriptDebugEngine 实现
+
+        /// <summary>
+        /// 步进（Step Into）- 遇到函数自动进入
+        /// 注意：MoonSharp 的完整调试支持需要更复杂的实现
+        /// 这里提供基础框架，实际功能可以在后续版本中完善
+        /// </summary>
+        public void StepInto()
+        {
+            if (!_isDebugging || !_isPaused)
+                return;
+
+            _isPaused = false;
+            // TODO: 实现真正的步进功能（需要 MoonSharp 调试器支持）
+        }
+
+        /// <summary>
+        /// 步过（Step Over）- 遇到函数就步过
+        /// </summary>
+        public void StepOver()
+        {
+            if (!_isDebugging || !_isPaused)
+                return;
+
+            _isPaused = false;
+            // TODO: 实现真正的步过功能（需要 MoonSharp 调试器支持）
+        }
+
+        /// <summary>
+        /// 继续执行（Continue）- 继续运行到下一个断点
+        /// </summary>
+        public void Continue()
+        {
+            if (!_isDebugging || !_isPaused)
+                return;
+
+            _isPaused = false;
+            // 继续执行（由 Execute 方法中的断点检查处理）
+        }
+
+        /// <summary>
+        /// 停止调试
+        /// </summary>
+        public void Stop()
+        {
+            _isDebugging = false;
+            _isPaused = false;
+            _currentLine = -1;
+            _currentVariables = null;
+            _currentCallStack = null;
+        }
+
+        /// <summary>
+        /// 获取当前变量
+        /// </summary>
+        public Dictionary<string, object>? GetVariables()
+        {
+            if (!_isDebugging || !_isPaused)
+                return null;
+
+            // 尝试从脚本全局变量中提取
+            var variables = new Dictionary<string, object>();
+            try
+            {
+                foreach (var pair in _script.Globals.Pairs)
+                {
+                    if (pair.Key.Type == DataType.String)
+                    {
+                        var key = pair.Key.String;
+                        var value = pair.Value.ToObject();
+                        variables[key] = value ?? "nil";
+                    }
+                }
+            }
+            catch
+            {
+                // 忽略错误
+            }
+
+            return variables;
+        }
+
+        /// <summary>
+        /// 获取调用堆栈
+        /// </summary>
+        public List<string>? GetCallStack()
+        {
+            if (!_isDebugging || !_isPaused)
+                return null;
+
+            // TODO: 实现真正的调用堆栈（需要 MoonSharp 调试器支持）
+            var stack = new List<string>();
+            if (_currentLine > 0)
+            {
+                stack.Add($"第 {_currentLine} 行");
+            }
+            return stack;
+        }
+
+        #endregion
 
         public event EventHandler<ScriptDebugEventArgs>? OnBreakpoint;
         public event EventHandler<ScriptErrorEventArgs>? OnError;

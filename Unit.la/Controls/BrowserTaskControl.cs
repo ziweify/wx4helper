@@ -331,6 +331,12 @@ namespace Unit.La.Controls
                 EnableBreakpoints = true
             };
 
+            // 🔥 设置脚本目录（用于文件树）
+            if (!string.IsNullOrEmpty(_config.ScriptDirectory))
+            {
+                editor.SetScriptDirectory(_config.ScriptDirectory);
+            }
+
             _functionRegistry.BindToEngine(editor.ScriptEngine);
             
             // 设置编辑器事件（从TabControl.Tag获取）
@@ -363,7 +369,7 @@ namespace Unit.La.Controls
         /// <summary>
         /// 浏览脚本目录
         /// </summary>
-        private void OnBrowseScriptDirectory(TextBox txtPath, ListBox listBox)
+        private void OnBrowseScriptDirectory(TextBox txtPath)
         {
             using var dialog = new FolderBrowserDialog
             {
@@ -376,48 +382,7 @@ namespace Unit.La.Controls
             {
                 txtPath.Text = dialog.SelectedPath;
                 _config.ScriptDirectory = dialog.SelectedPath;
-                LoadScriptsFromDirectory(dialog.SelectedPath, listBox);
                 LogMessage($"📂 脚本目录已切换: {dialog.SelectedPath}");
-            }
-        }
-
-        /// <summary>
-        /// 从目录加载脚本列表
-        /// </summary>
-        private void LoadScriptsFromDirectory(string directory, ListBox listBox)
-        {
-            listBox.Items.Clear();
-
-            if (string.IsNullOrEmpty(directory) || !System.IO.Directory.Exists(directory))
-            {
-                LogMessage($"❌ 脚本目录不存在: {directory}");
-                return;
-            }
-
-            try
-            {
-                var luaFiles = System.IO.Directory.GetFiles(directory, "*.lua", System.IO.SearchOption.TopDirectoryOnly);
-
-                foreach (var filePath in luaFiles)
-                {
-                    var fileName = System.IO.Path.GetFileName(filePath);
-                    var script = new ScriptInfo
-                    {
-                        Name = fileName,
-                        DisplayName = System.IO.Path.GetFileNameWithoutExtension(fileName),
-                        FilePath = filePath,
-                        Content = System.IO.File.ReadAllText(filePath, Encoding.UTF8),
-                        Type = InferScriptType(fileName)
-                    };
-
-                    listBox.Items.Add(script);
-                }
-
-                LogMessage($"✅ 已加载 {luaFiles.Length} 个脚本");
-            }
-            catch (Exception ex)
-            {
-                LogMessage($"❌ 加载脚本失败: {ex.Message}");
             }
         }
 
@@ -498,7 +463,7 @@ namespace Unit.La.Controls
         /// <summary>
         /// 新建脚本
         /// </summary>
-        private void OnNewScript(ListBox listBox, string directory)
+        private void OnNewScript(string directory)
         {
             if (string.IsNullOrEmpty(directory) || !System.IO.Directory.Exists(directory))
             {
@@ -521,17 +486,6 @@ namespace Unit.La.Controls
                 {
                     var template = GetScriptTemplate(dialog.ScriptType);
                     System.IO.File.WriteAllText(filePath, template, Encoding.UTF8);
-
-                    var newScript = new ScriptInfo
-                    {
-                        Name = dialog.ScriptName,
-                        DisplayName = dialog.ScriptDisplayName,
-                        FilePath = filePath,
-                        Content = template,
-                        Type = dialog.ScriptType
-                    };
-
-                    listBox.Items.Add(newScript);
                     LogMessage($"✅ 已创建脚本: {dialog.ScriptDisplayName}");
                 }
                 catch (Exception ex)
@@ -544,32 +498,28 @@ namespace Unit.La.Controls
         /// <summary>
         /// 删除脚本
         /// </summary>
-        private void OnDeleteScript(ListBox listBox)
+        private void OnDeleteScript(ScriptInfo script)
         {
-            if (listBox.SelectedItem is ScriptInfo script)
+            var result = MessageBox.Show(
+                $"确定要删除脚本 \"{script.DisplayName}\" 吗？\n\n文件将被永久删除！",
+                "确认删除",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
             {
-                var result = MessageBox.Show(
-                    $"确定要删除脚本 \"{script.DisplayName}\" 吗？\n\n文件将被永久删除！",
-                    "确认删除",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
-
-                if (result == DialogResult.Yes)
+                try
                 {
-                    try
+                    if (!string.IsNullOrEmpty(script.FilePath) && System.IO.File.Exists(script.FilePath))
                     {
-                        if (!string.IsNullOrEmpty(script.FilePath) && System.IO.File.Exists(script.FilePath))
-                        {
-                            System.IO.File.Delete(script.FilePath);
-                        }
+                        System.IO.File.Delete(script.FilePath);
+                    }
 
-                        listBox.Items.Remove(script);
-                        LogMessage($"✅ 已删除脚本: {script.DisplayName}");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"删除脚本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    LogMessage($"✅ 已删除脚本: {script.DisplayName}");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"删除脚本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -730,27 +680,7 @@ log('脚本结束')
             };
             tabPageLog.Controls.Add(_logTextBox);
 
-            // 🎨 新的VS风格布局：左侧脚本列表(100px) + 右侧编辑区域
-            var splitContainerScript = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                SplitterDistance = 100, // 左侧脚本列表宽度
-                FixedPanel = FixedPanel.Panel1, // 固定左侧面板宽度
-                BorderStyle = BorderStyle.Fixed3D
-            };
-            
-            // ============ 左侧：脚本文件列表 ============
-            var listBoxScripts = new ListBox
-            {
-                Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 9F),
-                IntegralHeight = false
-            };
-            
-            splitContainerScript.Panel1.Controls.Add(listBoxScripts);
-            
-            // ============ 右侧：编辑区域 ============
+            // 🎨 编辑区域（ScriptEditorControl 内部已有文件树，无需额外的左侧列表）
             var panelEditor = new Panel { Dock = DockStyle.Fill };
             
             // 顶部工具栏（模式切换 + 操作 + 执行）
@@ -780,6 +710,10 @@ log('脚本结束')
             // 执行按钮
             var btnExecute = new ToolStripButton("▶ 执行");
             var btnStop = new ToolStripButton("⏹ 停止") { Enabled = false };
+            var btnDebug = new ToolStripButton("🐛 调试");
+            var btnStepInto = new ToolStripButton("F7 步进") { Enabled = false };
+            var btnStepOver = new ToolStripButton("F8 步过") { Enabled = false };
+            var btnContinue = new ToolStripButton("F9 继续") { Enabled = false };
             var btnValidate = new ToolStripButton("✓ 验证");
             var btnHelp = new ToolStripButton("📖 帮助");
             
@@ -792,6 +726,12 @@ log('脚本结束')
             toolBarTop.Items.Add(new ToolStripSeparator());
             toolBarTop.Items.Add(btnExecute);
             toolBarTop.Items.Add(btnStop);
+            toolBarTop.Items.Add(new ToolStripSeparator());
+            toolBarTop.Items.Add(btnDebug);
+            toolBarTop.Items.Add(btnStepInto);
+            toolBarTop.Items.Add(btnStepOver);
+            toolBarTop.Items.Add(btnContinue);
+            toolBarTop.Items.Add(new ToolStripSeparator());
             toolBarTop.Items.Add(btnValidate);
             toolBarTop.Items.Add(btnHelp);
             
@@ -858,6 +798,12 @@ log('脚本结束')
                 EnableBreakpoints = true
             };
             
+            // 🔥 设置脚本目录（用于文件树）
+            if (!string.IsNullOrEmpty(_config.ScriptDirectory))
+            {
+                _scriptEditor.SetScriptDirectory(_config.ScriptDirectory);
+            }
+            
             tabPageMain.Controls.Add(_scriptEditor);
             tabControlScripts.TabPages.Add(tabPageMain);
             
@@ -868,24 +814,9 @@ log('脚本结束')
             panelEditor.Controls.Add(panelPath);
             panelEditor.Controls.Add(toolBarTop);
             
-            splitContainerScript.Panel2.Controls.Add(panelEditor);
-            
             // ============ 事件绑定 ============
             
-            // 脚本列表选择事件
-            listBoxScripts.SelectedIndexChanged += (s, e) =>
-            {
-                btnDelete.Enabled = listBoxScripts.SelectedIndex >= 0;
-            };
-            
-            // 脚本列表双击事件（打开脚本到新Tab）
-            listBoxScripts.DoubleClick += (s, e) =>
-            {
-                if (listBoxScripts.SelectedItem is ScriptInfo script)
-                {
-                    OpenScriptInTab(tabControlScripts, script);
-                }
-            };
+            // 注意：文件列表功能已移至 ScriptEditorControl 内部的文件树
             
             // 模式切换
             radioLocal.Click += (s, e) =>
@@ -910,13 +841,35 @@ log('脚本结束')
             };
             
             // 新建脚本
-            btnNew.Click += (s, e) => OnNewScript(listBoxScripts, txtScriptPath.Text);
+            btnNew.Click += (s, e) =>
+            {
+                OnNewScript(txtScriptPath.Text);
+                // 刷新文件树
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                if (currentEditor != null && !string.IsNullOrEmpty(txtScriptPath.Text))
+                {
+                    currentEditor.UpdateFileTree(txtScriptPath.Text);
+                }
+            };
             
             // 保存脚本
             btnSave.Click += (s, e) => OnSaveCurrentScript(tabControlScripts, btnSave);
             
-            // 删除脚本
-            btnDelete.Click += (s, e) => OnDeleteScript(listBoxScripts);
+            // 删除脚本（从当前Tab获取脚本信息）
+            btnDelete.Click += (s, e) =>
+            {
+                var currentTab = tabControlScripts.SelectedTab;
+                if (currentTab?.Tag is ScriptInfo script)
+                {
+                    OnDeleteScript(script);
+                    // 刷新文件树
+                    var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                    if (currentEditor != null && !string.IsNullOrEmpty(txtScriptPath.Text))
+                    {
+                        currentEditor.UpdateFileTree(txtScriptPath.Text);
+                    }
+                }
+            };
             
             // 打开文件夹（添加到顶部工具栏）
             var btnOpenFolder = new ToolStripButton("📂 打开");
@@ -979,10 +932,27 @@ log('脚本结束')
             };
             
             // 浏览文件夹
-            btnBrowsePath.Click += (s, e) => OnBrowseScriptDirectory(txtScriptPath, listBoxScripts);
+            btnBrowsePath.Click += (s, e) =>
+            {
+                OnBrowseScriptDirectory(txtScriptPath);
+                // 刷新文件树
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                if (currentEditor != null && !string.IsNullOrEmpty(txtScriptPath.Text))
+                {
+                    currentEditor.SetScriptDirectory(txtScriptPath.Text);
+                }
+            };
             
             // 刷新脚本列表
-            btnRefreshPath.Click += (s, e) => LoadScriptsFromDirectory(txtScriptPath.Text, listBoxScripts);
+            btnRefreshPath.Click += (s, e) =>
+            {
+                // 刷新文件树
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                if (currentEditor != null && !string.IsNullOrEmpty(txtScriptPath.Text))
+                {
+                    currentEditor.UpdateFileTree(txtScriptPath.Text);
+                }
+            };
             
             // 执行脚本
             btnExecute.Click += (s, e) =>
@@ -1016,6 +986,41 @@ log('脚本结束')
             btnStop.Click += (s, e) =>
             {
                 StopScript();
+            };
+            
+            // 调试按钮
+            btnDebug.Click += (s, e) =>
+            {
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                if (currentEditor != null)
+                {
+                    currentEditor.StartDebugging();
+                    btnStepInto.Enabled = true;
+                    btnStepOver.Enabled = true;
+                    btnContinue.Enabled = true;
+                    btnDebug.Enabled = false;
+                }
+            };
+            
+            // 步进（F7）
+            btnStepInto.Click += (s, e) =>
+            {
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                currentEditor?.StepInto();
+            };
+            
+            // 步过（F8）
+            btnStepOver.Click += (s, e) =>
+            {
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                currentEditor?.StepOver();
+            };
+            
+            // 继续（F9）
+            btnContinue.Click += (s, e) =>
+            {
+                var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                currentEditor?.ContinueExecution();
             };
             
             // 验证脚本
@@ -1084,23 +1089,33 @@ log('脚本结束')
             
             txtScriptPath.Text = defaultScriptDir;
             _config.ScriptDirectory = defaultScriptDir;
-            LoadScriptsFromDirectory(defaultScriptDir, listBoxScripts);
             
-            // 🔧 如果加载到了脚本，默认打开 main.lua
-            if (listBoxScripts.Items.Count > 0)
+            // 🔧 如果存在 main.lua，默认打开它
+            var mainLuaPath = System.IO.Path.Combine(defaultScriptDir, "main.lua");
+            if (System.IO.File.Exists(mainLuaPath))
             {
-                var mainScript = listBoxScripts.Items.Cast<ScriptInfo>().FirstOrDefault(s => s.Name.ToLower() == "main.lua");
-                if (mainScript != null)
+                try
                 {
-                    listBoxScripts.SelectedItem = mainScript;
-                    // 更新默认Tab的内容和Tag
+                    var mainScript = new ScriptInfo
+                    {
+                        Name = "main.lua",
+                        DisplayName = "main",
+                        FilePath = mainLuaPath,
+                        Content = System.IO.File.ReadAllText(mainLuaPath, Encoding.UTF8),
+                        Type = ScriptType.Main
+                    };
+                    
                     _scriptEditor.ScriptText = mainScript.Content;
                     tabPageMain.Text = mainScript.DisplayName;
                     tabPageMain.Tag = mainScript;
                 }
+                catch (Exception ex)
+                {
+                    LogMessage($"⚠️ 加载 main.lua 失败: {ex.Message}");
+                }
             }
             
-            tabPageScript.Controls.Add(splitContainerScript);
+            tabPageScript.Controls.Add(panelEditor);
         }
 
         /// <summary>

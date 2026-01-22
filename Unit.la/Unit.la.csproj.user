@@ -20,5 +20,8 @@
     <Compile Update="Views\ErrorDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\FunctionParameterDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>
