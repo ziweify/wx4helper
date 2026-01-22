@@ -21,9 +21,14 @@ namespace Unit.La.Controls
         public event EventHandler? DeleteClicked;
 
         /// <summary>
-        /// 启动/停止按钮点击事件
+        /// 启动/停止按钮点击事件（后台执行脚本，不显示窗口）
         /// </summary>
         public event EventHandler? StartStopClicked;
+
+        /// <summary>
+        /// 编辑按钮点击事件（显示窗口：浏览器+编辑器+日志）
+        /// </summary>
+        public event EventHandler? EditClicked;
 
         /// <summary>
         /// 关闭按钮点击事件（释放资源）
@@ -31,7 +36,7 @@ namespace Unit.La.Controls
         public event EventHandler? CloseClicked;
 
         /// <summary>
-        /// 缩略图点击事件（显示隐藏的窗口）
+        /// 缩略图点击事件（显示隐藏的窗口，同"编辑"按钮）
         /// </summary>
         public event EventHandler? ThumbnailClicked;
 
@@ -150,6 +155,11 @@ namespace Unit.La.Controls
         private void OnStartStopButtonClick(object? sender, EventArgs e)
         {
             StartStopClicked?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void OnEditButtonClick(object? sender, EventArgs e)
+        {
+            EditClicked?.Invoke(this, EventArgs.Empty);
         }
 
         private void OnCloseButtonClick(object? sender, EventArgs e)

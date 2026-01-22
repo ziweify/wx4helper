@@ -9,22 +9,57 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using MoonSharp.Interpreter;
 
 namespace Unit.La.Scripting
 {
     /// <summary>
     /// WebView2 桥接类 - 供 Lua 脚本调用
     /// 使用方式: web.Navigate("https://example.com")
+    /// 使用 Func 动态获取 WebView2，确保在重新创建时能自动关联
+    /// 🔥 使用 MoonSharpUserData 标记，让 MoonSharp 能够识别和转换此类型
     /// </summary>
+    [MoonSharpUserData]
     public class WebBridge
     {
-        private readonly WebView2 _webView;
+        private readonly Func<WebView2?> _webViewProvider;
         private readonly Action<string> _logger;
-
-        public WebBridge(WebView2 webView, Action<string>? logger = null)
+        
+        /// <summary>
+        /// 获取当前 WebView2 实例（动态）
+        /// </summary>
+        private WebView2 WebView
         {
-            _webView = webView ?? throw new ArgumentNullException(nameof(webView));
+            get
+            {
+                var webView = _webViewProvider?.Invoke();
+                if (webView == null)
+                {
+                    throw new InvalidOperationException("WebView2 未初始化或已销毁");
+                }
+                return webView;
+            }
+        }
+
+        /// <summary>
+        /// 构造函数 - 使用 WebView2 提供者（动态引用）
+        /// </summary>
+        /// <param name="webViewProvider">WebView2 提供者函数，每次调用时获取最新的 WebView2 实例</param>
+        /// <param name="logger">日志回调</param>
+        public WebBridge(Func<WebView2?> webViewProvider, Action<string>? logger = null)
+        {
+            _webViewProvider = webViewProvider ?? throw new ArgumentNullException(nameof(webViewProvider));
             _logger = logger ?? (msg => { }); // 默认空日志
+        }
+        
+        /// <summary>
+        /// 兼容构造函数 - 直接传入 WebView2 实例
+        /// </summary>
+        /// <param name="webView">WebView2 实例</param>
+        /// <param name="logger">日志回调</param>
+        public WebBridge(WebView2 webView, Action<string>? logger = null)
+            : this(() => webView, logger)
+        {
         }
 
         #region 导航相关
@@ -42,13 +77,13 @@ namespace Unit.La.Scripting
 
             _logger($"🌐 导航到: {url}");
             
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() => _webView.Source = new Uri(url)));
+                WebView.Invoke(new Action(() => WebView.Source = new Uri(url)));
             }
             else
             {
-                _webView.Source = new Uri(url);
+                WebView.Source = new Uri(url);
             }
         }
 
@@ -59,18 +94,18 @@ namespace Unit.La.Scripting
         public void GoBack()
         {
             _logger("⬅️ 后退");
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() =>
+                WebView.Invoke(new Action(() =>
                 {
-                    if (_webView.CoreWebView2?.CanGoBack == true)
-                        _webView.CoreWebView2.GoBack();
+                    if (WebView.CoreWebView2?.CanGoBack == true)
+                        WebView.CoreWebView2.GoBack();
                 }));
             }
             else
             {
-                if (_webView.CoreWebView2?.CanGoBack == true)
-                    _webView.CoreWebView2.GoBack();
+                if (WebView.CoreWebView2?.CanGoBack == true)
+                    WebView.CoreWebView2.GoBack();
             }
         }
 
@@ -81,18 +116,18 @@ namespace Unit.La.Scripting
         public void GoForward()
         {
             _logger("➡️ 前进");
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() =>
+                WebView.Invoke(new Action(() =>
                 {
-                    if (_webView.CoreWebView2?.CanGoForward == true)
-                        _webView.CoreWebView2.GoForward();
+                    if (WebView.CoreWebView2?.CanGoForward == true)
+                        WebView.CoreWebView2.GoForward();
                 }));
             }
             else
             {
-                if (_webView.CoreWebView2?.CanGoForward == true)
-                    _webView.CoreWebView2.GoForward();
+                if (WebView.CoreWebView2?.CanGoForward == true)
+                    WebView.CoreWebView2.GoForward();
             }
         }
 
@@ -103,13 +138,13 @@ namespace Unit.La.Scripting
         public void Reload()
         {
             _logger("🔄 刷新页面");
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() => _webView.CoreWebView2?.Reload()));
+                WebView.Invoke(new Action(() => WebView.CoreWebView2?.Reload()));
             }
             else
             {
-                _webView.CoreWebView2?.Reload();
+                WebView.CoreWebView2?.Reload();
             }
         }
 
@@ -120,13 +155,13 @@ namespace Unit.La.Scripting
         public void Stop()
         {
             _logger("⏹️ 停止加载");
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() => _webView.CoreWebView2?.Stop()));
+                WebView.Invoke(new Action(() => WebView.CoreWebView2?.Stop()));
             }
             else
             {
-                _webView.CoreWebView2?.Stop();
+                WebView.CoreWebView2?.Stop();
             }
         }
 
@@ -137,6 +172,7 @@ namespace Unit.La.Scripting
         /// <summary>
         /// 执行 JavaScript 脚本
         /// 用法: local result = web.Execute("document.title")
+        /// 🔥 同步执行，避免 UI 线程死锁
         /// </summary>
         public string Execute(string script)
         {
@@ -147,22 +183,31 @@ namespace Unit.La.Scripting
 
             _logger($"📜 执行脚本: {script.Substring(0, Math.Min(50, script.Length))}...");
 
-            return ExecuteAsync(script).GetAwaiter().GetResult();
+            // 🔥 确保在 UI 线程执行
+            if (WebView.InvokeRequired)
+            {
+                return (string)WebView.Invoke(new Func<string>(() => ExecuteInternal(script)));
+            }
+            else
+            {
+                return ExecuteInternal(script);
+            }
         }
-
+        
         /// <summary>
-        /// 异步执行 JavaScript 脚本
+        /// 内部执行方法（假定已在 UI 线程，同步执行）
         /// </summary>
-        private async Task<string> ExecuteAsync(string script)
+        private string ExecuteInternal(string script)
         {
-            if (_webView.CoreWebView2 == null)
+            if (WebView.CoreWebView2 == null)
             {
                 throw new InvalidOperationException("WebView2 未初始化");
             }
 
             try
             {
-                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                // 🔥 使用 GetAwaiter().GetResult() 同步等待
+                var result = WebView.CoreWebView2.ExecuteScriptAsync(script).GetAwaiter().GetResult();
                 return result;
             }
             catch (Exception ex)
@@ -202,12 +247,12 @@ namespace Unit.La.Scripting
         /// </summary>
         public string GetUrl()
         {
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                return (string)_webView.Invoke(new Func<string>(() => 
-                    _webView.Source?.ToString() ?? ""));
+                return (string)WebView.Invoke(new Func<string>(() => 
+                    WebView.Source?.ToString() ?? ""));
             }
-            return _webView.Source?.ToString() ?? "";
+            return WebView.Source?.ToString() ?? "";
         }
 
         /// <summary>
@@ -595,27 +640,28 @@ namespace Unit.La.Scripting
         public void OpenDevTools()
         {
             _logger("🔧 打开开发者工具");
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() => _webView.CoreWebView2?.OpenDevToolsWindow()));
+                WebView.Invoke(new Action(() => WebView.CoreWebView2?.OpenDevToolsWindow()));
             }
             else
             {
-                _webView.CoreWebView2?.OpenDevToolsWindow();
+                WebView.CoreWebView2?.OpenDevToolsWindow();
             }
         }
 
         /// <summary>
         /// 截图并保存
         /// 用法: web.Screenshot("screenshot.png")
+        /// 🔥 确保在 UI 线程上执行
         /// </summary>
         public void Screenshot(string filePath)
         {
             _logger($"📸 截图: {filePath}");
             
-            if (_webView.InvokeRequired)
+            if (WebView.InvokeRequired)
             {
-                _webView.Invoke(new Action(() => ScreenshotInternal(filePath)));
+                WebView.Invoke(new Action(() => ScreenshotInternal(filePath)));
             }
             else
             {
@@ -625,7 +671,12 @@ namespace Unit.La.Scripting
 
         private void ScreenshotInternal(string filePath)
         {
-            var task = _webView.CoreWebView2.CapturePreviewAsync(
+            if (WebView.CoreWebView2 == null)
+            {
+                throw new InvalidOperationException("WebView2 未初始化");
+            }
+            
+            var task = WebView.CoreWebView2.CapturePreviewAsync(
                 CoreWebView2CapturePreviewImageFormat.Png,
                 File.OpenWrite(filePath)
             );

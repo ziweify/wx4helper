@@ -28,6 +28,7 @@ namespace Unit.La.Controls
         private int _historyIndex = -1;
         private Action<string>? _customLogHandler;
         private System.Windows.Forms.Timer? _thumbnailTimer; // 缩略图更新定时器
+        private TaskCompletionSource<bool>? _webViewInitTcs; // 🔥 WebView2 初始化完成信号
 
         /// <summary>
         /// 配置变更事件
@@ -59,13 +60,15 @@ namespace Unit.La.Controls
             _config = config ?? throw new ArgumentNullException(nameof(config));
             
             InitializeComponent();
-            InitializeControls();
             
-            // 注册默认函数
+            // 🔥 先初始化 WebView2（异步，但会创建 _webView 对象）
+            InitializeWebView();
+            
+            // 🔥 注册默认函数（使用动态 WebView 引用，确保关联始终有效）
             RegisterDefaultFunctions();
             
-            // 初始化WebView2
-            InitializeWebView();
+            // 最后初始化控件（会绑定所有注册的函数到引擎）
+            InitializeControls();
             
             // 🔧 修改关闭行为：关闭时隐藏而不是真正关闭
             FormClosing += BrowserTaskControl_FormClosing;
@@ -125,10 +128,25 @@ namespace Unit.La.Controls
                 throw new InvalidOperationException("脚本编辑器未初始化");
             }
 
+            // 🔥 检查 WebView2 初始化状态（不要 await，会死锁）
+            if (_webViewInitTcs != null && !_webViewInitTcs.Task.IsCompleted)
+            {
+                LogMessage("⏳ WebView2 正在初始化，请稍候...");
+                throw new InvalidOperationException("WebView2 正在初始化中，请稍后再试");
+            }
+            
+            if (_webViewInitTcs != null && _webViewInitTcs.Task.IsFaulted)
+            {
+                throw new InvalidOperationException($"WebView2 初始化失败: {_webViewInitTcs.Task.Exception?.GetBaseException().Message}");
+            }
+
             try
             {
                 LogMessage("▶️ 开始执行脚本...");
-                var result = await Task.Run(() => _scriptEditor.ExecuteScript());
+                
+                // 🔥 直接在 UI 线程执行，不使用 Task.Run
+                // 避免死锁：脚本需要访问 WebView2（必须在 UI 线程）
+                var result = _scriptEditor.ExecuteScript();
                 
                 if (result.Success)
                 {
@@ -142,7 +160,10 @@ namespace Unit.La.Controls
                 }
                 else
                 {
-                    // 显示详细的错误信息
+                    // 显示友好的错误对话框
+                    Views.ErrorDialog.ShowScriptError(result.Error ?? "未知错误", result.LineNumber, result.Output ?? "");
+                    
+                    // 同时记录到日志
                     LogMessage($"❌ 脚本执行失败");
                     LogMessage($"   💬 错误: {result.Error}");
                     
@@ -1030,6 +1051,9 @@ log('脚本结束')
         /// </summary>
         private async void InitializeWebView()
         {
+            // 🔥 创建初始化完成信号
+            _webViewInitTcs = new TaskCompletionSource<bool>();
+            
             try
             {
                 _webView = new WebView2 { Dock = DockStyle.Fill };
@@ -1068,19 +1092,40 @@ log('脚本结束')
                 }
 
                 LogMessage("✅ 浏览器初始化成功");
+                
+                // 🔥 设置初始化完成
+                _webViewInitTcs.TrySetResult(true);
             }
             catch (Exception ex)
             {
                 LogMessage($"❌ 浏览器初始化失败: {ex.Message}");
+                
+                // 🔥 设置初始化失败
+                _webViewInitTcs.TrySetException(ex);
             }
         }
 
         /// <summary>
         /// 注册默认函数
+        /// 🔥 使用动态 WebView 引用，确保在 WebView 重新创建时仍然有效
         /// </summary>
         private void RegisterDefaultFunctions()
         {
-            _functionRegistry.RegisterDefaults(LogMessage, _webView);
+            // 🌐 使用动态 WebView 提供者，而不是直接传递 _webView 引用
+            // 这样即使 _webView 被重新创建，web 对象仍然能获取最新的 WebView 实例
+            _functionRegistry.RegisterDefaults(LogMessage, () => _webView);
+            
+            // 🔥 注册 config 对象，让脚本可以访问配置
+            // 使用 Dictionary 而不是匿名类型，因为 MoonSharp 不支持匿名类型
+            var configObject = new Dictionary<string, object>
+            {
+                ["url"] = _config.Url ?? "",
+                ["username"] = _config.Username ?? "",
+                ["password"] = _config.Password ?? "",
+                ["autoLogin"] = _config.AutoLogin,
+                ["name"] = _config.Name ?? ""
+            };
+            _functionRegistry.RegisterObject("config", configObject);
         }
 
         /// <summary>
@@ -1321,7 +1366,12 @@ log('脚本结束')
             if (e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true; // 取消关闭
-                Hide(); // 隐藏窗口
+                
+                // 🔥 隐藏窗口（设置为透明 + 不显示任务栏）
+                Opacity = 0;              // 完全透明
+                ShowInTaskbar = false;    // 不显示在任务栏
+                Hide();                   // 隐藏窗口
+                
                 LogMessage("ℹ️ 窗口已隐藏到后台运行");
             }
             // 如果是程序调用 Close()，正常关闭

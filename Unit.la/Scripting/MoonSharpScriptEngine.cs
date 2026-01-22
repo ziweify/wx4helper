@@ -17,9 +17,12 @@ namespace Unit.La.Scripting
         {
             _script = new Script();
             
+            // 🔥 注册自定义类型，让 MoonSharp 能够识别
+            // WebBridge 用于 Lua 中的 web 对象
+            UserData.RegisterType<WebBridge>();
+            
             // .NET 8 不支持 Assembly.GetCallingAssembly()，所以不调用 RegisterAssembly
-            // 类型将按需自动注册
-            // 如果需要注册特定类型，使用: UserData.RegisterType<YourType>();
+            // 其他类型将按需自动注册
         }
 
         public ScriptResult Execute(string scriptCode, Dictionary<string, object>? context = null)
@@ -212,10 +215,14 @@ namespace Unit.La.Scripting
             }
             finally
             {
-                // 5. 无论如何，调用 exit() 函数（已强制要求，必定存在）
+                // 5. 无论如何，调用 exit() 函数（如果已成功加载）
                 try
                 {
-                    _script.Call(exitFunc);
+                    // 🔥 检查 exitFunc 是否为 null 且是有效的函数
+                    if (exitFunc != null && !exitFunc.IsNil() && exitFunc.Type == DataType.Function)
+                    {
+                        _script.Call(exitFunc);
+                    }
                 }
                 catch (Exception exitEx)
                 {

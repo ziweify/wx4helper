@@ -68,7 +68,9 @@ namespace Unit.La.Scripting
         /// <summary>
         /// 注册默认函数库
         /// </summary>
-        public void RegisterDefaults(Action<string>? logCallback = null, Microsoft.Web.WebView2.WinForms.WebView2? webView = null)
+        /// <param name="logCallback">日志回调</param>
+        /// <param name="webViewProvider">WebView2 提供者函数（动态引用，确保重新创建时仍然有效）</param>
+        public void RegisterDefaults(Action<string>? logCallback = null, Func<Microsoft.Web.WebView2.WinForms.WebView2?>? webViewProvider = null)
         {
             // 🔧 设置日志回调到 DefaultScriptFunctions
             if (logCallback != null)
@@ -126,10 +128,10 @@ namespace Unit.La.Scripting
             RegisterFunction("string_split", new Func<string, string, string[]>(DefaultScriptFunctions.StringSplit), 
                 "分割字符串", "local arr = string_split('a,b,c', ',')", "字符串");
             
-            // 🌐 注册 WebView2 桥接对象
-            if (webView != null)
+            // 🌐 注册 WebView2 桥接对象（使用动态引用）
+            if (webViewProvider != null)
             {
-                var webBridge = new WebBridge(webView, logCallback);
+                var webBridge = new WebBridge(webViewProvider, logCallback);
                 RegisterObject("web", webBridge);
             }
         }

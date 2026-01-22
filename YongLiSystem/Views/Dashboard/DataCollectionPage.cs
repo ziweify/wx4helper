@@ -116,7 +116,7 @@ namespace YongLiSystem.Views.Dashboard
                     AddScriptTaskCard(task);
                     
                     // 立即打开编辑窗口（这样用户可以修改配置）
-                    OpenTaskWindow(task, _taskControls[task.Id].card);
+                    OnEditTask(task, _taskControls[task.Id].card);
                     
                     MessageBox.Show($"脚本任务已创建！\n脚本目录: {scriptDirectory}\n已自动生成 main.lua 和 functions.lua 模板。", 
                         "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -150,8 +150,9 @@ namespace YongLiSystem.Views.Dashboard
             // 订阅事件
             card.DeleteClicked += (s, e) => OnDeleteTask(task, card);
             card.StartStopClicked += (s, e) => OnStartStopTask(task, card);
+            card.EditClicked += (s, e) => OnEditTask(task, card);
             card.CloseClicked += (s, e) => OnCloseTask(task, card);
-            card.ThumbnailClicked += (s, e) => OnThumbnailClicked(task);
+            card.ThumbnailClicked += (s, e) => OnEditTask(task, card); // 缩略图点击同"编辑"
 
             flowLayoutTasks.Controls.Add(card);
 
@@ -226,14 +227,28 @@ namespace YongLiSystem.Views.Dashboard
         }
 
         /// <summary>
-        /// 启动任务 - 直接打开任务窗口
+        /// 启动任务 - 后台执行脚本（不显示窗口）
         /// </summary>
         private void StartTask(ScriptTask task, BrowserTaskCardControl card)
         {
             try
             {
-                // 直接打开集成窗口
-                OpenTaskWindow(task, card);
+                // 🔥 确保浏览器任务控件已初始化
+                if (!_taskControls.TryGetValue(task.Id, out var controlPair) || controlPair.window == null)
+                {
+                    // 初始化浏览器任务控件（但不显示窗口）
+                    InitializeBrowserTaskControl(task, card);
+                }
+
+                // 获取控件
+                var browserControl = _taskControls[task.Id].window;
+                if (browserControl == null)
+                {
+                    throw new InvalidOperationException("浏览器任务控件初始化失败");
+                }
+
+                // 🔥 后台执行脚本（不显示窗口）
+                _ = browserControl.ExecuteScriptAsync(browserControl.Config.Script);
                 
                 // 更新状态
                 task.IsRunning = true;
@@ -257,109 +272,70 @@ namespace YongLiSystem.Views.Dashboard
         }
 
         /// <summary>
-        /// 打开任务窗口（统一方法）
+        /// 编辑任务 - 显示窗口（浏览器+编辑器+日志）
         /// </summary>
-        private void OpenTaskWindow(ScriptTask task, BrowserTaskCardControl card)
+        private void OnEditTask(ScriptTask task, BrowserTaskCardControl card)
         {
-            // 检查窗口是否已存在
-            if (_taskControls.TryGetValue(task.Id, out var existing))
+            try
             {
-                if (existing.window != null && !existing.window.IsDisposed)
+                // 🔥 确保浏览器任务控件已初始化
+                if (!_taskControls.TryGetValue(task.Id, out var controlPair) || controlPair.window == null)
                 {
-                    // 窗口已存在，激活它
-                    existing.window.Activate();
-                    existing.window.BringToFront();
-                    return;
+                    InitializeBrowserTaskControl(task, card);
                 }
-            }
 
-            // 🔧 修复：从数据库重新加载最新数据
-            var latestTask = _dataCollectionService.GetScriptTask(task.Id);
-            if (latestTask == null)
-            {
-                MessageBox.Show("无法加载任务数据！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            
-            // 🔍 添加日志：显示从数据库加载的数据
-            System.Diagnostics.Debug.WriteLine($"=== 从数据库加载任务 ID:{task.Id} ===");
-            System.Diagnostics.Debug.WriteLine($"  名称: {latestTask.Name}");
-            System.Diagnostics.Debug.WriteLine($"  URL: {latestTask.Url}");
-            System.Diagnostics.Debug.WriteLine($"  用户名: {latestTask.Username}");
-            System.Diagnostics.Debug.WriteLine($"  自动登录: {latestTask.AutoLogin}");
-            System.Diagnostics.Debug.WriteLine($"  脚本长度: {latestTask.Script?.Length ?? 0}");
-            
-            // 更新内存中的 task 对象
-            task.Name = latestTask.Name;
-            task.Url = latestTask.Url;
-            task.Username = latestTask.Username;
-            task.Password = latestTask.Password;
-            task.Script = latestTask.Script;
-            task.AutoLogin = latestTask.AutoLogin;
-            task.CreatedTime = latestTask.CreatedTime;
-            task.LastRunTime = latestTask.LastRunTime;
-            
-            // 更新卡片显示
-            card.TaskInfo = task.ToBrowserTaskInfo();
-
-            // 创建新窗口，使用 Unit.la 的 BrowserTaskControl
-            var config = task.ToBrowserTaskConfig();
-            var window = new BrowserTaskControl(config);
-            
-            // 订阅配置变更事件
-            window.ConfigChanged += (s, updatedConfig) =>
-            {
-                // 🔍 添加日志：显示要保存的配置
-                System.Diagnostics.Debug.WriteLine($"=== ConfigChanged 事件触发 ===");
-                System.Diagnostics.Debug.WriteLine($"  任务ID: {task.Id}");
-                System.Diagnostics.Debug.WriteLine($"  名称: {updatedConfig.Name}");
-                System.Diagnostics.Debug.WriteLine($"  URL: {updatedConfig.Url}");
-                System.Diagnostics.Debug.WriteLine($"  用户名: {updatedConfig.Username}");
-                System.Diagnostics.Debug.WriteLine($"  自动登录: {updatedConfig.AutoLogin}");
-                System.Diagnostics.Debug.WriteLine($"  脚本长度: {updatedConfig.Script?.Length ?? 0}");
-                
-                // 将配置更新回 ScriptTask
-                task.UpdateFromConfig(updatedConfig);
-                
-                // 🔍 添加日志：显示更新后的 task
-                System.Diagnostics.Debug.WriteLine($"=== 更新后的 ScriptTask ===");
-                System.Diagnostics.Debug.WriteLine($"  任务ID: {task.Id}");
-                System.Diagnostics.Debug.WriteLine($"  URL: {task.Url}");
-                System.Diagnostics.Debug.WriteLine($"  用户名: {task.Username}");
-                
-                // 自动保存配置
-                var saveResult = _dataCollectionService.SaveScriptTask(task);
-                System.Diagnostics.Debug.WriteLine($"  保存结果: {(saveResult ? "成功" : "失败")}");
-                
-                card.TaskInfo = task.ToBrowserTaskInfo(); // 更新卡片显示
-            };
-
-            // 窗口关闭时更新状态
-            window.FormClosed += (s, e) =>
-            {
-                task.IsRunning = false;
-                task.Status = "已停止";
-                card.TaskInfo = task.ToBrowserTaskInfo();
-                _dataCollectionService.SaveScriptTask(task);
-                
-                // 更新字典
-                _taskControls[task.Id] = (card, null);
-            };
-
-            // 显示窗口
-            window.Show();
-
-            // 订阅缩略图更新事件
-            window.ThumbnailUpdated += (s, thumbnail) =>
-            {
-                if (_taskControls.TryGetValue(task.Id, out var control))
+                // 获取控件
+                var browserControl = _taskControls[task.Id].window;
+                if (browserControl == null)
                 {
-                    control.card.UpdateThumbnail(thumbnail);
+                    throw new InvalidOperationException("浏览器任务控件初始化失败");
                 }
-            };
 
-            // 保存到字典
-            _taskControls[task.Id] = (card, window);
+                // 🔥 显示窗口（恢复透明度和任务栏显示）
+                browserControl.Opacity = 1.0;         // 恢复不透明
+                browserControl.ShowInTaskbar = true;  // 显示在任务栏
+                browserControl.Show();
+                browserControl.WindowState = FormWindowState.Normal; // 正常大小
+                browserControl.BringToFront();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开编辑窗口失败: {ex.Message}", "错误",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// 初始化浏览器任务控件（隐藏运行）
+        /// </summary>
+        private void InitializeBrowserTaskControl(ScriptTask task, BrowserTaskCardControl card)
+        {
+            try
+            {
+                // 转换配置
+                var config = task.ToBrowserTaskConfig();
+                
+                // 创建浏览器任务控件
+                var browserControl = new BrowserTaskControl(config);
+                
+                // 🔥 设置为隐藏模式（透明 + 不显示任务栏）
+                browserControl.Opacity = 0;           // 完全透明
+                browserControl.ShowInTaskbar = false; // 不显示在任务栏
+                browserControl.Show();                // 显示窗口（但透明，所以看不见）
+                
+                // 订阅缩略图更新事件
+                browserControl.ThumbnailUpdated += (s, thumbnail) =>
+                {
+                    card.UpdateThumbnail(thumbnail);
+                };
+                
+                // 保存到字典
+                _taskControls[task.Id] = (card, browserControl);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"初始化浏览器任务控件失败: {ex.Message}", ex);
+            }
         }
 
         /// <summary>

@@ -17,5 +17,8 @@
     <Compile Update="Controls\ScriptManagerControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Views\ErrorDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

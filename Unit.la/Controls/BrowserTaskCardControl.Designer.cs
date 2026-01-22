@@ -25,6 +25,7 @@ namespace Unit.La.Controls
             panelButtons = new DevExpress.XtraEditors.PanelControl();
             btnClose = new DevExpress.XtraEditors.SimpleButton();
             btnDelete = new DevExpress.XtraEditors.SimpleButton();
+            btnEdit = new DevExpress.XtraEditors.SimpleButton();
             btnStartStop = new DevExpress.XtraEditors.SimpleButton();
             ((System.ComponentModel.ISupportInitialize)groupControl).BeginInit();
             groupControl.SuspendLayout();
@@ -118,6 +119,7 @@ namespace Unit.La.Controls
             // 
             panelButtons.Controls.Add(btnClose);
             panelButtons.Controls.Add(btnDelete);
+            panelButtons.Controls.Add(btnEdit);
             panelButtons.Controls.Add(btnStartStop);
             panelButtons.Dock = System.Windows.Forms.DockStyle.Bottom;
             panelButtons.Location = new System.Drawing.Point(2, 208);
@@ -148,13 +150,24 @@ namespace Unit.La.Controls
             btnDelete.Text = "删除";
             btnDelete.Click += OnDeleteButtonClick;
             // 
+            // btnEdit
+            // 
+            btnEdit.Appearance.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
+            btnEdit.Appearance.Options.UseBackColor = true;
+            btnEdit.Location = new System.Drawing.Point(82, 3);
+            btnEdit.Name = "btnEdit";
+            btnEdit.Size = new System.Drawing.Size(60, 24);
+            btnEdit.TabIndex = 1;
+            btnEdit.Text = "📝 编辑";
+            btnEdit.Click += OnEditButtonClick;
+            // 
             // btnStartStop
             // 
             btnStartStop.Appearance.BackColor = System.Drawing.Color.FromArgb(0, 192, 0);
             btnStartStop.Appearance.Options.UseBackColor = true;
             btnStartStop.Location = new System.Drawing.Point(10, 3);
             btnStartStop.Name = "btnStartStop";
-            btnStartStop.Size = new System.Drawing.Size(135, 24);
+            btnStartStop.Size = new System.Drawing.Size(67, 24);
             btnStartStop.TabIndex = 0;
             btnStartStop.Text = "▶ 启动";
             btnStartStop.Click += OnStartStopButtonClick;
@@ -189,6 +202,7 @@ namespace Unit.La.Controls
         private DevExpress.XtraEditors.PanelControl panelButtons;
         private DevExpress.XtraEditors.SimpleButton btnClose;
         private DevExpress.XtraEditors.SimpleButton btnDelete;
+        private DevExpress.XtraEditors.SimpleButton btnEdit;
         private DevExpress.XtraEditors.SimpleButton btnStartStop;
     }
 }
