@@ -29,6 +29,7 @@ namespace Unit.La.Controls
         private Action<string>? _customLogHandler;
         private System.Windows.Forms.Timer? _thumbnailTimer; // 缩略图更新定时器
         private TaskCompletionSource<bool>? _webViewInitTcs; // 🔥 WebView2 初始化完成信号
+        private CancellationTokenSource? _scriptCancellation; // 🔥 脚本取消令牌
 
         /// <summary>
         /// 配置变更事件
@@ -144,9 +145,16 @@ namespace Unit.La.Controls
                 return error;
             }
 
+            // 🔥 创建新的取消令牌
+            _scriptCancellation = new CancellationTokenSource();
+
             try
             {
                 LogMessage("▶️ 开始执行脚本...");
+                
+                // 🔥 传递取消令牌到脚本执行环境
+                _functionRegistry.RegisterDefaults(LogMessage, () => _webView, _scriptCancellation.Token);
+                _functionRegistry.BindToEngine(_scriptEditor.ScriptEngine);
                 
                 // 🔥 直接在 UI 线程执行，不使用 Task.Run
                 // 避免死锁：脚本需要访问 WebView2（必须在 UI 线程）
@@ -195,6 +203,24 @@ namespace Unit.La.Controls
                 LogMessage($"❌ 脚本执行异常: {ex.Message}");
                 Views.ErrorDialog.ShowScriptError(ex.Message, 0, ex.StackTrace ?? "");
                 return ex.Message;
+            }
+            finally
+            {
+                // 🔥 清理取消令牌
+                _scriptCancellation?.Dispose();
+                _scriptCancellation = null;
+            }
+        }
+        
+        /// <summary>
+        /// 停止脚本执行
+        /// </summary>
+        public void StopScript()
+        {
+            if (_scriptCancellation != null && !_scriptCancellation.IsCancellationRequested)
+            {
+                LogMessage("⏹️ 停止脚本执行...");
+                _scriptCancellation.Cancel();
             }
         }
 
@@ -753,6 +779,7 @@ log('脚本结束')
             
             // 执行按钮
             var btnExecute = new ToolStripButton("▶ 执行");
+            var btnStop = new ToolStripButton("⏹ 停止") { Enabled = false };
             var btnValidate = new ToolStripButton("✓ 验证");
             var btnHelp = new ToolStripButton("📖 帮助");
             
@@ -764,6 +791,7 @@ log('脚本结束')
             toolBarTop.Items.Add(btnDelete);
             toolBarTop.Items.Add(new ToolStripSeparator());
             toolBarTop.Items.Add(btnExecute);
+            toolBarTop.Items.Add(btnStop);
             toolBarTop.Items.Add(btnValidate);
             toolBarTop.Items.Add(btnHelp);
             
@@ -961,6 +989,10 @@ log('脚本结束')
             {
                 try
                 {
+                    // 禁用执行按钮，启用停止按钮
+                    btnExecute.Enabled = false;
+                    btnStop.Enabled = true;
+                    
                     var currentEditor = GetCurrentScriptEditor(tabControlScripts);
                     if (currentEditor != null)
                     {
@@ -972,6 +1004,18 @@ log('脚本结束')
                     LogMessage($"❌ 执行脚本时发生错误: {ex.Message}");
                     Views.ErrorDialog.ShowScriptError(ex.Message, 0, ex.StackTrace ?? "");
                 }
+                finally
+                {
+                    // 恢复按钮状态
+                    btnExecute.Enabled = true;
+                    btnStop.Enabled = false;
+                }
+            };
+            
+            // 停止脚本
+            btnStop.Click += (s, e) =>
+            {
+                StopScript();
             };
             
             // 验证脚本

@@ -16,6 +16,7 @@ namespace Unit.La.Scripting
     {
         private static Action<string>? _logCallback;
         private static readonly HttpClient _httpClient = new HttpClient();
+        private static CancellationToken? _cancellationToken;
 
         /// <summary>
         /// 设置日志回调函数
@@ -23,6 +24,14 @@ namespace Unit.La.Scripting
         public static void SetLogCallback(Action<string> logCallback)
         {
             _logCallback = logCallback;
+        }
+
+        /// <summary>
+        /// 设置取消令牌（用于检查脚本是否停止）
+        /// </summary>
+        public static void SetCancellationToken(CancellationToken token)
+        {
+            _cancellationToken = token;
         }
 
         /// <summary>
@@ -41,6 +50,9 @@ namespace Unit.La.Scripting
             // 延迟函数
             engine.BindFunction("sleep", new Action<int>(Sleep));
             engine.BindFunction("wait", new Action<int>(Sleep)); // 别名
+
+            // 脚本控制函数
+            engine.BindFunction("is_stopped", new Func<bool>(IsStopped));
 
             // HTTP 请求函数
             engine.BindFunction("http_get", new Func<string, string>(HttpGet));
@@ -72,28 +84,28 @@ namespace Unit.La.Scripting
         /// </summary>
         public static void Log(string message)
         {
-            var msg = $"[LOG] {DateTime.Now:HH:mm:ss.fff} {message}";
+            var msg = $"[LOG] {message}";
             Console.WriteLine(msg);
             _logCallback?.Invoke(msg);
         }
 
         public static void LogInfo(string message)
         {
-            var msg = $"[INFO] {DateTime.Now:HH:mm:ss.fff} {message}";
+            var msg = $"[INFO] {message}";
             Console.WriteLine(msg);
             _logCallback?.Invoke(msg);
         }
 
         public static void LogWarn(string message)
         {
-            var msg = $"[WARN] {DateTime.Now:HH:mm:ss.fff} {message}";
+            var msg = $"[WARN] {message}";
             Console.WriteLine(msg);
             _logCallback?.Invoke(msg);
         }
 
         public static void LogError(string message)
         {
-            var msg = $"[ERROR] {DateTime.Now:HH:mm:ss.fff} {message}";
+            var msg = $"[ERROR] {message}";
             Console.WriteLine(msg);
             _logCallback?.Invoke(msg);
         }
@@ -108,6 +120,19 @@ namespace Unit.La.Scripting
         public static void Sleep(int milliseconds)
         {
             Thread.Sleep(milliseconds);
+        }
+
+        #endregion
+
+        #region 脚本控制函数
+
+        /// <summary>
+        /// 检查脚本是否已停止
+        /// 用法: if is_stopped() then return false end
+        /// </summary>
+        public static bool IsStopped()
+        {
+            return _cancellationToken?.IsCancellationRequested == true;
         }
 
         #endregion

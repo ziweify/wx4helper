@@ -24,6 +24,7 @@ namespace Unit.La.Scripting
     {
         private readonly Func<WebView2?> _webViewProvider;
         private readonly Action<string> _logger;
+        private CancellationToken? _cancellationToken;
         
         /// <summary>
         /// 获取当前 WebView2 实例（动态）
@@ -39,6 +40,14 @@ namespace Unit.La.Scripting
                 }
                 return webView;
             }
+        }
+        
+        /// <summary>
+        /// 设置取消令牌（用于停止脚本）
+        /// </summary>
+        public void SetCancellationToken(CancellationToken token)
+        {
+            _cancellationToken = token;
         }
 
         /// <summary>
@@ -65,26 +74,445 @@ namespace Unit.La.Scripting
         #region 导航相关
 
         /// <summary>
-        /// 导航到指定URL
-        /// 用法: web.Navigate("https://example.com")
+        /// 导航到指定URL并等待页面加载完成
+        /// 用法: 
+        ///   local success, msg = web.Navigate("https://example.com", 10000)  -- 10秒超时
+        ///   local success, msg = web.Navigate("https://example.com", 30000, true)  -- 强制刷新
+        ///   local success, msg = web.Navigate("https://example.com", -1)  -- 无限等待（第三个参数可省略）
+        ///   local success, msg = web.Navigate("https://example.com")  -- 默认30秒超时，不刷新
         /// </summary>
-        public void Navigate(string url)
+        /// <param name="url">目标 URL</param>
+        /// <param name="timeout">超时时间（毫秒），-1 或 0 表示无限等待，默认 30000</param>
+        /// <param name="forceRefresh">如果当前 URL 已是目标 URL，是否强制刷新。当 timeout = -1 时此参数无效，默认 false</param>
+        /// <returns>(success: boolean, message: string)</returns>
+        public DynValue Navigate(string url, int timeout = 30000, bool forceRefresh = false)
         {
             if (string.IsNullOrEmpty(url))
             {
-                throw new ArgumentException("URL不能为空", nameof(url));
+                return CreateResult(false, "URL不能为空");
             }
 
-            _logger($"🌐 导航到: {url}");
+            try
+            {
+                _logger($"🌐 导航到: {url}");
+                
+                // 🔥 处理 -1 表示无限等待
+                var actualTimeout = timeout;
+                if (timeout == -1)
+                {
+                    actualTimeout = 0;  // 0 表示无限等待
+                    forceRefresh = false;  // 无限等待时，forceRefresh 失去意义，强制设为 false
+                }
+                
+                // 🔥 检查当前 URL
+                var currentUrl = GetCurrentUrl();
+                var isSameUrl = IsUrlMatch(currentUrl, url);
+                
+                if (isSameUrl && !forceRefresh)
+                {
+                    _logger($"✅ 页面已是目标 URL，无需导航");
+                    
+                    // 检查页面是否已加载完成
+                    if (IsPageLoaded())
+                    {
+                        return CreateResult(true, "页面已是目标 URL");
+                    }
+                    else
+                    {
+                        _logger($"⏳ 页面加载中，等待完成...");
+                        // 等待页面加载完成
+                        return WaitForPageLoad(actualTimeout);
+                    }
+                }
+                
+                if (isSameUrl && forceRefresh)
+                {
+                    _logger($"🔄 URL 相同，执行刷新");
+                }
+                
+                // 确保在 UI 线程执行
+                if (WebView.InvokeRequired)
+                {
+                    return (DynValue)WebView.Invoke(new Func<DynValue>(() => NavigateInternal(url, actualTimeout, forceRefresh, isSameUrl)));
+                }
+                else
+                {
+                    return NavigateInternal(url, actualTimeout, forceRefresh, isSameUrl);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger($"❌ 导航异常: {ex.Message}");
+                return CreateResult(false, $"异常：{ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 获取当前 URL
+        /// </summary>
+        private string GetCurrentUrl()
+        {
+            try
+            {
+                if (WebView.InvokeRequired)
+                {
+                    return (string)WebView.Invoke(new Func<string>(() =>
+                    {
+                        return WebView.Source?.ToString() ?? "";
+                    }));
+                }
+                else
+                {
+                    return WebView.Source?.ToString() ?? "";
+                }
+            }
+            catch
+            {
+                return "";
+            }
+        }
+        
+        /// <summary>
+        /// 检查页面是否已加载完成
+        /// </summary>
+        private bool IsPageLoaded()
+        {
+            try
+            {
+                if (WebView.CoreWebView2 == null)
+                    return false;
+                    
+                var task = WebView.CoreWebView2.ExecuteScriptAsync("document.readyState");
+                while (!task.IsCompleted)
+                {
+                    System.Windows.Forms.Application.DoEvents();
+                    System.Threading.Thread.Sleep(10);
+                }
+                
+                var readyState = task.Result?.Trim('"');
+                return readyState == "complete";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 等待页面加载完成
+        /// </summary>
+        private DynValue WaitForPageLoad(int timeout)
+        {
+            var startTime = DateTime.Now;
             
-            if (WebView.InvokeRequired)
+            while (true)
             {
-                WebView.Invoke(new Action(() => WebView.Source = new Uri(url)));
+                // 检查脚本是否停止
+                if (_cancellationToken?.IsCancellationRequested == true)
+                {
+                    _logger("⏹️ 页面加载被停止");
+                    return CreateResult(false, "脚本已停止");
+                }
+                
+                // 检查超时
+                if (timeout > 0)
+                {
+                    var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                    if (elapsed > timeout)
+                    {
+                        _logger($"⏱️ 页面加载超时: {elapsed:F0}ms > {timeout}ms");
+                        return CreateResult(false, $"超时：页面加载未完成");
+                    }
+                }
+                
+                // 检查 readyState
+                if (IsPageLoaded())
+                {
+                    _logger($"✅ 页面加载完成");
+                    return CreateResult(true, "页面已是目标 URL");
+                }
+                
+                System.Windows.Forms.Application.DoEvents();
+                System.Threading.Thread.Sleep(100);
             }
-            else
+        }
+        
+        /// <summary>
+        /// 比较两个 URL 是否匹配
+        /// 规则：
+        /// 1. 规范化 URL（去除末尾斜杠、统一小写）
+        /// 2. 比较协议、主机、路径
+        /// 3. 如果目标 URL 有查询参数，检查当前 URL 是否包含这些参数（值必须相同）
+        /// 4. 当前 URL 多余的参数忽略
+        /// </summary>
+        private bool IsUrlMatch(string currentUrl, string targetUrl)
+        {
+            try
             {
-                WebView.Source = new Uri(url);
+                if (string.IsNullOrEmpty(currentUrl) || string.IsNullOrEmpty(targetUrl))
+                    return false;
+                
+                var current = new Uri(currentUrl);
+                var target = new Uri(targetUrl);
+                
+                // 1. 比较协议、主机、路径（忽略大小写、去除末尾斜杠）
+                var currentBase = (current.Scheme + "://" + current.Host + current.AbsolutePath.TrimEnd('/')).ToLower();
+                var targetBase = (target.Scheme + "://" + target.Host + target.AbsolutePath.TrimEnd('/')).ToLower();
+                
+                if (currentBase != targetBase)
+                    return false;
+                
+                // 2. 检查查询参数
+                // 如果目标 URL 没有参数，忽略当前 URL 的所有参数
+                if (string.IsNullOrEmpty(target.Query))
+                    return true;
+                
+                // 解析查询参数
+                var currentParams = ParseQueryString(current.Query);
+                var targetParams = ParseQueryString(target.Query);
+                
+                // 检查目标参数是否都存在且值相同
+                foreach (var targetParam in targetParams)
+                {
+                    if (!currentParams.TryGetValue(targetParam.Key, out var currentValue))
+                        return false; // 目标参数不存在
+                    
+                    if (currentValue != targetParam.Value)
+                        return false; // 参数值不同
+                }
+                
+                // 所有目标参数都匹配
+                return true;
             }
+            catch
+            {
+                // 解析失败，使用简单字符串比较
+                return NormalizeUrl(currentUrl) == NormalizeUrl(targetUrl);
+            }
+        }
+        
+        /// <summary>
+        /// 解析查询参数
+        /// </summary>
+        private Dictionary<string, string> ParseQueryString(string query)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            
+            if (string.IsNullOrEmpty(query))
+                return result;
+            
+            // 去除开头的 '?'
+            query = query.TrimStart('?');
+            
+            // 分割参数
+            var pairs = query.Split('&');
+            foreach (var pair in pairs)
+            {
+                var parts = pair.Split('=');
+                if (parts.Length == 2)
+                {
+                    var key = Uri.UnescapeDataString(parts[0]);
+                    var value = Uri.UnescapeDataString(parts[1]);
+                    result[key] = value;
+                }
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 规范化 URL（用于简单比较）
+        /// </summary>
+        private string NormalizeUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url))
+                return "";
+            
+            // 转小写、去除末尾斜杠
+            return url.ToLower().TrimEnd('/');
+        }
+        
+        /// <summary>
+        /// 内部导航实现（假定已在 UI 线程）
+        /// </summary>
+        private DynValue NavigateInternal(string url, int timeout, bool forceRefresh, bool isSameUrl)
+        {
+            try
+            {
+                // 1. 设置导航完成标志
+                bool navigationCompleted = false;
+                string? navigationError = null;
+                
+                EventHandler<CoreWebView2NavigationCompletedEventArgs> handler = (s, e) =>
+                {
+                    navigationCompleted = true;
+                    if (!e.IsSuccess)
+                    {
+                        navigationError = GetNavigationErrorMessage(e.WebErrorStatus);
+                    }
+                };
+                
+                WebView.CoreWebView2.NavigationCompleted += handler;
+                
+                try
+                {
+                    // 2. 开始导航或刷新
+                    if (isSameUrl && forceRefresh)
+                    {
+                        // 刷新页面
+                        WebView.CoreWebView2.Reload();
+                        _logger("🔄 刷新页面");
+                    }
+                    else
+                    {
+                        // 导航到新 URL
+                        WebView.Source = new Uri(url);
+                    }
+                    
+                    // 3. 等待导航完成（带超时和取消检查）
+                    var startTime = DateTime.Now;
+                    while (!navigationCompleted)
+                    {
+                        // 检查脚本是否停止
+                        if (_cancellationToken?.IsCancellationRequested == true)
+                        {
+                            _logger("⏹️ 导航被停止");
+                            return CreateResult(false, "脚本已停止");
+                        }
+                        
+                        // 检查超时
+                        if (timeout > 0)
+                        {
+                            var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                            if (elapsed > timeout)
+                            {
+                                _logger($"⏱️ 导航超时: {elapsed:F0}ms > {timeout}ms");
+                                return CreateResult(false, $"超时：导航超过 {timeout} 毫秒");
+                            }
+                        }
+                        
+                        System.Windows.Forms.Application.DoEvents();
+                        System.Threading.Thread.Sleep(50);
+                    }
+                    
+                    // 4. 检查导航是否成功
+                    if (!string.IsNullOrEmpty(navigationError))
+                    {
+                        _logger($"❌ 导航失败: {navigationError}");
+                        return CreateResult(false, navigationError);
+                    }
+                    
+                    _logger("⏳ 等待页面加载完成");
+                    
+                    // 5. 等待页面完全加载（readyState === 'complete'）
+                    startTime = DateTime.Now;
+                    int checkCount = 0;
+                    
+                    while (true)
+                    {
+                        // 检查脚本是否停止
+                        if (_cancellationToken?.IsCancellationRequested == true)
+                        {
+                            _logger("⏹️ 页面加载被停止");
+                            return CreateResult(false, "脚本已停止");
+                        }
+                        
+                        // 检查超时
+                        if (timeout > 0)
+                        {
+                            var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                            if (elapsed > timeout)
+                            {
+                                _logger($"⏱️ 页面加载超时: {elapsed:F0}ms > {timeout}ms");
+                                return CreateResult(false, $"超时：页面加载未完成");
+                            }
+                        }
+                        
+                        // 检查 readyState
+                        try
+                        {
+                            checkCount++;
+                            var readyStateScript = "document.readyState";
+                            var task = WebView.CoreWebView2.ExecuteScriptAsync(readyStateScript);
+                            
+                            // 使用 DoEvents 等待
+                            while (!task.IsCompleted)
+                            {
+                                System.Windows.Forms.Application.DoEvents();
+                                System.Threading.Thread.Sleep(10);
+                            }
+                            
+                            var readyState = task.Result?.Trim('"');
+                            
+                            if (checkCount == 1)
+                            {
+                                _logger($"📜 执行脚本: {readyStateScript}...");
+                            }
+                            
+                            if (readyState == "complete")
+                            {
+                                _logger($"✅ 页面加载完成");
+                                
+                                // 根据场景返回不同的成功信息
+                                if (isSameUrl && forceRefresh)
+                                {
+                                    return CreateResult(true, "刷新并加载成功");
+                                }
+                                else
+                                {
+                                    return CreateResult(true, "加载成功");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger($"⚠️ 检查页面状态失败: {ex.Message}");
+                        }
+                        
+                        System.Windows.Forms.Application.DoEvents();
+                        System.Threading.Thread.Sleep(100);
+                    }
+                }
+                finally
+                {
+                    WebView.CoreWebView2.NavigationCompleted -= handler;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger($"❌ 导航内部错误: {ex.Message}");
+                return CreateResult(false, $"异常：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 创建多返回值结果
+        /// </summary>
+        private DynValue CreateResult(bool success, string message)
+        {
+            return DynValue.NewTuple(
+                DynValue.NewBoolean(success),
+                DynValue.NewString(message)
+            );
+        }
+
+        /// <summary>
+        /// 获取导航错误信息
+        /// </summary>
+        private string GetNavigationErrorMessage(CoreWebView2WebErrorStatus status)
+        {
+            return status switch
+            {
+                CoreWebView2WebErrorStatus.Timeout => "网络错误：连接超时",
+                CoreWebView2WebErrorStatus.HostNameNotResolved => "DNS 错误：域名不存在",
+                CoreWebView2WebErrorStatus.ConnectionAborted => "网络错误：连接中断",
+                CoreWebView2WebErrorStatus.ConnectionReset => "网络错误：连接重置",
+                CoreWebView2WebErrorStatus.Disconnected => "网络错误：网络断开",
+                CoreWebView2WebErrorStatus.CannotConnect => "网络错误：无法连接",
+                CoreWebView2WebErrorStatus.ServerUnreachable => "网络错误：服务器无法访问",
+                CoreWebView2WebErrorStatus.ErrorHttpInvalidServerResponse => "HTTP 错误：服务器响应无效",
+                _ => $"导航错误：{status}"
+            };
         }
 
         /// <summary>

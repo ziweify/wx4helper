@@ -70,12 +70,21 @@ namespace Unit.La.Scripting
         /// </summary>
         /// <param name="logCallback">日志回调</param>
         /// <param name="webViewProvider">WebView2 提供者函数（动态引用，确保重新创建时仍然有效）</param>
-        public void RegisterDefaults(Action<string>? logCallback = null, Func<Microsoft.Web.WebView2.WinForms.WebView2?>? webViewProvider = null)
+        /// <param name="cancellationToken">取消令牌（用于停止脚本）</param>
+        public void RegisterDefaults(Action<string>? logCallback = null, 
+            Func<Microsoft.Web.WebView2.WinForms.WebView2?>? webViewProvider = null,
+            System.Threading.CancellationToken? cancellationToken = null)
         {
             // 🔧 设置日志回调到 DefaultScriptFunctions
             if (logCallback != null)
             {
                 DefaultScriptFunctions.SetLogCallback(logCallback);
+            }
+            
+            // 🔧 设置取消令牌到 DefaultScriptFunctions
+            if (cancellationToken != null)
+            {
+                DefaultScriptFunctions.SetCancellationToken(cancellationToken.Value);
             }
             
             // 日志函数
@@ -93,6 +102,10 @@ namespace Unit.La.Scripting
                 "延迟指定毫秒数", "sleep(1000)", "工具");
             RegisterFunction("wait", new Action<int>(DefaultScriptFunctions.Sleep), 
                 "延迟指定毫秒数（sleep别名）", "wait(1000)", "工具");
+
+            // 脚本控制函数
+            RegisterFunction("is_stopped", new Func<bool>(DefaultScriptFunctions.IsStopped), 
+                "检查脚本是否已停止", "if is_stopped() then return false end", "控制");
 
             // HTTP 函数
             RegisterFunction("http_get", new Func<string, string>(DefaultScriptFunctions.HttpGet), 
@@ -132,6 +145,13 @@ namespace Unit.La.Scripting
             if (webViewProvider != null)
             {
                 var webBridge = new WebBridge(webViewProvider, logCallback);
+                
+                // 传递取消令牌到 WebBridge
+                if (cancellationToken != null)
+                {
+                    webBridge.SetCancellationToken(cancellationToken.Value);
+                }
+                
                 RegisterObject("web", webBridge);
             }
         }
