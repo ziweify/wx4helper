@@ -152,6 +152,10 @@ namespace Unit.La.Controls
             {
                 LogMessage("▶️ 开始执行脚本...");
                 
+                // 🔥 在执行脚本前，确保 config 对象是最新的（从 UI 获取最新值）
+                // 这确保脚本使用的是最新的用户名、密码等配置
+                UpdateLuaConfigObject();
+                
                 // 🔥 传递取消令牌到脚本执行环境
                 _functionRegistry.RegisterDefaults(LogMessage, () => _webView, _scriptCancellation.Token);
                 _functionRegistry.BindToEngine(_scriptEditor.ScriptEngine);
@@ -1194,17 +1198,26 @@ log('脚本结束')
         /// <summary>
         /// 更新 Lua 中的 config 对象
         /// 🔥 配置修改后调用此方法，确保脚本中的 config 对象是最新的
+        /// 🔥 优先从 UI 获取最新值（即使未保存），确保脚本使用的是实时配置
         /// </summary>
         private void UpdateLuaConfigObject()
         {
-            // 🔥 创建新的 config 字典
+            // 🔥 优先从 UI 获取最新配置值（即使未保存）
+            // 这样脚本执行时能获取到用户在 UI 中修改的最新值
+            BrowserTaskConfig? currentConfig = _config;
+            if (_configPanel?.Config != null)
+            {
+                currentConfig = _configPanel.Config;
+            }
+            
+            // 🔥 创建新的 config 字典（使用最新的配置值）
             var configObject = new Dictionary<string, object>
             {
-                ["url"] = _config.Url ?? "",
-                ["username"] = _config.Username ?? "",
-                ["password"] = _config.Password ?? "",
-                ["autoLogin"] = _config.AutoLogin,
-                ["name"] = _config.Name ?? ""
+                ["url"] = currentConfig?.Url ?? "",
+                ["username"] = currentConfig?.Username ?? "",
+                ["password"] = currentConfig?.Password ?? "",
+                ["autoLogin"] = currentConfig?.AutoLogin ?? false,
+                ["name"] = currentConfig?.Name ?? ""
             };
             
             // 🔥 重新注册（会覆盖旧的）
@@ -1216,7 +1229,7 @@ log('脚本结束')
                 _scriptEditor.ScriptEngine.BindObject("config", configObject);
             }
             
-            LogMessage($"🔄 已更新 Lua config 对象: URL={_config.Url}");
+            LogMessage($"🔄 已更新 Lua config 对象: URL={currentConfig?.Url}, Username={currentConfig?.Username}");
         }
 
         /// <summary>

@@ -378,7 +378,25 @@ namespace Unit.La.Controls
             {
                 if (scintilla != null)
                 {
+                    // 🔥 保存当前光标位置和选择范围
+                    var currentPos = scintilla.CurrentPosition;
+                    var anchorPos = scintilla.AnchorPosition;
+                    
+                    // 设置文本
                     scintilla.Text = value ?? string.Empty;
+                    
+                    // 🔥 恢复光标位置（如果新文本长度足够）
+                    if (currentPos <= scintilla.TextLength)
+                    {
+                        scintilla.CurrentPosition = currentPos;
+                        scintilla.AnchorPosition = anchorPos;
+                    }
+                    else
+                    {
+                        // 如果文本变短了，将光标移到末尾
+                        scintilla.CurrentPosition = scintilla.TextLength;
+                    }
+                    
                     ValidateScript(); // 自动验证
                 }
             }
