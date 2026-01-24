@@ -29,13 +29,13 @@ namespace Unit.La.Controls
         private void InitializeComponent()
         {
             lblName = new System.Windows.Forms.Label();
-            txtName = new System.Windows.Forms.TextBox();
+            txtName = new TraceableTextBox { TraceName = "txtName" };
             lblUrl = new System.Windows.Forms.Label();
-            txtUrl = new System.Windows.Forms.TextBox();
+            txtUrl = new TraceableTextBox { TraceName = "txtUrl" };
             lblUsername = new System.Windows.Forms.Label();
-            txtUsername = new System.Windows.Forms.TextBox();
+            txtUsername = new TraceableTextBox { TraceName = "txtUsername" };
             lblPassword = new System.Windows.Forms.Label();
-            txtPassword = new System.Windows.Forms.TextBox();
+            txtPassword = new TraceableTextBox { TraceName = "txtPassword" };
             chkAutoLogin = new System.Windows.Forms.CheckBox();
             groupBoxBasic = new System.Windows.Forms.GroupBox();
             groupBoxLogin = new System.Windows.Forms.GroupBox();
@@ -165,14 +165,14 @@ namespace Unit.La.Controls
         #endregion
 
         private System.Windows.Forms.Label lblName;
-        private System.Windows.Forms.TextBox txtName;
+        internal TraceableTextBox txtName;
         private System.Windows.Forms.Label lblUrl;
-        private System.Windows.Forms.TextBox txtUrl;
+        internal TraceableTextBox txtUrl;
         private System.Windows.Forms.Label lblUsername;
-        private System.Windows.Forms.TextBox txtUsername;
+        internal TraceableTextBox txtUsername;
         private System.Windows.Forms.Label lblPassword;
-        private System.Windows.Forms.TextBox txtPassword;
-        private System.Windows.Forms.CheckBox chkAutoLogin;
+        internal TraceableTextBox txtPassword;
+        internal System.Windows.Forms.CheckBox chkAutoLogin;
         private System.Windows.Forms.GroupBox groupBoxBasic;
         private System.Windows.Forms.GroupBox groupBoxLogin;
     }

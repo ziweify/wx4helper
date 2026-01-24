@@ -25,6 +25,8 @@ namespace Unit.La.Scripting
             // 🔥 注册自定义类型，让 MoonSharp 能够识别
             // WebBridge 用于 Lua 中的 web 对象
             UserData.RegisterType<WebBridge>();
+            // ConfigBridge 用于 Lua 中的 config 对象（支持双向绑定）
+            UserData.RegisterType<ConfigBridge>();
             
             // .NET 8 不支持 Assembly.GetCallingAssembly()，所以不调用 RegisterAssembly
             // 其他类型将按需自动注册

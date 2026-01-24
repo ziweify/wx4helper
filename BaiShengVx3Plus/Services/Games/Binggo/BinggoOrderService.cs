@@ -138,7 +138,7 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                 }
                 
                 // 2. 🔥 验证下注 + 创建订单（使用锁保护，防止并发竞态）
-                // 🎯 并发场景：两用户同时投注同一项（如 1大）
+                // 🎯 并发场景：两用户同时投注同一项（如 1大） 
                 //   - 不加锁：都查到累计未超限 → 都通过验证 → 都保存成功 → 总额超限！
                 //   - 加锁后：线程A验证+保存 → 线程B验证时查到A的订单 → 超限被拒绝 ✅
                 V2MemberOrder? order = null;
@@ -178,10 +178,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     // 2.3 验证通过，立即创建订单对象（在锁内，确保原子性）
                     long timestampBet = DateTimeOffset.Now.ToUnixTimeSeconds();
                     
-                    // 🔥 记录注前金额和注后金额
-                    float betFronMoney = member.Balance;  // 下注前余额
-                    float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（暂存）
-                    
                     order = new V2MemberOrder
                 {
                     // 🔥 会员信息
@@ -203,9 +199,9 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     Nums = betContent.Items.Count,  // 🔥 修复：注数
                     AmountTotal = (float)betContent.TotalAmount,  // 🔥 修复：总金额（float类型）
                     
-                    // 🔥 金额记录（参考 F5BotV2）
-                    BetFronMoney = betFronMoney,   // 注前金额
-                    BetAfterMoney = betAfterMoney, // 注后金额
+                    // 🔥 金额记录将在锁内、重新获取 member 后设置
+                    BetFronMoney = 0,   // 临时值，后面在锁内更新
+                    BetAfterMoney = 0,  // 临时值，后面在锁内更新
                     
                     // 🔥 结算信息
                     Profit = 0,  // 未结算
@@ -268,6 +264,18 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     
                     // 🔥 使用 BindingList 中的对象（而不是传入的 member）
                     member = memberInList;
+                    
+                    // 🔥 关键修复：在锁内、重新获取 member 后，记录注前金额和注后金额
+                    // 修复 Bug: 订单 BetFronMoney 记录错误（在锁外记录导致并发问题）
+                    float betFronMoney = member.Balance;  // 下注前余额
+                    float betAfterMoney = member.Balance - (float)betContent.TotalAmount;  // 下注后余额（预计）
+                    
+                    // 更新订单对象的余额字段
+                    order.BetFronMoney = betFronMoney;
+                    order.BetAfterMoney = betAfterMoney;
+                    
+                    _logService.Info("BinggoOrderService", 
+                        $"🔒 [下单] {member.Nickname} - 余额: {betFronMoney:F2} → {betAfterMoney:F2} (投注 {betContent.TotalAmount:F2})");
                     
                     // 🔥 关键修复2：在保存订单前的最后时刻，使用线程安全的原子操作再次检查状态
                     // 修复 Bug: 20251205-32.7.1-封盘还能进单（最后一道防线）

@@ -75,10 +75,22 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
         {
             try
             {
-                // 🔥 1. 验证
-                if (request.Status != CreditWithdrawStatus.等待处理 && !isLoading)
+                // 🔥 1. 验证（防重复处理）
+                if (!isLoading)
                 {
-                    return (false, "该申请已处理");
+                    // 1.1 检查状态
+                    if (request.Status != CreditWithdrawStatus.等待处理)
+                    {
+                        return (false, "该申请已处理");
+                    }
+                    
+                    // 🔥 1.2 双重检查：即使 Status 更新失败，ProcessedBy 也能防止重复
+                    if (!string.IsNullOrEmpty(request.ProcessedBy))
+                    {
+                        _logService.Warning("CreditWithdrawService", 
+                            $"⚠️ 检测到已处理的申请（ProcessedBy={request.ProcessedBy}），拒绝重复处理");
+                        return (false, "该申请已处理");
+                    }
                 }
 
                 string actionName = request.Action == CreditWithdrawAction.上分 ? "上分" : "下分";
@@ -164,18 +176,6 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         // 先设置处理人和处理时间（不触发UI更新）
                         request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
                         request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                        // 最后设置状态（触发UI更新，即使失败，关键数据已设置）
-                        try
-                        {
-                            request.Status = CreditWithdrawStatus.已同意;
-                        }
-                        catch (InvalidOperationException ex) when (ex.Message.Contains("BindingSource"))
-                        {
-                            // 🔥 BindingSource 异常不应中断流程
-                            // 状态已经设置成功，只是 UI 更新失败
-                            _logService.Warning("CreditWithdrawService", 
-                                $"⚠️ [{actionName}] {member.Nickname} - UI更新异常（已忽略）: {ex.Message}");
-                        }
                     }
 
                     // 2.3 记录资金变动
@@ -195,6 +195,8 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                     };
 
                     // 2.4 保存到数据库（统一事务）
+                    // 🔥 关键修复：必须先完成数据库保存，再更新UI状态
+                    // 否则 BindingSource 异常会导致数据库保存被跳过
                     _db.BeginTransaction();
                     try
                     {
@@ -218,6 +220,25 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
                         _logService.Error("CreditWithdrawService", 
                             $"🔒 [{actionName}] {member.Nickname} - 数据库事务回滚");
                         throw;
+                    }
+
+                    // 2.5 更新 UI 状态（最后执行，即使失败也不影响数据完整性）
+                    if (!isLoading)
+                    {
+                        // 最后设置状态（触发UI更新，即使失败，数据库已保存）
+                        try
+                        {
+                            request.Status = CreditWithdrawStatus.已同意;
+                            _logService.Info("CreditWithdrawService", 
+                                $"✅ [{actionName}] {member.Nickname} - UI状态已更新");
+                        }
+                        catch (InvalidOperationException ex) when (ex.Message.Contains("BindingSource"))
+                        {
+                            // 🔥 BindingSource 异常不应中断流程
+                            // 数据库已保存成功，只是 UI 更新失败
+                            _logService.Warning("CreditWithdrawService", 
+                                $"⚠️ [{actionName}] {member.Nickname} - UI更新异常（已忽略，数据已保存）: {ex.Message}");
+                        }
                     }
                 }
                 // 🔥 锁释放：上下分数据已同步写入
@@ -249,16 +270,49 @@ namespace BaiShengVx3Plus.Services.Games.Binggo
             }
             catch (Exception ex)
             {
-                string errorCode = Constants.ErrorCodes.CreditWithdraw.ProcessFailed;
+                string actionName = request.Action == CreditWithdrawAction.上分 ? "上分" : "下分";
+                
+                // 🔥 根据异常类型确定错误码
+                string errorCode;
+                if (ex is SQLite.SQLiteException)
+                {
+                    errorCode = Constants.ErrorCodes.CreditWithdraw.DatabaseTransactionFailed;
+                }
+                else
+                {
+                    errorCode = Constants.ErrorCodes.CreditWithdraw.ProcessFailed;
+                }
+                
                 _logService.Error("CreditWithdrawService", 
                     $"❌ [{errorCode}] 处理上下分失败！\n" +
                     $"  会员: {member.Nickname}({member.Wxid})\n" +
-                    $"  动作: {(request.Action == CreditWithdrawAction.上分 ? "上分" : "下分")}\n" +
+                    $"  动作: {actionName}\n" +
                     $"  金额: {request.Amount:F2}\n" +
                     $"  余额: {member.Balance:F2}\n" +
                     $"  异常: {ex.GetType().Name}\n" +
                     $"  消息: {ex.Message}", ex);
-                return (false, Constants.ErrorCodes.FormatUserMessage(errorCode));
+                
+                // 🔥 发送微信失败通知（只发送错误码，不发送详细信息）
+                if (!isLoading && _socketClient != null)
+                {
+                    try
+                    {
+                        // 🔥 使用群昵称（DisplayName，系统昵称）
+                        string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        string errorMsg = $"@{displayName}\r❌{actionName}失败[{errorCode}]\r金额:{(int)request.Amount}\r请联系管理员";
+                        _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                        
+                        _logService.Info("CreditWithdrawService", 
+                            $"📤 已发送失败通知到微信: {member.Nickname} - {actionName}{request.Amount} - {errorCode}");
+                    }
+                    catch (Exception notifyEx)
+                    {
+                        _logService.Warning("CreditWithdrawService", 
+                            $"发送失败通知失败: {notifyEx.Message}");
+                    }
+                }
+                
+                return (false, $"{actionName}失败[{errorCode}]");
             }
         }
 

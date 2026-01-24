@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using BaiShengVx3Plus.Contracts;
 using BaiShengVx3Plus.Models;
+using BaiShengVx3Plus.Helpers;  // 🔥 添加 StringHelper 引用
 using SQLite;
 using Sunny.UI;
 
@@ -811,37 +812,53 @@ namespace BaiShengVx3Plus.Views
                             $"🔒 [下分] {member.Nickname} - 余额: {balanceBefore:F2} → {balanceAfter:F2} (-{request.Amount:F2})");
                     }
                     
-                    // 🔥 更新申请状态（在锁内更新，确保原子性）
-                    request.Status = CreditWithdrawStatus.已同意;
-                    request.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                    request.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    // 🔥 准备申请状态更新数据（在锁内，但不立即设置 Status）
+                    string processedBy = Services.Api.BoterApi.GetInstance().User;
+                    string processedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    
+                    request.ProcessedBy = processedBy;
+                    request.ProcessedTime = processedTime;
+                    
+                    // 🔥 创建资金变动记录（在锁内）
+                    float changeAmount = request.Action == CreditWithdrawAction.上分 ? request.Amount : -request.Amount;
+                    var balanceChange = new V2BalanceChange
+                    {
+                        GroupWxId = member.GroupWxId,
+                        Wxid = member.Wxid,
+                        Nickname = member.Nickname,
+                        BalanceBefore = balanceBefore,
+                        BalanceAfter = balanceAfter,
+                        ChangeAmount = changeAmount,
+                        Reason = request.Action == CreditWithdrawAction.上分 ? ChangeReason.上分 : ChangeReason.下分,
+                        IssueId = 0,
+                        TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                        Notes = $"管理员同意{actionName}申请"
+                    };
+                    
+                    // 🔥 关键修复：先插入资金变动记录（在锁内）
+                    _creditWithdrawService.InsertBalanceChange(balanceChange);
+                    
+                    _logService.Info("上下分管理", 
+                        $"📝 资金变动记录已保存: {member.Nickname} - {actionName} - {changeAmount:F2}");
+                    
                 } // 🔥 释放锁
                 
-                // 🔥 以下操作可以在锁外执行（不影响数据一致性）
+                // 🔥 锁外操作：更新 UI 状态（即使失败也不影响数据完整性）
+                try
+                {
+                    request.Status = CreditWithdrawStatus.已同意;
+                    _logService.Info("上下分管理", "✅ UI状态已更新");
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("BindingSource"))
+                {
+                    _logService.Warning("上下分管理", 
+                        $"⚠️ UI更新异常（已忽略，数据已保存）: {ex.Message}");
+                }
                 
-                // 从 BindingList 重新获取会员信息（锁已释放）
+                // 从 BindingList 重新获取会员信息（用于通知）
                 var memberForNotify = _membersBindingList.FirstOrDefault(m => m.Wxid == request.Wxid);
                 if (memberForNotify == null) return;
-                
-                // 🔥 记录到资金变动表
-                float changeAmount = request.Action == CreditWithdrawAction.上分 ? request.Amount : -request.Amount;
-                var balanceChange = new V2BalanceChange
-                {
-                    GroupWxId = memberForNotify.GroupWxId,
-                    Wxid = memberForNotify.Wxid,
-                    Nickname = memberForNotify.Nickname,
-                    BalanceBefore = memberForNotify.Balance - changeAmount,  // 反推变动前余额
-                    BalanceAfter = memberForNotify.Balance,
-                    ChangeAmount = changeAmount,
-                    Reason = request.Action == CreditWithdrawAction.上分 ? ChangeReason.上分 : ChangeReason.下分,
-                    IssueId = 0,
-                    TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
-                    Notes = $"管理员同意{actionName}申请"
-                };
-                
-                // 🔥 通过服务层插入资金变动记录（日志表，不需要修改即保存）
-                _creditWithdrawService.InsertBalanceChange(balanceChange);
                 
                 // 🔥 更新会员的上下分统计（自动触发 PropertyChanged）
                 _creditWithdrawsBindingList.UpdateMemberStatistics(_membersBindingList);
@@ -866,8 +883,51 @@ namespace BaiShengVx3Plus.Views
             }
             catch (Exception ex)
             {
-                _logService.Error("上下分管理", "同意申请失败", ex);
-                UIMessageBox.ShowError($"处理失败：{ex.Message}");
+                string actionName = request.Action == CreditWithdrawAction.上分 ? "上分" : "下分";
+                
+                // 🔥 根据异常类型确定错误码
+                string errorCode;
+                if (ex is SQLite.SQLiteException)
+                {
+                    errorCode = Constants.ErrorCodes.CreditWithdraw.DatabaseTransactionFailed;
+                }
+                else
+                {
+                    errorCode = Constants.ErrorCodes.CreditWithdraw.ProcessFailed;
+                }
+                
+                _logService.Error("上下分管理", 
+                    $"❌ [{errorCode}] 同意{actionName}申请失败\n" +
+                    $"  会员: {request.Nickname}\n" +
+                    $"  金额: {request.Amount:F2}\n" +
+                    $"  异常: {ex.Message}", ex);
+                
+                // 🔥 显示详细的错误弹窗（管理员界面，可以显示详细信息）
+                UIMessageBox.ShowError(
+                    $"❌ {actionName}申请处理失败！\n\n" +
+                    $"会员：{request.Nickname}\n" +
+                    $"金额：{request.Amount:F2}\n" +
+                    $"错误码：{errorCode}\n\n" +
+                    $"错误详情：\n{ex.Message}\n\n" +
+                    $"请检查日志或联系技术支持。");
+                
+                // 🔥 发送微信失败通知（只发送错误码）
+                try
+                {
+                    var member = _membersBindingList.FirstOrDefault(m => m.Wxid == request.Wxid);
+                    if (member != null && _socketClient != null)
+                    {
+                        string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                        string errorMsg = $"@{displayName}\r❌{actionName}失败[{errorCode}]\r金额:{(int)request.Amount}\r请联系管理员";
+                        _ = _socketClient.SendAsync<object>("SendMessage", member.GroupWxId, errorMsg);
+                        
+                        _logService.Info("上下分管理", $"📤 已发送失败通知到微信: {errorCode}");
+                    }
+                }
+                catch (Exception notifyEx)
+                {
+                    _logService.Warning("上下分管理", $"发送失败通知失败: {notifyEx.Message}");
+                }
             }
         }
 

@@ -672,6 +672,23 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                     if (!success)
                     {
                         _logService.Error("AdminCommand", $"处理上下分失败: {errorMessage}");
+                        
+                        // 🔥 发送微信失败通知（只发送错误码）
+                        if (_socketClient != null)
+                        {
+                            try
+                            {
+                                string displayName = member.DisplayName?.UnEscape() ?? member.Nickname?.UnEscape() ?? "未知";
+                                // 🔥 只在真正的异常情况才发送错误码通知
+                                string failMsg = $"@{displayName}\r❌{action}分失败[{errorMessage}]\r金额:{money}\r请联系管理员";
+                                _ = _socketClient.SendAsync<object>("SendMessage", groupWxid, failMsg);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.Warning("AdminCommand", $"发送失败通知失败: {ex.Message}");
+                            }
+                        }
+                        
                         return false;
                     }
                     
@@ -681,53 +698,97 @@ namespace BaiShengVx3Plus.Services.Messages.Handlers
                 else
                 {
                     // 🔥 如果没有服务，直接处理（兼容旧逻辑）
-                    // 🔥 重要修复：添加全局锁保护，确保与下注、结算等操作互斥
+                    // ⚠️ 建议：应该始终使用 CreditWithdrawService，这里仅作为降级方案
+                    _logService.Warning("AdminCommand", 
+                        $"⚠️ CreditWithdrawService 未设置，使用降级方案处理上下分");
+                    
+                    // 🔥 关键修复：遵循 CreditWithdrawService 的正确流程
                     lock (Core.ResourceLocks.MemberBalanceLock)
                     {
+                        float balanceBefore = member.Balance;
+                        float balanceAfter;
+                        
+                        // 1. 更新余额和统计
                         if (action == "上")
                         {
                             member.Balance += money;
                             member.CreditToday += money;
-                            creditWithdraw.Status = CreditWithdrawStatus.已同意;
-                            creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                            creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                            
-                            if (_creditWithdrawsBindingList != null)
-                            {
-                                // BindingList 会自动保存
-                            }
-                            else if (_db != null)
-                            {
-                                _db.Update(creditWithdraw);
-                            }
-                            
-                            _logService.Info("AdminCommand", $"管理上分成功: {member.Nickname} +{money}, 余额={member.Balance}");
-                            return true;
+                            member.CreditTotal += money;
+                            balanceAfter = member.Balance;
                         }
                         else if (action == "下")
                         {
+                            if (member.Balance < money)
+                            {
+                                _logService.Warning("AdminCommand", 
+                                    $"⚠️ 余额不足: {member.Nickname} 当前={member.Balance:F2} 申请={money}");
+                                return false;
+                            }
                             member.Balance -= money;
                             member.WithdrawToday += money;
-                            creditWithdraw.Status = CreditWithdrawStatus.已同意;
-                            creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
-                            creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                            
-                            if (_creditWithdrawsBindingList != null)
-                            {
-                                // BindingList 会自动保存
-                            }
-                            else if (_db != null)
-                            {
-                                _db.Update(creditWithdraw);
-                            }
-                            
-                            _logService.Info("AdminCommand", $"管理下分成功: {member.Nickname} -{money}, 余额={member.Balance}");
-                            return true;
+                            member.WithdrawTotal += money;
+                            balanceAfter = member.Balance;
                         }
                         else
                         {
                             throw new Exception("#无效动作!");
                         }
+                        
+                        // 2. 准备处理人和时间
+                        creditWithdraw.ProcessedBy = Services.Api.BoterApi.GetInstance().User;
+                        creditWithdraw.ProcessedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        
+                        // 3. 创建资金变动记录
+                        var balanceChange = new V2BalanceChange
+                        {
+                            GroupWxId = member.GroupWxId,
+                            Wxid = member.Wxid,
+                            Nickname = member.Nickname,
+                            BalanceBefore = balanceBefore,
+                            BalanceAfter = balanceAfter,
+                            ChangeAmount = action == "上" ? money : -money,
+                            Reason = action == "上" ? ChangeReason.上分 : ChangeReason.下分,
+                            IssueId = 0,
+                            TimeString = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                            Notes = note
+                        };
+                        
+                        // 4. 🔥 关键：使用事务保存所有数据
+                        if (_db != null)
+                        {
+                            _db.BeginTransaction();
+                            try
+                            {
+                                _db.Update(member);
+                                _db.Update(creditWithdraw);
+                                _db.Insert(balanceChange);  // ← 🔥 必须插入资金变动记录
+                                _db.Commit();
+                                
+                                _logService.Info("AdminCommand", 
+                                    $"✅ 降级方案处理成功: {member.Nickname} {action}{money}, 余额={member.Balance:F2}");
+                            }
+                            catch
+                            {
+                                _db.Rollback();
+                                _logService.Error("AdminCommand", 
+                                    $"❌ 降级方案处理失败（事务回滚）");
+                                throw;
+                            }
+                        }
+                        
+                        // 5. 🔥 最后更新 UI 状态（即使失败也不影响数据）
+                        try
+                        {
+                            creditWithdraw.Status = CreditWithdrawStatus.已同意;
+                        }
+                        catch (InvalidOperationException ex) when (ex.Message.Contains("BindingSource"))
+                        {
+                            _logService.Warning("AdminCommand", 
+                                $"⚠️ UI更新异常（已忽略，数据已保存）: {ex.Message}");
+                        }
+                        
+                        return true;
                     }
                 }
             }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -74,6 +75,9 @@ namespace Unit.La.Controls
             // 🔧 修改关闭行为：关闭时隐藏而不是真正关闭
             FormClosing += BrowserTaskControl_FormClosing;
             
+            // 🔧 窗口显示时，立即让脚本编辑器获得焦点，修复全局焦点问题
+            Shown += BrowserTaskControl_Shown;
+            
             // 🔧 初始化缩略图定时器（每2秒更新一次）
             _thumbnailTimer = new System.Windows.Forms.Timer
             {
@@ -81,6 +85,149 @@ namespace Unit.La.Controls
             };
             _thumbnailTimer.Tick += ThumbnailTimer_Tick;
             _thumbnailTimer.Start();
+        }
+
+        /// <summary>
+        /// TabControl 切换事件
+        /// 🔥 当切换到脚本页面时，触发代码编辑器滚动，激活消息泵
+        /// 
+        /// 关键发现：点击函数列表后，代码窗口会滚动（Goto + EnsureVisible），这会激活消息泵
+        /// 所以我们直接触发这些操作，而不是仅仅调用 Focus()
+        /// </summary>
+        private void TabControlTools_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (tabControlTools == null || _scriptEditor == null) return;
+            
+            // 🔥 如果切换到脚本页面，触发代码编辑器的滚动操作，激活消息泵
+            if (tabControlTools.SelectedTab == tabPageScript)
+            {
+                // 使用 BeginInvoke 确保在页面切换完成后再触发
+                BeginInvoke(new Action(() =>
+                {
+                    // 触发滚动操作，激活消息泵
+                    TriggerScintillaScroll(_scriptEditor);
+                    
+                    // 将焦点设置到编辑器
+                    if (_scriptEditor.CanFocus && _scriptEditor.IsHandleCreated)
+                    {
+                        _scriptEditor.Focus();
+                        Application.DoEvents();
+                    }
+                }));
+            }
+        }
+
+        /// <summary>
+        /// 窗口显示事件
+        /// 🔥 在后台触发 ScintillaNET 控件的滚动操作，激活消息泵，修复全局焦点问题
+        /// 
+        /// 问题分析：
+        /// 1. ScintillaNET 是一个原生 Windows 控件包装器，使用不同的消息处理机制
+        /// 2. 当它执行滚动操作（Goto + EnsureVisible）时，会激活 UI 线程的消息泵
+        /// 3. 这修复了其他 TextBox 控件的焦点管理状态
+        /// 4. 其他程序没有这个问题，可能是因为它们没有使用 ScintillaNET，或者初始化顺序不同
+        /// 
+        /// 解决方案：
+        /// 在窗口显示时，直接在后台触发 ScintillaNET 控件的滚动操作，不需要切换到脚本页面
+        /// </summary>
+        private void BrowserTaskControl_Shown(object? sender, EventArgs e)
+        {
+            // 🔥 使用多次 BeginInvoke 确保在窗口完全显示且所有控件都初始化后再触发
+            BeginInvoke(new Action(() =>
+            {
+                // 再次延迟，确保 ScintillaNET 控件完全初始化
+                BeginInvoke(new Action(() =>
+                {
+                    // 🔥 直接在后台触发 ScintillaNET 控件的滚动操作，激活消息泵
+                    if (_scriptEditor != null && _scriptEditor.IsHandleCreated)
+                    {
+                        // 等待一小段时间，确保控件完全准备好
+                        System.Threading.Thread.Sleep(100);
+                        TriggerScintillaScroll(_scriptEditor);
+                        Application.DoEvents();
+                    }
+                }));
+            }));
+        }
+
+        /// <summary>
+        /// 触发 ScintillaNET 控件的滚动操作，激活消息泵
+        /// 🔥 这个方法可以在后台调用，不需要切换到脚本页面
+        /// </summary>
+        private void TriggerScintillaScroll(ScriptEditorControl scriptEditor)
+        {
+            try
+            {
+                // 通过反射访问 ScintillaNET 控件
+                var scintillaField = scriptEditor.GetType().GetField("scintilla", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var scintilla = scintillaField?.GetValue(scriptEditor);
+                
+                if (scintilla != null)
+                {
+                    // 确保控件有内容，否则滚动操作可能无效
+                    var textProp = scintilla.GetType().GetProperty("Text");
+                    var text = textProp?.GetValue(scintilla) as string;
+                    
+                    // 获取 CurrentLine 属性（当前光标所在行）
+                    var currentLineProp = scintilla.GetType().GetProperty("CurrentLine");
+                    var currentLine = currentLineProp?.GetValue(scintilla);
+                    
+                    if (currentLine != null)
+                    {
+                        // 调用 Goto() 和 EnsureVisible()，触发滚动
+                        // 这会激活消息泵，修复焦点状态
+                        var gotoMethod = currentLine.GetType().GetMethod("Goto");
+                        var ensureVisibleMethod = currentLine.GetType().GetMethod("EnsureVisible");
+                        
+                        gotoMethod?.Invoke(currentLine, null);
+                        ensureVisibleMethod?.Invoke(currentLine, null);
+                        
+                        Application.DoEvents();
+                    }
+                    else if (!string.IsNullOrEmpty(text))
+                    {
+                        // 如果 CurrentLine 为空但有文本，尝试触发第一行的滚动
+                        var linesProp = scintilla.GetType().GetProperty("Lines");
+                        var lines = linesProp?.GetValue(scintilla);
+                        if (lines != null)
+                        {
+                            var countProp = lines.GetType().GetProperty("Count");
+                            var count = countProp?.GetValue(lines) as int? ?? 0;
+                            
+                            if (count > 0)
+                            {
+                                var getItemMethod = lines.GetType().GetMethod("get_Item", new[] { typeof(int) });
+                                if (getItemMethod != null)
+                                {
+                                    var firstLine = getItemMethod.Invoke(lines, new object[] { 0 });
+                                    if (firstLine != null)
+                                    {
+                                        var gotoMethod = firstLine.GetType().GetMethod("Goto");
+                                        var ensureVisibleMethod = firstLine.GetType().GetMethod("EnsureVisible");
+                                        
+                                        gotoMethod?.Invoke(firstLine, null);
+                                        ensureVisibleMethod?.Invoke(firstLine, null);
+                                        
+                                        Application.DoEvents();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 如果连文本都没有，至少调用 ScrollCaret() 来触发滚动
+                        var scrollCaretMethod = scintilla.GetType().GetMethod("ScrollCaret");
+                        scrollCaretMethod?.Invoke(scintilla, null);
+                        Application.DoEvents();
+                    }
+                }
+            }
+            catch
+            {
+                // 如果反射失败，忽略（不影响正常功能）
+            }
         }
 
         /// <summary>
@@ -129,12 +276,39 @@ namespace Unit.La.Controls
                 throw new InvalidOperationException("脚本编辑器未初始化");
             }
 
-            // 🔥 检查 WebView2 初始化状态
+            // 🔥 检查 WebView2 初始化状态，如果未完成则等待（最多30秒）
             if (_webViewInitTcs != null && !_webViewInitTcs.Task.IsCompleted)
             {
-                LogMessage("⏳ WebView2 正在初始化，请稍候...");
-                MessageBox.Show("WebView2 正在初始化中，请稍后再试", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return "WebView2 初始化中";
+                LogMessage("⏳ WebView2 正在初始化，等待完成...");
+                
+                // 🔥 使用 DoEvents 循环等待，保持 UI 响应（最多30秒）
+                var startTime = DateTime.Now;
+                var timeout = TimeSpan.FromSeconds(30);
+                
+                while (!_webViewInitTcs.Task.IsCompleted && (DateTime.Now - startTime) < timeout)
+                {
+                    System.Windows.Forms.Application.DoEvents();
+                    System.Threading.Thread.Sleep(50); // 短暂休眠，避免 CPU 100%
+                }
+                
+                if (!_webViewInitTcs.Task.IsCompleted)
+                {
+                    var error = "WebView2 初始化超时（30秒），请检查网络连接或重启应用";
+                    LogMessage($"❌ {error}");
+                    MessageBox.Show(error, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return error;
+                }
+                
+                // 检查是否初始化失败
+                if (_webViewInitTcs.Task.IsFaulted)
+                {
+                    var error = $"WebView2 初始化失败: {_webViewInitTcs.Task.Exception?.GetBaseException().Message}";
+                    LogMessage($"❌ {error}");
+                    MessageBox.Show(error, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return error;
+                }
+                
+                LogMessage("✅ WebView2 初始化完成");
             }
             
             if (_webViewInitTcs != null && _webViewInitTcs.Task.IsFaulted)
@@ -152,9 +326,7 @@ namespace Unit.La.Controls
             {
                 LogMessage("▶️ 开始执行脚本...");
                 
-                // 🔥 在执行脚本前，确保 config 对象是最新的（从 UI 获取最新值）
-                // 这确保脚本使用的是最新的用户名、密码等配置
-                UpdateLuaConfigObject();
+                // 🔥 ConfigBridge 已实现双向绑定，会自动同步，无需手动更新
                 
                 // 🔥 传递取消令牌到脚本执行环境
                 _functionRegistry.RegisterDefaults(LogMessage, () => _webView, _scriptCancellation.Token);
@@ -664,6 +836,13 @@ log('脚本结束')
         /// </summary>
         private void InitializeControls()
         {
+            // 🔥 监听 TabControl 切换事件，当切换到脚本页面时，自动让代码编辑器获得焦点
+            // 这样可以确保无论何时切换到脚本页面，都会激活消息泵，修复焦点状态
+            if (tabControlTools != null)
+            {
+                tabControlTools.SelectedIndexChanged += TabControlTools_SelectedIndexChanged;
+            }
+            
             // 配置面板
             _configPanel = new BrowserConfigPanel
             {
@@ -672,6 +851,9 @@ log('脚本结束')
             };
             // 不再订阅 ConfigChanged 自动事件，改为在点击"保存"时手动触发
             tabPageConfig.Controls.Add(_configPanel);
+            
+            // 🔥 绑定 config 对象到脚本引擎（此时 _configPanel 已创建）
+            BindConfigObject();
 
             // 日志面板
             _logTextBox = new RichTextBox
@@ -1191,45 +1373,34 @@ log('脚本结束')
             // 这样即使 _webView 被重新创建，web 对象仍然能获取最新的 WebView 实例
             _functionRegistry.RegisterDefaults(LogMessage, () => _webView);
             
-            // 🔥 注册 config 对象
-            UpdateLuaConfigObject();
+            // 🔥 config 对象的绑定将在 InitializeControls() 中完成（此时 _configPanel 已创建）
         }
 
         /// <summary>
-        /// 更新 Lua 中的 config 对象
-        /// 🔥 配置修改后调用此方法，确保脚本中的 config 对象是最新的
-        /// 🔥 优先从 UI 获取最新值（即使未保存），确保脚本使用的是实时配置
+        /// 绑定 config 对象到脚本引擎
+        /// 🔥 创建 ConfigBridge 实现双向绑定：Lua 可以读取和修改配置，修改后自动更新 UI
+        /// 🔥 只需要创建一次，之后会自动同步
         /// </summary>
-        private void UpdateLuaConfigObject()
+        private void BindConfigObject()
         {
-            // 🔥 优先从 UI 获取最新配置值（即使未保存）
-            // 这样脚本执行时能获取到用户在 UI 中修改的最新值
-            BrowserTaskConfig? currentConfig = _config;
-            if (_configPanel?.Config != null)
-            {
-                currentConfig = _configPanel.Config;
-            }
+            if (_configPanel == null) return;
             
-            // 🔥 创建新的 config 字典（使用最新的配置值）
-            var configObject = new Dictionary<string, object>
-            {
-                ["url"] = currentConfig?.Url ?? "",
-                ["username"] = currentConfig?.Username ?? "",
-                ["password"] = currentConfig?.Password ?? "",
-                ["autoLogin"] = currentConfig?.AutoLogin ?? false,
-                ["name"] = currentConfig?.Name ?? ""
-            };
+            // 🔥 创建 ConfigBridge 对象（支持双向绑定）
+            // 当 Lua 修改 config.username 时，会自动更新 _config 和 UI
+            var configBridge = new Scripting.ConfigBridge(
+                _config, 
+                _configPanel, 
+                LogMessage
+            );
             
-            // 🔥 重新注册（会覆盖旧的）
-            _functionRegistry.RegisterObject("config", configObject);
+            // 🔥 注册 config 对象
+            _functionRegistry.RegisterObject("config", configBridge);
             
             // 🔥 如果脚本引擎已初始化，立即绑定
             if (_scriptEditor?.ScriptEngine != null)
             {
-                _scriptEditor.ScriptEngine.BindObject("config", configObject);
+                _scriptEditor.ScriptEngine.BindObject("config", configBridge);
             }
-            
-            LogMessage($"🔄 已更新 Lua config 对象: URL={currentConfig?.Url}, Username={currentConfig?.Username}");
         }
 
         /// <summary>
@@ -1433,8 +1604,7 @@ log('脚本结束')
                 LogMessage($"  - 自动登录: {_config.AutoLogin}");
                 LogMessage($"  - 脚本长度: {_config.Script?.Length ?? 0} 字符");
                 
-                // 🔥 更新 Lua 中的 config 对象
-                UpdateLuaConfigObject();
+                // 🔥 ConfigBridge 已实现双向绑定，会自动同步，无需手动更新
                 
                 ConfigChanged?.Invoke(this, _config);
                 LogMessage("✅ 配置已保存（ConfigChanged 事件已触发）");
@@ -1588,4 +1758,5 @@ log('脚本结束')
             Left
         }
     }
+
 }

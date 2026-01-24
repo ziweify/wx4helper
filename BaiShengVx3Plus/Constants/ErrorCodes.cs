@@ -52,7 +52,7 @@ namespace BaiShengVx3Plus.Constants
         public static class CreditWithdraw
         {
             /// <summary>
-            /// 上下分处理失败
+            /// 上下分处理失败（通用）
             /// 位置：CreditWithdrawService.ProcessCreditWithdraw
             /// </summary>
             public const string ProcessFailed = "SYS-200";
@@ -62,6 +62,24 @@ namespace BaiShengVx3Plus.Constants
             /// 位置：CreditWithdrawService.ProcessCreditWithdraw - 下分
             /// </summary>
             public const string InsufficientBalance = "SYS-201";
+            
+            /// <summary>
+            /// 数据库事务失败
+            /// 位置：CreditWithdrawService.ProcessCreditWithdraw - 数据库操作
+            /// </summary>
+            public const string DatabaseTransactionFailed = "SYS-202";
+            
+            /// <summary>
+            /// 申请已被处理
+            /// 位置：CreditWithdrawService.ProcessCreditWithdraw - 验证
+            /// </summary>
+            public const string AlreadyProcessed = "SYS-203";
+            
+            /// <summary>
+            /// 会员不存在
+            /// 位置：CreditWithdrawService/AdminCommandHandler
+            /// </summary>
+            public const string MemberNotFound = "SYS-204";
         }
         
         /// <summary>
