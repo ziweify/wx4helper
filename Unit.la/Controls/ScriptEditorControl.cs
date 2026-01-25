@@ -808,6 +808,19 @@ namespace Unit.La.Controls
                 {
                     var content = System.IO.File.ReadAllText(filePath);
                     ScriptText = content;
+                    
+                    // 🔥 关键：触发滚动操作，激活消息泵，修复其他 TextBox 控件的焦点问题
+                    // 这模拟了点击函数列表的操作（Goto + EnsureVisible + Focus）
+                    if (scintilla != null && scintilla.Lines.Count > 0)
+                    {
+                        // 获取第一行，触发滚动操作
+                        var firstLine = scintilla.Lines[0];
+                        firstLine.Goto();
+                        firstLine.EnsureVisible();
+                        
+                        // 将焦点设置到编辑器
+                        scintilla.Focus();
+                    }
                 }
                 catch
                 {
@@ -828,6 +841,19 @@ namespace Unit.La.Controls
                 {
                     var content = System.IO.File.ReadAllText(filePath);
                     ScriptText = content;
+                    
+                    // 🔥 关键：触发滚动操作，激活消息泵，修复其他 TextBox 控件的焦点问题
+                    // 这模拟了点击函数列表的操作（Goto + EnsureVisible + Focus）
+                    if (scintilla != null && scintilla.Lines.Count > 0)
+                    {
+                        // 获取第一行，触发滚动操作
+                        var firstLine = scintilla.Lines[0];
+                        firstLine.Goto();
+                        firstLine.EnsureVisible();
+                        
+                        // 将焦点设置到编辑器
+                        scintilla.Focus();
+                    }
                 }
                 catch
                 {

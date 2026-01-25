@@ -132,43 +132,69 @@ namespace Unit.La.Controls
         /// </summary>
         private void BrowserTaskControl_Shown(object? sender, EventArgs e)
         {
-            // 🔥 使用多次 BeginInvoke 确保在窗口完全显示且所有控件都初始化后再触发
+            // 🔥 使用 BeginInvoke 确保在窗口完全显示后再触发
             BeginInvoke(new Action(() =>
             {
-                // 再次延迟，确保 ScintillaNET 控件完全初始化
-                BeginInvoke(new Action(() =>
+                // 🔥 短暂切换到脚本页面，触发滚动操作，然后立即切换回来
+                // 这是之前稳定工作的版本
+                if (tabControlTools != null && tabPageScript != null && _scriptEditor != null)
                 {
-                    // 🔥 直接在后台触发 ScintillaNET 控件的滚动操作，激活消息泵
-                    if (_scriptEditor != null && _scriptEditor.IsHandleCreated)
+                    // 保存当前选中的页面
+                    var previousTab = tabControlTools.SelectedTab;
+                    
+                    // 切换到脚本页面（这会触发 TabControlTools_SelectedIndexChanged，自动触发滚动操作）
+                    tabControlTools.SelectedTab = tabPageScript;
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(250); // 等待页面切换和滚动操作完成（增加等待时间确保异步操作完成）
+                    
+                    // 🔥 立即切换回之前的页面（通常是配置页面）
+                    if (previousTab != null)
                     {
-                        // 等待一小段时间，确保控件完全准备好
-                        System.Threading.Thread.Sleep(100);
-                        TriggerScintillaScroll(_scriptEditor);
+                        tabControlTools.SelectedTab = previousTab;
                         Application.DoEvents();
                     }
-                }));
+                    
+                    // 现在所有 TextBox 控件都应该正常工作了
+                }
             }));
         }
 
         /// <summary>
         /// 触发 ScintillaNET 控件的滚动操作，激活消息泵
-        /// 🔥 这个方法可以在后台调用，不需要切换到脚本页面
+        /// 🔥 关键：模拟点击函数列表的操作，让焦点真正切换到函数列表或代码编辑器
         /// </summary>
         private void TriggerScintillaScroll(ScriptEditorControl scriptEditor)
         {
             try
             {
-                // 通过反射访问 ScintillaNET 控件
+                // 🔥 关键：先让函数列表获得焦点（模拟手动点击函数列表的操作）
+                // 通过反射访问 listBoxFunctions
+                var listBoxField = scriptEditor.GetType().GetField("listBoxFunctions", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var listBox = listBoxField?.GetValue(scriptEditor) as System.Windows.Forms.ListBox;
+                
+                if (listBox != null && listBox.Items.Count > 0)
+                {
+                    // 如果有函数列表项，选择第一项（模拟点击函数列表）
+                    if (listBox.SelectedIndex < 0)
+                    {
+                        listBox.SelectedIndex = 0;
+                    }
+                    // 让函数列表获得焦点
+                    if (listBox.CanFocus)
+                    {
+                        listBox.Focus();
+                        Application.DoEvents();
+                    }
+                }
+                
+                // 然后触发 ScintillaNET 控件的滚动操作
                 var scintillaField = scriptEditor.GetType().GetField("scintilla", 
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 var scintilla = scintillaField?.GetValue(scriptEditor);
                 
                 if (scintilla != null)
                 {
-                    // 确保控件有内容，否则滚动操作可能无效
-                    var textProp = scintilla.GetType().GetProperty("Text");
-                    var text = textProp?.GetValue(scintilla) as string;
-                    
                     // 获取 CurrentLine 属性（当前光标所在行）
                     var currentLineProp = scintilla.GetType().GetProperty("CurrentLine");
                     var currentLine = currentLineProp?.GetValue(scintilla);
@@ -183,11 +209,15 @@ namespace Unit.La.Controls
                         gotoMethod?.Invoke(currentLine, null);
                         ensureVisibleMethod?.Invoke(currentLine, null);
                         
+                        // 将焦点设置到编辑器（就像函数列表点击后那样）
+                        var focusMethod = scintilla.GetType().GetMethod("Focus");
+                        focusMethod?.Invoke(scintilla, null);
+                        
                         Application.DoEvents();
                     }
-                    else if (!string.IsNullOrEmpty(text))
+                    else
                     {
-                        // 如果 CurrentLine 为空但有文本，尝试触发第一行的滚动
+                        // 如果 CurrentLine 为空，尝试触发第一行的滚动
                         var linesProp = scintilla.GetType().GetProperty("Lines");
                         var lines = linesProp?.GetValue(scintilla);
                         if (lines != null)
@@ -209,18 +239,15 @@ namespace Unit.La.Controls
                                         gotoMethod?.Invoke(firstLine, null);
                                         ensureVisibleMethod?.Invoke(firstLine, null);
                                         
+                                        // 将焦点设置到编辑器
+                                        var focusMethod = scintilla.GetType().GetMethod("Focus");
+                                        focusMethod?.Invoke(scintilla, null);
+                                        
                                         Application.DoEvents();
                                     }
                                 }
                             }
                         }
-                    }
-                    else
-                    {
-                        // 如果连文本都没有，至少调用 ScrollCaret() 来触发滚动
-                        var scrollCaretMethod = scintilla.GetType().GetMethod("ScrollCaret");
-                        scrollCaretMethod?.Invoke(scintilla, null);
-                        Application.DoEvents();
                     }
                 }
             }
