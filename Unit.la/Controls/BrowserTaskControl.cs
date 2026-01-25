@@ -31,6 +31,8 @@ namespace Unit.La.Controls
         private System.Windows.Forms.Timer? _thumbnailTimer; // 缩略图更新定时器
         private TaskCompletionSource<bool>? _webViewInitTcs; // 🔥 WebView2 初始化完成信号
         private CancellationTokenSource? _scriptCancellation; // 🔥 脚本取消令牌
+        private Form? _scriptFloatingWindow; // 🔥 脚本浮动窗口
+        private ToolStripButton? _btnToggleScriptWindow; // 🔥 切换脚本窗口按钮
 
         /// <summary>
         /// 配置变更事件
@@ -88,75 +90,36 @@ namespace Unit.La.Controls
         }
 
         /// <summary>
-        /// TabControl 切换事件
-        /// 🔥 当切换到脚本页面时，触发代码编辑器滚动，激活消息泵
-        /// 
-        /// 关键发现：点击函数列表后，代码窗口会滚动（Goto + EnsureVisible），这会激活消息泵
-        /// 所以我们直接触发这些操作，而不是仅仅调用 Focus()
+        /// 脚本浮动窗口显示事件
+        /// 🔥 当脚本窗口显示时，触发代码编辑器滚动，激活消息泵
         /// </summary>
-        private void TabControlTools_SelectedIndexChanged(object? sender, EventArgs e)
+        private void ScriptFloatingWindow_Shown(object? sender, EventArgs e)
         {
-            if (tabControlTools == null || _scriptEditor == null) return;
+            if (_scriptEditor == null) return;
             
-            // 🔥 如果切换到脚本页面，触发代码编辑器的滚动操作，激活消息泵
-            if (tabControlTools.SelectedTab == tabPageScript)
+            // 使用 BeginInvoke 确保在窗口完全显示后再触发
+            BeginInvoke(new Action(() =>
             {
-                // 使用 BeginInvoke 确保在页面切换完成后再触发
-                BeginInvoke(new Action(() =>
+                // 触发滚动操作，激活消息泵
+                TriggerScintillaScroll(_scriptEditor);
+                
+                // 将焦点设置到编辑器
+                if (_scriptEditor.CanFocus && _scriptEditor.IsHandleCreated)
                 {
-                    // 触发滚动操作，激活消息泵
-                    TriggerScintillaScroll(_scriptEditor);
-                    
-                    // 将焦点设置到编辑器
-                    if (_scriptEditor.CanFocus && _scriptEditor.IsHandleCreated)
-                    {
-                        _scriptEditor.Focus();
-                        Application.DoEvents();
-                    }
-                }));
-            }
+                    _scriptEditor.Focus();
+                    Application.DoEvents();
+                }
+            }));
         }
 
         /// <summary>
         /// 窗口显示事件
-        /// 🔥 在后台触发 ScintillaNET 控件的滚动操作，激活消息泵，修复全局焦点问题
-        /// 
-        /// 问题分析：
-        /// 1. ScintillaNET 是一个原生 Windows 控件包装器，使用不同的消息处理机制
-        /// 2. 当它执行滚动操作（Goto + EnsureVisible）时，会激活 UI 线程的消息泵
-        /// 3. 这修复了其他 TextBox 控件的焦点管理状态
-        /// 4. 其他程序没有这个问题，可能是因为它们没有使用 ScintillaNET，或者初始化顺序不同
-        /// 
-        /// 解决方案：
-        /// 在窗口显示时，直接在后台触发 ScintillaNET 控件的滚动操作，不需要切换到脚本页面
+        /// 🔥 脚本窗口默认隐藏，不需要在这里触发滚动操作
         /// </summary>
         private void BrowserTaskControl_Shown(object? sender, EventArgs e)
         {
-            // 🔥 使用 BeginInvoke 确保在窗口完全显示后再触发
-            BeginInvoke(new Action(() =>
-            {
-                // 🔥 短暂切换到脚本页面，触发滚动操作，然后立即切换回来
-                // 这是之前稳定工作的版本
-                if (tabControlTools != null && tabPageScript != null && _scriptEditor != null)
-                {
-                    // 保存当前选中的页面
-                    var previousTab = tabControlTools.SelectedTab;
-                    
-                    // 切换到脚本页面（这会触发 TabControlTools_SelectedIndexChanged，自动触发滚动操作）
-                    tabControlTools.SelectedTab = tabPageScript;
-                    Application.DoEvents();
-                    System.Threading.Thread.Sleep(250); // 等待页面切换和滚动操作完成（增加等待时间确保异步操作完成）
-                    
-                    // 🔥 立即切换回之前的页面（通常是配置页面）
-                    if (previousTab != null)
-                    {
-                        tabControlTools.SelectedTab = previousTab;
-                        Application.DoEvents();
-                    }
-                    
-                    // 现在所有 TextBox 控件都应该正常工作了
-                }
-            }));
+            // 🔥 脚本窗口默认隐藏，用户点击按钮后才显示
+            // 不需要在这里触发滚动操作
         }
 
         /// <summary>
@@ -301,6 +264,27 @@ namespace Unit.La.Controls
             if (_scriptEditor == null)
             {
                 throw new InvalidOperationException("脚本编辑器未初始化");
+            }
+
+            // 🔥 如果脚本窗口隐藏，自动显示它，确保脚本编辑器正常工作
+            if (_scriptFloatingWindow != null && !_scriptFloatingWindow.IsDisposed && !_scriptFloatingWindow.Visible)
+            {
+                _scriptFloatingWindow.Show();
+                _scriptFloatingWindow.BringToFront();
+                
+                // 更新按钮文本
+                if (_btnToggleScriptWindow != null)
+                {
+                    _btnToggleScriptWindow.Text = "📝 隐藏脚本";
+                }
+                
+                // 等待窗口显示完成
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(100);
+                
+                // 触发滚动操作，激活消息泵
+                TriggerScintillaScroll(_scriptEditor);
+                Application.DoEvents();
             }
 
             // 🔥 检查 WebView2 初始化状态，如果未完成则等待（最多30秒）
@@ -456,9 +440,9 @@ namespace Unit.La.Controls
         /// </summary>
         public void SelectConfigTab()
         {
-            if (tabControlTools != null)
+            if (tabControlConfigLog != null)
             {
-                tabControlTools.SelectedTab = tabPageConfig;
+                tabControlConfigLog.SelectedTab = tabPageConfig;
             }
         }
 
@@ -863,12 +847,8 @@ log('脚本结束')
         /// </summary>
         private void InitializeControls()
         {
-            // 🔥 监听 TabControl 切换事件，当切换到脚本页面时，自动让代码编辑器获得焦点
-            // 这样可以确保无论何时切换到脚本页面，都会激活消息泵，修复焦点状态
-            if (tabControlTools != null)
-            {
-                tabControlTools.SelectedIndexChanged += TabControlTools_SelectedIndexChanged;
-            }
+            // 🔥 配置和日志现在在 SplitContainer 中，脚本编辑器在浮动窗口中
+            // 不再需要 TabControl 切换事件
             
             // 配置面板
             _configPanel = new BrowserConfigPanel
@@ -1328,7 +1308,8 @@ log('脚本结束')
                 }
             }
             
-            tabPageScript.Controls.Add(panelEditor);
+            // 🔥 创建脚本浮动窗口
+            CreateScriptFloatingWindow(panelEditor);
         }
 
         /// <summary>
@@ -1784,6 +1765,112 @@ log('脚本结束')
             Bottom,
             Left
         }
+
+        #region 脚本浮动窗口
+
+        /// <summary>
+        /// 创建脚本浮动窗口
+        /// </summary>
+        private void CreateScriptFloatingWindow(Control scriptEditorPanel)
+        {
+            _scriptFloatingWindow = new Form
+            {
+                Text = "📝 脚本编辑器",
+                Width = 1000,
+                Height = 700,
+                StartPosition = FormStartPosition.CenterScreen,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                ShowInTaskbar = false, // 不在任务栏显示
+                Owner = this // 设置为主窗口的子窗口
+            };
+
+            // 将脚本编辑器面板添加到浮动窗口
+            scriptEditorPanel.Dock = DockStyle.Fill;
+            _scriptFloatingWindow.Controls.Add(scriptEditorPanel);
+
+            // 订阅窗口关闭事件，恢复脚本编辑器到主窗口
+            _scriptFloatingWindow.FormClosing += ScriptFloatingWindow_FormClosing;
+            _scriptFloatingWindow.Shown += ScriptFloatingWindow_Shown;
+
+            // 🔥 默认隐藏脚本窗口，用户点击按钮后才显示
+            // 不调用 Show()，窗口保持隐藏状态
+        }
+
+        /// <summary>
+        /// 脚本浮动窗口关闭事件
+        /// </summary>
+        private void ScriptFloatingWindow_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // 取消关闭，改为隐藏
+            e.Cancel = true;
+            _scriptFloatingWindow?.Hide();
+            
+            // 更新按钮文本为"显示脚本"
+            if (_btnToggleScriptWindow != null)
+            {
+                _btnToggleScriptWindow.Text = "📝 显示脚本";
+            }
+        }
+
+        /// <summary>
+        /// 切换脚本窗口显示/隐藏
+        /// </summary>
+        private void OnToggleScriptWindow(object? sender, EventArgs e)
+        {
+            if (_scriptFloatingWindow == null || _scriptFloatingWindow.IsDisposed)
+            {
+                // 如果窗口不存在，重新创建
+                if (_scriptEditor != null)
+                {
+                    var parent = _scriptEditor.Parent;
+                    if (parent != null)
+                    {
+                        var panelEditor = parent.Parent as Panel;
+                        if (panelEditor != null)
+                        {
+                            // 从当前容器移除
+                            panelEditor.Parent?.Controls.Remove(panelEditor);
+                            // 重新创建浮动窗口
+                            CreateScriptFloatingWindow(panelEditor);
+                        }
+                    }
+                }
+                return;
+            }
+
+            if (_scriptFloatingWindow.Visible)
+            {
+                // 当前是显示状态，隐藏窗口
+                _scriptFloatingWindow.Hide();
+                if (_btnToggleScriptWindow != null)
+                {
+                    _btnToggleScriptWindow.Text = "📝 显示脚本";
+                }
+            }
+            else
+            {
+                // 当前是隐藏状态，显示窗口
+                _scriptFloatingWindow.Show();
+                _scriptFloatingWindow.BringToFront();
+                
+                // 触发滚动操作，激活消息泵
+                if (_scriptEditor != null)
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        TriggerScintillaScroll(_scriptEditor);
+                        Application.DoEvents();
+                    }));
+                }
+                
+                if (_btnToggleScriptWindow != null)
+                {
+                    _btnToggleScriptWindow.Text = "📝 隐藏脚本";
+                }
+            }
+        }
+
+        #endregion
     }
 
 }

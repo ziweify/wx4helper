@@ -49,10 +49,11 @@ namespace Unit.La.Controls
             menuDockBottom = new ToolStripMenuItem();
             menuDockLeft = new ToolStripMenuItem();
             btnTogglePanel = new ToolStripButton();
-            tabControlTools = new TabControl();
+            toolStripSeparator3 = new ToolStripSeparator();
+            btnToggleScriptWindow = new ToolStripButton();
+            tabControlConfigLog = new TabControl();
             tabPageConfig = new TabPage();
             tabPageLog = new TabPage();
-            tabPageScript = new TabPage();
             ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
             splitContainerMain.Panel1.SuspendLayout();
             splitContainerMain.Panel2.SuspendLayout();
@@ -60,7 +61,7 @@ namespace Unit.La.Controls
             panelBrowser.SuspendLayout();
             toolStripBrowser.SuspendLayout();
             toolStripMain.SuspendLayout();
-            tabControlTools.SuspendLayout();
+            tabControlConfigLog.SuspendLayout();
             SuspendLayout();
             // 
             // splitContainerMain
@@ -76,9 +77,9 @@ namespace Unit.La.Controls
             // 
             // splitContainerMain.Panel2
             // 
-            splitContainerMain.Panel2.Controls.Add(tabControlTools);
-            splitContainerMain.Size = new Size(1687, 980);
-            splitContainerMain.SplitterDistance = 896;
+            splitContainerMain.Panel2.Controls.Add(tabControlConfigLog);
+            splitContainerMain.Size = new Size(1484, 961);
+            splitContainerMain.SplitterDistance = 1024;
             splitContainerMain.TabIndex = 0;
             // 
             // panelBrowser
@@ -88,7 +89,7 @@ namespace Unit.La.Controls
             panelBrowser.Dock = DockStyle.Fill;
             panelBrowser.Location = new Point(0, 25);
             panelBrowser.Name = "panelBrowser";
-            panelBrowser.Size = new Size(896, 955);
+            panelBrowser.Size = new Size(1024, 936);
             panelBrowser.TabIndex = 1;
             // 
             // panelBrowserContent
@@ -96,7 +97,7 @@ namespace Unit.La.Controls
             panelBrowserContent.Dock = DockStyle.Fill;
             panelBrowserContent.Location = new Point(0, 25);
             panelBrowserContent.Name = "panelBrowserContent";
-            panelBrowserContent.Size = new Size(896, 930);
+            panelBrowserContent.Size = new Size(1024, 911);
             panelBrowserContent.TabIndex = 1;
             // 
             // toolStripBrowser
@@ -104,7 +105,7 @@ namespace Unit.La.Controls
             toolStripBrowser.Items.AddRange(new ToolStripItem[] { btnBack, btnForward, btnRefresh, btnHome, txtUrl, btnNavigate, btnHistory });
             toolStripBrowser.Location = new Point(0, 0);
             toolStripBrowser.Name = "toolStripBrowser";
-            toolStripBrowser.Size = new Size(896, 25);
+            toolStripBrowser.Size = new Size(1024, 25);
             toolStripBrowser.TabIndex = 0;
             // 
             // btnBack
@@ -167,10 +168,10 @@ namespace Unit.La.Controls
             // 
             // toolStripMain
             // 
-            toolStripMain.Items.AddRange(new ToolStripItem[] { btnSaveConfig, toolStripSeparator1, btnClearLog, toolStripSeparator2, btnDockPosition, btnTogglePanel });
+            toolStripMain.Items.AddRange(new ToolStripItem[] { btnSaveConfig, toolStripSeparator1, btnClearLog, toolStripSeparator2, btnDockPosition, btnTogglePanel, toolStripSeparator3, btnToggleScriptWindow });
             toolStripMain.Location = new Point(0, 0);
             toolStripMain.Name = "toolStripMain";
-            toolStripMain.Size = new Size(896, 25);
+            toolStripMain.Size = new Size(1024, 25);
             toolStripMain.TabIndex = 0;
             // 
             // btnSaveConfig
@@ -236,24 +237,37 @@ namespace Unit.La.Controls
             btnTogglePanel.Text = "👁️ 隐藏";
             btnTogglePanel.Click += OnTogglePanel;
             // 
-            // tabControlTools
+            // toolStripSeparator3
             // 
-            tabControlTools.Controls.Add(tabPageConfig);
-            tabControlTools.Controls.Add(tabPageLog);
-            tabControlTools.Controls.Add(tabPageScript);
-            tabControlTools.Dock = DockStyle.Fill;
-            tabControlTools.Location = new Point(0, 0);
-            tabControlTools.Name = "tabControlTools";
-            tabControlTools.SelectedIndex = 0;
-            tabControlTools.Size = new Size(787, 980);
-            tabControlTools.TabIndex = 0;
+            toolStripSeparator3.Name = "toolStripSeparator3";
+            toolStripSeparator3.Size = new Size(6, 25);
+            // 
+            // btnToggleScriptWindow
+            // 
+            btnToggleScriptWindow.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            btnToggleScriptWindow.Name = "btnToggleScriptWindow";
+            btnToggleScriptWindow.Size = new Size(80, 22);
+            btnToggleScriptWindow.Text = "📝 显示脚本";
+            btnToggleScriptWindow.ToolTipText = "显示/隐藏脚本编辑器窗口";
+            btnToggleScriptWindow.Click += OnToggleScriptWindow;
+            // 
+            // tabControlConfigLog
+            // 
+            tabControlConfigLog.Controls.Add(tabPageConfig);
+            tabControlConfigLog.Controls.Add(tabPageLog);
+            tabControlConfigLog.Dock = DockStyle.Fill;
+            tabControlConfigLog.Location = new Point(0, 0);
+            tabControlConfigLog.Name = "tabControlConfigLog";
+            tabControlConfigLog.SelectedIndex = 0;
+            tabControlConfigLog.Size = new Size(456, 961);
+            tabControlConfigLog.TabIndex = 0;
             // 
             // tabPageConfig
             // 
             tabPageConfig.Location = new Point(4, 26);
             tabPageConfig.Name = "tabPageConfig";
             tabPageConfig.Padding = new Padding(3);
-            tabPageConfig.Size = new Size(779, 950);
+            tabPageConfig.Size = new Size(448, 931);
             tabPageConfig.TabIndex = 0;
             tabPageConfig.Text = "⚙️ 配置";
             tabPageConfig.UseVisualStyleBackColor = true;
@@ -263,23 +277,14 @@ namespace Unit.La.Controls
             tabPageLog.Location = new Point(4, 26);
             tabPageLog.Name = "tabPageLog";
             tabPageLog.Padding = new Padding(3);
-            tabPageLog.Size = new Size(766, 950);
+            tabPageLog.Size = new Size(779, 931);
             tabPageLog.TabIndex = 1;
             tabPageLog.Text = "📋 日志";
             tabPageLog.UseVisualStyleBackColor = true;
             // 
-            // tabPageScript
-            // 
-            tabPageScript.Location = new Point(4, 26);
-            tabPageScript.Name = "tabPageScript";
-            tabPageScript.Size = new Size(766, 950);
-            tabPageScript.TabIndex = 2;
-            tabPageScript.Text = "📝 脚本";
-            tabPageScript.UseVisualStyleBackColor = true;
-            // 
             // BrowserTaskControl
             // 
-            ClientSize = new Size(1687, 980);
+            ClientSize = new Size(1484, 961);
             Controls.Add(splitContainerMain);
             Name = "BrowserTaskControl";
             StartPosition = FormStartPosition.CenterScreen;
@@ -295,7 +300,7 @@ namespace Unit.La.Controls
             toolStripBrowser.PerformLayout();
             toolStripMain.ResumeLayout(false);
             toolStripMain.PerformLayout();
-            tabControlTools.ResumeLayout(false);
+            tabControlConfigLog.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -322,9 +327,10 @@ namespace Unit.La.Controls
         private System.Windows.Forms.ToolStripMenuItem menuDockBottom;
         private System.Windows.Forms.ToolStripMenuItem menuDockLeft;
         private System.Windows.Forms.ToolStripButton btnTogglePanel;
-        private System.Windows.Forms.TabControl tabControlTools;
+        private System.Windows.Forms.TabControl tabControlConfigLog;
         private System.Windows.Forms.TabPage tabPageConfig;
         private System.Windows.Forms.TabPage tabPageLog;
-        private System.Windows.Forms.TabPage tabPageScript;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
+        private System.Windows.Forms.ToolStripButton btnToggleScriptWindow;
     }
 }
