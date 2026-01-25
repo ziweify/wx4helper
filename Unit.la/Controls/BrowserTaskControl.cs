@@ -114,12 +114,47 @@ namespace Unit.La.Controls
 
         /// <summary>
         /// 窗口显示事件
-        /// 🔥 脚本窗口默认隐藏，不需要在这里触发滚动操作
+        /// 🔥 使用透明度临时显示脚本窗口，触发滚动操作激活消息泵，然后隐藏
         /// </summary>
         private void BrowserTaskControl_Shown(object? sender, EventArgs e)
         {
-            // 🔥 脚本窗口默认隐藏，用户点击按钮后才显示
-            // 不需要在这里触发滚动操作
+            // 🔥 使用 BeginInvoke 确保在窗口完全显示后再触发
+            BeginInvoke(new Action(() =>
+            {
+                // 🔥 使用透明度临时显示脚本窗口，触发滚动操作，然后隐藏
+                // 因为 Windows 不允许不可见控件获得焦点，所以必须临时显示
+                // 使用 Opacity = 0 可以让窗口在视觉上隐藏，但控件仍然可见
+                if (_scriptFloatingWindow != null && !_scriptFloatingWindow.IsDisposed && _scriptEditor != null)
+                {
+                    // 保存当前窗口状态
+                    var wasVisible = _scriptFloatingWindow.Visible;
+                    var originalOpacity = _scriptFloatingWindow.Opacity;
+                    
+                    // 如果窗口隐藏，使用透明度方式临时显示
+                    if (!wasVisible)
+                    {
+                        // 设置透明度为 0（完全透明，用户看不到）
+                        _scriptFloatingWindow.Opacity = 0;
+                        // 显示窗口（虽然透明，但控件可见，可以触发滚动操作）
+                        _scriptFloatingWindow.Show();
+                        Application.DoEvents();
+                        System.Threading.Thread.Sleep(100); // 等待窗口显示完成
+                    }
+                    
+                    // 触发滚动操作，激活消息泵
+                    TriggerScintillaScroll(_scriptEditor);
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(50); // 等待滚动操作完成
+                    
+                    // 如果之前是隐藏的，现在隐藏回去并恢复透明度
+                    if (!wasVisible)
+                    {
+                        _scriptFloatingWindow.Hide();
+                        _scriptFloatingWindow.Opacity = originalOpacity; // 恢复原始透明度
+                        Application.DoEvents();
+                    }
+                }
+            }));
         }
 
         /// <summary>
@@ -1781,7 +1816,8 @@ log('脚本结束')
                 StartPosition = FormStartPosition.CenterScreen,
                 FormBorderStyle = FormBorderStyle.Sizable,
                 ShowInTaskbar = false, // 不在任务栏显示
-                Owner = this // 设置为主窗口的子窗口
+                Owner = this, // 设置为主窗口的子窗口
+                Opacity = 1.0 // 默认完全不透明
             };
 
             // 将脚本编辑器面板添加到浮动窗口
@@ -1841,7 +1877,11 @@ log('脚本结束')
             if (_scriptFloatingWindow.Visible)
             {
                 // 当前是显示状态，隐藏窗口
+                // 先设置透明度为 0（完全透明），然后隐藏
+                _scriptFloatingWindow.Opacity = 0;
+                Application.DoEvents();
                 _scriptFloatingWindow.Hide();
+                _scriptFloatingWindow.Opacity = 1.0; // 恢复透明度，为下次显示做准备
                 if (_btnToggleScriptWindow != null)
                 {
                     _btnToggleScriptWindow.Text = "📝 显示脚本";
@@ -1850,6 +1890,8 @@ log('脚本结束')
             else
             {
                 // 当前是隐藏状态，显示窗口
+                // 恢复透明度为完全不透明
+                _scriptFloatingWindow.Opacity = 1.0;
                 _scriptFloatingWindow.Show();
                 _scriptFloatingWindow.BringToFront();
                 
