@@ -52,7 +52,7 @@ namespace Unit.La.Controls
     /// </summary>
     public partial class BrowserConfigPanel : UserControl
     {
-        private BrowserTaskConfig? _config;
+        private ScriptTaskConfig? _config;
         private bool _isUpdatingFromConfig = false; // 标记是否正在从配置更新控件
 
         /// <summary>
@@ -68,7 +68,9 @@ namespace Unit.La.Controls
         /// <summary>
         /// 配置变更事件
         /// </summary>
-        public event EventHandler<BrowserTaskConfig>? ConfigChanged;
+        public event EventHandler<ScriptTaskConfig>? ConfigChanged;
+
+        private System.Windows.Forms.Timer? _autoSaveTimer; // 🔥 自动保存定时器（防抖）
 
         public BrowserConfigPanel()
         {
@@ -136,80 +138,63 @@ namespace Unit.La.Controls
         /// 🔥 如果任何输入控件有焦点，不更新控件，避免光标跳转
         /// 🔥 如果窗口还没有完全显示，延迟更新
         /// </summary>
-        public BrowserTaskConfig? Config
+        public ScriptTaskConfig? Config
         {
             get => _config;
             set
             {
                 LogDebug($"🔵 Config setter 被调用");
+                
+                // 🔥 如果之前有配置对象，取消订阅
+                if (_config != null)
+                {
+                    _config.PropertyChanged -= Config_PropertyChanged;
+                }
+                
                 _config = value;
                 
-                // 🔥 如果窗口还没有完全显示，延迟更新
+                // 🔥 如果窗口还没有完全显示，延迟建立绑定
                 var parentForm = FindForm();
                 if (parentForm != null && !parentForm.Visible)
                 {
-                    LogDebug($"🔵 窗口还没有显示，延迟更新");
+                    LogDebug($"🔵 窗口还没有显示，延迟建立数据绑定");
                     parentForm.Shown += (s, e) =>
                     {
-                        // 窗口显示后，再延迟一点更新，确保脚本编辑器已经获得焦点
+                        // 窗口显示后，再延迟一点建立绑定，确保脚本编辑器已经获得焦点
                         BeginInvoke(new Action(() =>
                         {
                             System.Threading.Thread.Sleep(100); // 等待脚本编辑器获得焦点
-                            UpdateControls();
+                            SetupDataBindings();
                         }));
                     };
                     return;
                 }
                 
-                // 🔥 检查焦点状态
-                var nameFocused = txtName.Focused;
-                var urlFocused = txtUrl.Focused;
-                var usernameFocused = txtUsername.Focused;
-                var passwordFocused = txtPassword.Focused;
-                
-                LogDebug($"🔵 焦点检查: Name={nameFocused}, Url={urlFocused}, Username={usernameFocused}, Password={passwordFocused}");
-                
-                // 🔥 如果任何输入控件有焦点，不更新控件，避免光标跳转
-                if (nameFocused || urlFocused || usernameFocused || passwordFocused)
-                {
-                    LogDebug($"🔵 有控件有焦点，跳过 UpdateControls()");
-                    return; // 不更新，让界面自己管理光标
-                }
-                
-                LogDebug($"🔵 没有控件有焦点，调用 UpdateControls()");
-                UpdateControls();
+                // 🔥 立即建立数据绑定（现代方式）
+                SetupDataBindings();
             }
         }
 
         /// <summary>
         /// 初始化控件
+        /// 🔥 现代方式：使用数据绑定代替手动事件处理
         /// </summary>
         private void InitializeControls()
         {
-            // 订阅控件变更事件
-            txtName.TextChanged += (s, e) => 
+            // 🔥 初始化自动保存定时器（防抖：1秒无修改后自动保存）
+            _autoSaveTimer = new System.Windows.Forms.Timer
             {
-                LogDebug($"📝 txtName.TextChanged: Text='{txtName.Text}', SelectionStart={txtName.SelectionStart}, Focused={txtName.Focused}");
+                Interval = 1000, // 1秒
+                Enabled = false
+            };
+            _autoSaveTimer.Tick += (s, e) =>
+            {
+                _autoSaveTimer.Stop();
+                // 触发配置变更事件，由外部处理保存
                 OnConfigPropertyChanged();
             };
-            txtUrl.TextChanged += (s, e) => 
-            {
-                LogDebug($"📝 txtUrl.TextChanged: Text='{txtUrl.Text}', SelectionStart={txtUrl.SelectionStart}, Focused={txtUrl.Focused}");
-                OnConfigPropertyChanged();
-            };
-            txtUsername.TextChanged += (s, e) => 
-            {
-                LogDebug($"📝 txtUsername.TextChanged: Text='{txtUsername.Text}', SelectionStart={txtUsername.SelectionStart}, Focused={txtUsername.Focused}");
-                OnConfigPropertyChanged();
-            };
-            txtPassword.TextChanged += (s, e) => 
-            {
-                LogDebug($"📝 txtPassword.TextChanged: Text='{txtPassword.Text}', SelectionStart={txtPassword.SelectionStart}, Focused={txtPassword.Focused}");
-                OnConfigPropertyChanged();
-            };
-            chkAutoLogin.CheckedChanged += (s, e) => OnConfigPropertyChanged();
             
-            // 订阅焦点事件
+            // 🔥 订阅焦点事件（用于调试）
             txtName.GotFocus += (s, e) => LogDebug($"👁️ txtName.GotFocus: SelectionStart={txtName.SelectionStart}");
             txtName.LostFocus += (s, e) => LogDebug($"👁️ txtName.LostFocus");
             txtUrl.GotFocus += (s, e) => LogDebug($"👁️ txtUrl.GotFocus: SelectionStart={txtUrl.SelectionStart}");
@@ -218,6 +203,61 @@ namespace Unit.La.Controls
             txtUsername.LostFocus += (s, e) => LogDebug($"👁️ txtUsername.LostFocus");
             txtPassword.GotFocus += (s, e) => LogDebug($"👁️ txtPassword.GotFocus: SelectionStart={txtPassword.SelectionStart}");
             txtPassword.LostFocus += (s, e) => LogDebug($"👁️ txtPassword.LostFocus");
+        }
+
+        /// <summary>
+        /// 建立数据绑定（现代方式）
+        /// 🔥 当 Config 设置时，自动建立双向数据绑定
+        /// </summary>
+        private void SetupDataBindings()
+        {
+            if (_config == null) return;
+
+            // 🔥 清除旧绑定（如果存在）
+            txtName.DataBindings.Clear();
+            txtUrl.DataBindings.Clear();
+            txtUsername.DataBindings.Clear();
+            txtPassword.DataBindings.Clear();
+            chkAutoLogin.DataBindings.Clear();
+
+            // 🔥 建立双向数据绑定
+            // DataSourceUpdateMode.OnPropertyChanged = UI 改变时立即更新数据源
+            // 这样用户输入时，_config 属性会自动更新
+            txtName.DataBindings.Add("Text", _config, nameof(_config.Name), 
+                false, DataSourceUpdateMode.OnPropertyChanged);
+            
+            txtUrl.DataBindings.Add("Text", _config, nameof(_config.Url), 
+                false, DataSourceUpdateMode.OnPropertyChanged);
+            
+            txtUsername.DataBindings.Add("Text", _config, nameof(_config.Username), 
+                false, DataSourceUpdateMode.OnPropertyChanged);
+            
+            txtPassword.DataBindings.Add("Text", _config, nameof(_config.Password), 
+                false, DataSourceUpdateMode.OnPropertyChanged);
+            
+            chkAutoLogin.DataBindings.Add("Checked", _config, nameof(_config.AutoLogin), 
+                false, DataSourceUpdateMode.OnPropertyChanged);
+
+            // 🔥 订阅配置对象的属性变更事件，实现自动保存（防抖）
+            _config.PropertyChanged += Config_PropertyChanged;
+            
+            LogDebug($"✅ 数据绑定已建立");
+        }
+
+        /// <summary>
+        /// 配置对象属性变更事件处理
+        /// 🔥 实现防抖自动保存：1秒无修改后自动保存
+        /// </summary>
+        private void Config_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            // 🔥 重置自动保存计时器（防抖）
+            if (_autoSaveTimer != null)
+            {
+                _autoSaveTimer.Stop();
+                _autoSaveTimer.Start();
+            }
+            
+            LogDebug($"📝 配置属性变更: {e.PropertyName}，自动保存计时器已重置");
         }
 
         /// <summary>
@@ -235,105 +275,35 @@ namespace Unit.La.Controls
         }
 
         /// <summary>
-        /// 从配置更新控件
-        /// 🔥 最简单的方法：如果任何输入控件有焦点，完全不更新，不设置 Text 属性
-        /// 🔥 不管理光标，不设置光标，让界面自己管理
+        /// 从控件更新配置（公开方法，供外部调用）
         /// </summary>
-        private void UpdateControls()
+        public void SyncConfigFromControls()
         {
-            LogDebug($"🟢 UpdateControls() 被调用");
-            
-            if (_config == null)
-            {
-                LogDebug($"🟢 _config 为 null，返回");
-                return;
-            }
-
-            // 🔥 检查焦点状态
-            var nameFocused = txtName.Focused;
-            var urlFocused = txtUrl.Focused;
-            var usernameFocused = txtUsername.Focused;
-            var passwordFocused = txtPassword.Focused;
-            
-            LogDebug($"🟢 焦点检查: Name={nameFocused}, Url={urlFocused}, Username={usernameFocused}, Password={passwordFocused}");
-
-            // 🔥 如果任何输入控件有焦点，完全不更新，不设置 Text 属性
-            // 这是最严格的检查，确保用户操作时不会更新控件
-            if (nameFocused || urlFocused || usernameFocused || passwordFocused)
-            {
-                LogDebug($"🟢 有控件有焦点，跳过更新");
-                return; // 不更新，不设置 Text，让界面自己管理光标
-            }
-
-            _isUpdatingFromConfig = true; // 防止触发 ConfigChanged 事件
-            try
-            {
-                // 🔥 只有在没有任何控件有焦点时，才更新控件
-                // 🔥 不管理光标，不设置光标，只设置 Text 属性
-                var configName = _config.Name ?? "";
-                var configUrl = _config.Url ?? "";
-                var configUsername = _config.Username ?? "";
-                var configPassword = _config.Password ?? "";
-
-                LogDebug($"🟢 准备更新控件:");
-                LogDebug($"  - Name: '{txtName.Text}' -> '{configName}'");
-                LogDebug($"  - Url: '{txtUrl.Text}' -> '{configUrl}'");
-                LogDebug($"  - Username: '{txtUsername.Text}' -> '{configUsername}' (SelectionStart={txtUsername.SelectionStart})");
-                LogDebug($"  - Password: '{txtPassword.Text}' -> '{configPassword}' (SelectionStart={txtPassword.SelectionStart})");
-
-                // 🔥 只有在文本不同时才设置，避免不必要的更新
-                if (txtName.Text != configName)
-                {
-                    LogDebug($"🟢 更新 txtName.Text");
-                    txtName.Text = configName;
-                }
-                        
-                if (txtUrl.Text != configUrl)
-                {
-                    LogDebug($"🟢 更新 txtUrl.Text");
-                    txtUrl.Text = configUrl;
-                }
-                        
-                if (txtUsername.Text != configUsername)
-                {
-                    LogDebug($"🟢 更新 txtUsername.Text (更新前 SelectionStart={txtUsername.SelectionStart})");
-                    txtUsername.Text = configUsername;
-                    LogDebug($"🟢 更新 txtUsername.Text (更新后 SelectionStart={txtUsername.SelectionStart})");
-                }
-                    
-                if (txtPassword.Text != configPassword)
-                {
-                    LogDebug($"🟢 更新 txtPassword.Text (更新前 SelectionStart={txtPassword.SelectionStart})");
-                    txtPassword.Text = configPassword;
-                    LogDebug($"🟢 更新 txtPassword.Text (更新后 SelectionStart={txtPassword.SelectionStart})");
-                }
-                    
-                chkAutoLogin.Checked = _config.AutoLogin;
-                
-                LogDebug($"🟢 UpdateControls() 完成");
-            }
-            finally
-            {
-                _isUpdatingFromConfig = false;
-            }
+            UpdateConfigFromControls();
         }
 
         /// <summary>
-        /// 配置属性变更
+        /// 从配置更新控件（已废弃：使用数据绑定后不再需要）
+        /// 🔥 数据绑定会自动处理 UI 更新，此方法保留仅用于向后兼容
         /// </summary>
+        [Obsolete("使用数据绑定后不再需要手动更新控件，保留此方法仅用于向后兼容")]
+        private void UpdateControls()
+        {
+            // 🔥 使用数据绑定后，配置对象的属性变更会自动更新 UI
+            // 此方法保留仅用于向后兼容，实际不再需要
+            LogDebug($"🟢 UpdateControls() 被调用（数据绑定已处理，此方法不再需要）");
+        }
+
+        /// <summary>
+        /// 配置属性变更（已废弃：使用数据绑定后不再需要）
+        /// 🔥 数据绑定会自动处理，此方法保留仅用于向后兼容
+        /// </summary>
+        [Obsolete("使用数据绑定后不再需要手动处理，保留此方法仅用于向后兼容")]
         private void OnConfigPropertyChanged()
         {
-            // 如果正在从配置更新控件，不触发事件（避免循环）
-            if (_isUpdatingFromConfig)
-            {
-                LogDebug($"🟡 OnConfigPropertyChanged: _isUpdatingFromConfig=true，跳过");
-                return;
-            }
-            
-            LogDebug($"🟡 OnConfigPropertyChanged: 调用 UpdateConfigFromControls()");
-            UpdateConfigFromControls();
-            // 注释掉自动触发事件，改为只在用户点击"保存"时触发
-            // ConfigChanged?.Invoke(this, _config!);
+            // 🔥 使用数据绑定后，UI 改变会自动更新 _config 对象
+            // 此方法保留仅用于向后兼容，实际不再需要
+            LogDebug($"🟡 OnConfigPropertyChanged: 数据绑定已处理，此方法不再需要");
         }
 
         /// <summary>

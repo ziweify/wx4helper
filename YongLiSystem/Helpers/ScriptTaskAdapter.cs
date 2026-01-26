@@ -6,16 +6,16 @@ using YongLiSystem.Models.Dashboard;
 namespace YongLiSystem.Helpers
 {
     /// <summary>
-    /// ScriptTask 与 BrowserTaskConfig 的适配器
+    /// ScriptTask 与 ScriptTaskConfig 的适配器
     /// </summary>
     public static class ScriptTaskAdapter
     {
         /// <summary>
-        /// ScriptTask 转 BrowserTaskConfig
+        /// ScriptTask 转 ScriptTaskConfig
         /// </summary>
-        public static BrowserTaskConfig ToBrowserTaskConfig(this ScriptTask task)
+        public static ScriptTaskConfig ToScriptTaskConfig(this ScriptTask task)
         {
-            var config = new BrowserTaskConfig
+            var config = new ScriptTaskConfig
             {
                 Name = task.Name,
                 Url = task.Url,
@@ -55,9 +55,9 @@ namespace YongLiSystem.Helpers
         }
 
         /// <summary>
-        /// BrowserTaskConfig 更新到 ScriptTask
+        /// ScriptTaskConfig 更新到 ScriptTask
         /// </summary>
-        public static void UpdateFromConfig(this ScriptTask task, BrowserTaskConfig config)
+        public static void UpdateFromConfig(this ScriptTask task, ScriptTaskConfig config)
         {
             task.Name = config.Name;
             task.Url = config.Url;

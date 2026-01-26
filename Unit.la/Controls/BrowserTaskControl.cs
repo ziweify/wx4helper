@@ -10,6 +10,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using Unit.La.Models;
 using Unit.La.Scripting;
+using Unit.La.Services;
 
 namespace Unit.La.Controls
 {
@@ -19,7 +20,7 @@ namespace Unit.La.Controls
     /// </summary>
     public partial class BrowserTaskControl : Form
     {
-        private BrowserTaskConfig _config;
+        private ScriptTaskConfig _config;
         private WebView2? _webView;
         private BrowserConfigPanel? _configPanel;
         private RichTextBox? _logTextBox;
@@ -33,11 +34,12 @@ namespace Unit.La.Controls
         private CancellationTokenSource? _scriptCancellation; // 🔥 脚本取消令牌
         private Form? _scriptFloatingWindow; // 🔥 脚本浮动窗口
         private ToolStripButton? _btnToggleScriptWindow; // 🔥 切换脚本窗口按钮
+        private ConfigService? _configService; // 🔥 配置服务
 
         /// <summary>
         /// 配置变更事件
         /// </summary>
-        public event EventHandler<BrowserTaskConfig>? ConfigChanged;
+        public event EventHandler<ScriptTaskConfig>? ConfigChanged;
 
         /// <summary>
         /// 导航完成事件
@@ -57,11 +59,19 @@ namespace Unit.La.Controls
         /// <summary>
         /// 获取当前配置
         /// </summary>
-        public BrowserTaskConfig Config => _config;
+        public ScriptTaskConfig Config => _config;
 
-        public BrowserTaskControl(BrowserTaskConfig config)
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="config">配置对象</param>
+        /// <param name="configService">配置服务（可选，如果不提供则使用默认配置服务）</param>
+        public BrowserTaskControl(ScriptTaskConfig config, ConfigService? configService = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            
+            // 🔥 初始化配置服务
+            _configService = configService ?? new ConfigService();
             
             InitializeComponent();
             
@@ -87,6 +97,12 @@ namespace Unit.La.Controls
             };
             _thumbnailTimer.Tick += ThumbnailTimer_Tick;
             _thumbnailTimer.Start();
+            
+            // 🔥 设置自动保存机制（数据驱动：配置对象属性变更时自动保存到数据库）
+            SetupAutoSave();
+            
+            // 🔥 配置从数据库加载（由 DataCollectionPage 在创建 BrowserTaskControl 时传入）
+            // 无需从 JSON 文件加载
         }
 
         /// <summary>
@@ -504,9 +520,10 @@ namespace Unit.La.Controls
                 _configPanel.Config = _config;
             }
             
-            if (_scriptEditor != null)
+            // 🔥 从 ScriptDirectory 加载脚本（如果需要）
+            if (_scriptEditor != null && !string.IsNullOrEmpty(_config.ScriptDirectory))
             {
-                _scriptEditor.ScriptText = _config.Script;
+                _scriptEditor.SetScriptDirectory(_config.ScriptDirectory);
             }
 
             // 如果URL变了，导航到新URL
@@ -1020,13 +1037,12 @@ log('脚本结束')
             _scriptEditor = new ScriptEditorControl
             {
                 Dock = DockStyle.Fill,
-                ScriptText = _config.Script,
                 EnableRealTimeValidation = true,
                 ShowLineNumbers = true,
                 EnableBreakpoints = true
             };
             
-            // 🔥 设置脚本目录（用于文件树）
+            // 🔥 设置脚本目录（用于文件树）- 脚本内容从文件夹中加载
             if (!string.IsNullOrEmpty(_config.ScriptDirectory))
             {
                 _scriptEditor.SetScriptDirectory(_config.ScriptDirectory);
@@ -1636,21 +1652,32 @@ log('脚本结束')
             string error = "";
             if (_configPanel?.ValidateConfig(out error) == true)
             {
-                _config = _configPanel.Config!;
-                _config.Script = _scriptEditor?.ScriptText ?? "";
+                // 🔥 使用数据绑定后，_config 对象已经自动同步了 UI 的值
+                // 🔥 注意：脚本内容不保存到 JSON，只保存 ScriptDirectory 路径
+                // 脚本内容存储在 ScriptDirectory 文件夹中，不需要在 JSON 中重复保存
+                
+                // 🔥 如果配置名称为空，使用默认名称
+                if (string.IsNullOrEmpty(_config.Name))
+                {
+                    _config.Name = "默认配置";
+                }
                 
                 // 🔍 添加详细日志
                 LogMessage($"💾 准备保存配置:");
                 LogMessage($"  - 名称: {_config.Name}");
                 LogMessage($"  - URL: {_config.Url}");
                 LogMessage($"  - 用户名: {_config.Username}");
+                LogMessage($"  - 密码: {(_config.Password?.Length > 0 ? "***" : "空")}");
                 LogMessage($"  - 自动登录: {_config.AutoLogin}");
-                LogMessage($"  - 脚本长度: {_config.Script?.Length ?? 0} 字符");
+                LogMessage($"  - 脚本目录: {_config.ScriptDirectory ?? "未设置"}");
+                LogMessage($"  - 脚本模式: {_config.ScriptSourceMode}");
                 
-                // 🔥 ConfigBridge 已实现双向绑定，会自动同步，无需手动更新
-                
+                // 🔥 触发配置变更事件（由订阅者保存到数据库）
                 ConfigChanged?.Invoke(this, _config);
-                LogMessage("✅ 配置已保存（ConfigChanged 事件已触发）");
+                LogMessage("✅ 配置已保存（ConfigChanged 事件已触发，已通知订阅者保存到数据库）");
+                
+                // 显示成功消息
+                MessageBox.Show($"配置已保存到数据库！\n配置名称: {_config.Name}", "保存成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
@@ -1678,10 +1705,35 @@ log('脚本结束')
         #region 窗口生命周期管理
 
         /// <summary>
-        /// 窗口关闭时：隐藏而不是真正关闭
+        /// 窗口关闭时：隐藏而不是真正关闭，并自动保存配置
         /// </summary>
         private void BrowserTaskControl_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            // 🔥 自动保存配置到数据库（无论是否真正关闭）
+            try
+            {
+                // 🔥 使用数据绑定后，_config 对象已经自动同步了 UI 的值
+                // 🔥 注意：脚本内容保存在 ScriptDirectory 文件夹中，配置数据保存在数据库中
+                
+                // 如果配置名称为空，使用默认名称
+                if (string.IsNullOrEmpty(_config.Name))
+                {
+                    _config.Name = "默认配置";
+                }
+                
+                // 触发配置变更事件（由订阅者保存到数据库）
+                ConfigChanged?.Invoke(this, _config);
+            }
+            catch (Exception ex)
+            {
+                // 保存失败不影响窗口关闭，只记录日志
+                System.Diagnostics.Debug.WriteLine($"自动保存配置失败: {ex.Message}");
+                if (IsHandleCreated)
+                {
+                    LogMessage($"❌ 自动保存配置失败: {ex.Message}");
+                }
+            }
+            
             // 如果是用户点击关闭按钮（不是程序调用 Close()）
             if (e.CloseReason == CloseReason.UserClosing)
             {
@@ -1692,7 +1744,7 @@ log('脚本结束')
                 ShowInTaskbar = false;    // 不显示在任务栏
                 Hide();                   // 隐藏窗口
                 
-                LogMessage("ℹ️ 窗口已隐藏到后台运行");
+                LogMessage("ℹ️ 窗口已隐藏到后台运行（配置已自动保存）");
             }
             // 如果是程序调用 Close()，正常关闭
         }
@@ -1719,10 +1771,14 @@ log('脚本结束')
 
         /// <summary>
         /// 定时器触发：更新缩略图
+        /// 🔥 即使窗口隐藏（Visible = false），只要浏览器未释放，就继续更新缩略图
+        /// 因为浏览器在后台运行，网页状态会持续更新，缩略图需要实时反映网页状态
         /// </summary>
         private async void ThumbnailTimer_Tick(object? sender, EventArgs e)
         {
-            if (_webView?.CoreWebView2 == null || !Visible) return;
+            // 🔥 检查窗口是否真正关闭（IsDisposed），而不是检查 Visible
+            // 因为窗口隐藏时 Visible = false，但浏览器仍在运行，应该继续更新缩略图
+            if (_webView?.CoreWebView2 == null || IsDisposed || Disposing) return;
 
             try
             {
@@ -1909,6 +1965,155 @@ log('脚本结束')
                 {
                     _btnToggleScriptWindow.Text = "📝 隐藏脚本";
                 }
+            }
+        }
+
+        #endregion
+
+        #region 配置保存和加载
+
+        /// <summary>
+        /// 设置自动保存机制（数据驱动）
+        /// 🔥 监听配置对象属性变更，实现防抖自动保存到数据库
+        /// </summary>
+        private void SetupAutoSave()
+        {
+            // 🔥 订阅配置对象的属性变更事件
+            _config.PropertyChanged += (s, e) =>
+            {
+                // 🔥 防抖：1秒无修改后自动保存
+                // 使用 System.Threading.Timer 实现防抖
+                var timer = new System.Threading.Timer(_ =>
+                {
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                // 🔥 注意：脚本内容保存在 ScriptDirectory 文件夹中，配置数据保存在数据库中
+                                
+                                // 如果配置名称为空，使用默认名称
+                                if (string.IsNullOrEmpty(_config.Name))
+                                {
+                                    _config.Name = "默认配置";
+                                }
+                                
+                                // 触发配置变更事件（由订阅者保存到数据库）
+                                ConfigChanged?.Invoke(this, _config);
+                                LogMessage($"💾 配置已自动保存到数据库（属性变更: {e.PropertyName}）");
+                            }
+                            catch (Exception ex)
+                            {
+                                LogMessage($"❌ 自动保存失败: {ex.Message}");
+                            }
+                        }));
+                    }
+                }, null, 1000, Timeout.Infinite); // 1秒后执行，只执行一次
+            };
+        }
+
+
+        // 🔥 已移除 SaveConfig() 和 LoadConfig() 方法
+        // 配置数据保存在数据库中，由 DataCollectionPage 负责加载和保存
+        // 通过 ConfigChanged 事件通知订阅者保存到数据库
+
+        /// <summary>
+        /// 从 HTTP 远程 URL 加载配置
+        /// </summary>
+        /// <param name="url">配置文件的 HTTP URL</param>
+        public async Task LoadConfigFromRemoteAsync(string url)
+        {
+            try
+            {
+                if (_configService == null)
+                {
+                    LogMessage("❌ 配置服务未初始化，无法从远程加载");
+                    return;
+                }
+
+                LogMessage($"🌐 正在从远程加载配置: {url}");
+                var loadedConfig = await _configService.LoadConfigFromRemoteAsync(url);
+                
+                if (loadedConfig != null)
+                {
+                    // 合并配置
+                    _config.Url = loadedConfig.Url;
+                    _config.Username = loadedConfig.Username;
+                    _config.Password = loadedConfig.Password;
+                    _config.AutoLogin = loadedConfig.AutoLogin;
+                    // 🔥 只保存脚本路径，不保存脚本内容
+                    _config.ScriptDirectory = loadedConfig.ScriptDirectory;
+                    _config.ScriptSourceMode = loadedConfig.ScriptSourceMode;
+                    _config.CustomData = loadedConfig.CustomData;
+
+                    // 更新 UI
+                    if (_configPanel != null)
+                    {
+                        _configPanel.Config = _config;
+                    }
+
+                    // 🔥 从 ScriptDirectory 加载脚本（如果需要）
+                    if (_scriptEditor != null && !string.IsNullOrEmpty(_config.ScriptDirectory))
+                    {
+                        _scriptEditor.SetScriptDirectory(_config.ScriptDirectory);
+                    }
+
+                    LogMessage($"✅ 配置已从远程加载成功");
+                    
+                    // 🔥 触发配置变更事件，通知订阅者保存到数据库
+                    ConfigChanged?.Invoke(this, _config);
+                    LogMessage($"💾 已通知订阅者保存配置到数据库");
+                }
+                else
+                {
+                    LogMessage($"❌ 从远程加载配置失败：返回 null");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"❌ 从远程加载配置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 保存配置到 HTTP 远程 URL（未来功能：账号登录后同步到远端）
+        /// 🔥 从数据库读取配置，转换为 JSON 发送到远程服务器
+        /// </summary>
+        /// <param name="url">目标 URL</param>
+        public async Task SaveConfigToRemoteAsync(string url)
+        {
+            try
+            {
+                if (_configService == null)
+                {
+                    LogMessage("❌ 配置服务未初始化，无法保存到远程");
+                    return;
+                }
+
+                // 确保配置是最新的
+                if (_configPanel != null)
+                {
+                    _config = _configPanel.Config!;
+                }
+                // 🔥 注意：脚本内容不保存到 JSON，只保存 ScriptDirectory 路径
+                // 脚本内容存储在 ScriptDirectory 文件夹中，不需要在 JSON 中重复保存
+
+                LogMessage($"🌐 正在保存配置到远程: {url}");
+                var success = await _configService.SaveConfigToRemoteAsync(_config, url);
+                
+                if (success)
+                {
+                    LogMessage($"✅ 配置已保存到远程成功");
+                }
+                else
+                {
+                    LogMessage($"❌ 保存配置到远程失败：HTTP 请求失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"❌ 保存配置到远程失败: {ex.Message}");
             }
         }
 

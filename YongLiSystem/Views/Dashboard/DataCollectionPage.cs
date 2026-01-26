@@ -331,7 +331,7 @@ namespace YongLiSystem.Views.Dashboard
             try
             {
                 // 转换配置
-                var config = task.ToBrowserTaskConfig();
+                var config = task.ToScriptTaskConfig();
                 
                 // 创建浏览器任务控件
                 var browserControl = new BrowserTaskControl(config);
@@ -345,6 +345,32 @@ namespace YongLiSystem.Views.Dashboard
                 browserControl.ThumbnailUpdated += (s, thumbnail) =>
                 {
                     card.UpdateThumbnail(thumbnail);
+                };
+                
+                // 🔥 订阅配置变更事件，保存到数据库
+                browserControl.ConfigChanged += (s, changedConfig) =>
+                {
+                    try
+                    {
+                        // 更新任务对象
+                        task.UpdateFromConfig(changedConfig);
+                        
+                        // 保存到数据库
+                        if (_dataCollectionService.SaveScriptTask(task))
+                        {
+                            // 更新卡片显示
+                            card.TaskInfo = task.ToBrowserTaskInfo();
+                            System.Diagnostics.Debug.WriteLine($"[DataCollectionPage] 配置已保存到数据库: {task.Name}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[DataCollectionPage] 保存配置到数据库失败: {task.Name}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DataCollectionPage] 保存配置异常: {ex.Message}");
+                    }
                 };
                 
                 // 保存到字典
@@ -370,6 +396,9 @@ namespace YongLiSystem.Views.Dashboard
                 task.IsRunning = false;
                 task.Status = "已停止";
                 control.card.TaskInfo = task.ToBrowserTaskInfo(); // 触发UI更新
+                
+                // 🔥 真正停止任务时，重置缩略图为"未启动"
+                control.card.ResetThumbnail();
 
                 // 更新字典
                 _taskControls[task.Id] = (control.card, control.window);
@@ -400,6 +429,10 @@ namespace YongLiSystem.Views.Dashboard
                         task.IsRunning = false;
                         task.Status = "已关闭";
                         card.TaskInfo = task.ToBrowserTaskInfo();
+                        
+                        // 🔥 真正关闭任务时，重置缩略图为"未启动"
+                        card.ResetThumbnail();
+                        
                         _dataCollectionService.SaveScriptTask(task);
 
                         // 更新字典

@@ -142,7 +142,8 @@ namespace Unit.La.Controls
                     btnStartStop.Text = "▶ 启动";
                     btnStartStop.Appearance.BackColor = Color.FromArgb(0, 192, 0);
                     btnClose.Visible = false; // 未运行时隐藏关闭按钮
-                    ResetThumbnail(); // 停止时重置缩略图
+                    // 🔥 不在这里重置缩略图，因为窗口关闭时 IsRunning 可能为 false，但浏览器仍在运行
+                    // 缩略图会通过 ThumbnailUpdated 事件持续更新，只有在真正停止任务时才重置
                 }
             }
         }

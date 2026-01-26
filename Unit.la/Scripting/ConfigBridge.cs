@@ -18,7 +18,7 @@ namespace Unit.La.Scripting
     [MoonSharpUserData]
     public class ConfigBridge
     {
-        private readonly BrowserTaskConfig _config;
+        private readonly ScriptTaskConfig _config;
         private readonly BrowserConfigPanel? _configPanel;
         private readonly Action<string>? _logger;
 
@@ -38,7 +38,7 @@ namespace Unit.La.Scripting
         /// <param name="config">配置对象</param>
         /// <param name="configPanel">配置面板（用于更新 UI）</param>
         /// <param name="logger">日志回调（可选）</param>
-        public ConfigBridge(BrowserTaskConfig config, BrowserConfigPanel? configPanel = null, Action<string>? logger = null)
+        public ConfigBridge(ScriptTaskConfig config, BrowserConfigPanel? configPanel = null, Action<string>? logger = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _configPanel = configPanel;

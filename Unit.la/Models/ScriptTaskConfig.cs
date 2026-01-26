@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Unit.La.Models
 {
     /// <summary>
-    /// 浏览器任务配置模型
+    /// 脚本任务配置模型
     /// 通用的配置类，可在任何项目中使用
     /// </summary>
-    public class BrowserTaskConfig : INotifyPropertyChanged
+    public class ScriptTaskConfig : INotifyPropertyChanged
     {
         private string _name = "";
         private string _url = "";
@@ -84,8 +86,10 @@ namespace Unit.La.Models
         }
 
         /// <summary>
-        /// Lua 脚本内容
+        /// Lua 脚本内容（运行时使用，不保存到 JSON）
+        /// 🔥 注意：脚本内容不保存到 JSON，只保存 ScriptDirectory 路径
         /// </summary>
+        [JsonIgnore]
         public string Script
         {
             get => _script;
@@ -174,9 +178,9 @@ namespace Unit.La.Models
         /// <summary>
         /// 克隆配置
         /// </summary>
-        public BrowserTaskConfig Clone()
+        public ScriptTaskConfig Clone()
         {
-            return new BrowserTaskConfig
+            return new ScriptTaskConfig
             {
                 Name = Name,
                 Url = Url,
@@ -191,5 +195,79 @@ namespace Unit.La.Models
                 LastModifiedTime = LastModifiedTime
             };
         }
+
+        #region JSON 序列化/反序列化
+
+        /// <summary>
+        /// 序列化为 JSON 字符串
+        /// </summary>
+        public string ToJson(bool indented = true)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = indented,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+            return JsonSerializer.Serialize(this, options);
+        }
+
+        /// <summary>
+        /// 从 JSON 字符串反序列化
+        /// </summary>
+        public static ScriptTaskConfig? FromJson(string json)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<ScriptTaskConfig>(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 保存到 JSON 文件
+        /// </summary>
+        public void SaveToFile(string filePath)
+        {
+            try
+            {
+                var directory = System.IO.Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(directory) && !System.IO.Directory.Exists(directory))
+                {
+                    System.IO.Directory.CreateDirectory(directory);
+                }
+
+                var json = ToJson();
+                System.IO.File.WriteAllText(filePath, json, System.Text.Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"保存配置到文件失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 从 JSON 文件加载
+        /// </summary>
+        public static ScriptTaskConfig? LoadFromFile(string filePath)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(filePath))
+                    return null;
+
+                var json = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+                return FromJson(json);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"从文件加载配置失败: {ex.Message}", ex);
+            }
+        }
+
+        #endregion
     }
 }
