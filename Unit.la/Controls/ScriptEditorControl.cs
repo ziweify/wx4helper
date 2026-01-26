@@ -281,13 +281,13 @@ namespace Unit.La.Controls
         /// </summary>
         private void Scintilla_KeyDown(object? sender, KeyEventArgs e)
         {
-            // 🔥 处理 Ctrl+S：阻止 DC3 字符输入
+            // 🔥 处理 Ctrl+S：阻止 DC3 字符输入，并触发保存请求
             if (e.Control && e.KeyCode == Keys.S)
             {
                 e.Handled = true;
                 e.SuppressKeyPress = true; // 阻止字符输入，防止 DC3 字符
-                // 触发保存事件（由父窗口处理）
-                ScriptTextChanged?.Invoke(this, EventArgs.Empty);
+                // 🔥 触发保存请求事件（由父窗口处理）
+                SaveRequested?.Invoke(this, EventArgs.Empty);
                 return;
             }
 
@@ -1069,6 +1069,12 @@ namespace Unit.La.Controls
         {
             if (e.Node?.Tag is string filePath && System.IO.File.Exists(filePath))
             {
+                // 🔥 更新文件树的选择状态
+                if (treeViewFiles != null)
+                {
+                    treeViewFiles.SelectedNode = e.Node;
+                }
+                
                 // 🔥 触发文件打开事件，由父控件在 Tab 中打开文件
                 // 这样每个文件都在独立的 Tab 页面中，不会覆盖当前编辑的内容
                 FileOpenRequested?.Invoke(this, new FileOpenEventArgs(filePath));
@@ -1481,11 +1487,68 @@ namespace Unit.La.Controls
         public event EventHandler? ScriptTextChanged;
 
         /// <summary>
+        /// 保存请求事件（用于 Ctrl+S 快捷键）
+        /// </summary>
+        [Category("脚本")]
+        [Description("保存请求时触发（如 Ctrl+S）")]
+        public event EventHandler? SaveRequested;
+
+        /// <summary>
         /// 文件打开请求事件（用于在 Tab 中打开文件）
         /// </summary>
         [Category("脚本")]
         [Description("文件打开请求时触发，传递文件路径")]
         public event EventHandler<FileOpenEventArgs>? FileOpenRequested;
+
+        /// <summary>
+        /// 根据文件路径选择文件树中的节点
+        /// </summary>
+        public void SelectFileInTree(string filePath)
+        {
+            if (treeViewFiles == null || string.IsNullOrEmpty(filePath))
+                return;
+
+            try
+            {
+                // 遍历所有节点，找到匹配的文件路径
+                foreach (TreeNode node in treeViewFiles.Nodes)
+                {
+                    var foundNode = FindNodeByPath(node, filePath);
+                    if (foundNode != null)
+                    {
+                        treeViewFiles.SelectedNode = foundNode;
+                        foundNode.EnsureVisible();
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // 忽略错误
+            }
+        }
+
+        /// <summary>
+        /// 递归查找节点
+        /// </summary>
+        private TreeNode? FindNodeByPath(TreeNode node, string filePath)
+        {
+            if (node.Tag is string nodePath && nodePath == filePath)
+            {
+                return node;
+            }
+
+            foreach (TreeNode child in node.Nodes)
+            {
+                var found = FindNodeByPath(child, filePath);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// 脚本验证错误事件

@@ -59,6 +59,11 @@ namespace Unit.La.Models
         public bool IsModified { get; set; }
 
         /// <summary>
+        /// 已保存的内容（用于比较是否修改）
+        /// </summary>
+        public string SavedContent { get; set; } = string.Empty;
+
+        /// <summary>
         /// 元数据（扩展字段，如网络URL、版本等）
         /// </summary>
         public Dictionary<string, string> Metadata { get; set; } = new();

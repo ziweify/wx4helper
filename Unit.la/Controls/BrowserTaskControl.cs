@@ -554,9 +554,23 @@ namespace Unit.La.Controls
                 {
                     // 已打开，切换到该 Tab
                     tabControl.SelectedTab = tab;
+                    
+                    // 🔥 同步文件树的选择状态
+                    var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
+                    if (tabEditor != null && !string.IsNullOrEmpty(script.FilePath))
+                    {
+                        tabEditor.SelectFileInTree(script.FilePath);
+                    }
+                    
                     LogMessage($"📄 切换到已打开的脚本: {script.DisplayName}");
                     return;
                 }
+            }
+
+            // 🔥 初始化 SavedContent（用于比较是否修改）
+            if (string.IsNullOrEmpty(script.SavedContent))
+            {
+                script.SavedContent = script.Content ?? string.Empty;
             }
 
             // 创建新Tab
@@ -605,6 +619,14 @@ namespace Unit.La.Controls
                         {
                             // 已打开，切换到该 Tab
                             tabControl.SelectedTab = tab;
+                            
+                            // 🔥 同步文件树的选择状态
+                            var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
+                            if (tabEditor != null && !string.IsNullOrEmpty(existingScript.FilePath))
+                            {
+                                tabEditor.SelectFileInTree(existingScript.FilePath);
+                            }
+                            
                             LogMessage($"📄 切换到已打开的脚本: {fileName}");
                             return;
                         }
@@ -622,13 +644,15 @@ namespace Unit.La.Controls
                     }
 
                     // 创建新的 ScriptInfo 并在 Tab 中打开
+                    var fileContent = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8);
                     var scriptInfo = new ScriptInfo
                     {
                         Id = Guid.NewGuid().ToString(),
                         Name = fileName,
                         DisplayName = fileName,
                         FilePath = filePath,
-                        Content = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8),
+                        Content = fileContent,
+                        SavedContent = fileContent, // 🔥 初始化 SavedContent
                         Type = InferScriptType(fileName)
                     };
 
@@ -651,6 +675,12 @@ namespace Unit.La.Controls
             newTab.Controls.Add(editor);
             tabControl.TabPages.Add(newTab);
             tabControl.SelectedTab = newTab;
+
+            // 🔥 同步文件树的选择状态：根据打开的文件路径，更新文件树的高亮
+            if (!string.IsNullOrEmpty(script.FilePath))
+            {
+                editor.SelectFileInTree(script.FilePath);
+            }
 
             LogMessage($"📄 打开脚本: {script.DisplayName}");
         }
@@ -730,7 +760,7 @@ namespace Unit.La.Controls
             try
             {
                 // 更新脚本内容
-                scriptInfo.Content = editor.ScriptText;
+                scriptInfo.Content = editor.ScriptText ?? string.Empty;
                 scriptInfo.ModifiedAt = DateTime.Now;
 
                 // 保存到文件
@@ -742,6 +772,10 @@ namespace Unit.La.Controls
                 {
                     LogMessage("⚠️ 脚本未关联文件，仅保存到内存");
                 }
+
+                // 🔥 更新 SavedContent（用于比较是否修改）
+                scriptInfo.SavedContent = scriptInfo.Content;
+                scriptInfo.IsModified = false;
 
                 // 移除修改标记
                 if (currentTab.Text.EndsWith(" *"))
@@ -1119,17 +1153,19 @@ log('脚本结束')
                 {
                     try
                     {
-                        mainScriptInfo = new ScriptInfo
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            Name = "main.lua",
-                            DisplayName = "main.lua",
-                            FilePath = mainLuaPath,
-                            Content = System.IO.File.ReadAllText(mainLuaPath, System.Text.Encoding.UTF8),
-                            Type = ScriptType.Main
-                        };
-                        _scriptEditor.ScriptText = mainScriptInfo.Content;
-                        tabPageMain.Tag = mainScriptInfo;
+                    var content = System.IO.File.ReadAllText(mainLuaPath, System.Text.Encoding.UTF8);
+                    mainScriptInfo = new ScriptInfo
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = "main.lua",
+                        DisplayName = "main.lua",
+                        FilePath = mainLuaPath,
+                        Content = content,
+                        SavedContent = content, // 🔥 初始化 SavedContent
+                        Type = ScriptType.Main
+                    };
+                    _scriptEditor.ScriptText = mainScriptInfo.Content;
+                    tabPageMain.Tag = mainScriptInfo;
                     }
                     catch
                     {
@@ -1225,15 +1261,46 @@ log('脚本结束')
             // 监听脚本内容变化，启用保存按钮
             Action<ScriptEditorControl, TabPage> setupEditorEvents = (editor, tab) =>
             {
+                // 🔥 订阅保存请求事件（Ctrl+S）
+                editor.SaveRequested += (s, e) =>
+                {
+                    OnSaveCurrentScript(tabControlScripts, btnSave);
+                };
+
                 editor.ScriptTextChanged += (s, e) =>
                 {
-                    if (!tab.Text.EndsWith(" *"))
+                    // 🔥 检查内容是否真的改变了（与已保存的内容比较）
+                    if (tab.Tag is ScriptInfo scriptInfo)
                     {
-                        tab.Text += " *"; // 标记为已修改
-                    }
-                    if (tabControlScripts.SelectedTab == tab)
-                    {
-                        btnSave.Enabled = true;
+                        var currentContent = editor.ScriptText ?? string.Empty;
+                        var savedContent = scriptInfo.SavedContent ?? string.Empty;
+                        
+                        // 只有内容真正改变时才添加 * 标记
+                        if (currentContent != savedContent)
+                        {
+                            if (!tab.Text.EndsWith(" *"))
+                            {
+                                tab.Text += " *"; // 标记为已修改
+                            }
+                            scriptInfo.IsModified = true;
+                            if (tabControlScripts.SelectedTab == tab)
+                            {
+                                btnSave.Enabled = true;
+                            }
+                        }
+                        else
+                        {
+                            // 内容与已保存的一致，移除 * 标记
+                            if (tab.Text.EndsWith(" *"))
+                            {
+                                tab.Text = tab.Text.Substring(0, tab.Text.Length - 2);
+                            }
+                            scriptInfo.IsModified = false;
+                            if (tabControlScripts.SelectedTab == tab)
+                            {
+                                btnSave.Enabled = false;
+                            }
+                        }
                     }
                 };
             };
@@ -1264,6 +1331,14 @@ log('脚本结束')
                         {
                             // 已打开，切换到该 Tab
                             tabControlScripts.SelectedTab = tab;
+                            
+                            // 🔥 同步文件树的选择状态
+                            var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
+                            if (tabEditor != null && !string.IsNullOrEmpty(existingScript.FilePath))
+                            {
+                                tabEditor.SelectFileInTree(existingScript.FilePath);
+                            }
+                            
                             LogMessage($"📄 切换到已打开的脚本: {fileName}");
                             return;
                         }
@@ -1282,13 +1357,15 @@ log('脚本结束')
                     }
 
                     // 创建新的 ScriptInfo
+                    var fileContent = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8);
                     var scriptInfo = new ScriptInfo
                     {
                         Id = Guid.NewGuid().ToString(),
                         Name = fileName,
                         DisplayName = fileName,
                         FilePath = filePath,
-                        Content = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8),
+                        Content = fileContent,
+                        SavedContent = fileContent, // 🔥 初始化 SavedContent
                         Type = InferScriptType(fileName)
                     };
 
@@ -1325,6 +1402,12 @@ log('脚本结束')
                     {
                         // 从 ScriptInfo 恢复内容（保持编辑状态）
                         currentEditor.ScriptText = currentScript.Content;
+                        
+                        // 🔥 同步文件树的选择状态：根据当前 Tab 的文件路径，更新文件树的高亮
+                        if (!string.IsNullOrEmpty(currentScript.FilePath))
+                        {
+                            currentEditor.SelectFileInTree(currentScript.FilePath);
+                        }
                     }
                     
                     // 更新保存按钮状态
@@ -1517,13 +1600,15 @@ log('脚本结束')
                 {
                     try
                     {
+                        var mainContent = System.IO.File.ReadAllText(defaultMainLuaPath, Encoding.UTF8);
                         var mainScript = new ScriptInfo
                         {
                             Id = Guid.NewGuid().ToString(),
                             Name = "main.lua",
                             DisplayName = "main.lua",
                             FilePath = defaultMainLuaPath,
-                            Content = System.IO.File.ReadAllText(defaultMainLuaPath, Encoding.UTF8),
+                            Content = mainContent,
+                            SavedContent = mainContent, // 🔥 初始化 SavedContent
                             Type = ScriptType.Main
                         };
                         
