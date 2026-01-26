@@ -119,6 +119,10 @@ namespace Unit.La.Controls
             scintilla.Styles[Style.Default].Size = FontSize;
             scintilla.Styles[Style.Default].Font = "Consolas";
             
+            // 🔥 配置缩进设置
+            scintilla.TabWidth = 4; // Tab 宽度：4个空格
+            scintilla.UseTabs = false; // 使用空格而不是 Tab
+            
             // 设置选中文本的背景色为浅蓝色（避免黑色背景）
             try
             {
@@ -252,17 +256,40 @@ namespace Unit.La.Controls
             scintilla.TextChanged += Scintilla_TextChanged;
             scintilla.CharAdded += Scintilla_CharAdded; // 自动完成触发
 
-            // 添加键盘事件处理（调试快捷键）
+            // 添加键盘事件处理（调试快捷键和智能缩进）
             scintilla.KeyDown += Scintilla_KeyDown;
+            
+            // 🔥 处理回车键，实现智能缩进
+            scintilla.CharAdded += Scintilla_CharAdded_Indent;
         }
 
         /// <summary>
-        /// 键盘事件处理（调试快捷键）
+        /// 键盘事件处理（调试快捷键和常用快捷键）
         /// </summary>
         private void Scintilla_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.Control || e.Alt)
-                return; // 忽略组合键
+            // 🔥 处理 Ctrl+S：阻止 DC3 字符输入
+            if (e.Control && e.KeyCode == Keys.S)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true; // 阻止字符输入，防止 DC3 字符
+                // 触发保存事件（由父窗口处理）
+                ScriptTextChanged?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            // 🔥 处理回车键：实现智能缩进
+            if (e.KeyCode == Keys.Return || e.KeyCode == Keys.Enter)
+            {
+                HandleEnterKey();
+                // 不阻止默认行为，让 Scintilla 正常插入换行符
+                // 缩进会在 CharAdded 事件中处理
+                return;
+            }
+
+            // 处理其他组合键（Alt 等）
+            if (e.Alt)
+                return; // 忽略 Alt 组合键
 
             switch (e.KeyCode)
             {
@@ -293,6 +320,15 @@ namespace Unit.La.Controls
                     }
                     break;
             }
+        }
+
+        /// <summary>
+        /// 处理回车键：准备智能缩进（在换行符插入后执行）
+        /// </summary>
+        private void HandleEnterKey()
+        {
+            // 这个方法在 KeyDown 中调用，但实际的缩进插入在 CharAdded 事件中完成
+            // 这里只是标记需要处理缩进
         }
 
 
@@ -363,6 +399,195 @@ namespace Unit.La.Controls
             // 触发自动完成（可以根据需要实现）
             // scintilla.AutoCShow(...);
         }
+
+        /// <summary>
+        /// 智能缩进处理：当用户按回车时，自动根据上一行缩进
+        /// </summary>
+        private void Scintilla_CharAdded_Indent(object? sender, CharAddedEventArgs e)
+        {
+            if (scintilla == null) return;
+
+            // 只处理回车键（换行符）
+            if (e.Char != '\n') return;
+
+            // 🔥 使用 BeginInvoke 延迟执行，确保新行已完全创建
+            // 使用父控件的 BeginInvoke（因为 scintilla 可能没有这个方法）
+            if (IsHandleCreated)
+            {
+                BeginInvoke(new Action(() => ApplyAutoIndent()));
+            }
+            else
+            {
+                // 如果句柄未创建，直接执行（不太可能发生）
+                ApplyAutoIndent();
+            }
+        }
+
+        /// <summary>
+        /// 应用自动缩进
+        /// </summary>
+        private void ApplyAutoIndent()
+        {
+            if (scintilla == null) return;
+
+            try
+            {
+                int currentLine = scintilla.CurrentLine;
+                if (currentLine <= 0) return; // 第一行，无需缩进
+
+                // 获取上一行
+                int previousLine = currentLine - 1;
+                if (previousLine < 0) return;
+                
+                var previousLineText = scintilla.Lines[previousLine].Text; // 保留原始文本（包含前导空格）
+                
+                // 计算上一行的缩进（前导空格数）
+                int previousIndent = GetLineIndent(previousLineText);
+                
+                // 移除行尾空白后检查内容
+                var trimmedLine = previousLineText.TrimEnd();
+                if (string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    // 上一行是空行，使用上一行的缩进
+                    InsertIndentAtCurrentLine(previousIndent);
+                    return;
+                }
+
+                // 检查上一行是否需要增加缩进（Lua 关键字）
+                bool shouldIncreaseIndent = false;
+                string trimmed = trimmedLine.Trim(); // 移除前后空白
+                
+                // Lua 关键字：function, if then, do, repeat, while, for, elseif, else
+                if (trimmed.EndsWith("function") || 
+                    trimmed.StartsWith("function ") ||
+                    trimmed.EndsWith("then") ||
+                    trimmed.EndsWith("do") ||
+                    trimmed.StartsWith("if ") ||
+                    trimmed.StartsWith("elseif ") ||
+                    trimmed.StartsWith("while ") ||
+                    trimmed.StartsWith("for ") ||
+                    trimmed.StartsWith("repeat") ||
+                    (trimmed == "else"))
+                {
+                    shouldIncreaseIndent = true;
+                }
+                
+                // 检查是否以 { 或 ( 结尾（虽然 Lua 不常用，但兼容）
+                if (trimmedLine.TrimEnd().EndsWith("{") || 
+                    trimmedLine.TrimEnd().EndsWith("("))
+                {
+                    shouldIncreaseIndent = true;
+                }
+
+                // 计算新行的缩进（使用常量 4 作为缩进宽度）
+                const int indentWidth = 4;
+                int newIndent = previousIndent;
+                if (shouldIncreaseIndent)
+                {
+                    newIndent += indentWidth; // 增加一级缩进（4个空格）
+                }
+                
+                // 在新行插入缩进空格
+                InsertIndentAtCurrentLine(newIndent);
+            }
+            catch
+            {
+                // 如果出错，静默失败，不影响编辑
+            }
+        }
+
+        /// <summary>
+        /// 在当前行插入指定数量的缩进空格
+        /// </summary>
+        private void InsertIndentAtCurrentLine(int indent)
+        {
+            if (scintilla == null) return;
+
+            try
+            {
+                int currentLine = scintilla.CurrentLine;
+                if (currentLine < 0) return;
+
+                // 获取当前行的起始位置
+                int lineStart = scintilla.Lines[currentLine].Position;
+                
+                // 获取当前光标位置
+                int currentPos = scintilla.CurrentPosition;
+                
+                // 获取当前行的文本
+                string currentLineText = scintilla.Lines[currentLine].Text;
+                
+                // 计算当前行的缩进（前导空格数）
+                int currentIndent = GetLineIndent(currentLineText);
+                
+                // 计算需要插入或删除的空格数
+                int indentDiff = indent - currentIndent;
+                
+                if (indentDiff > 0)
+                {
+                    // 需要插入更多空格：在行首插入
+                    scintilla.InsertText(lineStart, new string(' ', indentDiff));
+                    // 🔥 将光标移动到缩进后的位置
+                    scintilla.GotoPosition(lineStart + indent);
+                }
+                else if (indentDiff < 0)
+                {
+                    // 需要删除多余的空格
+                    int spacesToRemove = -indentDiff;
+                    if (currentIndent >= spacesToRemove)
+                    {
+                        scintilla.DeleteRange(lineStart, spacesToRemove);
+                        // 🔥 调整光标位置
+                        if (currentPos >= lineStart + spacesToRemove)
+                        {
+                            scintilla.GotoPosition(currentPos - spacesToRemove);
+                        }
+                        else
+                        {
+                            scintilla.GotoPosition(lineStart + indent);
+                        }
+                    }
+                }
+                else
+                {
+                    // 如果 indentDiff == 0，只需要确保光标在正确位置
+                    // 🔥 如果光标在行首，移动到缩进位置
+                    if (currentPos <= lineStart)
+                    {
+                        scintilla.GotoPosition(lineStart + indent);
+                    }
+                }
+            }
+            catch
+            {
+                // 如果出错，静默失败
+            }
+        }
+
+        /// <summary>
+        /// 计算行的缩进（前导空格数）
+        /// </summary>
+        private int GetLineIndent(string line)
+        {
+            int indent = 0;
+            foreach (char c in line)
+            {
+                if (c == ' ')
+                {
+                    indent++;
+                }
+                else if (c == '\t')
+                {
+                    indent += scintilla?.TabWidth ?? 4; // Tab 视为多个空格
+                }
+                else
+                {
+                    break; // 遇到非空白字符，停止计数
+                }
+            }
+            return indent;
+        }
+
 
         #region 公共属性（设计器可见，即拿即用）
 
