@@ -542,7 +542,7 @@ namespace Unit.La.Controls
         /// <summary>
         /// 在Tab中打开脚本
         /// </summary>
-        private void OpenScriptInTab(TabControl tabControl, ScriptInfo script)
+        private void OpenScriptInTab(TabControl tabControl, ScriptInfo script, int? lineNumber = null)
         {
             // 🔥 检查是否已经打开（通过文件路径判断，而不是 ID）
             foreach (TabPage tab in tabControl.TabPages)
@@ -551,20 +551,38 @@ namespace Unit.La.Controls
                     !string.IsNullOrEmpty(existingScript.FilePath) && 
                     !string.IsNullOrEmpty(script.FilePath) &&
                     existingScript.FilePath == script.FilePath)
-                {
-                    // 已打开，切换到该 Tab
-                    tabControl.SelectedTab = tab;
-                    
-                    // 🔥 同步文件树的选择状态
-                    var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
-                    if (tabEditor != null && !string.IsNullOrEmpty(script.FilePath))
-                    {
-                        tabEditor.SelectFileInTree(script.FilePath);
-                    }
-                    
-                    LogMessage($"📄 切换到已打开的脚本: {script.DisplayName}");
-                    return;
-                }
+                        {
+                            // 已打开，切换到该 Tab
+                            tabControl.SelectedTab = tab;
+                            
+                            // 🔥 同步文件树的选择状态
+                            var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
+                            if (tabEditor != null && !string.IsNullOrEmpty(script.FilePath))
+                            {
+                                tabEditor.SelectFileInTree(script.FilePath);
+                                
+                                // 🔥 如果指定了行号，跳转到该行（用于 Go to Definition）
+                                if (lineNumber.HasValue && lineNumber.Value > 0)
+                                {
+                                    var scintillaField = tabEditor.GetType().GetField("scintilla", 
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                    var scintilla = scintillaField?.GetValue(tabEditor) as ScintillaNET.Scintilla;
+                                    if (scintilla != null && lineNumber.Value > 0 && lineNumber.Value <= scintilla.Lines.Count)
+                                    {
+                                        var line = scintilla.Lines[lineNumber.Value - 1];
+                                        if (line != null)
+                                        {
+                                            line.Goto();
+                                            line.EnsureVisible();
+                                            scintilla.Focus();
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            LogMessage($"📄 切换到已打开的脚本: {script.DisplayName}");
+                            return;
+                        }
             }
 
             // 🔥 初始化 SavedContent（用于比较是否修改）
@@ -656,7 +674,7 @@ namespace Unit.La.Controls
                         Type = InferScriptType(fileName)
                     };
 
-                    OpenScriptInTab(tabControl, scriptInfo);
+                    OpenScriptInTab(tabControl, scriptInfo, null);
                 }
                 catch (Exception ex)
                 {
@@ -680,6 +698,31 @@ namespace Unit.La.Controls
             if (!string.IsNullOrEmpty(script.FilePath))
             {
                 editor.SelectFileInTree(script.FilePath);
+            }
+
+            // 🔥 如果指定了行号，跳转到该行（用于 Go to Definition）
+            if (lineNumber.HasValue && lineNumber.Value > 0)
+            {
+                // 延迟执行，确保编辑器已完全加载
+                if (editor.IsHandleCreated)
+                {
+                    editor.BeginInvoke(new Action(() =>
+                    {
+                        var scintillaField = editor.GetType().GetField("scintilla", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        var scintilla = scintillaField?.GetValue(editor) as ScintillaNET.Scintilla;
+                        if (scintilla != null && lineNumber.Value > 0 && lineNumber.Value <= scintilla.Lines.Count)
+                        {
+                            var line = scintilla.Lines[lineNumber.Value - 1];
+                            if (line != null)
+                            {
+                                line.Goto();
+                                line.EnsureVisible();
+                                scintilla.Focus();
+                            }
+                        }
+                    }));
+                }
             }
 
             LogMessage($"📄 打开脚本: {script.DisplayName}");
@@ -1337,6 +1380,24 @@ log('脚本结束')
                             if (tabEditor != null && !string.IsNullOrEmpty(existingScript.FilePath))
                             {
                                 tabEditor.SelectFileInTree(existingScript.FilePath);
+                                
+                                // 🔥 如果指定了行号，跳转到该行（用于 Go to Definition）
+                                if (e.LineNumber.HasValue && e.LineNumber.Value > 0)
+                                {
+                                    var scintillaField = tabEditor.GetType().GetField("scintilla", 
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                    var scintilla = scintillaField?.GetValue(tabEditor) as ScintillaNET.Scintilla;
+                                    if (scintilla != null && e.LineNumber.Value > 0 && e.LineNumber.Value <= scintilla.Lines.Count)
+                                    {
+                                        var line = scintilla.Lines[e.LineNumber.Value - 1];
+                                        if (line != null)
+                                        {
+                                            line.Goto();
+                                            line.EnsureVisible();
+                                            scintilla.Focus();
+                                        }
+                                    }
+                                }
                             }
                             
                             LogMessage($"📄 切换到已打开的脚本: {fileName}");
@@ -1370,7 +1431,7 @@ log('脚本结束')
                     };
 
                     // 在 Tab 中打开
-                    OpenScriptInTab(tabControlScripts, scriptInfo);
+                    OpenScriptInTab(tabControlScripts, scriptInfo, e.LineNumber); // 🔥 传递行号
                 }
                 catch (Exception ex)
                 {
