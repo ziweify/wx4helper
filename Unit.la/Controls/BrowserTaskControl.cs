@@ -544,13 +544,17 @@ namespace Unit.La.Controls
         /// </summary>
         private void OpenScriptInTab(TabControl tabControl, ScriptInfo script)
         {
-            // 检查是否已经打开
+            // 🔥 检查是否已经打开（通过文件路径判断，而不是 ID）
             foreach (TabPage tab in tabControl.TabPages)
             {
-                if (tab.Tag is ScriptInfo existingScript && existingScript.Id == script.Id)
+                if (tab.Tag is ScriptInfo existingScript && 
+                    !string.IsNullOrEmpty(existingScript.FilePath) && 
+                    !string.IsNullOrEmpty(script.FilePath) &&
+                    existingScript.FilePath == script.FilePath)
                 {
+                    // 已打开，切换到该 Tab
                     tabControl.SelectedTab = tab;
-                    LogMessage($"📄 切换到脚本: {script.DisplayName}");
+                    LogMessage($"📄 切换到已打开的脚本: {script.DisplayName}");
                     return;
                 }
             }
@@ -577,6 +581,64 @@ namespace Unit.La.Controls
             }
 
             _functionRegistry.BindToEngine(editor.ScriptEngine);
+            
+            // 🔥 订阅文件打开事件（每个编辑器都需要订阅，以便从文件树打开新文件）
+            editor.FileOpenRequested += (sender, e) =>
+            {
+                try
+                {
+                    var filePath = e.FilePath;
+                    if (!System.IO.File.Exists(filePath))
+                    {
+                        LogMessage($"❌ 文件不存在: {filePath}");
+                        return;
+                    }
+
+                    var fileName = System.IO.Path.GetFileName(filePath);
+                    
+                    // 检查是否已经在 Tab 中打开
+                    foreach (TabPage tab in tabControl.TabPages)
+                    {
+                        if (tab.Tag is ScriptInfo existingScript && 
+                            !string.IsNullOrEmpty(existingScript.FilePath) &&
+                            existingScript.FilePath == filePath)
+                        {
+                            // 已打开，切换到该 Tab
+                            tabControl.SelectedTab = tab;
+                            LogMessage($"📄 切换到已打开的脚本: {fileName}");
+                            return;
+                        }
+                    }
+
+                    // 更新当前 Tab 的 ScriptInfo 内容（保持修改状态）
+                    var currentEditor = GetCurrentScriptEditor(tabControl);
+                    if (currentEditor != null && tabControl.SelectedTab != null)
+                    {
+                        var currentTab = tabControl.SelectedTab;
+                        if (currentTab.Tag is ScriptInfo currentScript)
+                        {
+                            currentScript.Content = currentEditor.ScriptText;
+                        }
+                    }
+
+                    // 创建新的 ScriptInfo 并在 Tab 中打开
+                    var scriptInfo = new ScriptInfo
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = fileName,
+                        DisplayName = fileName,
+                        FilePath = filePath,
+                        Content = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8),
+                        Type = InferScriptType(fileName)
+                    };
+
+                    OpenScriptInTab(tabControl, scriptInfo);
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"❌ 打开文件失败: {ex.Message}");
+                }
+            };
             
             // 设置编辑器事件（从TabControl.Tag获取）
             if (tabControl.Tag != null)
@@ -1048,6 +1110,34 @@ log('脚本结束')
                 _scriptEditor.SetScriptDirectory(_config.ScriptDirectory);
             }
             
+            // 🔥 为默认 Tab 创建 ScriptInfo（如果存在 main.lua 文件）
+            ScriptInfo? mainScriptInfo = null;
+            if (!string.IsNullOrEmpty(_config.ScriptDirectory))
+            {
+                var mainLuaPath = System.IO.Path.Combine(_config.ScriptDirectory, "main.lua");
+                if (System.IO.File.Exists(mainLuaPath))
+                {
+                    try
+                    {
+                        mainScriptInfo = new ScriptInfo
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = "main.lua",
+                            DisplayName = "main.lua",
+                            FilePath = mainLuaPath,
+                            Content = System.IO.File.ReadAllText(mainLuaPath, System.Text.Encoding.UTF8),
+                            Type = ScriptType.Main
+                        };
+                        _scriptEditor.ScriptText = mainScriptInfo.Content;
+                        tabPageMain.Tag = mainScriptInfo;
+                    }
+                    catch
+                    {
+                        // 如果读取失败，忽略
+                    }
+                }
+            }
+            
             tabPageMain.Controls.Add(_scriptEditor);
             tabControlScripts.TabPages.Add(tabPageMain);
             
@@ -1151,13 +1241,98 @@ log('脚本结束')
             // 为默认Tab设置事件
             setupEditorEvents(_scriptEditor, tabPageMain);
             
-            // Tab切换时更新保存按钮状态
+            // 🔥 订阅文件打开事件：当 ScriptEditorControl 的文件树双击时，在 Tab 中打开文件
+            _scriptEditor.FileOpenRequested += (sender, e) =>
+            {
+                try
+                {
+                    var filePath = e.FilePath;
+                    if (!System.IO.File.Exists(filePath))
+                    {
+                        LogMessage($"❌ 文件不存在: {filePath}");
+                        return;
+                    }
+
+                    var fileName = System.IO.Path.GetFileName(filePath);
+                    
+                    // 检查是否已经在 Tab 中打开（通过文件路径）
+                    foreach (TabPage tab in tabControlScripts.TabPages)
+                    {
+                        if (tab.Tag is ScriptInfo existingScript && 
+                            !string.IsNullOrEmpty(existingScript.FilePath) &&
+                            existingScript.FilePath == filePath)
+                        {
+                            // 已打开，切换到该 Tab
+                            tabControlScripts.SelectedTab = tab;
+                            LogMessage($"📄 切换到已打开的脚本: {fileName}");
+                            return;
+                        }
+                    }
+
+                    // 🔥 更新当前 Tab 的 ScriptInfo 内容（但不保存到文件）
+                    var currentEditor = GetCurrentScriptEditor(tabControlScripts);
+                    if (currentEditor != null && tabControlScripts.SelectedTab != null)
+                    {
+                        var currentTab = tabControlScripts.SelectedTab;
+                        if (currentTab.Tag is ScriptInfo currentScript)
+                        {
+                            // 更新内存中的内容（保持修改状态）
+                            currentScript.Content = currentEditor.ScriptText;
+                        }
+                    }
+
+                    // 创建新的 ScriptInfo
+                    var scriptInfo = new ScriptInfo
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = fileName,
+                        DisplayName = fileName,
+                        FilePath = filePath,
+                        Content = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8),
+                        Type = InferScriptType(fileName)
+                    };
+
+                    // 在 Tab 中打开
+                    OpenScriptInTab(tabControlScripts, scriptInfo);
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"❌ 打开文件失败: {ex.Message}");
+                }
+            };
+            
+            // Tab切换时：保存当前编辑内容，并更新保存按钮状态
+            TabPage? _previousTab = null; // 记录之前的 Tab
             tabControlScripts.SelectedIndexChanged += (s, e) =>
             {
+                // 🔥 保存之前 Tab 的编辑内容（如果有修改）
+                if (_previousTab != null)
+                {
+                    var previousEditor = _previousTab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
+                    if (previousEditor != null && _previousTab.Tag is ScriptInfo previousScript)
+                    {
+                        // 更新 ScriptInfo 的内容（保持修改状态，不保存到文件）
+                        previousScript.Content = previousEditor.ScriptText;
+                    }
+                }
+
+                // 🔥 切换到新 Tab 时，从 ScriptInfo 恢复内容（而不是从文件读取）
                 if (tabControlScripts.SelectedTab != null)
                 {
-                    btnSave.Enabled = tabControlScripts.SelectedTab.Text.EndsWith(" *");
+                    var currentTab = tabControlScripts.SelectedTab;
+                    var currentEditor = currentTab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
+                    if (currentEditor != null && currentTab.Tag is ScriptInfo currentScript)
+                    {
+                        // 从 ScriptInfo 恢复内容（保持编辑状态）
+                        currentEditor.ScriptText = currentScript.Content;
+                    }
+                    
+                    // 更新保存按钮状态
+                    btnSave.Enabled = currentTab.Text.EndsWith(" *");
                 }
+
+                // 记录当前 Tab 为之前的 Tab
+                _previousTab = tabControlScripts.SelectedTab;
             };
             
             // 保存 setupEditorEvents 和 btnSave 到字段，供后续使用
@@ -1334,28 +1509,32 @@ log('脚本结束')
             txtScriptPath.Text = defaultScriptDir;
             _config.ScriptDirectory = defaultScriptDir;
             
-            // 🔧 如果存在 main.lua，默认打开它
-            var mainLuaPath = System.IO.Path.Combine(defaultScriptDir, "main.lua");
-            if (System.IO.File.Exists(mainLuaPath))
+            // 🔧 如果存在 main.lua，默认打开它（如果之前没有加载）
+            if (tabPageMain.Tag == null)
             {
-                try
+                var defaultMainLuaPath = System.IO.Path.Combine(defaultScriptDir, "main.lua");
+                if (System.IO.File.Exists(defaultMainLuaPath))
                 {
-                    var mainScript = new ScriptInfo
+                    try
                     {
-                        Name = "main.lua",
-                        DisplayName = "main",
-                        FilePath = mainLuaPath,
-                        Content = System.IO.File.ReadAllText(mainLuaPath, Encoding.UTF8),
-                        Type = ScriptType.Main
-                    };
-                    
-                    _scriptEditor.ScriptText = mainScript.Content;
-                    tabPageMain.Text = mainScript.DisplayName;
-                    tabPageMain.Tag = mainScript;
-                }
-                catch (Exception ex)
-                {
-                    LogMessage($"⚠️ 加载 main.lua 失败: {ex.Message}");
+                        var mainScript = new ScriptInfo
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = "main.lua",
+                            DisplayName = "main.lua",
+                            FilePath = defaultMainLuaPath,
+                            Content = System.IO.File.ReadAllText(defaultMainLuaPath, Encoding.UTF8),
+                            Type = ScriptType.Main
+                        };
+                        
+                        _scriptEditor.ScriptText = mainScript.Content;
+                        tabPageMain.Text = mainScript.DisplayName;
+                        tabPageMain.Tag = mainScript;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogMessage($"⚠️ 加载 main.lua 失败: {ex.Message}");
+                    }
                 }
             }
             

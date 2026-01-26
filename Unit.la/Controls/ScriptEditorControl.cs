@@ -10,6 +10,19 @@ using Unit.La.Scripting;
 namespace Unit.La.Controls
 {
     /// <summary>
+    /// 文件打开事件参数
+    /// </summary>
+    public class FileOpenEventArgs : EventArgs
+    {
+        public string FilePath { get; }
+
+        public FileOpenEventArgs(string filePath)
+        {
+            FilePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
+        }
+    }
+
+    /// <summary>
     /// 脚本编辑器控件（完整封装，开箱即用）
     /// 
     /// 使用方式：
@@ -1042,68 +1055,23 @@ namespace Unit.La.Controls
         }
 
         /// <summary>
-        /// 文件树选择事件
+        /// 文件树选择事件（不加载文件，只触发事件）
         /// </summary>
         private void TreeViewFiles_AfterSelect(object? sender, TreeViewEventArgs e)
         {
-            if (e.Node?.Tag is string filePath && System.IO.File.Exists(filePath))
-            {
-                // 加载文件到编辑器
-                try
-                {
-                    var content = System.IO.File.ReadAllText(filePath);
-                    ScriptText = content;
-                    
-                    // 🔥 关键：触发滚动操作，激活消息泵，修复其他 TextBox 控件的焦点问题
-                    // 这模拟了点击函数列表的操作（Goto + EnsureVisible + Focus）
-                    if (scintilla != null && scintilla.Lines.Count > 0)
-                    {
-                        // 获取第一行，触发滚动操作
-                        var firstLine = scintilla.Lines[0];
-                        firstLine.Goto();
-                        firstLine.EnsureVisible();
-                        
-                        // 将焦点设置到编辑器
-                        scintilla.Focus();
-                    }
-                }
-                catch
-                {
-                    // 忽略错误
-                }
-            }
+            // 选择文件时不自动加载，等待双击或由父控件处理
         }
 
         /// <summary>
-        /// 文件树双击事件
+        /// 文件树双击事件：触发文件打开事件，由父控件在 Tab 中打开
         /// </summary>
         private void TreeViewFiles_NodeMouseDoubleClick(object? sender, TreeNodeMouseClickEventArgs e)
         {
             if (e.Node?.Tag is string filePath && System.IO.File.Exists(filePath))
             {
-                // 加载文件到编辑器
-                try
-                {
-                    var content = System.IO.File.ReadAllText(filePath);
-                    ScriptText = content;
-                    
-                    // 🔥 关键：触发滚动操作，激活消息泵，修复其他 TextBox 控件的焦点问题
-                    // 这模拟了点击函数列表的操作（Goto + EnsureVisible + Focus）
-                    if (scintilla != null && scintilla.Lines.Count > 0)
-                    {
-                        // 获取第一行，触发滚动操作
-                        var firstLine = scintilla.Lines[0];
-                        firstLine.Goto();
-                        firstLine.EnsureVisible();
-                        
-                        // 将焦点设置到编辑器
-                        scintilla.Focus();
-                    }
-                }
-                catch
-                {
-                    // 忽略错误
-                }
+                // 🔥 触发文件打开事件，由父控件在 Tab 中打开文件
+                // 这样每个文件都在独立的 Tab 页面中，不会覆盖当前编辑的内容
+                FileOpenRequested?.Invoke(this, new FileOpenEventArgs(filePath));
             }
         }
 
@@ -1511,6 +1479,13 @@ namespace Unit.La.Controls
         [Category("脚本")]
         [Description("脚本内容变更时触发")]
         public event EventHandler? ScriptTextChanged;
+
+        /// <summary>
+        /// 文件打开请求事件（用于在 Tab 中打开文件）
+        /// </summary>
+        [Category("脚本")]
+        [Description("文件打开请求时触发，传递文件路径")]
+        public event EventHandler<FileOpenEventArgs>? FileOpenRequested;
 
         /// <summary>
         /// 脚本验证错误事件
