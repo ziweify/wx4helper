@@ -50,6 +50,12 @@ namespace Unit.La.Scripting
     public interface IScriptEngine
     {
         /// <summary>
+        /// 加载脚本（不执行，只定义函数和变量）
+        /// 用于加载 functions.lua 等库文件
+        /// </summary>
+        void LoadScript(string scriptCode);
+
+        /// <summary>
         /// 执行脚本
         /// </summary>
         ScriptResult Execute(string script, Dictionary<string, object>? context = null);

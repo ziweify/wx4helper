@@ -704,6 +704,26 @@ namespace Unit.La.Controls
                 CreateDefaultScriptEngine();
             }
 
+            // 🔥 如果设置了脚本目录，先加载 functions.lua（如果存在）
+            if (!string.IsNullOrEmpty(ScriptDirectory) && _scriptEngine != null)
+            {
+                var functionsPath = System.IO.Path.Combine(ScriptDirectory, "functions.lua");
+                if (System.IO.File.Exists(functionsPath))
+                {
+                    try
+                    {
+                        var functionsCode = System.IO.File.ReadAllText(functionsPath, System.Text.Encoding.UTF8);
+                        // 先加载 functions.lua 到脚本引擎（不执行，只定义函数）
+                        _scriptEngine.LoadScript(functionsCode);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 如果加载失败，记录错误但继续执行主脚本
+                        System.Diagnostics.Debug.WriteLine($"加载 functions.lua 失败: {ex.Message}");
+                    }
+                }
+            }
+
             return _scriptEngine?.Execute(ScriptText, context)
                 ?? new ScriptResult { Success = false, Error = "脚本引擎未初始化" };
         }

@@ -32,6 +32,24 @@ namespace Unit.La.Scripting
             // 其他类型将按需自动注册
         }
 
+        /// <summary>
+        /// 加载脚本（不执行，只定义函数和变量）
+        /// 用于加载 functions.lua 等库文件
+        /// </summary>
+        public void LoadScript(string scriptCode)
+        {
+            try
+            {
+                // 只加载脚本，不执行
+                _script.DoString(scriptCode);
+            }
+            catch (Exception ex)
+            {
+                // 如果加载失败，抛出异常
+                throw new InvalidOperationException($"加载脚本失败: {ex.Message}", ex);
+            }
+        }
+
         public ScriptResult Execute(string scriptCode, Dictionary<string, object>? context = null)
         {
             try
