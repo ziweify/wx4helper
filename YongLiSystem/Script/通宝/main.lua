@@ -2,12 +2,17 @@
 -- 主脚本 (main.lua)
 -- ====================================
 
+-- 🔥 使用 require 加载功能库（支持错误时显示具体行号）
+require("functions")
+
 log('🚀 主脚本开始执行')
 
 function main()
      local username = config.username or 'username'
      local password = config.password or 'password'
-     login(username, password);
+     local url = config.url or ''
+     -- 🔥 调用 login 函数时，传递所有需要的参数（包括 url）
+     login(username, password, url)
    
     
     log('✅ 主脚本执行完成')

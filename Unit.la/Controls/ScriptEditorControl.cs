@@ -961,28 +961,35 @@ namespace Unit.La.Controls
                 CreateDefaultScriptEngine();
             }
 
-            // 🔥 如果设置了脚本目录，先加载 functions.lua（如果存在）
-            if (!string.IsNullOrEmpty(ScriptDirectory) && _scriptEngine != null)
+            // 🔥 注意：现在使用 require 机制加载文件，不再需要手动加载 functions.lua
+            // require 会在脚本执行时自动加载，并且错误时会显示正确的文件名和行号
+            // 如果脚本中使用了 require("functions")，CustomScriptLoader 会自动处理
+
+            // 🔥 获取当前脚本的文件名（用于错误报告）
+            string? currentScriptFileName = null;
+            var currentTab = ScriptTabs?.SelectedTab;
+            if (currentTab?.Tag is Unit.La.Models.ScriptInfo scriptInfo && !string.IsNullOrEmpty(scriptInfo.Name))
             {
-                var functionsPath = System.IO.Path.Combine(ScriptDirectory, "functions.lua");
-                if (System.IO.File.Exists(functionsPath))
-                {
-                    try
-                    {
-                        var functionsCode = System.IO.File.ReadAllText(functionsPath, System.Text.Encoding.UTF8);
-                        // 先加载 functions.lua 到脚本引擎（不执行，只定义函数）
-                        _scriptEngine.LoadScript(functionsCode);
-                    }
-                    catch (Exception ex)
-                    {
-                        // 如果加载失败，记录错误但继续执行主脚本
-                        System.Diagnostics.Debug.WriteLine($"加载 functions.lua 失败: {ex.Message}");
-                    }
-                }
+                currentScriptFileName = scriptInfo.Name;
+            }
+            else
+            {
+                // 如果没有 Tag，默认使用 main.lua
+                currentScriptFileName = "main.lua";
             }
 
-            return _scriptEngine?.Execute(ScriptText, context)
-                ?? new ScriptResult { Success = false, Error = "脚本引擎未初始化" };
+            // 🔥 执行脚本时，传递文件名，这样错误信息会包含文件名
+            // 注意：需要将 _scriptEngine 转换为 MoonSharpScriptEngine 才能调用重载方法
+            if (_scriptEngine is MoonSharpScriptEngine engine)
+            {
+                return engine.Execute(ScriptText, context, currentScriptFileName)
+                    ?? new ScriptResult { Success = false, Error = "脚本引擎未初始化" };
+            }
+            else
+            {
+                return _scriptEngine?.Execute(ScriptText, context)
+                    ?? new ScriptResult { Success = false, Error = "脚本引擎未初始化" };
+            }
         }
 
         /// <summary>
@@ -1143,6 +1150,12 @@ namespace Unit.La.Controls
             _scriptEngine = new MoonSharpScriptEngine();
             _scriptEngine.OnError += (s, e) => OnError?.Invoke(e.Error);
             _scriptEngine.OnBreakpoint += (s, e) => OnBreakpointHit?.Invoke(e);
+            
+            // 🔥 设置脚本目录（用于 require 功能）
+            if (_scriptEngine is MoonSharpScriptEngine msEngine && !string.IsNullOrEmpty(ScriptDirectory))
+            {
+                msEngine.SetScriptDirectory(ScriptDirectory);
+            }
 
             // 注意: 默认函数现在由 BrowserTaskControl 在创建时通过 ScriptFunctionRegistry 注册
             // 这里不再自动绑定，而是由使用者调用 RegisterScriptFunction 或 RegisterScriptObject
@@ -1232,6 +1245,12 @@ namespace Unit.La.Controls
             ScriptDirectory = scriptDirectory;
             _scriptDirectory = scriptDirectory; // 🔥 保存到字段，用于查找 functions.lua
             UpdateFileTree(scriptDirectory);
+            
+            // 🔥 更新脚本引擎的脚本目录（用于 require 功能）
+            if (_scriptEngine is MoonSharpScriptEngine msEngine)
+            {
+                msEngine.SetScriptDirectory(scriptDirectory);
+            }
             UpdateFunctionDefinitions(); // 🔥 更新函数定义缓存
             HighlightLibraryFunctions(); // 🔥 更新函数高亮
         }
