@@ -1080,7 +1080,79 @@ log('脚本结束')
             // 🔥 绑定 config 对象到脚本引擎（此时 _configPanel 已创建）
             BindConfigObject();
 
-            // 日志面板
+            // 🔥 日志面板（带过滤功能）
+            var logPanel = new Panel { Dock = DockStyle.Fill };
+            
+            // 日志过滤工具栏（使用 Panel + Label + ComboBox + Button，更可靠）
+            var logToolBarPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 35,
+                BackColor = SystemColors.Control
+            };
+            
+            var lblFilter = new Label
+            {
+                Text = "过滤:",
+                Location = new Point(10, 8),
+                AutoSize = true
+            };
+            logToolBarPanel.Controls.Add(lblFilter);
+            
+            _logFilterComboBox = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 120,
+                Location = new Point(50, 6),
+                Items = { "全部", "系统", "错误", "警告", "脚本" },
+                SelectedIndex = 0
+            };
+            _logFilterComboBox.SelectedIndexChanged += LogFilterComboBox_SelectedIndexChanged;
+            logToolBarPanel.Controls.Add(_logFilterComboBox);
+            
+            // 🔥 面板位置下拉按钮（移到日志工具栏）
+            var btnDockPosition = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 130,
+                Location = new Point(180, 6),
+                Items = { "➡️ 停靠在右侧", "⬇️ 停靠在底部", "⬅️ 停靠在左侧" }
+            };
+            
+            // 🔥 根据当前停靠位置设置初始选中项
+            var currentPosition = GetCurrentDockPosition();
+            btnDockPosition.SelectedIndex = (int)currentPosition;
+            
+            btnDockPosition.SelectedIndexChanged += (s, e) =>
+            {
+                switch (btnDockPosition.SelectedIndex)
+                {
+                    case 0:
+                        OnDockRight(s, e);
+                        break;
+                    case 1:
+                        OnDockBottom(s, e);
+                        break;
+                    case 2:
+                        OnDockLeft(s, e);
+                        break;
+                }
+            };
+            logToolBarPanel.Controls.Add(btnDockPosition);
+            
+            var btnClearLog = new Button
+            {
+                Text = "🗑 清空",
+                Location = new Point(320, 5),
+                Width = 70,
+                Height = 25
+            };
+            btnClearLog.Click += OnClearLog;
+            logToolBarPanel.Controls.Add(btnClearLog);
+            
+            logPanel.Controls.Add(logToolBarPanel);
+            
+            // 日志文本框
             _logTextBox = new RichTextBox
             {
                 Dock = DockStyle.Fill,
@@ -1089,7 +1161,9 @@ log('脚本结束')
                 ForeColor = Color.White,
                 Font = new Font("Consolas", 9)
             };
-            tabPageLog.Controls.Add(_logTextBox);
+            logPanel.Controls.Add(_logTextBox);
+            
+            tabPageLog.Controls.Add(logPanel);
 
             // 🎨 编辑区域（ScriptEditorControl 内部已有文件树，无需额外的左侧列表）
             var panelEditor = new Panel { Dock = DockStyle.Fill };
@@ -2093,6 +2167,33 @@ log('脚本结束')
                     LogMessage("✅ 历史记录已清空");
                 };
                 btnHistory.DropDownItems.Add(clearItem);
+            }
+        }
+
+        /// <summary>
+        /// 获取当前面板停靠位置
+        /// </summary>
+        private DockPosition GetCurrentDockPosition()
+        {
+            if (splitContainerMain == null) return DockPosition.Right;
+            
+            // 根据 SplitContainer 的方向和位置判断
+            if (splitContainerMain.Orientation == Orientation.Horizontal)
+            {
+                return DockPosition.Bottom;
+            }
+            else
+            {
+                // 垂直方向：根据 SplitterDistance 判断是左侧还是右侧
+                // 如果 SplitterDistance 较小，说明面板在左侧；否则在右侧
+                if (splitContainerMain.SplitterDistance < Width / 2)
+                {
+                    return DockPosition.Left;
+                }
+                else
+                {
+                    return DockPosition.Right;
+                }
             }
         }
 

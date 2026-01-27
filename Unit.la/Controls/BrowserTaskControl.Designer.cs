@@ -168,7 +168,7 @@ namespace Unit.La.Controls
             // 
             // toolStripMain
             // 
-            toolStripMain.Items.AddRange(new ToolStripItem[] { btnSaveConfig, toolStripSeparator1, btnClearLog, toolStripSeparator2, btnDockPosition, btnTogglePanel, toolStripSeparator3, btnToggleScriptWindow });
+            toolStripMain.Items.AddRange(new ToolStripItem[] { btnSaveConfig, toolStripSeparator2, btnTogglePanel, toolStripSeparator3, btnToggleScriptWindow });
             toolStripMain.Location = new Point(0, 0);
             toolStripMain.Name = "toolStripMain";
             toolStripMain.Size = new Size(1024, 25);
