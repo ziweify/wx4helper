@@ -276,7 +276,7 @@ namespace Unit.La.Controls
             // 
             tabPageLog.Location = new Point(4, 26);
             tabPageLog.Name = "tabPageLog";
-            tabPageLog.Padding = new Padding(3);
+            tabPageLog.Padding = new Padding(0);  // 🔥 移除内边距，避免影响 Dock 布局
             tabPageLog.Size = new Size(779, 931);
             tabPageLog.TabIndex = 1;
             tabPageLog.Text = "📋 日志";

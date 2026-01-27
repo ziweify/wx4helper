@@ -1087,14 +1087,15 @@ log('脚本结束')
             var logToolBarPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 35,
-                BackColor = SystemColors.Control
+                Height = 40,  // 🔥 工具栏高度
+                BackColor = SystemColors.Control,
+                Padding = new Padding(5, 5, 5, 5)  // 🔥 添加内边距
             };
             
             var lblFilter = new Label
             {
                 Text = "过滤:",
-                Location = new Point(10, 8),
+                Location = new Point(10, 10),
                 AutoSize = true
             };
             logToolBarPanel.Controls.Add(lblFilter);
@@ -1103,7 +1104,7 @@ log('脚本结束')
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Width = 120,
-                Location = new Point(50, 6),
+                Location = new Point(50, 8),
                 Items = { "全部", "系统", "错误", "警告", "脚本" },
                 SelectedIndex = 0
             };
@@ -1115,7 +1116,7 @@ log('脚本结束')
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Width = 130,
-                Location = new Point(180, 6),
+                Location = new Point(180, 8),
                 Items = { "➡️ 停靠在右侧", "⬇️ 停靠在底部", "⬅️ 停靠在左侧" }
             };
             
@@ -1143,25 +1144,44 @@ log('脚本结束')
             var btnClearLog = new Button
             {
                 Text = "🗑 清空",
-                Location = new Point(320, 5),
+                Location = new Point(320, 7),
                 Width = 70,
                 Height = 25
             };
             btnClearLog.Click += OnClearLog;
             logToolBarPanel.Controls.Add(btnClearLog);
             
-            logPanel.Controls.Add(logToolBarPanel);
+            // 🔥 使用 TableLayoutPanel 确保布局正确，避免遮挡问题
+            var tableLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 2,
+                ColumnCount = 1,
+                BackColor = SystemColors.Control
+            };
             
-            // 日志文本框
+            // 设置行样式
+            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));  // 工具栏高度
+            tableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // 日志区域占剩余空间
+            
+            // 添加工具栏到第一行
+            logToolBarPanel.Dock = DockStyle.Fill;  // 在 TableLayoutPanel 中，Fill 会填充单元格
+            tableLayout.Controls.Add(logToolBarPanel, 0, 0);
+            
+            // 日志文本框（使用 Dock = Fill，会自动留出顶部工具栏的空间）
             _logTextBox = new RichTextBox
             {
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
                 BackColor = Color.FromArgb(30, 30, 30),
                 ForeColor = Color.White,
-                Font = new Font("Consolas", 9)
+                Font = new Font("Consolas", 9),
+                Margin = new Padding(0),
+                Padding = new Padding(5)  // 🔥 添加内边距，让文本不贴边
             };
-            logPanel.Controls.Add(_logTextBox);
+            tableLayout.Controls.Add(_logTextBox, 0, 1);
+            
+            logPanel.Controls.Add(tableLayout);
             
             tabPageLog.Controls.Add(logPanel);
 
