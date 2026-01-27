@@ -803,6 +803,17 @@ namespace Unit.La.Scripting
         }
 
         /// <summary>
+        /// 获取输入元素的值（value 属性）
+        /// 用法: local value = web.GetValue("#username")
+        /// </summary>
+        public string GetValue(string selector)
+        {
+            var escapedSelector = selector.Replace("'", "\\'");
+            var result = Execute($"document.querySelector('{escapedSelector}')?.value || ''");
+            return result.Trim('"');
+        }
+
+        /// <summary>
         /// 获取元素属性
         /// 用法: local href = web.GetAttr("#link", "href")
         /// </summary>

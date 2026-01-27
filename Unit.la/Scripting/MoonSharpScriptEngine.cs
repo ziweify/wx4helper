@@ -108,15 +108,15 @@ namespace Unit.La.Scripting
                 // 读取文件内容
                 try
                 {
+                    // 🔥 关键：LoadFile 应该返回文件内容（字符串），而不是执行代码
+                    // MoonSharp 会自动执行返回的内容，并使用我们传递的源文件名
                     var content = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8);
                     
-                    // 🔥 关键：使用 DoString 的重载版本，传递源文件名和全局上下文
-                    // 这样错误时就能显示正确的文件名和行号
-                    // require 加载的文件会直接执行，所以使用 DoString 而不是 LoadScript
-                    var fileName = System.IO.Path.GetFileName(filePath);
-                    _engine._script.DoString(content, globalContext, fileName);
-                    
-                    return DynValue.Nil;
+                    // 🔥 返回文件内容，MoonSharp 会自动使用源文件名执行
+                    // 但是我们需要确保源文件名被正确传递
+                    // 由于 LoadFile 只返回字符串，我们需要通过其他方式传递文件名
+                    // 实际上，MoonSharp 会使用 ResolveFileName 返回的文件名作为源文件名
+                    return content;
                 }
                 catch (Exception ex)
                 {
@@ -140,8 +140,40 @@ namespace Unit.La.Scripting
             
             public string ResolveFileName(string filename, Table globalContext)
             {
-                // 🔥 解析文件名（与 ResolveModuleName 类似）
-                return ResolveModuleName(filename, globalContext);
+                // 🔥 解析文件名，返回完整的文件路径
+                // 这样 MoonSharp 可以在错误报告中显示正确的文件名
+                var scriptDir = _engine.GetScriptDirectory();
+                if (string.IsNullOrEmpty(scriptDir))
+                {
+                    return filename;
+                }
+                
+                // 处理不同的文件路径格式
+                string filePath;
+                if (System.IO.Path.IsPathRooted(filename))
+                {
+                    // 绝对路径
+                    filePath = filename;
+                }
+                else if (filename.Contains(System.IO.Path.DirectorySeparatorChar) || filename.Contains('/'))
+                {
+                    // 相对路径（相对于脚本目录）
+                    filePath = System.IO.Path.Combine(scriptDir, filename);
+                }
+                else
+                {
+                    // 简单文件名，添加 .lua 扩展名（如果没有）
+                    var fileName = filename;
+                    if (!fileName.EndsWith(".lua", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fileName += ".lua";
+                    }
+                    filePath = System.IO.Path.Combine(scriptDir, fileName);
+                }
+                
+                // 🔥 返回文件名（不含路径），这样错误信息会更清晰
+                // 或者返回完整路径，取决于 MoonSharp 如何处理
+                return System.IO.Path.GetFileName(filePath);
             }
         }
 

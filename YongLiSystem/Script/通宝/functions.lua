@@ -11,8 +11,8 @@ function login(username, password, url)
     -- url: 目标网站URL（从 config.url 传递）
     
     -- 示例: 获取当前页面信息
-    local currentUrl = web.GetUrl()
-    log('login::当前URL: ' .. currentUrl)
+    local initialUrl = web.GetUrl()
+    log('login::当前URL: ' .. initialUrl)
     
     local title = web.GetTitle()
     log('login::页面标题: ' .. title)
@@ -47,22 +47,26 @@ function login(username, password, url)
     log('🔄 步骤3: 开始登录循环（条件恒为真，直到登录成功）')
     local attempt = 0
     
-    -- 🔥 将局部变量定义移到循环外，避免 goto 跳转到作用域内的问题
+    -- 🔥 将所有局部变量定义移到循环外，避免 goto 跳转到作用域内的问题
     local imgcodeValue = ''
     local maxWaitTime = 30000 -- 最多等待30秒
     local waitInterval = 200 -- 每200ms检查一次
     local elapsedTime = 0
+    local currentUrl = ''
+    local isLoginPage = false
+    local currentUsername = ''
+    local currentPassword = ''
     
     while true do
         attempt = attempt + 1
         log('📋 登录尝试 #' .. attempt)
         
         -- 获取当前 URL
-        local currentUrl = web.GetUrl() or ''
+        currentUrl = web.GetUrl() or ''
         log('📍 当前 URL: ' .. currentUrl)
         
         -- 检查是否已经登录成功（URL 不在登录页面）
-        local isLoginPage = (currentUrl == loginUrl1) or (currentUrl == loginUrl2) or (currentUrl == loginUrl3)
+        isLoginPage = (currentUrl == loginUrl1) or (currentUrl == loginUrl2) or (currentUrl == loginUrl3)
         if not isLoginPage then
             log('✅ 登录成功！当前页面已不在登录页: ' .. currentUrl)
             break
@@ -76,8 +80,8 @@ function login(username, password, url)
         end
         
         -- 检查并写入用户名和密码（有相等判断，不会重复输入）
-        local currentUsername = web.GetValue(elUsername) or ''
-        local currentPassword = web.GetValue(elPassword) or ''
+        currentUsername = web.GetValue(elUsername) or ''
+        currentPassword = web.GetValue(elPassword) or ''
         
         if currentUsername ~= username then
             log('📝 写入用户名: ' .. username)
