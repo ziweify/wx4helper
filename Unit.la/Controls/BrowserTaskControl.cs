@@ -624,30 +624,37 @@ namespace Unit.La.Controls
             // 创建新的 Scintilla 编辑器
             var newScintilla = new ScintillaNET.Scintilla
             {
-                Dock = DockStyle.Fill,
-                LexerName = "lua"
+                Dock = DockStyle.Fill
             };
 
-            // 🔥 配置 Scintilla（复制默认配置）
-            var defaultScintilla = _scriptEditor?.GetCurrentScintilla();
-            if (defaultScintilla != null)
+            // 🔥 使用 ScriptEditorControl 的方法完整配置 Scintilla（包括语法高亮、行号、断点等）
+            if (_scriptEditor != null)
             {
-                // 复制基础配置
-                newScintilla.StyleClearAll();
-                newScintilla.Styles[ScintillaNET.Style.Default].ForeColor = defaultScintilla.Styles[ScintillaNET.Style.Default].ForeColor;
-                newScintilla.Styles[ScintillaNET.Style.Default].BackColor = defaultScintilla.Styles[ScintillaNET.Style.Default].BackColor;
-                newScintilla.Styles[ScintillaNET.Style.Default].Size = defaultScintilla.Styles[ScintillaNET.Style.Default].Size;
-                newScintilla.Styles[ScintillaNET.Style.Default].Font = defaultScintilla.Styles[ScintillaNET.Style.Default].Font;
-                newScintilla.TabWidth = defaultScintilla.TabWidth;
-                newScintilla.UseTabs = defaultScintilla.UseTabs;
-                
-                // 复制行号配置
-                newScintilla.Margins[1].Type = ScintillaNET.MarginType.Number;
-                newScintilla.Margins[1].Width = defaultScintilla.Margins[1].Width;
+                _scriptEditor.ConfigureScintillaEditor(newScintilla);
             }
 
             // 设置脚本内容
             newScintilla.Text = script.Content ?? string.Empty;
+
+            // 🔥 订阅 TextChanged 事件，以便在内容变化时更新函数列表
+            newScintilla.TextChanged += (s, e) =>
+            {
+                if (_scriptEditor != null && tabControl.SelectedTab == newTab)
+                {
+                    // 只有当前 Tab 被选中时才更新函数列表
+                    // 延迟更新，避免频繁调用
+                    if (_scriptEditor.IsHandleCreated)
+                    {
+                        _scriptEditor.BeginInvoke(new Action(() =>
+                        {
+                            if (!_scriptEditor.IsDisposed)
+                            {
+                                _scriptEditor.UpdateFunctionList();
+                            }
+                        }));
+                    }
+                }
+            };
 
             newTab.Controls.Add(newScintilla);
             tabControl.TabPages.Add(newTab);
@@ -657,6 +664,12 @@ namespace Unit.La.Controls
             if (!string.IsNullOrEmpty(script.FilePath) && _scriptEditor != null)
             {
                 _scriptEditor.SelectFileInTree(script.FilePath);
+            }
+            
+            // 🔥 更新函数列表（基于新打开的脚本）
+            if (_scriptEditor != null)
+            {
+                _scriptEditor.UpdateFunctionList();
             }
 
             // 🔥 如果指定了行号，跳转到该行
@@ -1519,6 +1532,9 @@ log('脚本结束')
                         {
                             _scriptEditor.SelectFileInTree(currentScript.FilePath);
                         }
+                        
+                        // 🔥 更新函数列表（基于当前 Tab 的内容）
+                        _scriptEditor.UpdateFunctionList();
                     }
                     
                     // 更新保存按钮状态

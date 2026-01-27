@@ -198,6 +198,91 @@ namespace Unit.La.Controls
         }
 
         /// <summary>
+        /// 🔥 完整配置 Scintilla 编辑器（包括语法高亮、行号、断点等所有功能）
+        /// 用于新创建的 Scintilla 编辑器
+        /// </summary>
+        public void ConfigureScintillaEditor(ScintillaNET.Scintilla sc)
+        {
+            if (sc == null) return;
+
+            // 1. 基础配置
+            try
+            {
+                sc.LexerName = "lua";
+            }
+            catch
+            {
+                // 如果 lua 不可用，忽略
+            }
+            
+            sc.StyleClearAll();
+            
+            // 设置基础样式（浅色主题）
+            sc.Styles[Style.Default].ForeColor = Color.Black;
+            sc.Styles[Style.Default].BackColor = Color.White;
+            sc.Styles[Style.Default].Size = FontSize;
+            sc.Styles[Style.Default].Font = "Consolas";
+            
+            // 配置缩进设置
+            sc.TabWidth = 4;
+            sc.UseTabs = false;
+            
+            // 2. 语法高亮配置
+            try
+            {
+                // Lua 关键字
+                sc.SetKeywords(0, "and break do else elseif end false for function if in local nil not or repeat return then true until while");
+                sc.SetKeywords(1, "string table math io file os debug coroutine"); // Lua标准库
+                
+                // 配置 Lua 语法样式（浅色主题）
+                sc.Styles[ScintillaNET.Style.Lua.Default].ForeColor = Color.Black;
+                sc.Styles[ScintillaNET.Style.Lua.Comment].ForeColor = Color.Green;
+                sc.Styles[ScintillaNET.Style.Lua.CommentLine].ForeColor = Color.Green;
+                sc.Styles[ScintillaNET.Style.Lua.Number].ForeColor = Color.DarkOrange;
+                sc.Styles[ScintillaNET.Style.Lua.Word].ForeColor = Color.Blue;
+                sc.Styles[ScintillaNET.Style.Lua.Word].Bold = true;
+                sc.Styles[ScintillaNET.Style.Lua.String].ForeColor = Color.Brown;
+                sc.Styles[ScintillaNET.Style.Lua.Character].ForeColor = Color.Brown;
+                sc.Styles[ScintillaNET.Style.Lua.LiteralString].ForeColor = Color.Brown;
+                sc.Styles[ScintillaNET.Style.Lua.Operator].ForeColor = Color.Purple;
+            }
+            catch
+            {
+                // 如果样式配置失败，忽略
+            }
+
+            // 3. 行号配置
+            sc.Margins[1].Type = MarginType.Number;
+            sc.Margins[1].Width = ShowLineNumbers ? 50 : 0;
+            sc.Margins[1].Sensitive = false;
+
+            // 4. 断点配置
+            sc.Margins[0].Width = 20;
+            sc.Margins[0].Type = MarginType.Symbol;
+            sc.Margins[0].Mask = (1 << 0);
+            sc.Markers[0].Symbol = MarkerSymbol.Circle;
+            sc.Markers[0].SetBackColor(Color.Red);
+
+            // 5. 代码折叠配置
+            sc.SetProperty("fold", "1");
+            sc.SetProperty("fold.compact", "1");
+            sc.SetProperty("fold.lua", "1");
+            sc.Markers[Marker.Folder].Symbol = MarkerSymbol.BoxPlus;
+            sc.Markers[Marker.FolderOpen].Symbol = MarkerSymbol.BoxMinus;
+            sc.Markers[Marker.FolderEnd].Symbol = MarkerSymbol.BoxPlusConnected;
+            sc.Markers[Marker.FolderMidTail].Symbol = MarkerSymbol.TCorner;
+            sc.Markers[Marker.FolderTail].Symbol = MarkerSymbol.LCorner;
+            sc.Markers[Marker.FolderSub].Symbol = MarkerSymbol.VLine;
+            sc.Markers[Marker.Folder].SetBackColor(Color.LightGray);
+
+            // 6. 其他配置
+            sc.TabIndents = true;
+            sc.WrapMode = WrapMode.None;
+            sc.CaretLineBackColor = Color.White;
+            sc.CaretLineVisible = false;
+        }
+
+        /// <summary>
         /// 初始化编辑器
         /// </summary>
         private void InitializeEditor()
@@ -1245,8 +1330,9 @@ namespace Unit.La.Controls
 
         /// <summary>
         /// 更新函数列表
+        /// 🔥 现在使用当前选中的 Scintilla 的内容
         /// </summary>
-        private void UpdateFunctionList()
+        public void UpdateFunctionList()
         {
             if (listBoxFunctions == null)
                 return;
@@ -1255,7 +1341,11 @@ namespace Unit.La.Controls
 
             try
             {
-                var functions = LuaFunctionParser.ParseFunctions(ScriptText);
+                // 🔥 使用当前选中的 Scintilla 的内容（而不是默认的 scintilla）
+                var currentScintilla = GetCurrentScintilla();
+                var scriptText = currentScintilla?.Text ?? string.Empty;
+                
+                var functions = LuaFunctionParser.ParseFunctions(scriptText);
                 foreach (var func in functions)
                 {
                     listBoxFunctions.Items.Add(new FunctionListItem(func));
@@ -1287,18 +1377,23 @@ namespace Unit.La.Controls
 
         /// <summary>
         /// 函数列表选择事件 - 定位到函数代码
+        /// 🔥 现在使用当前选中的 Scintilla
         /// </summary>
         private void ListBoxFunctions_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            if (listBoxFunctions?.SelectedItem is FunctionListItem item && scintilla != null)
+            if (listBoxFunctions?.SelectedItem is FunctionListItem item)
             {
+                // 🔥 使用当前选中的 Scintilla（而不是默认的 scintilla）
+                var currentScintilla = GetCurrentScintilla();
+                if (currentScintilla == null) return;
+                
                 // 跳转到函数所在行
                 var lineNumber = item.FunctionInfo.LineNumber;
-                if (lineNumber > 0 && lineNumber <= scintilla.Lines.Count)
+                if (lineNumber > 0 && lineNumber <= currentScintilla.Lines.Count)
                 {
                     // 转换为0基索引
                     var lineIndex = lineNumber - 1;
-                    var line = scintilla.Lines[lineIndex];
+                    var line = currentScintilla.Lines[lineIndex];
                     
                     // 跳转到该行
                     line.Goto();
@@ -1307,7 +1402,7 @@ namespace Unit.La.Controls
                     line.EnsureVisible();
                     
                     // 将焦点设置到编辑器
-                    scintilla.Focus();
+                    currentScintilla.Focus();
                 }
             }
         }
