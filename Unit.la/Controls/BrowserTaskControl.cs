@@ -2444,7 +2444,7 @@ log('脚本结束')
         #endregion
 
         /// <summary>
-        /// 面板停靠位置
+        /// 面板停靠位置 
         /// </summary>
         public enum DockPosition
         {
