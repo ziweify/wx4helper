@@ -68,6 +68,11 @@ namespace Unit.La.Controls
         private string? _currentSelectedWord; // 当前双击选中的单词（用于匹配高亮）
         private const int HOVER_INDICATOR = 3; // Indicator 3 用于悬停下划线
         private const int MATCH_INDICATOR = 4; // Indicator 4 用于匹配高亮
+
+        /// <summary>
+        /// 🔥 获取脚本文件的 TabControl（用于外部管理 Tab 页）
+        /// </summary>
+        public TabControl ScriptTabs => tabControlScripts;
         
         /// <summary>
         /// 导航点（用于前进/后退）
@@ -106,40 +111,90 @@ namespace Unit.La.Controls
         {
             if (_isInitialized) return;
 
-            // 1. 初始化编辑器基础配置
+            // 1. 初始化 TabControl（脚本文件标签页，位于代码编辑器上方）
+            InitializeScriptTabs();
+
+            // 2. 初始化编辑器基础配置
             InitializeEditor();
 
-            // 2. 配置语法高亮
+            // 3. 配置语法高亮
             ConfigureSyntaxHighlighting();
 
-            // 3. 配置断点标记
+            // 4. 配置断点标记
             ConfigureBreakpointMarker();
 
-            // 4. 配置错误标记
+            // 5. 配置错误标记
             ConfigureErrorMarker();
 
-            // 5. 配置自动完成
+            // 6. 配置自动完成
             ConfigureAutoComplete();
 
-            // 6. 配置代码折叠
+            // 7. 配置代码折叠
             ConfigureCodeFolding();
 
-            // 7. 配置行号
+            // 8. 配置行号
             ConfigureLineNumbers();
 
-            // 8. 初始化文件树和函数列表
+            // 9. 初始化文件树和函数列表
             InitializeFileExplorer();
 
-            // 9. 初始化调试面板
+            // 10. 初始化调试面板
             InitializeDebugPanel();
 
-            // 10. 订阅事件
+            // 11. 订阅事件
             SubscribeEvents();
 
-            // 11. 创建默认脚本引擎（Lua）
+            // 12. 创建默认脚本引擎（Lua）
             CreateDefaultScriptEngine();
 
             _isInitialized = true;
+        }
+
+        /// <summary>
+        /// 初始化脚本文件的 TabControl（位于代码编辑器上方，VS 风格）
+        /// </summary>
+        private void InitializeScriptTabs()
+        {
+            if (tabControlScripts == null) return;
+
+            // 创建默认的 TabPage，包含 scintilla
+            var defaultTab = new TabPage("main.lua");
+            defaultTab.Controls.Add(scintilla);
+            tabControlScripts.TabPages.Add(defaultTab);
+        }
+
+        /// <summary>
+        /// 🔥 获取当前活动的 Scintilla 编辑器（从当前选中的 TabPage）
+        /// </summary>
+        public ScintillaNET.Scintilla? GetCurrentScintilla()
+        {
+            if (tabControlScripts?.SelectedTab == null) return scintilla;
+            
+            // 从当前选中的 TabPage 中获取 Scintilla
+            var currentTab = tabControlScripts.SelectedTab;
+            var sc = currentTab.Controls.OfType<ScintillaNET.Scintilla>().FirstOrDefault();
+            return sc ?? scintilla; // 如果找不到，返回默认的 scintilla
+        }
+
+        /// <summary>
+        /// 🔥 获取当前活动的脚本文本
+        /// </summary>
+        public string GetCurrentScriptText()
+        {
+            var sc = GetCurrentScintilla();
+            return sc?.Text ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 🔥 设置当前活动的脚本文本
+        /// </summary>
+        public void SetCurrentScriptText(string text)
+        {
+            var sc = GetCurrentScintilla();
+            if (sc != null)
+            {
+                sc.Text = text;
+            }
         }
 
         /// <summary>

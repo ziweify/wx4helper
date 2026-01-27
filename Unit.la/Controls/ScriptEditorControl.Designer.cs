@@ -24,6 +24,7 @@ namespace Unit.La.Controls
             listBoxFunctions = new ListBox();
             labelFunctions = new Label();
             splitContainerRight = new SplitContainer();
+            tabControlScripts = new TabControl();  // 🔥 脚本文件的 TabControl（位于代码编辑器上方）
             scintilla = new ScintillaNET.Scintilla();
             tabControlDebug = new TabControl();
             tabPageBreakpoints = new TabPage();
@@ -47,6 +48,7 @@ namespace Unit.La.Controls
             splitContainerRight.Panel1.SuspendLayout();
             splitContainerRight.Panel2.SuspendLayout();
             splitContainerRight.SuspendLayout();
+            tabControlScripts.SuspendLayout();
             tabControlDebug.SuspendLayout();
             tabPageBreakpoints.SuspendLayout();
             tabPageVariables.SuspendLayout();
@@ -152,7 +154,8 @@ namespace Unit.La.Controls
             // 
             // splitContainerRight.Panel1
             // 
-            splitContainerRight.Panel1.Controls.Add(scintilla);
+            // 🔥 TabControl 现在在代码编辑器上方（VS 风格）
+            splitContainerRight.Panel1.Controls.Add(tabControlScripts);
             splitContainerRight.Panel1MinSize = 200;
             // 
             // splitContainerRight.Panel2
@@ -163,6 +166,16 @@ namespace Unit.La.Controls
             splitContainerRight.SplitterDistance = 424;
             splitContainerRight.SplitterWidth = 5;
             splitContainerRight.TabIndex = 0;
+            // 
+            // tabControlScripts
+            // 
+            tabControlScripts.Dock = DockStyle.Fill;
+            tabControlScripts.Location = new Point(0, 0);
+            tabControlScripts.Margin = new Padding(0);
+            tabControlScripts.Name = "tabControlScripts";
+            tabControlScripts.SelectedIndex = 0;
+            tabControlScripts.Size = new Size(596, 424);
+            tabControlScripts.TabIndex = 0;
             // 
             // scintilla
             // 
@@ -302,6 +315,7 @@ namespace Unit.La.Controls
             splitContainerRight.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainerRight).EndInit();
             splitContainerRight.ResumeLayout(false);
+            tabControlScripts.ResumeLayout(false);
             tabControlDebug.ResumeLayout(false);
             tabPageBreakpoints.ResumeLayout(false);
             tabPageVariables.ResumeLayout(false);
@@ -318,6 +332,7 @@ namespace Unit.La.Controls
         private System.Windows.Forms.ListBox listBoxFunctions;
         private System.Windows.Forms.Label labelFunctions;
         private System.Windows.Forms.SplitContainer splitContainerRight;
+        private System.Windows.Forms.TabControl tabControlScripts;  // 🔥 脚本文件的 TabControl（位于代码编辑器上方）
         private ScintillaNET.Scintilla scintilla;
         private System.Windows.Forms.TabControl tabControlDebug;
         private System.Windows.Forms.TabPage tabPageBreakpoints;

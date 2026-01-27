@@ -583,17 +583,14 @@ namespace Unit.La.Controls
                             tabControl.SelectedTab = tab;
                             
                             // 🔥 同步文件树的选择状态
-                            var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
-                            if (tabEditor != null && !string.IsNullOrEmpty(script.FilePath))
+                            if (_scriptEditor != null && !string.IsNullOrEmpty(script.FilePath))
                             {
-                                tabEditor.SelectFileInTree(script.FilePath);
+                                _scriptEditor.SelectFileInTree(script.FilePath);
                                 
                                 // 🔥 如果指定了行号，跳转到该行（用于 Go to Definition）
                                 if (lineNumber.HasValue && lineNumber.Value > 0)
                                 {
-                                    var scintillaField = tabEditor.GetType().GetField("scintilla", 
-                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                    var scintilla = scintillaField?.GetValue(tabEditor) as ScintillaNET.Scintilla;
+                                    var scintilla = _scriptEditor.GetCurrentScintilla();
                                     if (scintilla != null && lineNumber.Value > 0 && lineNumber.Value <= scintilla.Lines.Count)
                                     {
                                         var line = scintilla.Lines[lineNumber.Value - 1];
@@ -618,152 +615,76 @@ namespace Unit.La.Controls
                 script.SavedContent = script.Content ?? string.Empty;
             }
 
-            // 创建新Tab
+            // 🔥 创建新的 TabPage，只包含 Scintilla 编辑器（不包含整个 ScriptEditorControl）
             var newTab = new TabPage(script.DisplayName)
             {
                 Tag = script
             };
 
-            var editor = new ScriptEditorControl
+            // 创建新的 Scintilla 编辑器
+            var newScintilla = new ScintillaNET.Scintilla
             {
                 Dock = DockStyle.Fill,
-                ScriptText = script.Content,
-                EnableRealTimeValidation = true,
-                ShowLineNumbers = true,
-                EnableBreakpoints = true
+                LexerName = "lua"
             };
 
-            // 🔥 设置脚本目录（用于文件树）
-            if (!string.IsNullOrEmpty(_config.ScriptDirectory))
+            // 🔥 配置 Scintilla（复制默认配置）
+            var defaultScintilla = _scriptEditor?.GetCurrentScintilla();
+            if (defaultScintilla != null)
             {
-                editor.SetScriptDirectory(_config.ScriptDirectory);
+                // 复制基础配置
+                newScintilla.StyleClearAll();
+                newScintilla.Styles[ScintillaNET.Style.Default].ForeColor = defaultScintilla.Styles[ScintillaNET.Style.Default].ForeColor;
+                newScintilla.Styles[ScintillaNET.Style.Default].BackColor = defaultScintilla.Styles[ScintillaNET.Style.Default].BackColor;
+                newScintilla.Styles[ScintillaNET.Style.Default].Size = defaultScintilla.Styles[ScintillaNET.Style.Default].Size;
+                newScintilla.Styles[ScintillaNET.Style.Default].Font = defaultScintilla.Styles[ScintillaNET.Style.Default].Font;
+                newScintilla.TabWidth = defaultScintilla.TabWidth;
+                newScintilla.UseTabs = defaultScintilla.UseTabs;
+                
+                // 复制行号配置
+                newScintilla.Margins[1].Type = ScintillaNET.MarginType.Number;
+                newScintilla.Margins[1].Width = defaultScintilla.Margins[1].Width;
             }
 
-            _functionRegistry.BindToEngine(editor.ScriptEngine);
-            
-            // 🔥 订阅文件打开事件（每个编辑器都需要订阅，以便从文件树打开新文件）
-            editor.FileOpenRequested += (sender, e) =>
-            {
-                try
-                {
-                    var filePath = e.FilePath;
-                    if (!System.IO.File.Exists(filePath))
-                    {
-                        LogMessage($"❌ 文件不存在: {filePath}");
-                        return;
-                    }
+            // 设置脚本内容
+            newScintilla.Text = script.Content ?? string.Empty;
 
-                    var fileName = System.IO.Path.GetFileName(filePath);
-                    
-                    // 检查是否已经在 Tab 中打开
-                    foreach (TabPage tab in tabControl.TabPages)
-                    {
-                        if (tab.Tag is ScriptInfo existingScript && 
-                            !string.IsNullOrEmpty(existingScript.FilePath) &&
-                            existingScript.FilePath == filePath)
-                        {
-                            // 已打开，切换到该 Tab
-                            tabControl.SelectedTab = tab;
-                            
-                            // 🔥 同步文件树的选择状态
-                            var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
-                            if (tabEditor != null && !string.IsNullOrEmpty(existingScript.FilePath))
-                            {
-                                tabEditor.SelectFileInTree(existingScript.FilePath);
-                            }
-                            
-                            LogMessage($"📄 切换到已打开的脚本: {fileName}");
-                            return;
-                        }
-                    }
-
-                    // 更新当前 Tab 的 ScriptInfo 内容（保持修改状态）
-                    var currentEditor = GetCurrentScriptEditor(tabControl);
-                    if (currentEditor != null && tabControl.SelectedTab != null)
-                    {
-                        var currentTab = tabControl.SelectedTab;
-                        if (currentTab.Tag is ScriptInfo currentScript)
-                        {
-                            currentScript.Content = currentEditor.ScriptText;
-                        }
-                    }
-
-                    // 创建新的 ScriptInfo 并在 Tab 中打开
-                    var fileContent = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8);
-                    var scriptInfo = new ScriptInfo
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = fileName,
-                        DisplayName = fileName,
-                        FilePath = filePath,
-                        Content = fileContent,
-                        SavedContent = fileContent, // 🔥 初始化 SavedContent
-                        Type = InferScriptType(fileName)
-                    };
-
-                    OpenScriptInTab(tabControl, scriptInfo, null);
-                }
-                catch (Exception ex)
-                {
-                    LogMessage($"❌ 打开文件失败: {ex.Message}");
-                }
-            };
-            
-            // 设置编辑器事件（从TabControl.Tag获取）
-            if (tabControl.Tag != null)
-            {
-                var tagData = tabControl.Tag;
-                var setupEvents = tagData.GetType().GetProperty("SetupEvents")?.GetValue(tagData) as Action<ScriptEditorControl, TabPage>;
-                setupEvents?.Invoke(editor, newTab);
-            }
-
-            newTab.Controls.Add(editor);
+            newTab.Controls.Add(newScintilla);
             tabControl.TabPages.Add(newTab);
             tabControl.SelectedTab = newTab;
-
+            
             // 🔥 同步文件树的选择状态：根据打开的文件路径，更新文件树的高亮
-            if (!string.IsNullOrEmpty(script.FilePath))
+            if (!string.IsNullOrEmpty(script.FilePath) && _scriptEditor != null)
             {
-                editor.SelectFileInTree(script.FilePath);
+                _scriptEditor.SelectFileInTree(script.FilePath);
             }
 
-            // 🔥 如果指定了行号，跳转到该行（用于 Go to Definition）
+            // 🔥 如果指定了行号，跳转到该行
             if (lineNumber.HasValue && lineNumber.Value > 0)
             {
-                // 延迟执行，确保编辑器已完全加载
-                if (editor.IsHandleCreated)
+                if (lineNumber.Value > 0 && lineNumber.Value <= newScintilla.Lines.Count)
                 {
-                    editor.BeginInvoke(new Action(() =>
+                    var line = newScintilla.Lines[lineNumber.Value - 1];
+                    if (line != null)
                     {
-                        var scintillaField = editor.GetType().GetField("scintilla", 
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        var scintilla = scintillaField?.GetValue(editor) as ScintillaNET.Scintilla;
-                        if (scintilla != null && lineNumber.Value > 0 && lineNumber.Value <= scintilla.Lines.Count)
-                        {
-                            var line = scintilla.Lines[lineNumber.Value - 1];
-                            if (line != null)
-                            {
-                                line.Goto();
-                                line.EnsureVisible();
-                                scintilla.Focus();
-                            }
-                        }
-                    }));
+                        line.Goto();
+                        line.EnsureVisible();
+                        newScintilla.Focus();
+                    }
                 }
             }
-
+            
             LogMessage($"📄 打开脚本: {script.DisplayName}");
         }
 
         /// <summary>
         /// 获取当前活动的脚本编辑器
+        /// 🔥 现在 TabControl 在 ScriptEditorControl 内部，直接返回 _scriptEditor
         /// </summary>
-        private ScriptEditorControl? GetCurrentScriptEditor(TabControl tabControl)
+        private ScriptEditorControl? GetCurrentScriptEditor(TabControl? tabControl = null)
         {
-            if (tabControl.SelectedTab != null && tabControl.SelectedTab.Controls.Count > 0)
-            {
-                return tabControl.SelectedTab.Controls[0] as ScriptEditorControl;
-            }
+            // 🔥 TabControl 现在在 ScriptEditorControl 内部，直接返回 _scriptEditor
+            // 脚本内容通过 _scriptEditor.GetCurrentScriptText() 获取
             return _scriptEditor;
         }
 
@@ -1285,15 +1206,7 @@ log('脚本结束')
             panelPath.Controls.Add(btnBrowsePath);
             panelPath.Controls.Add(btnRefreshPath);
             
-            // VS风格的Tab标签页（用于切换多个打开的脚本）
-            var tabControlScripts = new TabControl
-            {
-                Dock = DockStyle.Fill
-            };
-            
-            // 默认添加一个标签页
-            var tabPageMain = new TabPage("main.lua");
-            
+            // 🔥 创建 ScriptEditorControl（TabControl 现在在 ScriptEditorControl 内部，位于代码编辑器上方）
             _scriptEditor = new ScriptEditorControl
             {
                 Dock = DockStyle.Fill,
@@ -1308,6 +1221,9 @@ log('脚本结束')
                 _scriptEditor.SetScriptDirectory(_config.ScriptDirectory);
             }
             
+            // 🔥 获取 ScriptEditorControl 内部的 TabControl（用于管理脚本文件）
+            var tabControlScripts = _scriptEditor.ScriptTabs;
+            
             // 🔥 为默认 Tab 创建 ScriptInfo（如果存在 main.lua 文件）
             ScriptInfo? mainScriptInfo = null;
             if (!string.IsNullOrEmpty(_config.ScriptDirectory))
@@ -1317,19 +1233,25 @@ log('脚本结束')
                 {
                     try
                     {
-                    var content = System.IO.File.ReadAllText(mainLuaPath, System.Text.Encoding.UTF8);
-                    mainScriptInfo = new ScriptInfo
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = "main.lua",
-                        DisplayName = "main.lua",
-                        FilePath = mainLuaPath,
-                        Content = content,
-                        SavedContent = content, // 🔥 初始化 SavedContent
-                        Type = ScriptType.Main
-                    };
-                    _scriptEditor.ScriptText = mainScriptInfo.Content;
-                    tabPageMain.Tag = mainScriptInfo;
+                        var content = System.IO.File.ReadAllText(mainLuaPath, System.Text.Encoding.UTF8);
+                        mainScriptInfo = new ScriptInfo
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = "main.lua",
+                            DisplayName = "main.lua",
+                            FilePath = mainLuaPath,
+                            Content = content,
+                            SavedContent = content, // 🔥 初始化 SavedContent
+                            Type = ScriptType.Main
+                        };
+                        // 🔥 设置当前 Tab 的脚本内容
+                        _scriptEditor.SetCurrentScriptText(mainScriptInfo.Content);
+                        
+                        // 🔥 为默认 Tab 设置 Tag
+                        if (tabControlScripts.TabPages.Count > 0)
+                        {
+                            tabControlScripts.TabPages[0].Tag = mainScriptInfo;
+                        }
                     }
                     catch
                     {
@@ -1338,13 +1260,11 @@ log('脚本结束')
                 }
             }
             
-            tabPageMain.Controls.Add(_scriptEditor);
-            tabControlScripts.TabPages.Add(tabPageMain);
-            
             // 绑定所有注册的函数
             _functionRegistry.BindToEngine(_scriptEditor.ScriptEngine);
             
-            panelEditor.Controls.Add(tabControlScripts);
+            // 🔥 直接添加 ScriptEditorControl（不再使用外层的 TabControl）
+            panelEditor.Controls.Add(_scriptEditor);
             panelEditor.Controls.Add(panelPath);
             panelEditor.Controls.Add(toolBarTop);
             
@@ -1470,7 +1390,12 @@ log('脚本结束')
             };
             
             // 为默认Tab设置事件
-            setupEditorEvents(_scriptEditor, tabPageMain);
+            // 🔥 现在 TabControl 在 ScriptEditorControl 内部，使用第一个 TabPage
+            var defaultTab = tabControlScripts.TabPages.Count > 0 ? tabControlScripts.TabPages[0] : null;
+            if (defaultTab != null)
+            {
+                setupEditorEvents(_scriptEditor, defaultTab);
+            }
             
             // 🔥 订阅文件打开事件：当 ScriptEditorControl 的文件树双击时，在 Tab 中打开文件
             _scriptEditor.FileOpenRequested += (sender, e) =>
@@ -1497,17 +1422,14 @@ log('脚本结束')
                             tabControlScripts.SelectedTab = tab;
                             
                             // 🔥 同步文件树的选择状态
-                            var tabEditor = tab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
-                            if (tabEditor != null && !string.IsNullOrEmpty(existingScript.FilePath))
+                            if (_scriptEditor != null && !string.IsNullOrEmpty(existingScript.FilePath))
                             {
-                                tabEditor.SelectFileInTree(existingScript.FilePath);
+                                _scriptEditor.SelectFileInTree(existingScript.FilePath);
                                 
                                 // 🔥 如果指定了行号，跳转到该行（用于 Go to Definition）
                                 if (e.LineNumber.HasValue && e.LineNumber.Value > 0)
                                 {
-                                    var scintillaField = tabEditor.GetType().GetField("scintilla", 
-                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                    var scintilla = scintillaField?.GetValue(tabEditor) as ScintillaNET.Scintilla;
+                                    var scintilla = _scriptEditor.GetCurrentScintilla();
                                     if (scintilla != null && e.LineNumber.Value > 0 && e.LineNumber.Value <= scintilla.Lines.Count)
                                     {
                                         var line = scintilla.Lines[e.LineNumber.Value - 1];
@@ -1534,7 +1456,7 @@ log('脚本结束')
                         if (currentTab.Tag is ScriptInfo currentScript)
                         {
                             // 更新内存中的内容（保持修改状态）
-                            currentScript.Content = currentEditor.ScriptText;
+                            currentScript.Content = currentEditor.GetCurrentScriptText();
                         }
                     }
 
@@ -1565,30 +1487,37 @@ log('脚本结束')
             tabControlScripts.SelectedIndexChanged += (s, e) =>
             {
                 // 🔥 保存之前 Tab 的编辑内容（如果有修改）
-                if (_previousTab != null)
+                if (_previousTab != null && _scriptEditor != null)
                 {
-                    var previousEditor = _previousTab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
-                    if (previousEditor != null && _previousTab.Tag is ScriptInfo previousScript)
+                    if (_previousTab.Tag is ScriptInfo previousScript)
                     {
-                        // 更新 ScriptInfo 的内容（保持修改状态，不保存到文件）
-                        previousScript.Content = previousEditor.ScriptText;
+                        // 从之前的 Scintilla 获取内容
+                        var previousScintilla = _previousTab.Controls.OfType<ScintillaNET.Scintilla>().FirstOrDefault();
+                        if (previousScintilla != null)
+                        {
+                            // 更新 ScriptInfo 的内容（保持修改状态，不保存到文件）
+                            previousScript.Content = previousScintilla.Text;
+                        }
                     }
                 }
 
                 // 🔥 切换到新 Tab 时，从 ScriptInfo 恢复内容（而不是从文件读取）
-                if (tabControlScripts.SelectedTab != null)
+                if (tabControlScripts.SelectedTab != null && _scriptEditor != null)
                 {
                     var currentTab = tabControlScripts.SelectedTab;
-                    var currentEditor = currentTab.Controls.OfType<ScriptEditorControl>().FirstOrDefault();
-                    if (currentEditor != null && currentTab.Tag is ScriptInfo currentScript)
+                    if (currentTab.Tag is ScriptInfo currentScript)
                     {
-                        // 从 ScriptInfo 恢复内容（保持编辑状态）
-                        currentEditor.ScriptText = currentScript.Content;
+                        // 从 ScriptInfo 恢复内容到当前 Tab 的 Scintilla
+                        var currentScintilla = currentTab.Controls.OfType<ScintillaNET.Scintilla>().FirstOrDefault();
+                        if (currentScintilla != null)
+                        {
+                            currentScintilla.Text = currentScript.Content;
+                        }
                         
                         // 🔥 同步文件树的选择状态：根据当前 Tab 的文件路径，更新文件树的高亮
                         if (!string.IsNullOrEmpty(currentScript.FilePath))
                         {
-                            currentEditor.SelectFileInTree(currentScript.FilePath);
+                            _scriptEditor.SelectFileInTree(currentScript.FilePath);
                         }
                     }
                     
@@ -1650,7 +1579,9 @@ log('脚本结束')
                     var currentEditor = GetCurrentScriptEditor(tabControlScripts);
                     if (currentEditor != null)
                     {
-                        ExecuteScript(currentEditor.ScriptText);
+                        // 🔥 从当前选中的 TabPage 获取脚本内容
+                        var scriptText = currentEditor.GetCurrentScriptText();
+                        ExecuteScript(scriptText);
                     }
                 }
                 catch (Exception ex)
@@ -1775,7 +1706,9 @@ log('脚本结束')
             _config.ScriptDirectory = defaultScriptDir;
             
             // 🔧 如果存在 main.lua，默认打开它（如果之前没有加载）
-            if (tabPageMain.Tag == null)
+            // 🔥 现在 TabControl 在 ScriptEditorControl 内部，使用第一个 TabPage
+            var mainTab = _scriptEditor?.ScriptTabs?.TabPages.Count > 0 ? _scriptEditor.ScriptTabs.TabPages[0] : null;
+            if (mainTab != null && mainTab.Tag == null)
             {
                 var defaultMainLuaPath = System.IO.Path.Combine(defaultScriptDir, "main.lua");
                 if (System.IO.File.Exists(defaultMainLuaPath))
@@ -1794,9 +1727,10 @@ log('脚本结束')
                             Type = ScriptType.Main
                         };
                         
-                        _scriptEditor.ScriptText = mainScript.Content;
-                        tabPageMain.Text = mainScript.DisplayName;
-                        tabPageMain.Tag = mainScript;
+                        // 🔥 设置当前脚本内容
+                        _scriptEditor?.SetCurrentScriptText(mainScript.Content);
+                        mainTab.Text = mainScript.DisplayName;
+                        mainTab.Tag = mainScript;
                     }
                     catch (Exception ex)
                     {
