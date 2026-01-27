@@ -20,6 +20,28 @@ namespace Unit.La.Controls
     /// </summary>
     public partial class BrowserTaskControl : Form
     {
+        /// <summary>
+        /// 日志类型枚举
+        /// </summary>
+        public enum LogType
+        {
+            All,      // 全部
+            System,   // 系统日志（程序内部操作）
+            Error,    // 错误日志
+            Warning,  // 警告日志
+            Script    // 脚本日志（脚本中 log() 输出的）
+        }
+
+        /// <summary>
+        /// 日志条目
+        /// </summary>
+        private class LogEntry
+        {
+            public string Message { get; set; } = string.Empty;
+            public LogType Type { get; set; }
+            public DateTime Timestamp { get; set; }
+        }
+
         private ScriptTaskConfig _config;
         private WebView2? _webView;
         private BrowserConfigPanel? _configPanel;
@@ -35,6 +57,11 @@ namespace Unit.La.Controls
         private Form? _scriptFloatingWindow; // 🔥 脚本浮动窗口
         private ToolStripButton? _btnToggleScriptWindow; // 🔥 切换脚本窗口按钮
         private ConfigService? _configService; // 🔥 配置服务
+        
+        // 🔥 日志过滤相关
+        private readonly List<LogEntry> _allLogs = new(); // 存储所有日志
+        private LogType _currentFilter = LogType.All; // 当前过滤类型
+        private ComboBox? _logFilterComboBox; // 日志过滤下拉框
 
         /// <summary>
         /// 配置变更事件
@@ -1788,32 +1815,201 @@ log('脚本结束')
         }
 
         /// <summary>
-        /// 输出日志
+        /// 输出日志（自动识别类型）
         /// </summary>
         private void LogMessage(string message)
         {
-            var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-            var logEntry = $"[{timestamp}] {message}";
-
-            if (_logTextBox != null)
+            // 🔥 自动识别日志类型
+            LogType logType = LogType.System; // 默认为系统日志
+            
+            // 🔥 优先检查脚本日志标记（脚本中的 log() 函数会添加 [SCRIPT] 标记）
+            if (message.StartsWith("[SCRIPT]"))
             {
-                if (_logTextBox.InvokeRequired)
-                {
-                    _logTextBox.Invoke(new Action(() =>
-                    {
-                        _logTextBox.AppendText(logEntry + Environment.NewLine);
-                        _logTextBox.ScrollToCaret();
-                    }));
-                }
-                else
-                {
-                    _logTextBox.AppendText(logEntry + Environment.NewLine);
-                    _logTextBox.ScrollToCaret();
-                }
+                // 脚本日志（log() 或 log_info() 输出）
+                logType = LogType.Script;
+                // 移除标记，只保留消息内容
+                message = message.Substring(9).TrimStart();
+            }
+            else if (message.StartsWith("[ERROR]"))
+            {
+                // 脚本错误日志（log_error() 输出）
+                logType = LogType.Error;
+                // 移除前缀，只保留消息内容
+                message = message.Substring(7).TrimStart();
+            }
+            else if (message.StartsWith("[WARN]"))
+            {
+                // 脚本警告日志（log_warn() 输出）
+                logType = LogType.Warning;
+                // 移除前缀，只保留消息内容
+                message = message.Substring(6).TrimStart();
+            }
+            // 检查系统错误日志
+            else if (message.Contains("❌") || message.Contains("错误") || message.Contains("失败") || 
+                     message.Contains("异常") || message.Contains("Exception") || message.Contains("Error"))
+            {
+                logType = LogType.Error;
+            }
+            // 检查系统警告日志
+            else if (message.Contains("⚠️") || message.Contains("警告") || message.Contains("Warning"))
+            {
+                logType = LogType.Warning;
+            }
+            // 检查是否是脚本日志（脚本中的 log() 输出，不包含系统标记）
+            else if (!message.Contains("✅") && !message.Contains("📄") && 
+                     !message.Contains("⚙️") && !message.Contains("💾") && !message.Contains("🔄") &&
+                     !message.Contains("▶️") && !message.Contains("⏹️") && !message.Contains("⏳") &&
+                     !message.Contains("🌐") && !message.Contains("📂") && !message.Contains("🔍") &&
+                     !message.Contains("初始化") && !message.Contains("保存") && !message.Contains("加载") &&
+                     !message.Contains("执行") && !message.Contains("停止") && !message.Contains("切换到"))
+            {
+                // 可能是脚本日志
+                logType = LogType.Script;
+            }
+            else
+            {
+                // 系统日志（包含系统操作标记）
+                logType = LogType.System;
+            }
+            
+            LogMessage(message, logType);
+        }
+
+        /// <summary>
+        /// 输出日志（指定类型）
+        /// </summary>
+        private void LogMessage(string message, LogType type)
+        {
+            var timestamp = DateTime.Now;
+            var timestampStr = timestamp.ToString("HH:mm:ss.fff");
+            var logEntry = new LogEntry
+            {
+                Message = message,
+                Type = type,
+                Timestamp = timestamp
+            };
+            
+            // 存储到日志列表
+            _allLogs.Add(logEntry);
+            
+            // 限制日志数量（保留最近5000条）
+            if (_allLogs.Count > 5000)
+            {
+                _allLogs.RemoveRange(0, _allLogs.Count - 5000);
             }
 
+            // 格式化日志文本
+            var logText = $"[{timestampStr}] {message}";
+
             // 调用自定义日志处理器
-            _customLogHandler?.Invoke(logEntry);
+            _customLogHandler?.Invoke(logText);
+
+            // 根据当前过滤条件决定是否显示
+            if (ShouldDisplayLog(type))
+            {
+                AppendLogToTextBox(logText, type);
+            }
+        }
+
+        /// <summary>
+        /// 判断是否应该显示该日志
+        /// </summary>
+        private bool ShouldDisplayLog(LogType type)
+        {
+            if (_currentFilter == LogType.All)
+                return true;
+            return _currentFilter == type;
+        }
+
+        /// <summary>
+        /// 添加日志到文本框（带颜色）
+        /// </summary>
+        private void AppendLogToTextBox(string logText, LogType type)
+        {
+            if (_logTextBox == null) return;
+
+            var appendAction = new Action(() =>
+            {
+                // 根据类型设置颜色
+                Color textColor = Color.White; // 默认白色
+                switch (type)
+                {
+                    case LogType.Error:
+                        textColor = Color.FromArgb(255, 100, 100); // 红色
+                        break;
+                    case LogType.Warning:
+                        textColor = Color.FromArgb(255, 200, 100); // 橙色
+                        break;
+                    case LogType.Script:
+                        textColor = Color.FromArgb(150, 200, 255); // 浅蓝色
+                        break;
+                    case LogType.System:
+                        textColor = Color.White; // 白色
+                        break;
+                }
+
+                _logTextBox.SelectionStart = _logTextBox.TextLength;
+                _logTextBox.SelectionLength = 0;
+                _logTextBox.SelectionColor = textColor;
+                _logTextBox.AppendText(logText + Environment.NewLine);
+                _logTextBox.SelectionColor = _logTextBox.ForeColor; // 恢复默认颜色
+                _logTextBox.ScrollToCaret();
+            });
+
+            if (_logTextBox.InvokeRequired)
+            {
+                _logTextBox.Invoke(appendAction);
+            }
+            else
+            {
+                appendAction();
+            }
+        }
+
+        /// <summary>
+        /// 日志过滤下拉框选择改变事件
+        /// </summary>
+        private void LogFilterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (_logFilterComboBox == null) return;
+
+            // 更新过滤类型
+            _currentFilter = (LogType)_logFilterComboBox.SelectedIndex;
+
+            // 重新显示日志
+            RefreshLogDisplay();
+        }
+
+        /// <summary>
+        /// 刷新日志显示（根据当前过滤条件）
+        /// </summary>
+        private void RefreshLogDisplay()
+        {
+            if (_logTextBox == null) return;
+
+            var refreshAction = new Action(() =>
+            {
+                _logTextBox.Clear();
+
+                foreach (var log in _allLogs)
+                {
+                    if (ShouldDisplayLog(log.Type))
+                    {
+                        var timestampStr = log.Timestamp.ToString("HH:mm:ss.fff");
+                        var logText = $"[{timestampStr}] {log.Message}";
+                        AppendLogToTextBox(logText, log.Type);
+                    }
+                }
+            });
+
+            if (_logTextBox.InvokeRequired)
+            {
+                _logTextBox.Invoke(refreshAction);
+            }
+            else
+            {
+                refreshAction();
+            }
         }
 
         /// <summary>
@@ -2011,7 +2207,11 @@ log('脚本结束')
             }
         }
 
-        private void OnClearLog(object? sender, EventArgs e) => _logTextBox?.Clear();
+        private void OnClearLog(object? sender, EventArgs e)
+        {
+            _allLogs.Clear();
+            _logTextBox?.Clear();
+        }
 
         private void OnDockRight(object? sender, EventArgs e) => SetDockPosition(DockPosition.Right);
 
@@ -2192,8 +2392,8 @@ log('脚本结束')
             _scriptFloatingWindow = new Form
             {
                 Text = "📝 脚本编辑器",
-                Width = 1000,
-                Height = 700,
+                Width = 900,  // 🔥 可调整：窗口初始宽度
+                Height = 1200,   // 🔥 可调整：窗口初始高度
                 StartPosition = FormStartPosition.CenterScreen,
                 FormBorderStyle = FormBorderStyle.Sizable,
                 ShowInTaskbar = false, // 不在任务栏显示

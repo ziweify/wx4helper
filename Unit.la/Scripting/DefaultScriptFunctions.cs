@@ -80,34 +80,36 @@ namespace Unit.La.Scripting
         #region 日志函数
 
         /// <summary>
-        /// 输出日志
+        /// 输出日志（脚本中的 log() 函数）
         /// </summary>
         public static void Log(string message)
         {
-            var msg = $"[LOG] {message}";
+            // 🔥 添加 [SCRIPT] 标记，用于识别脚本日志
+            var msg = $"[SCRIPT] {message}";
             Console.WriteLine(msg);
-            _logCallback?.Invoke(msg);
+            _logCallback?.Invoke(msg); // 🔥 传递带标记的消息
         }
 
         public static void LogInfo(string message)
         {
-            var msg = $"[INFO] {message}";
+            // 🔥 添加 [SCRIPT] 标记，用于识别脚本日志
+            var msg = $"[SCRIPT] {message}";
             Console.WriteLine(msg);
-            _logCallback?.Invoke(msg);
+            _logCallback?.Invoke(msg); // 🔥 传递带标记的消息
         }
 
         public static void LogWarn(string message)
         {
             var msg = $"[WARN] {message}";
             Console.WriteLine(msg);
-            _logCallback?.Invoke(msg);
+            _logCallback?.Invoke($"[WARN] {message}"); // 🔥 保留前缀，用于识别警告类型
         }
 
         public static void LogError(string message)
         {
             var msg = $"[ERROR] {message}";
             Console.WriteLine(msg);
-            _logCallback?.Invoke(msg);
+            _logCallback?.Invoke($"[ERROR] {message}"); // 🔥 保留前缀，用于识别错误类型
         }
 
         #endregion

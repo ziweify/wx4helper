@@ -62,6 +62,13 @@ namespace Unit.La.Controls
         private Dictionary<string, List<FunctionDefinition>>? _functionDefinitions;
         private string? _scriptDirectory; // 脚本目录（用于查找 functions.lua）
         
+        // 🔥 鼠标悬停和双击高亮相关
+        private int _currentHoverStart = -1; // 当前悬停单词的起始位置
+        private int _currentHoverLength = 0; // 当前悬停单词的长度
+        private string? _currentSelectedWord; // 当前双击选中的单词（用于匹配高亮）
+        private const int HOVER_INDICATOR = 3; // Indicator 3 用于悬停下划线
+        private const int MATCH_INDICATOR = 4; // Indicator 4 用于匹配高亮
+        
         /// <summary>
         /// 导航点（用于前进/后退）
         /// </summary>
@@ -307,6 +314,15 @@ namespace Unit.La.Controls
             
             // 🔥 处理鼠标事件（Go to Definition：Ctrl+鼠标左键）
             scintilla.MouseDown += Scintilla_MouseDown;
+            
+            // 🔥 处理鼠标移动事件（悬停下划线）
+            scintilla.MouseMove += Scintilla_MouseMove;
+            
+            // 🔥 处理鼠标离开事件（清除悬停下划线）
+            scintilla.MouseLeave += Scintilla_MouseLeave;
+            
+            // 🔥 处理双击事件（高亮匹配单词）
+            scintilla.DoubleClick += Scintilla_DoubleClick;
             
             // 🔥 监听文本变化，更新函数定义缓存和函数高亮
             scintilla.TextChanged += (s, e) => 
@@ -708,6 +724,19 @@ namespace Unit.La.Controls
                     {
                         // 如果文本变短了，将光标移到末尾
                         scintilla.CurrentPosition = scintilla.TextLength;
+                    }
+                    
+                    // 🔥 更新函数定义缓存和高亮（当脚本文本被设置时）
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(new Action(() =>
+                        {
+                            if (scintilla != null && !scintilla.IsDisposed && !IsDisposed)
+                            {
+                                UpdateFunctionDefinitions();
+                                HighlightLibraryFunctions();
+                            }
+                        }));
                     }
                     
                     ValidateScript(); // 自动验证
@@ -1695,41 +1724,27 @@ namespace Unit.La.Controls
             // 检查是否按下了 Ctrl 键
             if (Control.ModifierKeys == Keys.Control)
             {
-                // 获取鼠标点击位置的字符位置
-                // 使用当前光标位置作为替代（因为 ScintillaNET 可能没有 PositionFromPoint）
-                var position = scintilla.CurrentPosition;
-                // 尝试使用 CharPositionFromPoint，如果不存在则使用当前光标位置
-                try
+                // 🔥 延迟获取位置，确保鼠标点击已经完成，光标已经移动到正确位置
+                BeginInvoke(new Action(() =>
                 {
-                    var point = scintilla.PointToClient(new Point(e.X, e.Y));
-                    var pos = scintilla.GetType().GetMethod("CharPositionFromPoint", new[] { typeof(int), typeof(int) });
-                    if (pos != null)
+                    if (scintilla == null || scintilla.IsDisposed || IsDisposed) return;
+
+                    // 使用当前光标位置（鼠标点击后，光标已经移动到点击位置）
+                    var position = scintilla.CurrentPosition;
+                    
+                    if (position < 0) return;
+
+                    // 保存当前导航点
+                    SaveNavigationPoint();
+
+                    // 获取当前位置的单词（函数名）
+                    var word = GetWordAtPosition(position);
+                    if (!string.IsNullOrEmpty(word))
                     {
-                        var result = pos.Invoke(scintilla, new object[] { point.X, point.Y });
-                        if (result is int posValue && posValue >= 0)
-                        {
-                            position = posValue;
-                        }
+                        // 尝试跳转到函数定义
+                        GoToDefinition(word, position);
                     }
-                }
-                catch
-                {
-                    // 如果方法不存在，使用当前光标位置
-                    position = scintilla.CurrentPosition;
-                }
-                
-                if (position < 0) return;
-
-                // 保存当前导航点
-                SaveNavigationPoint();
-
-                // 获取当前位置的单词（函数名）
-                var word = GetWordAtPosition(position);
-                if (!string.IsNullOrEmpty(word))
-                {
-                    // 尝试跳转到函数定义
-                    GoToDefinition(word, position);
-                }
+                }));
             }
         }
 
@@ -1776,6 +1791,257 @@ namespace Unit.La.Controls
         }
 
         /// <summary>
+        /// 鼠标移动事件处理：检测悬停的函数并显示下划线（仅在按住 Ctrl 时）
+        /// </summary>
+        private void Scintilla_MouseMove(object? sender, MouseEventArgs e)
+        {
+            if (scintilla == null) return;
+
+            // 🔥 只有在按住 Ctrl 键时才显示下划线
+            if (Control.ModifierKeys != Keys.Control)
+            {
+                ClearHoverIndicator();
+                return;
+            }
+
+            try
+            {
+                // 将鼠标坐标转换为控件内的坐标
+                var clientPoint = scintilla.PointToClient(new Point(e.X, e.Y));
+                
+                // 计算鼠标所在的行（基于行高）
+                int line = -1;
+                int lineHeight = scintilla.Lines[0].Height;
+                if (lineHeight > 0)
+                {
+                    // 减去上边距和行号边距
+                    var yOffset = clientPoint.Y - scintilla.Margins[0].Width;
+                    if (yOffset >= 0)
+                    {
+                        line = yOffset / lineHeight;
+                    }
+                }
+                
+                if (line < 0 || line >= scintilla.Lines.Count)
+                {
+                    ClearHoverIndicator();
+                    return;
+                }
+
+                var lineStart = scintilla.Lines[line].Position;
+                var lineEnd = scintilla.Lines[line].EndPosition;
+                
+                // 计算鼠标所在的列（基于字符宽度）
+                int column = 0;
+                var charWidth = scintilla.TextWidth((int)ScintillaNET.Style.Default, "M");
+                if (charWidth > 0)
+                {
+                    // 减去左边距
+                    var xOffset = clientPoint.X - scintilla.Margins[0].Width - scintilla.Margins[1].Width;
+                    if (xOffset > 0)
+                    {
+                        column = xOffset / charWidth;
+                    }
+                }
+                
+                var position = Math.Min(lineStart + column, lineEnd - 1);
+                
+                if (position < 0 || position >= scintilla.TextLength)
+                {
+                    ClearHoverIndicator();
+                    return;
+                }
+
+                // 获取当前位置的单词
+                var word = GetWordAtPosition(position);
+                if (string.IsNullOrEmpty(word))
+                {
+                    ClearHoverIndicator();
+                    return;
+                }
+
+                // 🔥 检查是否是函数（可以定位到定义）
+                if (IsFunction(word))
+                {
+                    // 获取单词的位置范围
+                    var (wordStart, wordLength) = GetWordRangeAtPosition(position);
+                    
+                    // 如果和当前悬停的单词不同，更新下划线
+                    if (wordStart != _currentHoverStart || wordLength != _currentHoverLength)
+                    {
+                        ClearHoverIndicator();
+                        _currentHoverStart = wordStart;
+                        _currentHoverLength = wordLength;
+                        
+                        // 显示下划线
+                        scintilla.IndicatorCurrent = HOVER_INDICATOR;
+                        scintilla.IndicatorFillRange(wordStart, wordLength);
+                    }
+                }
+                else
+                {
+                    ClearHoverIndicator();
+                }
+            }
+            catch
+            {
+                // 忽略错误（鼠标位置可能无效）
+                ClearHoverIndicator();
+            }
+        }
+
+        /// <summary>
+        /// 鼠标离开事件处理：清除悬停下划线
+        /// </summary>
+        private void Scintilla_MouseLeave(object? sender, EventArgs e)
+        {
+            ClearHoverIndicator();
+        }
+
+        /// <summary>
+        /// 双击事件处理：高亮所有匹配的单词
+        /// </summary>
+        private void Scintilla_DoubleClick(object? sender, EventArgs e)
+        {
+            if (scintilla == null) return;
+
+            try
+            {
+                var position = scintilla.CurrentPosition;
+                if (position < 0 || position >= scintilla.TextLength) return;
+
+                // 获取双击的单词
+                var word = GetWordAtPosition(position);
+                if (string.IsNullOrEmpty(word))
+                {
+                    ClearMatchHighlight();
+                    return;
+                }
+
+                // 如果和当前选中的单词相同，清除高亮
+                if (_currentSelectedWord == word)
+                {
+                    ClearMatchHighlight();
+                    return;
+                }
+
+                // 高亮所有匹配的单词
+                HighlightMatchingWords(word);
+            }
+            catch
+            {
+                // 忽略错误
+            }
+        }
+
+        /// <summary>
+        /// 清除悬停下划线
+        /// </summary>
+        private void ClearHoverIndicator()
+        {
+            if (scintilla == null) return;
+
+            if (_currentHoverStart >= 0 && _currentHoverLength > 0)
+            {
+                scintilla.IndicatorClearRange(_currentHoverStart, _currentHoverLength);
+                _currentHoverStart = -1;
+                _currentHoverLength = 0;
+            }
+        }
+
+        /// <summary>
+        /// 清除匹配高亮
+        /// </summary>
+        private void ClearMatchHighlight()
+        {
+            if (scintilla == null) return;
+
+            // 清除所有匹配高亮指示器（先设置当前指示器，然后清除）
+            scintilla.IndicatorCurrent = MATCH_INDICATOR;
+            scintilla.IndicatorClearRange(0, scintilla.TextLength);
+            _currentSelectedWord = null;
+        }
+
+        /// <summary>
+        /// 检查单词是否是函数（可以定位到定义）
+        /// </summary>
+        private bool IsFunction(string word)
+        {
+            if (string.IsNullOrEmpty(word) || _functionDefinitions == null) return false;
+
+            // 检查是否在函数定义缓存中
+            foreach (var kvp in _functionDefinitions)
+            {
+                if (kvp.Value.Any(f => string.Equals(f.Name, word, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取指定位置的单词范围（起始位置和长度）
+        /// </summary>
+        private (int start, int length) GetWordRangeAtPosition(int position)
+        {
+            if (scintilla == null || position < 0 || position >= scintilla.TextLength)
+                return (-1, 0);
+
+            var line = scintilla.LineFromPosition(position);
+            var lineStart = scintilla.Lines[line].Position;
+            var lineEnd = scintilla.Lines[line].EndPosition;
+            var lineText = scintilla.GetTextRange(lineStart, lineEnd - lineStart);
+            var column = position - lineStart;
+
+            // 查找单词边界
+            var start = column;
+            var end = column;
+
+            // 向前查找单词开始
+            while (start > 0 && IsWordChar(lineText[start - 1]))
+                start--;
+
+            // 向后查找单词结束
+            while (end < lineText.Length && IsWordChar(lineText[end]))
+                end++;
+
+            if (start < end)
+            {
+                return (lineStart + start, end - start);
+            }
+
+            return (-1, 0);
+        }
+
+        /// <summary>
+        /// 高亮所有匹配的单词
+        /// </summary>
+        private void HighlightMatchingWords(string word)
+        {
+            if (scintilla == null || string.IsNullOrEmpty(word)) return;
+
+            // 清除之前的高亮
+            ClearMatchHighlight();
+
+            // 保存当前选中的单词
+            _currentSelectedWord = word;
+
+            // 使用正则表达式查找所有匹配的单词（完整单词匹配）
+            var pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(word) + @"\b";
+            var text = scintilla.Text;
+            var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern);
+
+            // 高亮所有匹配
+            scintilla.IndicatorCurrent = MATCH_INDICATOR;
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                scintilla.IndicatorFillRange(match.Index, match.Length);
+            }
+        }
+
+        /// <summary>
         /// 从位置获取列号
         /// </summary>
         private int GetColumnFromPosition(int position)
@@ -1796,36 +2062,74 @@ namespace Unit.La.Controls
         /// </summary>
         private void GoToDefinition(string functionName, int currentPosition)
         {
-            if (string.IsNullOrEmpty(functionName) || _functionDefinitions == null)
+            if (string.IsNullOrEmpty(functionName))
+            {
+                System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 函数名为空");
                 return;
+            }
 
-            // 查找函数定义
+            // 🔥 如果缓存为空，先更新
+            if (_functionDefinitions == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 函数定义缓存为空，尝试更新...");
+                UpdateFunctionDefinitions();
+            }
+
+            if (_functionDefinitions == null || _functionDefinitions.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 函数定义缓存仍为空");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 查找函数: {functionName}");
+            System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 缓存中的文件数: {_functionDefinitions.Count}");
+
+            // 查找函数定义（不区分大小写）
+            FunctionDefinition? foundFunc = null;
             foreach (var kvp in _functionDefinitions)
             {
-                var funcDef = kvp.Value.FirstOrDefault(f => f.Name == functionName);
+                System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 检查文件: {kvp.Key}, 函数数: {kvp.Value.Count}");
+                foreach (var func in kvp.Value)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[GoToDefinition]   函数: {func.Name}");
+                }
+                
+                var funcDef = kvp.Value.FirstOrDefault(f => 
+                    string.Equals(f.Name, functionName, StringComparison.OrdinalIgnoreCase));
                 if (funcDef != null)
                 {
-                    // 如果函数在当前文件中，直接跳转
-                    if (string.IsNullOrEmpty(funcDef.FilePath) || funcDef.FilePath == "current")
-                    {
-                        if (scintilla != null)
-                        {
-                            var line = scintilla.Lines[funcDef.LineNumber - 1];
-                            if (line != null)
-                            {
-                                line.Goto();
-                                line.EnsureVisible();
-                                scintilla.Focus();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // 如果函数在其他文件中（如 functions.lua），触发文件打开事件，并传递行号
-                        FileOpenRequested?.Invoke(this, new FileOpenEventArgs(funcDef.FilePath, funcDef.LineNumber));
-                    }
-                    return;
+                    foundFunc = funcDef;
+                    System.Diagnostics.Debug.WriteLine($"[GoToDefinition] ✅ 找到函数定义: {funcDef.Name} 在 {funcDef.FilePath}:{funcDef.LineNumber}");
+                    break;
                 }
+            }
+
+            if (foundFunc == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GoToDefinition] ❌ 未找到函数定义: {functionName}");
+                return;
+            }
+
+            // 如果函数在当前文件中，直接跳转
+            if (string.IsNullOrEmpty(foundFunc.FilePath) || foundFunc.FilePath == "current")
+            {
+                if (scintilla != null)
+                {
+                    var line = scintilla.Lines[foundFunc.LineNumber - 1];
+                    if (line != null)
+                    {
+                        line.Goto();
+                        line.EnsureVisible();
+                        scintilla.Focus();
+                        System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 跳转到当前文件第 {foundFunc.LineNumber} 行");
+                    }
+                }
+            }
+            else
+            {
+                // 如果函数在其他文件中（如 functions.lua），触发文件打开事件，并传递行号
+                System.Diagnostics.Debug.WriteLine($"[GoToDefinition] 🔥 触发文件打开事件: {foundFunc.FilePath}, 行号: {foundFunc.LineNumber}");
+                FileOpenRequested?.Invoke(this, new FileOpenEventArgs(foundFunc.FilePath, foundFunc.LineNumber));
             }
         }
 
@@ -1840,12 +2144,16 @@ namespace Unit.La.Controls
             if (!string.IsNullOrEmpty(_scriptDirectory))
             {
                 var functionsPath = System.IO.Path.Combine(_scriptDirectory, "functions.lua");
+                System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 检查 functions.lua: {functionsPath}, 存在: {System.IO.File.Exists(functionsPath)}");
+                
                 if (System.IO.File.Exists(functionsPath))
                 {
                     try
                     {
                         var functionsCode = System.IO.File.ReadAllText(functionsPath, System.Text.Encoding.UTF8);
                         var functions = LuaFunctionParser.ParseFunctions(functionsCode);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 从 functions.lua 解析到 {functions.Count} 个函数");
                         
                         if (!_functionDefinitions.ContainsKey(functionsPath))
                         {
@@ -1861,11 +2169,12 @@ namespace Unit.La.Controls
                                 LineNumber = func.LineNumber,
                                 ColumnNumber = func.ColumnNumber
                             });
+                            System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 添加函数: {func.Name} 在 {functionsPath}:{func.LineNumber}");
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // 忽略错误
+                        System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 加载 functions.lua 失败: {ex.Message}");
                     }
                 }
             }
@@ -1875,6 +2184,8 @@ namespace Unit.La.Controls
             {
                 var currentFunctions = LuaFunctionParser.ParseFunctions(scintilla.Text);
                 var currentFilePath = "current";
+                
+                System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 从当前文件解析到 {currentFunctions.Count} 个函数");
                 
                 if (!_functionDefinitions.ContainsKey(currentFilePath))
                 {
@@ -1890,8 +2201,11 @@ namespace Unit.La.Controls
                         LineNumber = func.LineNumber,
                         ColumnNumber = func.ColumnNumber
                     });
+                    System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 添加当前文件函数: {func.Name} 在第 {func.LineNumber} 行");
                 }
             }
+            
+            System.Diagnostics.Debug.WriteLine($"[UpdateFunctionDefinitions] 函数定义缓存更新完成，共 {_functionDefinitions.Count} 个文件");
         }
 
         /// <summary>
@@ -1899,8 +2213,23 @@ namespace Unit.La.Controls
         /// </summary>
         private void HighlightLibraryFunctions()
         {
-            if (scintilla == null || _functionDefinitions == null || string.IsNullOrEmpty(scintilla.Text))
+            if (scintilla == null || string.IsNullOrEmpty(scintilla.Text))
+            {
+                System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] scintilla 为空或文本为空");
                 return;
+            }
+
+            if (_functionDefinitions == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 函数定义缓存为空，尝试更新...");
+                UpdateFunctionDefinitions();
+            }
+
+            if (_functionDefinitions == null || _functionDefinitions.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 函数定义缓存仍为空");
+                return;
+            }
 
             // 获取所有函数库中的函数名
             var libraryFunctionNames = new HashSet<string>();
@@ -1912,12 +2241,18 @@ namespace Unit.La.Controls
                     foreach (var func in kvp.Value)
                     {
                         libraryFunctionNames.Add(func.Name);
+                        System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 添加函数到高亮列表: {func.Name}");
                     }
                 }
             }
 
+            System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 需要高亮的函数数: {libraryFunctionNames.Count}");
+
             if (libraryFunctionNames.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 没有函数需要高亮");
                 return;
+            }
 
             // 使用 Indicator 高亮函数调用
             // Indicator 2 用于函数库函数高亮
@@ -1928,17 +2263,34 @@ namespace Unit.La.Controls
             scintilla.Indicators[FUNCTION_INDICATOR].ForeColor = Color.FromArgb(0, 120, 215); // 蓝色（浅色主题下的函数调用颜色）
             scintilla.Indicators[FUNCTION_INDICATOR].Alpha = 100;
             scintilla.Indicators[FUNCTION_INDICATOR].OutlineAlpha = 255;
+            
+            // 🔥 配置悬停下划线指示器（Indicator 3）
+            scintilla.Indicators[HOVER_INDICATOR].Style = IndicatorStyle.Squiggle;
+            scintilla.Indicators[HOVER_INDICATOR].ForeColor = Color.FromArgb(0, 120, 215); // 蓝色下划线
+            scintilla.Indicators[HOVER_INDICATOR].Alpha = 255;
+            scintilla.Indicators[HOVER_INDICATOR].OutlineAlpha = 255;
+            
+            // 🔥 配置匹配高亮指示器（Indicator 4）- 使用背景色高亮（类似 VS）
+            scintilla.Indicators[MATCH_INDICATOR].Style = IndicatorStyle.RoundBox; // RoundBox 显示背景色
+            scintilla.Indicators[MATCH_INDICATOR].ForeColor = Color.FromArgb(255, 235, 59); // 黄色背景（浅色主题，类似 VS）
+            scintilla.Indicators[MATCH_INDICATOR].Alpha = 150; // 半透明背景
+            scintilla.Indicators[MATCH_INDICATOR].OutlineAlpha = 255;
+            scintilla.Indicators[MATCH_INDICATOR].Under = false; // 不使用下划线，使用背景色
 
-            // 清除所有指示器
+            // 清除函数库函数高亮指示器（但保留悬停下划线和匹配高亮）
+            scintilla.IndicatorCurrent = FUNCTION_INDICATOR;
             scintilla.IndicatorClearRange(0, scintilla.TextLength);
 
             // 查找并高亮所有函数库函数调用
             var text = scintilla.Text;
+            int highlightCount = 0;
             foreach (var functionName in libraryFunctionNames)
             {
                 // 使用正则表达式查找函数调用（避免匹配函数定义）
                 var pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(functionName) + @"\s*\(";
                 var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern);
+                
+                System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 函数 {functionName} 找到 {matches.Count} 个匹配");
                 
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
@@ -1949,9 +2301,13 @@ namespace Unit.La.Controls
                         // 这是函数调用，不是定义，进行高亮
                         scintilla.IndicatorCurrent = FUNCTION_INDICATOR;
                         scintilla.IndicatorFillRange(match.Index, match.Length);
+                        highlightCount++;
+                        System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 高亮函数调用: {functionName} 在位置 {match.Index}");
                     }
                 }
             }
+            
+            System.Diagnostics.Debug.WriteLine($"[HighlightLibraryFunctions] 高亮完成，共高亮 {highlightCount} 处");
         }
 
         /// <summary>
