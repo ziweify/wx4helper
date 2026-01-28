@@ -1946,9 +1946,15 @@ log('脚本结束')
                 // 🔥 记录日志
                 LogMessage($"📡 拦截响应: {args.Url} (状态码: {args.StatusCode})");
 
-                // 🔥 TODO: 路由到 Lua 脚本的响应拦截处理器
-                // 这里暂时只记录日志，等 Lua API 实现后再添加路由逻辑
-                // _scriptEditor?.ScriptEngine?.InvokeResponseHandler(args);
+                // 🔥 路由到 Lua 脚本的响应拦截处理器
+                try
+                {
+                    WebBridge.InvokeResponseHandler(args);
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"⚠️ 响应处理器执行失败: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {

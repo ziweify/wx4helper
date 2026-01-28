@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using MoonSharp.Interpreter;
+using Unit.La.Services;
 
 namespace Unit.La.Scripting
 {
@@ -1251,6 +1252,70 @@ namespace Unit.La.Scripting
             {
                 return new List<string>();
             }
+        }
+
+        #endregion
+
+        #region 响应拦截相关
+
+        private static Action<object>? _responseHandler;
+
+        /// <summary>
+        /// 注册响应处理器
+        /// 用法: OnResponse(function(response)
+        ///     log('响应URL: ' .. response.url)
+        ///     log('状态码: ' .. response.statusCode)
+        ///     log('内容: ' .. response.context)
+        /// end)
+        /// </summary>
+        public static void OnResponse(DynValue handlerFunc)
+        {
+            if (handlerFunc == null || handlerFunc.Type != DataType.Function)
+            {
+                throw new ArgumentException("OnResponse 的参数必须是函数");
+            }
+
+            // 获取脚本引擎
+            var script = handlerFunc.Function.OwnerScript;
+            if (script == null)
+            {
+                throw new InvalidOperationException("无法获取脚本引擎实例");
+            }
+
+            // 注册响应处理器
+            _responseHandler = (responseObj) =>
+            {
+                try
+                {
+                    // 将响应对象转换为 Lua Table
+                    var responseTable = DynValue.NewTable(script);
+                    if (responseObj is Services.ResponseEventArgs responseArgs)
+                    {
+                        responseTable.Table["url"] = DynValue.NewString(responseArgs.Url ?? "");
+                        responseTable.Table["statusCode"] = DynValue.NewNumber(responseArgs.StatusCode);
+                        responseTable.Table["context"] = DynValue.NewString(responseArgs.Context ?? "");
+                        responseTable.Table["postData"] = DynValue.NewString(responseArgs.PostData ?? "");
+                        responseTable.Table["contentType"] = DynValue.NewString(responseArgs.ContentType ?? "");
+                        responseTable.Table["referrerUrl"] = DynValue.NewString(responseArgs.ReferrerUrl ?? "");
+                    }
+
+                    // 调用 Lua 函数
+                    script.Call(handlerFunc, responseTable);
+                }
+                catch (Exception ex)
+                {
+                    // 记录错误，但不抛出异常（避免影响响应处理流程）
+                    System.Diagnostics.Debug.WriteLine($"响应处理器执行错误: {ex.Message}");
+                }
+            };
+        }
+
+        /// <summary>
+        /// 触发响应处理器（由 C# 代码调用）
+        /// </summary>
+        public static void InvokeResponseHandler(Services.ResponseEventArgs args)
+        {
+            _responseHandler?.Invoke(args);
         }
 
         #endregion

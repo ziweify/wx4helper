@@ -7,6 +7,63 @@ require("functions")
 
 log('🚀 主脚本开始执行')
 
+-- ==============================
+-- 🔥 浏览器请求响应拦截示例
+-- ==============================
+-- 注册响应处理器，拦截所有 HTTP 响应
+OnResponse(function(response)
+    -- response 对象包含以下字段：
+    --   url: 请求URL
+    --   statusCode: HTTP状态码（200, 404, 500等）
+    --   context: 响应内容（JSON、HTML等）
+    --   postData: POST请求的数据（如果有）
+    --   contentType: 响应内容类型（application/json, text/html等）
+    --   referrerUrl: 来源URL
+    
+    -- 示例1: 记录所有响应
+    log('📡 收到响应: ' .. response.url)
+    log('   状态码: ' .. tostring(response.statusCode))
+    log('   内容类型: ' .. response.contentType)
+    
+    -- 示例2: 只处理特定URL的响应
+    if string.find(response.url, '/api/') then
+        log('🔍 检测到API响应: ' .. response.url)
+        log('   响应内容: ' .. string.sub(response.context, 1, 200)) -- 只显示前200个字符
+        
+        -- 可以在这里解析JSON、提取数据等
+        -- local jsonData = parse_json(response.context)
+        -- if jsonData then
+        --     log('   解析后的数据: ' .. to_json(jsonData))
+        -- end
+    end
+    
+    -- 示例3: 处理登录相关的响应
+    if string.find(response.url, '/login') or string.find(response.url, '/auth') then
+        log('🔐 检测到登录相关响应')
+        if response.statusCode == 200 then
+            log('   ✅ 登录可能成功')
+            -- 可以在这里检查响应内容，确认登录是否成功
+            if string.find(response.context, 'success') or string.find(response.context, 'token') then
+                log('   ✅ 登录确认成功')
+            end
+        elseif response.statusCode == 401 or response.statusCode == 403 then
+            log('   ❌ 登录失败: 认证错误')
+        end
+    end
+    
+    -- 示例4: 处理错误响应
+    if response.statusCode >= 400 then
+        log('⚠️ 检测到错误响应: ' .. response.url)
+        log('   状态码: ' .. tostring(response.statusCode))
+        log('   错误内容: ' .. string.sub(response.context, 1, 200))
+    end
+    
+    -- 示例5: 记录POST请求数据
+    if string.len(response.postData) > 0 then
+        log('📤 POST数据: ' .. string.sub(response.postData, 1, 200))
+    end
+end)
+
 function main()
      local username = config.username or 'username'
      local password = config.password or 'password'

@@ -80,6 +80,9 @@ namespace Unit.La.Scripting
             engine.BindFunction("string_contains", new Func<string, string, bool>(StringContains));
             engine.BindFunction("string_replace", new Func<string, string, string, string>(StringReplace));
             engine.BindFunction("string_split", new Func<string, string, string[]>(StringSplit));
+
+            // 🔥 响应拦截函数（使用 PascalCase 风格）
+            engine.BindFunction("OnResponse", new Action<MoonSharp.Interpreter.DynValue>(ResponseOn));
         }
 
         #region 日志函数
@@ -400,6 +403,22 @@ namespace Unit.La.Scripting
         public static string[] StringSplit(string str, string separator)
         {
             return str.Split(new[] { separator }, StringSplitOptions.None);
+        }
+
+        #endregion
+
+        #region 响应拦截函数
+
+        /// <summary>
+        /// 注册响应处理器
+        /// 用法: OnResponse(function(response)
+        ///     log('响应URL: ' .. response.url)
+        ///     log('状态码: ' .. response.statusCode)
+        /// end)
+        /// </summary>
+        public static void ResponseOn(MoonSharp.Interpreter.DynValue handlerFunc)
+        {
+            WebBridge.OnResponse(handlerFunc);
         }
 
         #endregion

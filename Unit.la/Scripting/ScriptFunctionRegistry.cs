@@ -144,6 +144,10 @@ namespace Unit.La.Scripting
                 "替换字符串", "local s = string_replace('hello', 'l', 'L')", "字符串");
             RegisterFunction("string_split", new Func<string, string, string[]>(DefaultScriptFunctions.StringSplit), 
                 "分割字符串", "local arr = string_split('a,b,c', ',')", "字符串");
+
+            // 🔥 响应拦截函数（使用 PascalCase 风格）
+            RegisterFunction("OnResponse", new Action<MoonSharp.Interpreter.DynValue>(DefaultScriptFunctions.ResponseOn), 
+                "注册响应处理器", "OnResponse(function(response) log('URL: ' .. response.url) end)", "网络");
             
             // 🌐 注册 WebView2 桥接对象（使用动态引用）
             if (webViewProvider != null)
