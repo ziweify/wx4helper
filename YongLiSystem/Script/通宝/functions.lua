@@ -80,21 +80,17 @@ function login(username, password, url)
         
         -- 等待验证码输入（最多等待30秒）
         log('⏳ 等待验证码输入...')
-        elapsedTime = 0
-        while elapsedTime < maxWaitTime do
-            imgcodeValue = web.GetValue(elImgcode) or ''
-            if string.len(imgcodeValue) == 4 then
-                log('✅ 验证码已输入: ' .. imgcodeValue)
-                break
+        imgcodeValue = web.GetValue(elImgcode) or ''
+        if string.len(imgcodeValue) == 4 then
+             -- 点击登录按钮
+            log('🖱️ 点击登录按钮')
+            local loginBtn = 'li.huiyuan > span'
+            if web.Exists(loginBtn) then
+                web.Click(loginBtn)
+                log('✅ 登录按钮已点击')
+            else
+                log('❌ 未找到登录按钮: ' .. loginBtn)
             end
-            sleep(waitInterval)
-            elapsedTime = elapsedTime + waitInterval
-        end
-        
-        if string.len(imgcodeValue) ~= 4 then
-            log('⚠️ 验证码输入超时，继续等待...')
-            sleep(1000)
-            goto continue
         end
         
         -- 检查并写入用户名和密码（有相等判断，不会重复输入）
@@ -117,20 +113,8 @@ function login(username, password, url)
             log('✓ 密码已正确')
         end
         
-        -- 点击登录按钮
-        log('🖱️ 点击登录按钮')
-        local loginBtn = 'li.huiyuan > span'
-        if web.Exists(loginBtn) then
-            web.Click(loginBtn)
-            log('✅ 登录按钮已点击')
-        else
-            log('❌ 未找到登录按钮: ' .. loginBtn)
-        end
-        
         -- 等待登录结果
         sleep(2000)
-        
-        ::continue::
     end
     
     log('🎉 登录流程完成')

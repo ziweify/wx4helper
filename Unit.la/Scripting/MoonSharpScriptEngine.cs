@@ -462,8 +462,70 @@ namespace Unit.La.Scripting
                 // 3. 执行 main() 函数
                 try
                 {
+                    // 🔥 检查 mainFunc 是否为 null
+                    if (mainFunc == null || mainFunc.IsNil())
+                    {
+                        throw new InvalidOperationException("main() 函数未找到或为 null");
+                    }
+                    
+                    // 🔥 检查 _script 是否为 null
+                    if (_script == null)
+                    {
+                        throw new InvalidOperationException("脚本引擎未初始化");
+                    }
+                    
                     var mainResult = _script.Call(mainFunc);
                     result = mainResult.ToObject();
+                }
+                catch (NullReferenceException nullEx)
+                {
+                    // 🔥 捕获空引用异常，提供更详细的错误信息
+                    hasError = true;
+                    errorMessage = $"❌ 空引用异常 (NullReferenceException)\n" +
+                                  $"   错误位置: main() 函数执行时\n" +
+                                  $"   可能原因:\n" +
+                                  $"     1. 脚本中调用了 nil 值（函数或变量未定义）\n" +
+                                  $"     2. 函数参数传递错误\n" +
+                                  $"     3. 对象方法调用时对象为 nil\n" +
+                                  $"   原始错误: {nullEx.Message}\n" +
+                                  $"   堆栈跟踪:\n{nullEx.StackTrace}";
+                    errorTrace = nullEx.ToString();
+                    
+                    // 尝试从堆栈中提取更多信息
+                    var stackTrace = nullEx.StackTrace ?? "";
+                    if (stackTrace.Contains("Processing_Loop"))
+                    {
+                        errorMessage += "\n   提示: 错误发生在循环处理中，请检查循环函数（如 loop、while）的使用是否正确";
+                    }
+                    if (stackTrace.Contains("Call"))
+                    {
+                        errorMessage += "\n   提示: 错误发生在函数调用中，请检查函数是否存在、参数是否正确";
+                    }
+                    
+                    // 调用 error() 回调（如果存在）
+                    try
+                    {
+                        if (errorFunc != null && !errorFunc.IsNil() && errorFunc.Type == DataType.Function)
+                        {
+                            var errorInfoTable = new Table(_script);
+                            errorInfoTable["message"] = DynValue.NewString(errorMessage);
+                            errorInfoTable["lineNumber"] = DynValue.NewNumber(0);
+                            errorInfoTable["type"] = DynValue.NewString("NullReferenceException");
+                            
+                            var errorResult = _script.Call(errorFunc, errorInfoTable);
+                            
+                            if (errorResult.Type == DataType.Boolean && errorResult.Boolean)
+                            {
+                                // error() 返回 true，表示忽略异常，继续执行
+                                hasError = false;
+                                errorMessage = null;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // error() 调用失败，忽略
+                    }
                 }
                 catch (ScriptRuntimeException ex)
                 {
@@ -573,6 +635,36 @@ namespace Unit.La.Scripting
             int lineNumber = 0;
             int columnNumber = 0;
             var callStackDetails = new System.Text.StringBuilder();
+
+            // 🔥 处理 NullReferenceException
+            if (ex is NullReferenceException nullEx)
+            {
+                message = $"空引用异常: {nullEx.Message}";
+                fullMessage = nullEx.ToString();
+                
+                // 尝试从堆栈中提取更多信息
+                var stackTrace = nullEx.StackTrace ?? "";
+                if (stackTrace.Contains("Processing_Loop"))
+                {
+                    message += "\n   错误发生在循环处理中，可能是循环函数（如 loop、while）使用错误";
+                }
+                if (stackTrace.Contains("Call"))
+                {
+                    message += "\n   错误发生在函数调用中，可能是函数不存在或参数错误";
+                }
+                
+                // 构建详细的错误信息
+                callStackDetails.AppendLine("📋 调用栈信息：");
+                callStackDetails.AppendLine($"   错误类型: NullReferenceException");
+                callStackDetails.AppendLine($"   错误消息: {nullEx.Message}");
+                if (!string.IsNullOrEmpty(stackTrace))
+                {
+                    callStackDetails.AppendLine($"   堆栈跟踪:\n{stackTrace}");
+                }
+                
+                fullMessage = $"❌ 错误: {message}\n\n{callStackDetails}\n=== 完整堆栈跟踪 ===\n{fullMessage}";
+                return (message, lineNumber, columnNumber, fullMessage);
+            }
 
             // MoonSharp 异常通常包含 DecoratedMessage
             if (ex is ScriptRuntimeException runtimeEx)
