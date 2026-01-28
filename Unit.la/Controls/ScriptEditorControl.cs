@@ -280,6 +280,132 @@ namespace Unit.La.Controls
             sc.WrapMode = WrapMode.None;
             sc.CaretLineBackColor = Color.White;
             sc.CaretLineVisible = false;
+
+            // 7. 🔥 订阅键盘事件（确保所有 Ctrl 快捷键都被正确处理）
+            SubscribeScintillaKeyboardEvents(sc);
+        }
+
+        /// <summary>
+        /// 🔥 订阅 Scintilla 编辑器的键盘事件（用于处理所有 Ctrl 快捷键）
+        /// </summary>
+        private void SubscribeScintillaKeyboardEvents(ScintillaNET.Scintilla sc)
+        {
+            if (sc == null) return;
+
+            // 订阅键盘事件
+            sc.KeyDown += (sender, e) =>
+            {
+                if (sc == null || sc.IsDisposed) return;
+
+                // 🔥 优先处理所有 Ctrl 组合键，防止输入不明字符
+                if (e.Control)
+                {
+                    e.Handled = true;
+                    e.SuppressKeyPress = true; // 阻止字符输入
+
+                    switch (e.KeyCode)
+                    {
+                        case Keys.S:
+                            // Ctrl+S：保存
+                            SaveRequested?.Invoke(this, EventArgs.Empty);
+                            return;
+
+                        case Keys.F:
+                            // Ctrl+F：查找（如果有选中文本，则查找选中的文本）
+                            if (!string.IsNullOrEmpty(sc.SelectedText))
+                            {
+                                FindText(sc.SelectedText);
+                            }
+                            // TODO: 后续可以实现查找对话框
+                            return;
+
+                        case Keys.H:
+                            // Ctrl+H：查找替换（暂时使用查找功能）
+                            if (!string.IsNullOrEmpty(sc.SelectedText))
+                            {
+                                FindText(sc.SelectedText);
+                            }
+                            // TODO: 后续可以实现查找替换对话框
+                            return;
+
+                        case Keys.A:
+                            // Ctrl+A：全选
+                            sc.SelectAll();
+                            return;
+
+                        case Keys.C:
+                            // Ctrl+C：复制
+                            if (!string.IsNullOrEmpty(sc.SelectedText))
+                            {
+                                sc.Copy();
+                            }
+                            return;
+
+                        case Keys.V:
+                            // Ctrl+V：粘贴
+                            sc.Paste();
+                            return;
+
+                        case Keys.X:
+                            // Ctrl+X：剪切
+                            if (!string.IsNullOrEmpty(sc.SelectedText))
+                            {
+                                sc.Cut();
+                            }
+                            return;
+
+                        case Keys.Z:
+                            // Ctrl+Z：撤销
+                            if (e.Shift)
+                            {
+                                // Ctrl+Shift+Z：重做
+                                sc.Redo();
+                            }
+                            else
+                            {
+                                sc.Undo();
+                            }
+                            return;
+
+                        case Keys.Y:
+                            // Ctrl+Y：重做（某些编辑器的习惯）
+                            sc.Redo();
+                            return;
+
+                        case Keys.Left:
+                            // Ctrl+左箭头：后退导航（仅对主编辑器有效）
+                            if (sc == scintilla)
+                            {
+                                NavigateBack();
+                            }
+                            return;
+
+                        case Keys.Right:
+                            // Ctrl+右箭头：前进导航（仅对主编辑器有效）
+                            if (sc == scintilla)
+                            {
+                                NavigateForward();
+                            }
+                            return;
+
+                        case Keys.Home:
+                            // Ctrl+Home：移动到文档开头
+                            sc.GotoPosition(0);
+                            return;
+
+                        case Keys.End:
+                            // Ctrl+End：移动到文档末尾
+                            sc.GotoPosition(sc.TextLength);
+                            return;
+
+                        default:
+                            // 其他 Ctrl 组合键：不处理，但阻止输入字符
+                            e.Handled = false; // 允许其他处理
+                            e.SuppressKeyPress = true; // 但仍阻止字符输入
+                            return;
+                    }
+                }
+            };
         }
 
         /// <summary>
@@ -446,7 +572,10 @@ namespace Unit.La.Controls
             scintilla.TextChanged += Scintilla_TextChanged;
             scintilla.CharAdded += Scintilla_CharAdded; // 自动完成触发
 
-            // 添加键盘事件处理（调试快捷键和智能缩进）
+            // 🔥 订阅键盘事件（处理所有 Ctrl 快捷键，防止输入不明字符）
+            SubscribeScintillaKeyboardEvents(scintilla);
+            
+            // 🔥 保留原有的 KeyDown 处理（用于调试快捷键 F5/F7/F8/F9 等）
             scintilla.KeyDown += Scintilla_KeyDown;
             
             // 🔥 处理回车键，实现智能缩进
@@ -492,34 +621,114 @@ namespace Unit.La.Controls
 
         /// <summary>
         /// 键盘事件处理（调试快捷键和常用快捷键）
+        /// 🔥 确保所有 Ctrl 快捷键都被正确处理，防止输入不明字符
         /// </summary>
         private void Scintilla_KeyDown(object? sender, KeyEventArgs e)
         {
-            // 🔥 处理 Ctrl+S：阻止 DC3 字符输入，并触发保存请求
-            if (e.Control && e.KeyCode == Keys.S)
-            {
-                e.Handled = true;
-                e.SuppressKeyPress = true; // 阻止字符输入，防止 DC3 字符
-                // 🔥 触发保存请求事件（由父窗口处理）
-                SaveRequested?.Invoke(this, EventArgs.Empty);
-                return;
-            }
+            if (scintilla == null) return;
 
-            // 🔥 处理 Ctrl+左右箭头：导航历史
-            if (e.Control && (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right))
+            // 🔥 优先处理所有 Ctrl 组合键，防止输入不明字符
+            if (e.Control)
             {
                 e.Handled = true;
-                e.SuppressKeyPress = true;
-                
-                if (e.KeyCode == Keys.Left)
+                e.SuppressKeyPress = true; // 阻止字符输入
+
+                switch (e.KeyCode)
                 {
-                    NavigateBack();
+                    case Keys.S:
+                        // Ctrl+S：保存
+                        SaveRequested?.Invoke(this, EventArgs.Empty);
+                        return;
+
+                    case Keys.F:
+                        // Ctrl+F：查找（如果有选中文本，则查找选中的文本）
+                        if (!string.IsNullOrEmpty(scintilla.SelectedText))
+                        {
+                            FindText(scintilla.SelectedText);
+                        }
+                        // TODO: 后续可以实现查找对话框
+                        return;
+
+                    case Keys.H:
+                        // Ctrl+H：查找替换（暂时使用查找功能）
+                        if (!string.IsNullOrEmpty(scintilla.SelectedText))
+                        {
+                            FindText(scintilla.SelectedText);
+                        }
+                        // TODO: 后续可以实现查找替换对话框
+                        return;
+
+                    case Keys.A:
+                        // Ctrl+A：全选
+                        scintilla.SelectAll();
+                        return;
+
+                    case Keys.C:
+                        // Ctrl+C：复制
+                        if (!string.IsNullOrEmpty(scintilla.SelectedText))
+                        {
+                            scintilla.Copy();
+                        }
+                        return;
+
+                    case Keys.V:
+                        // Ctrl+V：粘贴
+                        scintilla.Paste();
+                        return;
+
+                    case Keys.X:
+                        // Ctrl+X：剪切
+                        if (!string.IsNullOrEmpty(scintilla.SelectedText))
+                        {
+                            scintilla.Cut();
+                        }
+                        return;
+
+                    case Keys.Z:
+                        // Ctrl+Z：撤销
+                        if (e.Shift)
+                        {
+                            // Ctrl+Shift+Z：重做
+                            scintilla.Redo();
+                        }
+                        else
+                        {
+                            scintilla.Undo();
+                        }
+                        return;
+
+                    case Keys.Y:
+                        // Ctrl+Y：重做（某些编辑器的习惯）
+                        scintilla.Redo();
+                        return;
+
+                    case Keys.Left:
+                        // Ctrl+左箭头：后退导航
+                        NavigateBack();
+                        return;
+
+                    case Keys.Right:
+                        // Ctrl+右箭头：前进导航
+                        NavigateForward();
+                        return;
+
+                    case Keys.Home:
+                        // Ctrl+Home：移动到文档开头
+                        scintilla.GotoPosition(0);
+                        return;
+
+                    case Keys.End:
+                        // Ctrl+End：移动到文档末尾
+                        scintilla.GotoPosition(scintilla.TextLength);
+                        return;
+
+
+                    default:
+                        // 其他 Ctrl 组合键：不处理，但阻止输入字符
+                        e.Handled = false; // 允许其他处理
+                        e.SuppressKeyPress = true; // 但仍阻止字符输入
+                        return;
                 }
-                else
-                {
-                    NavigateForward();
-                }
-                return;
             }
 
             // 🔥 处理回车键：实现智能缩进
