@@ -876,13 +876,39 @@ namespace Unit.La.Scripting
         #region 等待操作
 
         /// <summary>
-        /// 等待指定毫秒
-        /// 用法: web.Wait(1000) -- 等待1秒
+        /// 等待指定毫秒 - UI 友好版本
+        /// 🔥 使用 DoEvents 保持界面响应，避免卡死
+        /// 用法: web.Wait(1000) -- 等待1秒，界面不卡
         /// </summary>
         public void Wait(int milliseconds)
         {
+            if (milliseconds <= 0) return;
+
             _logger($"⏱️ 等待 {milliseconds}ms");
-            Thread.Sleep(milliseconds);
+            
+            var startTime = DateTime.Now;
+            var targetTime = startTime.AddMilliseconds(milliseconds);
+
+            // 🔥 使用 DoEvents 循环，保持 UI 响应
+            while (DateTime.Now < targetTime)
+            {
+                // 检查是否已停止
+                if (_cancellationToken?.IsCancellationRequested == true)
+                {
+                    _logger("⏹️ 等待被取消");
+                    return; // 提前退出
+                }
+
+                // 🔥 处理 UI 消息，保持界面响应
+                System.Windows.Forms.Application.DoEvents();
+
+                // 短暂休眠，避免 CPU 100%
+                var remaining = (targetTime - DateTime.Now).TotalMilliseconds;
+                if (remaining > 0)
+                {
+                    Thread.Sleep(Math.Min(50, (int)remaining)); // 每次最多休眠 50ms
+                }
+            }
         }
 
         /// <summary>

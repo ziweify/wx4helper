@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using MoonSharp.Interpreter;
 using Unit.La.Scripting;
 
 namespace Unit.La.Scripting
@@ -50,6 +52,9 @@ namespace Unit.La.Scripting
             // 延迟函数
             engine.BindFunction("sleep", new Action<int>(Sleep));
             engine.BindFunction("wait", new Action<int>(Sleep)); // 别名
+
+            // 🔥 UI 友好的循环函数（自动包含 10ms 延时）
+            engine.BindFunction("loop", new Func<MoonSharp.Interpreter.DynValue, MoonSharp.Interpreter.DynValue, bool>(Loop));
 
             // 脚本控制函数
             engine.BindFunction("is_stopped", new Func<bool>(IsStopped));
@@ -117,11 +122,112 @@ namespace Unit.La.Scripting
         #region 延迟函数
 
         /// <summary>
-        /// 延迟（毫秒）
+        /// 延迟（毫秒）- UI 友好版本
+        /// 🔥 使用 DoEvents 保持界面响应，避免卡死
+        /// 用法: sleep(1000) -- 等待1秒，界面不卡
         /// </summary>
         public static void Sleep(int milliseconds)
         {
-            Thread.Sleep(milliseconds);
+            if (milliseconds <= 0) return;
+
+            var startTime = DateTime.Now;
+            var targetTime = startTime.AddMilliseconds(milliseconds);
+
+            // 🔥 使用 DoEvents 循环，保持 UI 响应
+            while (DateTime.Now < targetTime)
+            {
+                // 检查是否已停止
+                if (_cancellationToken?.IsCancellationRequested == true)
+                {
+                    return; // 提前退出
+                }
+
+                // 🔥 处理 UI 消息，保持界面响应
+                Application.DoEvents();
+
+                // 短暂休眠，避免 CPU 100%
+                var remaining = (targetTime - DateTime.Now).TotalMilliseconds;
+                if (remaining > 0)
+                {
+                    Thread.Sleep(Math.Min(50, (int)remaining)); // 每次最多休眠 50ms
+                }
+            }
+        }
+
+        #endregion
+
+        #region 循环函数
+
+        /// <summary>
+        /// UI 友好的循环函数 - 自动包含 10ms 延时
+        /// 🔥 替代 while 循环，自动保持界面响应
+        /// 用法: 
+        ///   loop(function() return true end, function() 
+        ///       -- 循环体
+        ///   end)
+        /// </summary>
+        public static bool Loop(MoonSharp.Interpreter.DynValue conditionFunc, MoonSharp.Interpreter.DynValue bodyFunc)
+        {
+            if (conditionFunc == null || conditionFunc.Type != MoonSharp.Interpreter.DataType.Function)
+            {
+                throw new ArgumentException("loop 的第一个参数必须是函数（条件函数）");
+            }
+
+            if (bodyFunc == null || bodyFunc.Type != MoonSharp.Interpreter.DataType.Function)
+            {
+                throw new ArgumentException("loop 的第二个参数必须是函数（循环体）");
+            }
+
+            // 获取脚本引擎（从 conditionFunc 中获取）
+            var script = conditionFunc.Function.OwnerScript;
+            if (script == null)
+            {
+                throw new InvalidOperationException("无法获取脚本引擎实例");
+            }
+
+            // 🔥 循环执行，自动包含 10ms 延时
+            while (true)
+            {
+                // 检查是否已停止
+                if (_cancellationToken?.IsCancellationRequested == true)
+                {
+                    return false; // 提前退出
+                }
+
+                // 执行条件函数（使用 Script.Call 方法，传递空参数数组）
+                MoonSharp.Interpreter.DynValue conditionResult;
+                try
+                {
+                    conditionResult = script.Call(conditionFunc);
+                }
+                catch (Exception ex)
+                {
+                    LogError($"条件函数执行错误: {ex.Message}");
+                    break; // 发生错误，退出循环
+                }
+
+                if (conditionResult.Type == MoonSharp.Interpreter.DataType.Boolean && !conditionResult.Boolean)
+                {
+                    break; // 条件为 false，退出循环
+                }
+
+                // 执行循环体（使用 Script.Call 方法）
+                try
+                {
+                    script.Call(bodyFunc);
+                }
+                catch (Exception ex)
+                {
+                    LogError($"循环体执行错误: {ex.Message}");
+                    break; // 发生错误，退出循环
+                }
+
+                // 🔥 自动延时 10ms，保持界面响应
+                Application.DoEvents();
+                Thread.Sleep(10);
+            }
+
+            return true;
         }
 
         #endregion

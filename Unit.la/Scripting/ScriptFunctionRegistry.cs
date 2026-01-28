@@ -103,6 +103,10 @@ namespace Unit.La.Scripting
             RegisterFunction("wait", new Action<int>(DefaultScriptFunctions.Sleep), 
                 "延迟指定毫秒数（sleep别名）", "wait(1000)", "工具");
 
+            // 🔥 UI 友好的循环函数（自动包含 10ms 延时）
+            RegisterFunction("loop", new Func<MoonSharp.Interpreter.DynValue, MoonSharp.Interpreter.DynValue, bool>(DefaultScriptFunctions.Loop), 
+                "UI友好的循环函数（自动10ms延时）", "loop(function() return true end, function() -- 循环体 end)", "控制");
+
             // 脚本控制函数
             RegisterFunction("is_stopped", new Func<bool>(DefaultScriptFunctions.IsStopped), 
                 "检查脚本是否已停止", "if is_stopped() then return false end", "控制");

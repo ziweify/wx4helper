@@ -367,6 +367,50 @@ namespace Unit.La.Scripting
                 {
                     _script.DoString(scriptCode);
                 }
+            }
+            catch (IndexOutOfRangeException indexEx)
+            {
+                // 🔥 捕获数组越界异常，这通常是 MoonSharp 内部错误或函数绑定问题
+                hasError = true;
+                errorMessage = $"脚本加载错误: 数组越界异常\n" +
+                              $"   这可能是由于函数参数不匹配或函数绑定问题导致的\n" +
+                              $"   原始错误: {indexEx.Message}\n" +
+                              $"   堆栈: {indexEx.StackTrace}";
+                errorTrace = indexEx.ToString();
+                
+                // 尝试从堆栈中提取更多信息
+                var stackTrace = indexEx.StackTrace ?? "";
+                if (stackTrace.Contains("Processing_Loop"))
+                {
+                    errorMessage += "\n   提示: 错误发生在循环处理中，请检查循环函数（如 loop）的使用是否正确";
+                }
+                
+                return new ScriptResult
+                {
+                    Success = false,
+                    Error = errorMessage,
+                    LineNumber = 0,
+                    Output = errorTrace
+                };
+            }
+            catch (Exception loadEx)
+            {
+                // 脚本加载阶段的其他错误
+                hasError = true;
+                errorMessage = $"脚本加载错误: {loadEx.Message}";
+                errorTrace = loadEx.ToString();
+                
+                return new ScriptResult
+                {
+                    Success = false,
+                    Error = errorMessage,
+                    LineNumber = 0,
+                    Output = errorTrace
+                };
+            }
+            
+            try
+            {
 
                 // 2. 🔥 验证3个必须函数是否都存在
                 var mainFunc = _script.Globals.Get("main");

@@ -58,6 +58,9 @@ namespace Unit.La.Controls
         private ToolStripButton? _btnToggleScriptWindow; // 🔥 切换脚本窗口按钮
         private ConfigService? _configService; // 🔥 配置服务
         
+        // 🔥 响应拦截相关
+        private readonly List<Services.WebView2ResourceHandler> _resourceHandlers = new(); // 存储所有窗口的拦截器
+        
         // 🔥 日志过滤相关
         private readonly List<LogEntry> _allLogs = new(); // 存储所有日志
         private LogType _currentFilter = LogType.All; // 当前过滤类型
@@ -609,6 +612,23 @@ namespace Unit.La.Controls
                         }
             }
 
+            // 🔥 关键修复：如果 ScriptInfo 的内容为空，从文件重新加载
+            if (string.IsNullOrEmpty(script.Content) && !string.IsNullOrEmpty(script.FilePath))
+            {
+                try
+                {
+                    if (System.IO.File.Exists(script.FilePath))
+                    {
+                        script.Content = System.IO.File.ReadAllText(script.FilePath, Encoding.UTF8);
+                        LogMessage($"📄 从文件重新加载脚本: {script.FilePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"⚠️ 重新加载脚本失败: {ex.Message}");
+                }
+            }
+
             // 🔥 初始化 SavedContent（用于比较是否修改）
             if (string.IsNullOrEmpty(script.SavedContent))
             {
@@ -633,7 +653,7 @@ namespace Unit.La.Controls
                 _scriptEditor.ConfigureScintillaEditor(newScintilla);
             }
 
-            // 设置脚本内容
+            // 🔥 设置脚本内容（确保使用正确的 ScriptInfo.Content）
             newScintilla.Text = script.Content ?? string.Empty;
 
             // 🔥 订阅 TextChanged 事件，以便在内容变化时更新函数列表
@@ -754,8 +774,9 @@ namespace Unit.La.Controls
                 return;
             }
 
-            var editor = GetCurrentScriptEditor(tabControl);
-            if (editor == null)
+            // 🔥 关键修复：从当前 Tab 的 Scintilla 获取内容，而不是从 _scriptEditor.ScriptText
+            var currentScintilla = currentTab.Controls.OfType<ScintillaNET.Scintilla>().FirstOrDefault();
+            if (currentScintilla == null)
             {
                 LogMessage("❌ 无法获取编辑器");
                 return;
@@ -763,14 +784,15 @@ namespace Unit.La.Controls
 
             try
             {
-                // 更新脚本内容
-                scriptInfo.Content = editor.ScriptText ?? string.Empty;
+                // 🔥 从当前 Tab 的 Scintilla 获取内容
+                scriptInfo.Content = currentScintilla.Text ?? string.Empty;
                 scriptInfo.ModifiedAt = DateTime.Now;
 
-                // 保存到文件
+                // 🔥 保存到文件（使用 scriptInfo.FilePath，确保保存到正确的文件）
                 if (!string.IsNullOrEmpty(scriptInfo.FilePath))
                 {
                     System.IO.File.WriteAllText(scriptInfo.FilePath, scriptInfo.Content, Encoding.UTF8);
+                    LogMessage($"✅ 已保存脚本到文件: {scriptInfo.FilePath}");
                 }
                 else
                 {
@@ -1508,8 +1530,29 @@ log('脚本结束')
                         var previousScintilla = _previousTab.Controls.OfType<ScintillaNET.Scintilla>().FirstOrDefault();
                         if (previousScintilla != null)
                         {
-                            // 更新 ScriptInfo 的内容（保持修改状态，不保存到文件）
-                            previousScript.Content = previousScintilla.Text;
+                            // 🔥 关键修复：更新 ScriptInfo 的内容（保持修改状态，不保存到文件）
+                            // 确保每个 ScriptInfo 只保存自己的内容
+                            var previousContent = previousScintilla.Text ?? string.Empty;
+                            previousScript.Content = previousContent;
+                            
+                            // 更新修改标记
+                            var savedContent = previousScript.SavedContent ?? string.Empty;
+                            if (previousContent != savedContent)
+                            {
+                                if (!_previousTab.Text.EndsWith(" *"))
+                                {
+                                    _previousTab.Text += " *";
+                                }
+                                previousScript.IsModified = true;
+                            }
+                            else
+                            {
+                                if (_previousTab.Text.EndsWith(" *"))
+                                {
+                                    _previousTab.Text = _previousTab.Text.Substring(0, _previousTab.Text.Length - 2);
+                                }
+                                previousScript.IsModified = false;
+                            }
                         }
                     }
                 }
@@ -1520,11 +1563,29 @@ log('脚本结束')
                     var currentTab = tabControlScripts.SelectedTab;
                     if (currentTab.Tag is ScriptInfo currentScript)
                     {
-                        // 从 ScriptInfo 恢复内容到当前 Tab 的 Scintilla
+                        // 🔥 关键修复：从 ScriptInfo 恢复内容到当前 Tab 的 Scintilla
+                        // 确保每个 Tab 只显示自己 ScriptInfo 的内容
                         var currentScintilla = currentTab.Controls.OfType<ScintillaNET.Scintilla>().FirstOrDefault();
                         if (currentScintilla != null)
                         {
-                            currentScintilla.Text = currentScript.Content;
+                            // 🔥 如果 ScriptInfo 的内容为空，尝试从文件重新加载
+                            if (string.IsNullOrEmpty(currentScript.Content) && !string.IsNullOrEmpty(currentScript.FilePath))
+                            {
+                                try
+                                {
+                                    if (System.IO.File.Exists(currentScript.FilePath))
+                                    {
+                                        currentScript.Content = System.IO.File.ReadAllText(currentScript.FilePath, Encoding.UTF8);
+                                        currentScript.SavedContent = currentScript.Content;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogMessage($"⚠️ 重新加载脚本失败: {ex.Message}");
+                                }
+                            }
+                            
+                            currentScintilla.Text = currentScript.Content ?? string.Empty;
                         }
                         
                         // 🔥 同步文件树的选择状态：根据当前 Tab 的文件路径，更新文件树的高亮
@@ -1774,6 +1835,42 @@ log('脚本结束')
 
                 await _webView.EnsureCoreWebView2Async(null);
 
+                // 🔥 初始化主窗口的响应拦截器
+                await InitializeResourceHandlerAsync(_webView.CoreWebView2);
+
+                // 🔥 监听新窗口请求，为新窗口也初始化拦截器
+                _webView.CoreWebView2.NewWindowRequested += (s, e) =>
+                {
+                    LogMessage($"🪟 检测到新窗口请求: {e.Uri}");
+                    
+                    // 不设置 e.Handled = true，让新窗口正常打开
+                    // 但是等待新窗口初始化完成后，为其也初始化拦截器
+                    
+                    // 🔥 异步等待新窗口的 CoreWebView2 初始化完成
+                    // 注意：e.NewWindow 是 CoreWebView2 类型，但可能还没有完全初始化
+                    // 使用 NavigationCompleted 事件来确保新窗口已准备好
+                    if (e.NewWindow != null)
+                    {
+                        // 订阅新窗口的导航完成事件，确保 CoreWebView2 已初始化
+                        e.NewWindow.NavigationCompleted += async (sender, navArgs) =>
+                        {
+                            if (navArgs.IsSuccess)
+                            {
+                                try
+                                {
+                                    LogMessage($"✅ 新窗口导航完成，开始初始化响应拦截器");
+                                    await InitializeResourceHandlerAsync(e.NewWindow);
+                                    LogMessage($"✅ 新窗口响应拦截器初始化完成");
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogMessage($"❌ 新窗口响应拦截器初始化失败: {ex.Message}");
+                                }
+                            }
+                        };
+                    }
+                };
+
                 // 订阅导航事件
                 _webView.NavigationStarting += (s, e) =>
                 {
@@ -1815,6 +1912,47 @@ log('脚本结束')
                 
                 // 🔥 设置初始化失败
                 _webViewInitTcs.TrySetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// 初始化响应拦截器（主窗口和新窗口共用）
+        /// </summary>
+        private async Task InitializeResourceHandlerAsync(CoreWebView2 coreWebView2)
+        {
+            try
+            {
+                var handler = new Services.WebView2ResourceHandler(OnResponseReceived);
+                await handler.InitializeAsync(coreWebView2);
+                _resourceHandlers.Add(handler);
+                LogMessage("✅ 响应拦截器初始化完成");
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"❌ 响应拦截器初始化失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 响应接收回调 - 路由到 Lua 脚本处理
+        /// </summary>
+        private void OnResponseReceived(Services.ResponseEventArgs args)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(args.Url))
+                    return;
+
+                // 🔥 记录日志
+                LogMessage($"📡 拦截响应: {args.Url} (状态码: {args.StatusCode})");
+
+                // 🔥 TODO: 路由到 Lua 脚本的响应拦截处理器
+                // 这里暂时只记录日志，等 Lua API 实现后再添加路由逻辑
+                // _scriptEditor?.ScriptEngine?.InvokeResponseHandler(args);
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"❌ 响应处理失败: {ex.Message}");
             }
         }
 
