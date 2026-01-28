@@ -148,6 +148,10 @@ namespace Unit.La.Scripting
             // 🔥 响应拦截函数（使用 PascalCase 风格）
             RegisterFunction("OnResponse", new Action<MoonSharp.Interpreter.DynValue>(DefaultScriptFunctions.ResponseOn), 
                 "注册响应处理器", "OnResponse(function(response) log('URL: ' .. response.url) end)", "网络");
+
+            // 🔥 URL变化监听函数（使用 PascalCase 风格）
+            RegisterFunction("OnUrlChanged", new Action<MoonSharp.Interpreter.DynValue>(DefaultScriptFunctions.UrlChanged), 
+                "注册URL变化监听器", "OnUrlChanged(function(urlInfo) log('URL变化: ' .. urlInfo.url) end)", "网络");
             
             // 🌐 注册 WebView2 桥接对象（使用动态引用）
             if (webViewProvider != null)

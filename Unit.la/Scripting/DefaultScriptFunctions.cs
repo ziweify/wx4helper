@@ -83,6 +83,9 @@ namespace Unit.La.Scripting
 
             // 🔥 响应拦截函数（使用 PascalCase 风格）
             engine.BindFunction("OnResponse", new Action<MoonSharp.Interpreter.DynValue>(ResponseOn));
+
+            // 🔥 URL变化监听函数（使用 PascalCase 风格）
+            engine.BindFunction("OnUrlChanged", new Action<MoonSharp.Interpreter.DynValue>(UrlChanged));
         }
 
         #region 日志函数
@@ -419,6 +422,18 @@ namespace Unit.La.Scripting
         public static void ResponseOn(MoonSharp.Interpreter.DynValue handlerFunc)
         {
             WebBridge.OnResponse(handlerFunc);
+        }
+
+        /// <summary>
+        /// 注册URL变化监听器
+        /// 用法: OnUrlChanged(function(urlInfo)
+        ///     log('URL变化: ' .. urlInfo.url)
+        ///     log('是否成功: ' .. tostring(urlInfo.isSuccess))
+        /// end)
+        /// </summary>
+        public static void UrlChanged(MoonSharp.Interpreter.DynValue handlerFunc)
+        {
+            WebBridge.OnUrlChanged(handlerFunc);
         }
 
         #endregion

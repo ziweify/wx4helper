@@ -1838,6 +1838,51 @@ log('脚本结束')
                 // 🔥 初始化主窗口的响应拦截器
                 await InitializeResourceHandlerAsync(_webView.CoreWebView2);
 
+                // 🔥 订阅 WebMessageReceived 事件，用于接收 JavaScript 发送的消息（元素出现通知）
+                _webView.CoreWebView2.WebMessageReceived += (s, e) =>
+                {
+                    try
+                    {
+                        var message = e.TryGetWebMessageAsString();
+                        if (string.IsNullOrEmpty(message))
+                            return;
+
+                        // 解析 JSON 消息
+                        var jsonDoc = System.Text.Json.JsonDocument.Parse(message);
+                        var root = jsonDoc.RootElement;
+
+                        if (root.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "elementAppeared")
+                        {
+                            if (root.TryGetProperty("handlerId", out var handlerIdProp) &&
+                                root.TryGetProperty("selector", out var selectorProp))
+                            {
+                                var handlerId = handlerIdProp.GetString();
+                                var selector = selectorProp.GetString();
+                                
+                                if (!string.IsNullOrEmpty(handlerId) && !string.IsNullOrEmpty(selector))
+                                {
+                                    // 在 UI 线程调用
+                                    if (InvokeRequired)
+                                    {
+                                        BeginInvoke(new Action(() =>
+                                        {
+                                            WebBridge.InvokeElementAppearedHandler(handlerId, selector);
+                                        }));
+                                    }
+                                    else
+                                    {
+                                        WebBridge.InvokeElementAppearedHandler(handlerId, selector);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogMessage($"⚠️ 处理 WebMessage 失败: {ex.Message}");
+                    }
+                };
+
                 // 🔥 监听新窗口请求，为新窗口也初始化拦截器
                 _webView.CoreWebView2.NewWindowRequested += (s, e) =>
                 {
@@ -1878,21 +1923,48 @@ log('脚本结束')
                     txtUrl.Text = e.Uri;
                 };
 
+                // 🔥 存储上一个URL，用于URL变化事件
+                string? previousUrl = _webView.Source?.ToString();
+
                 _webView.NavigationCompleted += (s, e) =>
                 {
+                    var currentUrl = _webView.Source?.ToString() ?? "";
+                    
                     if (e.IsSuccess)
                     {
-                        var url = _webView.Source?.ToString() ?? "";
                         LogMessage($"✅ 页面加载成功");
-                        txtUrl.Text = url;
-                        AddToHistory(url);
+                        txtUrl.Text = currentUrl;
+                        AddToHistory(currentUrl);
                         UpdateNavigationButtons();
-                        NavigationCompleted?.Invoke(this, url);
+                        NavigationCompleted?.Invoke(this, currentUrl);
+                        
+                        // 🔥 触发URL变化事件（路由到Lua脚本）
+                        try
+                        {
+                            WebBridge.InvokeUrlChangedHandler(currentUrl, true, previousUrl);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogMessage($"⚠️ URL变化处理器执行失败: {ex.Message}");
+                        }
                     }
                     else
                     {
                         LogMessage($"❌ 页面加载失败");
+                        
+                        // 🔥 即使失败也触发URL变化事件
+                        try
+                        {
+                            WebBridge.InvokeUrlChangedHandler(currentUrl, false, previousUrl);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogMessage($"⚠️ URL变化处理器执行失败: {ex.Message}");
+                        }
                     }
+                    
+                    // 更新上一个URL
+                    previousUrl = currentUrl;
                 };
 
                 // 导航到初始URL

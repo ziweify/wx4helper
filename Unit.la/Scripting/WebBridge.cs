@@ -872,6 +872,76 @@ namespace Unit.La.Scripting
             return int.Parse(result);
         }
 
+        /// <summary>
+        /// 通过文本内容查找并点击元素
+        /// 用法: web.ClickByText('.tongyi-fan a', '同意')  -- 在 .tongyi-fan 下的所有 <a> 中，找到文本为"同意"的并点击
+        /// </summary>
+        public bool ClickByText(string selector, string text)
+        {
+            _logger($"🖱️ 通过文本查找并点击: {selector}, 文本: {text}");
+            var escapedSelector = selector.Replace("'", "\\'");
+            var escapedText = text.Replace("\\", "\\\\").Replace("'", "\\'");
+            
+            var script = $@"
+                (function() {{
+                    var elements = document.querySelectorAll('{escapedSelector}');
+                    for (var i = 0; i < elements.length; i++) {{
+                        if (elements[i].innerText.trim() === '{escapedText}') {{
+                            elements[i].click();
+                            return true;
+                        }}
+                    }}
+                    return false;
+                }})()
+            ";
+            
+            var result = Execute(script);
+            return result.Trim().ToLower() == "true";
+        }
+
+        /// <summary>
+        /// 通过文本内容查找元素选择器（返回第一个匹配的选择器）
+        /// 用法: local selector = web.FindByText('.tongyi-fan a', '同意')  -- 返回匹配元素的选择器
+        /// </summary>
+        public string FindByText(string selector, string text)
+        {
+            var escapedSelector = selector.Replace("'", "\\'");
+            var escapedText = text.Replace("\\", "\\\\").Replace("'", "\\'");
+            
+            var script = $@"
+                (function() {{
+                    var elements = document.querySelectorAll('{escapedSelector}');
+                    for (var i = 0; i < elements.length; i++) {{
+                        if (elements[i].innerText.trim() === '{escapedText}') {{
+                            // 生成唯一选择器
+                            var el = elements[i];
+                            if (el.id) return '#' + el.id;
+                            var path = [];
+                            while (el && el.nodeType === 1) {{
+                                var selector = el.nodeName.toLowerCase();
+                                if (el.className) {{
+                                    var classes = el.className.trim().split(/\s+/).filter(c => c);
+                                    if (classes.length > 0) {{
+                                        selector += '.' + classes.join('.');
+                                    }}
+                                }}
+                                var siblings = Array.from(el.parentNode.children);
+                                var index = siblings.indexOf(el) + 1;
+                                selector += ':nth-child(' + index + ')';
+                                path.unshift(selector);
+                                el = el.parentElement;
+                            }}
+                            return path.join(' > ');
+                        }}
+                    }}
+                    return '';
+                }})()
+            ";
+            
+            var result = Execute(script);
+            return result.Trim('"');
+        }
+
         #endregion
 
         #region 等待操作
@@ -1251,6 +1321,201 @@ namespace Unit.La.Scripting
             catch
             {
                 return new List<string>();
+            }
+        }
+
+        #endregion
+
+        #region URL变化监听
+
+        private static Action<object>? _urlChangedHandler;
+
+        /// <summary>
+        /// 注册URL变化监听器
+        /// 用法: OnUrlChanged(function(urlInfo)
+        ///     log('URL变化: ' .. urlInfo.url)
+        ///     log('是否成功: ' .. tostring(urlInfo.isSuccess))
+        /// end)
+        /// </summary>
+        public static void OnUrlChanged(DynValue handlerFunc)
+        {
+            if (handlerFunc == null || handlerFunc.Type != DataType.Function)
+            {
+                throw new ArgumentException("OnUrlChanged 的参数必须是函数");
+            }
+
+            var script = handlerFunc.Function.OwnerScript;
+            if (script == null)
+            {
+                throw new InvalidOperationException("无法获取脚本引擎实例");
+            }
+
+            _urlChangedHandler = (urlInfoObj) =>
+            {
+                try
+                {
+                    var urlInfoTable = DynValue.NewTable(script);
+                    if (urlInfoObj is UrlChangedEventArgs urlArgs)
+                    {
+                        urlInfoTable.Table["url"] = DynValue.NewString(urlArgs.Url ?? "");
+                        urlInfoTable.Table["isSuccess"] = DynValue.NewBoolean(urlArgs.IsSuccess);
+                        urlInfoTable.Table["oldUrl"] = DynValue.NewString(urlArgs.OldUrl ?? "");
+                    }
+
+                    script.Call(handlerFunc, urlInfoTable);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"URL变化处理器执行错误: {ex.Message}");
+                }
+            };
+        }
+
+        /// <summary>
+        /// 触发URL变化处理器（由 C# 代码调用）
+        /// </summary>
+        public static void InvokeUrlChangedHandler(string url, bool isSuccess, string? oldUrl = null)
+        {
+            _urlChangedHandler?.Invoke(new UrlChangedEventArgs
+            {
+                Url = url,
+                IsSuccess = isSuccess,
+                OldUrl = oldUrl
+            });
+        }
+
+        /// <summary>
+        /// URL变化事件参数
+        /// </summary>
+        private class UrlChangedEventArgs
+        {
+            public string Url { get; set; } = "";
+            public bool IsSuccess { get; set; }
+            public string? OldUrl { get; set; }
+        }
+
+        #endregion
+
+        #region DOM元素出现监听
+
+        private static readonly Dictionary<string, (DynValue HandlerFunc, Script Script, string Selector)> _elementAppearedHandlers = new();
+        private static int _elementHandlerCounter = 0;
+
+        /// <summary>
+        /// 监听元素出现（使用 MutationObserver，事件驱动，不轮询）
+        /// 用法: web.OnElementAppeared('.protocol-dialog', function(element)
+        ///     log('协议窗口已出现')
+        ///     web.Click('.protocol-dialog .confirm-btn')
+        /// end)
+        /// </summary>
+        public void OnElementAppeared(string selector, DynValue handlerFunc)
+        {
+            if (handlerFunc == null || handlerFunc.Type != DataType.Function)
+            {
+                throw new ArgumentException("OnElementAppeared 的第二个参数必须是函数");
+            }
+
+            var script = handlerFunc.Function.OwnerScript;
+            if (script == null)
+            {
+                throw new InvalidOperationException("无法获取脚本引擎实例");
+            }
+
+            try
+            {
+                var handlerId = $"handler_{++_elementHandlerCounter}_{DateTime.Now.Ticks}";
+                var escapedSelector = selector.Replace("'", "\\'").Replace("\"", "\\\"");
+                
+                // 存储处理器
+                _elementAppearedHandlers[handlerId] = (handlerFunc, script, selector);
+                
+                // 🔥 使用 MutationObserver 监听DOM变化，事件驱动，不轮询
+                var observerScript = $@"
+(function() {{
+    var selector = '{escapedSelector}';
+    var handlerId = '{handlerId}';
+    
+    // 检查元素是否已存在
+    var element = document.querySelector(selector);
+    if (element) {{
+        // 元素已存在，立即触发（通过 C# 调用）
+        window.chrome.webview.postMessage(JSON.stringify({{
+            type: 'elementAppeared',
+            handlerId: handlerId,
+            selector: selector
+        }}));
+        return handlerId;
+    }}
+    
+    // 创建 MutationObserver 监听DOM变化
+    var observer = new MutationObserver(function(mutations) {{
+        var element = document.querySelector(selector);
+        if (element) {{
+            // 元素出现，触发回调（通过 C# 调用）
+            window.chrome.webview.postMessage(JSON.stringify({{
+                type: 'elementAppeared',
+                handlerId: handlerId,
+                selector: selector
+            }}));
+            observer.disconnect(); // 只触发一次
+        }}
+    }});
+    
+    // 开始观察
+    if (document.body) {{
+        observer.observe(document.body, {{
+            childList: true,
+            subtree: true
+        }});
+    }} else {{
+        // 如果 body 还没加载，等待 DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {{
+            observer.observe(document.body, {{
+                childList: true,
+                subtree: true
+            }});
+        }});
+    }}
+    
+    // 存储 observer，以便后续清理
+    window.__luaElementObservers = window.__luaElementObservers || {{}};
+    window.__luaElementObservers[handlerId] = observer;
+    
+    return handlerId;
+}})()
+";
+
+                // 执行观察器脚本
+                Execute(observerScript);
+                
+                _logger($"👁️ 开始监听元素出现: {selector} (Handler ID: {handlerId})");
+            }
+            catch (Exception ex)
+            {
+                _logger($"❌ 监听元素出现失败: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 触发元素出现处理器（由 WebView2 WebMessageReceived 事件调用）
+        /// </summary>
+        public static void InvokeElementAppearedHandler(string handlerId, string selector)
+        {
+            if (_elementAppearedHandlers.TryGetValue(handlerId, out var handler))
+            {
+                try
+                {
+                    var elementTable = DynValue.NewTable(handler.Script);
+                    elementTable.Table["selector"] = DynValue.NewString(selector);
+                    elementTable.Table["handlerId"] = DynValue.NewString(handlerId);
+
+                    handler.Script.Call(handler.HandlerFunc, elementTable);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"元素出现处理器执行错误: {ex.Message}");
+                }
             }
         }
 

@@ -8,7 +8,40 @@ require("functions")
 log('🚀 主脚本开始执行')
 
 -- ==============================
--- 🔥 浏览器请求响应拦截示例
+-- 🔥 浏览器事件监听示例（事件驱动，不轮询）
+-- ==============================
+
+-- ==============================
+-- 1. URL变化监听（事件驱动）
+-- ==============================
+-- 监听URL变化，当页面导航完成时触发
+-- 🔥 注意：URL变化发生在 NavigationCompleted 事件，此时页面HTML已加载完成
+-- 但DOM元素可能还在渲染中，所以元素出现可能稍晚于URL变化
+OnUrlChanged(function(urlInfo)
+    log('🌐 URL变化事件触发')
+    log('   新URL: ' .. urlInfo.url)
+    log('   旧URL: ' .. (urlInfo.oldUrl or ''))
+    log('   是否成功: ' .. tostring(urlInfo.isSuccess))
+    
+    -- 示例：登录成功后，URL变化，可以在这里监听元素出现
+    -- 例如：登录成功后弹出协议确认窗口
+    if urlInfo.isSuccess and string.find(urlInfo.url, '/pc/index.html#') then
+        log('✅ 检测到登录成功，URL已变化')
+        
+        -- 🔥 监听协议确认窗口出现（事件驱动，不轮询）
+        -- 使用 OnElementAppeared 监听元素出现，比轮询更高效
+        web.OnElementAppeared('.protocol-dialog', function(element)
+            log('✅ 协议窗口已出现（事件驱动）')
+            log('   选择器: ' .. element.selector)
+            
+            -- 立即点击确认按钮
+            web.Click('.protocol-dialog .confirm-btn')
+        end)
+    end
+end)
+
+-- ==============================
+-- 2. HTTP响应拦截
 -- ==============================
 -- 注册响应处理器，拦截所有 HTTP 响应
 OnResponse(function(response)
@@ -37,6 +70,7 @@ OnResponse(function(response)
         -- end
     end
     
+    
     -- 示例3: 处理登录相关的响应
     if string.find(response.url, '/login') or string.find(response.url, '/auth') then
         log('🔐 检测到登录相关响应')
@@ -62,6 +96,18 @@ OnResponse(function(response)
     if string.len(response.postData) > 0 then
         log('📤 POST数据: ' .. string.sub(response.postData, 1, 200))
     end
+    
+    -- 处理, 通用
+    if string.find(response.url, '/pc/index.html#') then
+        log('检测到登录确认窗口:不同意|同意')
+        local loginBtn = 'li.huiyuan > span'
+            if web.Exists(loginBtn) then
+                web.Click(loginBtn)
+                log('✅ 登录按钮已点击')
+            else
+                log('❌ 未找到登录按钮: ' .. loginBtn)
+            end
+     end
 end)
 
 function main()
